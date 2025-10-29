@@ -30,10 +30,12 @@ pub(crate) struct DrawCommands {
 }
 
 impl DrawCommands {
-    pub fn new(key: String,
-               spatial_data: SpatialData,
-               spatial_tx: tokio::sync::broadcast::Sender<SpatialData>,
-               draw_commands: Vec<Box<dyn DrawCommand>>) -> Self {
+    pub fn new(
+        key: String,
+        spatial_data: SpatialData,
+        spatial_tx: tokio::sync::broadcast::Sender<SpatialData>,
+        draw_commands: Vec<Box<dyn DrawCommand>>,
+    ) -> Self {
         DrawCommands {
             key,
             spatial_data,
@@ -79,6 +81,7 @@ pub(crate) trait DrawCommand: Send {
 #[derive(Clone)]
 pub(crate) struct Mesh2dDrawCommand {
     pub mesh: VertexBuffers<ShapeVertex, u32>,
+    pub layers_indices: Vec<usize>,
     pub positions: Vec<Vector3<f32>>,
     pub is_screen: bool,
 }
@@ -98,8 +101,8 @@ impl DrawCommand for Mesh2dDrawCommand {
         screen_shape_layer: &mut RefMut<SceneTree>,
         _mesh_layer: &mut RefMut<SceneTree>,
     ) {
-
-        let mesh = geometry_to_mesh(&device, &self.mesh);
+        // TODO remove clone
+        let mesh = geometry_to_mesh_with_layers(&device, &self.mesh, self.layers_indices.clone());
         let mesh = mesh.to_positioned_with_instances(
             device,
             self.positions.clone(), // mem::replace
@@ -129,6 +132,13 @@ impl DrawCommand for Mesh3dDrawCommand {
     }
 }
 fn geometry_to_mesh<T: NoUninit>(device: &Device, geometry: &VertexBuffers<T, u32>) -> Mesh {
+    geometry_to_mesh_with_layers(device, geometry, vec![geometry.indices.len()])
+}
+fn geometry_to_mesh_with_layers<T: NoUninit>(
+    device: &Device,
+    geometry: &VertexBuffers<T, u32>,
+    layers_indices: Vec<usize>,
+) -> Mesh {
     let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
         label: Some("Vertex Buffer"),
         contents: bytemuck::cast_slice(geometry.vertices.as_slice()),
@@ -144,5 +154,6 @@ fn geometry_to_mesh<T: NoUninit>(device: &Device, geometry: &VertexBuffers<T, u3
     Mesh::new(
         vec![vertex_buffer],
         vec![(index_buffer, num_indices as usize)],
+        layers_indices,
     )
 }

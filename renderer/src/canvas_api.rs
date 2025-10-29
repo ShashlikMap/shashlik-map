@@ -14,7 +14,7 @@ use lyon::lyon_tessellation::{
     StrokeVertex, VertexBuffers,
 };
 use lyon::path::Path;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::mem;
 
 pub struct CanvasApi {
@@ -22,6 +22,7 @@ pub struct CanvasApi {
     flushed: bool,
     draw_commands: Vec<Box<dyn DrawCommand>>,
     geometry: VertexBuffers<ShapeVertex, u32>,
+    indices_by_layers: BTreeMap<u32, usize>,
     geometry3d: VertexBuffers<MeshVertex, u32>,
     screen_path_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, Vec<Vector3<f32>>)>,
 }
@@ -33,12 +34,14 @@ impl CanvasApi {
             flushed: false,
             draw_commands: Vec::new(),
             geometry: VertexBuffers::new(),
+            indices_by_layers: BTreeMap::new(),
             geometry3d: VertexBuffers::new(),
             screen_path_cache: HashMap::new(),
         }
     }
     pub(crate) fn begin_shape(&mut self) {
         self.flushed = false;
+        self.indices_by_layers.clear();
         self.geometry.clear();
         self.geometry3d.clear();
 
@@ -67,21 +70,27 @@ impl CanvasApi {
 
     fn mesh2d(
         &mut self,
-        mesh: VertexBuffers<ShapeVertex, u32>,
         positions: Vector3<f32>,
         is_screen: bool,
     ) {
-        self.mesh2d_with_positions(mesh, vec![positions], is_screen);
+
+        let mesh = mem::replace(&mut self.geometry, VertexBuffers::new());
+        if !mesh.vertices.is_empty() {
+            let layers_indices = self.indices_by_layers.values().copied().collect();
+        self.mesh2d_with_positions(mesh, layers_indices, vec![positions], is_screen);
+        }
     }
 
     fn mesh2d_with_positions(
         &mut self,
         mesh: VertexBuffers<ShapeVertex, u32>,
+        layers_indices: Vec<usize>,
         positions: Vec<Vector3<f32>>,
         is_screen: bool,
     ) {
         self.draw_commands.push(Box::new(Mesh2dDrawCommand {
             mesh,
+            layers_indices,
             positions,
             is_screen,
         }));
@@ -152,8 +161,6 @@ impl CanvasApi {
             .push(Box::new(Mesh3dDrawCommand { mesh }));
     }
 
-
-
     pub fn path(&mut self, data: &ShapeData, is_screen: bool) {
         let path = data.path.clone();
         let geom_type = data.geometry_type;
@@ -164,18 +171,19 @@ impl CanvasApi {
                 normals: [0.0, 0.0, 0.0],
                 style_index: style_index as u32,
             });
+            self.indices_by_layers.insert(0, self.geometry.indices.len());
         } else {
             self.tessellate_stroke_path(path, |vertex| ShapeVertex {
                 position: [vertex.position().x, vertex.position().y, 0.0f32],
                 normals: [vertex.normal().x, vertex.normal().y, 0.0],
                 style_index: style_index as u32,
             });
+            self.indices_by_layers.insert(1, self.geometry.indices.len());
         }
 
         // TODO It should aggregate geometry for "screen" type layers
         if is_screen {
-            let mesh = mem::replace(&mut self.geometry, VertexBuffers::new());
-            self.mesh2d(mesh, Vector3::new(0.0, 0.0, 0.0), true);
+            self.mesh2d(Vector3::new(0.0, 0.0, 0.0), true);
         }
     }
 
@@ -196,10 +204,7 @@ impl CanvasApi {
         assert!(!self.flushed);
         self.flushed = true;
 
-        let mesh = mem::replace(&mut self.geometry, VertexBuffers::new());
-        if !mesh.vertices.is_empty() {
-            self.mesh2d(mesh, Vector3::new(0.0, 0.0, 0.0), false);
-        }
+        self.mesh2d(Vector3::new(0.0, 0.0, 0.0),false);
 
         let mesh3d = mem::replace(&mut self.geometry3d, VertexBuffers::new());
         if mesh3d.vertices.len() > 0 {
@@ -212,7 +217,8 @@ impl CanvasApi {
             }).collect();
             for (mesh, positions) in data {
                 if !positions.is_empty() {
-                    self.mesh2d_with_positions(mesh, positions, true);
+                    let layers_indices = vec![mesh.indices.len()];
+                    self.mesh2d_with_positions(mesh, layers_indices, positions, true);
                 }
             }
         }

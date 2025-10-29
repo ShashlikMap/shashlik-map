@@ -1,6 +1,5 @@
 use map::tiles::old_tiles_provider::OldTilesProvider;
 use old_tiles_gen::source::reqwest_source::ReqwestSource;
-use old_tiles_gen::source::tiles_sqlite_store::TilesSQLiteStore;
 use std::sync::mpsc;
 use winit::event_loop::EventLoop;
 use winit_run::{App, CustomUIEvent};

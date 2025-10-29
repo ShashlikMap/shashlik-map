@@ -1,6 +1,6 @@
 use crate::consts::STYLE_SHADER_PARAMS_COUNT;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct RenderStyle {
     container: [f32; STYLE_SHADER_PARAMS_COUNT],
 }

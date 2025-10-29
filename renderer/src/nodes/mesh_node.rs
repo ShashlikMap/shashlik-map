@@ -4,6 +4,7 @@ use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::SceneNode;
 use crate::vertex_attrs::InstancePos;
 use cgmath::Vector3;
+use log::error;
 use std::ops::Range;
 use tokio::sync::broadcast::Receiver;
 use wgpu::util::DeviceExt;
@@ -50,10 +51,19 @@ impl Mesh {
 
     fn render(&self, render_pass: &mut RenderPass, instances: &Range<u32>) {
         self.vertex_buf.iter().enumerate().for_each(|(i, v_buf)| {
-            let (i_buf, nums) = self.index_buf.get(i).unwrap();
-            render_pass.set_vertex_buffer(0, v_buf.slice(..));
-            render_pass.set_index_buffer(i_buf.slice(..), wgpu::IndexFormat::Uint32);
-            render_pass.draw_indexed(0..*nums as u32, 0, instances.clone());
+            let (i_buf, _) = self.index_buf.get(i).unwrap();
+            if v_buf.size() > 0 && i_buf.size() > 0 {
+                render_pass.set_vertex_buffer(0, v_buf.slice(..));
+                render_pass.set_index_buffer(i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                let mut prev = 0u32;
+                for to_index in &self.layers_indices {
+                    // draw two instances, outlined and normal
+                    render_pass.draw_indexed(prev..*to_index as u32, 0, instances.clone());
+                    prev = *to_index as u32;
+                }
+            } else {
+                error!("Vertex/Index buffer are empty");
+            }
         });
     }
 }

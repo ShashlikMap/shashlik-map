@@ -2,6 +2,7 @@ use crate::consts::STYLE_SHADER_PARAMS_COUNT;
 use crate::styles::render_style::RenderStyle;
 use crate::styles::style_id::StyleId;
 use indexmap::IndexMap;
+use log::error;
 use tokio::sync::broadcast::{Receiver, Sender};
 
 #[derive(Clone)]
@@ -47,26 +48,22 @@ impl StyleStore {
             .collect::<Vec<_>>();
         if self.uniform_tx.receiver_count() > 0 {
             self.uniform_tx.send(styles).unwrap();
+        } else {
+            error!("No uniform_tx in style_store");
         }
-    }
-
-    fn get_full_of_default(&mut self, style_id: &StyleId) -> (usize, &RenderStyle) {
-        self.style_map
-            .entry(style_id.clone())
-            .or_insert(RenderStyle::default());
-        let (index, _, style) = self.style_map.get_full(style_id).unwrap();
-        (index, style)
     }
 
     pub fn get_index(&mut self, style_id: &StyleId) -> usize {
-        self.get_full_of_default(style_id).0
+        self.style_map
+            .entry(style_id.clone())
+            .or_insert(RenderStyle::default());
+        let (index, _, _) = self.style_map.get_full(style_id).unwrap();
+        index
     }
 
     pub fn update_style<F: FnOnce(&mut RenderStyle)>(&mut self, style_id: &StyleId, updater: F) {
-        if let Some(style) = self.style_map.get_mut(style_id) {
-            updater(style);
-            // self.version += 1;
-            self.generate_uniforms_and_send();
-        }
+        let style = self.style_map.entry(style_id.clone()).or_insert(RenderStyle::default());
+        updater(style);
+        self.generate_uniforms_and_send();
     }
 }
