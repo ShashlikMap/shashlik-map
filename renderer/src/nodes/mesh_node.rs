@@ -1,0 +1,145 @@
+use crate::ReceiverExt;
+use crate::mesh::mesh::Mesh;
+use crate::modifier::render_modifier::SpatialData;
+use crate::nodes::SceneNode;
+use crate::vertex_attrs::InstancePos;
+use cgmath::Vector3;
+use std::ops::Range;
+use tokio::sync::broadcast::Receiver;
+use wgpu::util::DeviceExt;
+use wgpu::{Buffer, Device, Queue, RenderPass};
+
+pub struct PositionedMesh {
+    mesh: Mesh,
+    instance_buffer: Buffer,
+    attrs: Vec<InstancePos>,
+    original_positions: Vec<Vector3<f32>>,
+    is_two_instances: bool,
+    spatial_rx: Receiver<SpatialData>,
+}
+
+impl Mesh {
+    pub fn to_positioned(
+        self,
+        device: &Device,
+        spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
+    ) -> PositionedMesh {
+        PositionedMesh::new(
+            device,
+            self,
+            vec![Vector3::new(0.0, 0.0, 0.0)],
+            spatial_rx,
+            false,
+        )
+    }
+    pub fn to_positioned_with_instances(
+        self,
+        device: &Device,
+        original_positions: Vec<Vector3<f32>>,
+        spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
+        is_two_instances: bool,
+    ) -> PositionedMesh {
+        PositionedMesh::new(
+            device,
+            self,
+            original_positions,
+            spatial_rx,
+            is_two_instances,
+        )
+    }
+
+    fn render(&self, render_pass: &mut RenderPass, instances: &Range<u32>) {
+        self.vertex_buf.iter().enumerate().for_each(|(i, v_buf)| {
+            let (i_buf, nums) = self.index_buf.get(i).unwrap();
+            render_pass.set_vertex_buffer(0, v_buf.slice(..));
+            render_pass.set_index_buffer(i_buf.slice(..), wgpu::IndexFormat::Uint32);
+            render_pass.draw_indexed(0..*nums as u32, 0, instances.clone());
+        });
+    }
+}
+
+impl PositionedMesh {
+    pub fn new(
+        device: &Device,
+        mesh: Mesh,
+        original_positions: Vec<Vector3<f32>>,
+        mut spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
+        is_two_instances: bool,
+    ) -> Self {
+        let spatial_data = spatial_rx.try_recv().unwrap_or(SpatialData::new());
+        let mut attrs = Vec::new();
+
+        Self::update_attrs(
+            &mut attrs,
+            &original_positions,
+            &spatial_data,
+            is_two_instances,
+        );
+
+        let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Instance Buffer"),
+            // TODO It probably should be configurable, so it would be possible to draw two or more instances.
+            contents: bytemuck::cast_slice(attrs.as_slice()),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        });
+        Self {
+            mesh,
+            instance_buffer,
+            attrs,
+            original_positions,
+            is_two_instances,
+            spatial_rx,
+        }
+    }
+}
+
+impl PositionedMesh {
+    fn update_attrs(
+        attrs: &mut Vec<InstancePos>,
+        original_positions: &Vec<Vector3<f32>>,
+        spatial_data: &SpatialData,
+        is_two_instances: bool,
+    ) {
+        attrs.clear();
+        for i in 0..original_positions.len() {
+            let instance_pos = InstancePos {
+                position: (original_positions[i] + spatial_data.transform).into(),
+            };
+            attrs.push(instance_pos);
+            if is_two_instances {
+                attrs.push(instance_pos);
+            }
+        }
+    }
+}
+
+impl SceneNode for Mesh {
+    fn render(&self, render_pass: &mut RenderPass) {
+        self.render(render_pass, &(0..1));
+    }
+}
+
+impl SceneNode for PositionedMesh {
+    fn update(&mut self, _device: &Device, queue: &Queue) {
+        if let Ok(spatial_data) = self.spatial_rx.no_lagged() {
+            Self::update_attrs(
+                &mut self.attrs,
+                &self.original_positions,
+                &spatial_data,
+                self.is_two_instances,
+            );
+
+            queue.write_buffer(
+                &self.instance_buffer,
+                0,
+                bytemuck::cast_slice(self.attrs.as_slice()),
+            );
+        }
+    }
+
+    fn render(&self, render_pass: &mut RenderPass) {
+        render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+        let range = 0u32..self.attrs.len() as u32;
+        self.mesh.render(render_pass, &range);
+    }
+}

@@ -1,0 +1,252 @@
+use crate::draw_commands::{
+    DrawCommand, DrawCommands, GeometryType, Mesh2dDrawCommand, Mesh3dDrawCommand, MeshVertex,
+};
+use crate::geometry_data::{ExtrudedPolygonData, ShapeData, SvgData};
+use crate::modifier::render_modifier::SpatialData;
+use crate::styles::render_style::RenderStyle;
+use crate::styles::style_id::StyleId;
+use crate::styles::style_store::StyleStore;
+use crate::svg::svg_parser::svg_parse;
+use crate::vertex_attrs::ShapeVertex;
+use cgmath::Vector3;
+use lyon::lyon_tessellation::{
+    BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator,
+    StrokeVertex, VertexBuffers,
+};
+use lyon::path::Path;
+use std::collections::HashMap;
+use std::mem;
+
+pub struct CanvasApi {
+    style_store: StyleStore,
+    flushed: bool,
+    draw_commands: Vec<Box<dyn DrawCommand>>,
+    geometry: VertexBuffers<ShapeVertex, u32>,
+    geometry3d: VertexBuffers<MeshVertex, u32>,
+    screen_path_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, Vec<Vector3<f32>>)>,
+}
+
+impl CanvasApi {
+    pub fn new(style_store: StyleStore) -> CanvasApi {
+        CanvasApi {
+            style_store,
+            flushed: false,
+            draw_commands: Vec::new(),
+            geometry: VertexBuffers::new(),
+            geometry3d: VertexBuffers::new(),
+            screen_path_cache: HashMap::new(),
+        }
+    }
+    pub(crate) fn begin_shape(&mut self) {
+        self.flushed = false;
+        self.geometry.clear();
+        self.geometry3d.clear();
+
+        // TODO Should be improved to per screen rather than per group
+        self.screen_path_cache.iter_mut().for_each(|(_, (_, positions))| {
+            // keep only buffers, clean positions
+            positions.clear();
+        })
+    }
+    pub fn update_style<F: FnOnce(&mut RenderStyle)>(&mut self, style_id: &StyleId, updater: F) {
+        self.style_store.update_style(style_id, updater);
+    }
+    pub(crate) fn draw_commands(
+        &mut self,
+        key: String,
+        spatial_data: SpatialData,
+        spatial_tx: tokio::sync::broadcast::Sender<SpatialData>,
+    ) -> DrawCommands {
+        DrawCommands::new(
+            key,
+            spatial_data,
+            spatial_tx,
+            mem::take(&mut self.draw_commands),
+        )
+    }
+
+    fn mesh2d(
+        &mut self,
+        mesh: VertexBuffers<ShapeVertex, u32>,
+        positions: Vector3<f32>,
+        is_screen: bool,
+    ) {
+        self.mesh2d_with_positions(mesh, vec![positions], is_screen);
+    }
+
+    fn mesh2d_with_positions(
+        &mut self,
+        mesh: VertexBuffers<ShapeVertex, u32>,
+        positions: Vec<Vector3<f32>>,
+        is_screen: bool,
+    ) {
+        self.draw_commands.push(Box::new(Mesh2dDrawCommand {
+            mesh,
+            positions,
+            is_screen,
+        }));
+    }
+
+    pub fn extruded_polygon(&mut self, data: &ExtrudedPolygonData) {
+        let path = &data.path;
+        let height = data.height;
+        let mut geometry_buffer: VertexBuffers<MeshVertex, u32> = VertexBuffers::new();
+        Self::tessellate_fill_path(path, &mut geometry_buffer, |vertex: FillVertex| {
+            MeshVertex {
+                position: [vertex.position().x, vertex.position().y, height],
+                normals: [0.0, 0.0, 1.0],
+            }
+        });
+
+        for path_event in path.iter() {
+            let fi = geometry_buffer.vertices.len();
+            if path_event.is_edge() {
+                let p1 = path_event.from();
+                let p2 = path_event.to();
+                let normal = Vector3::new(-(p2.y - p1.y), p2.x - p1.x, 0.0).into();
+
+                geometry_buffer.vertices.push(MeshVertex {
+                    position: [p1.x, p1.y, 0.0],
+                    normals: normal,
+                });
+                geometry_buffer.vertices.push(MeshVertex {
+                    position: [p2.x, p2.y, 0.0],
+                    normals: normal,
+                });
+
+                geometry_buffer.vertices.push(MeshVertex {
+                    position: [p1.x, p1.y, height],
+                    normals: normal,
+                });
+
+                geometry_buffer.vertices.push(MeshVertex {
+                    position: [p2.x, p2.y, height],
+                    normals: normal,
+                });
+
+                geometry_buffer.indices.push((fi + 0) as u32);
+                geometry_buffer.indices.push((fi + 2) as u32);
+                geometry_buffer.indices.push((fi + 3) as u32);
+
+                geometry_buffer.indices.push((fi + 1) as u32);
+                geometry_buffer.indices.push((fi + 0) as u32);
+                geometry_buffer.indices.push((fi + 3) as u32);
+            }
+        }
+
+        let fi = self.geometry3d.vertices.len();
+
+        self.geometry3d.vertices.extend(geometry_buffer.vertices);
+        self.geometry3d.indices.extend(
+            geometry_buffer
+                .indices
+                .iter()
+                .map(|i| *i + fi as u32)
+                .collect::<Vec<u32>>(),
+        );
+    }
+
+    pub fn mesh3d(&mut self, data: &crate::geometry_data::Mesh3d) {
+        let mesh = data.mesh_data.clone();
+        self.draw_commands
+            .push(Box::new(Mesh3dDrawCommand { mesh }));
+    }
+
+
+
+    pub fn path(&mut self, data: &ShapeData, is_screen: bool) {
+        let path = data.path.clone();
+        let geom_type = data.geometry_type;
+        let style_index = self.style_store.get_index(&data.style_id);
+        if geom_type == GeometryType::Polygon {
+            Self::tessellate_fill_path(&path, &mut self.geometry, |vertex| ShapeVertex {
+                position: [vertex.position().x, vertex.position().y, 0.0f32],
+                normals: [0.0, 0.0, 0.0],
+                style_index: style_index as u32,
+            });
+        } else {
+            self.tessellate_stroke_path(path, |vertex| ShapeVertex {
+                position: [vertex.position().x, vertex.position().y, 0.0f32],
+                normals: [vertex.normal().x, vertex.normal().y, 0.0],
+                style_index: style_index as u32,
+            });
+        }
+
+        // TODO It should aggregate geometry for "screen" type layers
+        if is_screen {
+            let mesh = mem::replace(&mut self.geometry, VertexBuffers::new());
+            self.mesh2d(mesh, Vector3::new(0.0, 0.0, 0.0), true);
+        }
+    }
+
+    pub fn svg(&mut self, data: &SvgData) {
+        self.screen_path_cache
+            .entry(data.icon.0)
+            .and_modify(|(_, positions)| {
+                positions.push(data.position);
+            })
+            .or_insert_with(|| {
+                let style_index = self.style_store.get_index(&data.style_id);
+                let mesh = svg_parse(data.icon.1, data.size, style_index);
+                (mesh, vec![data.position])
+            });
+    }
+
+    pub(crate) fn flush(&mut self) {
+        assert!(!self.flushed);
+        self.flushed = true;
+
+        let mesh = mem::replace(&mut self.geometry, VertexBuffers::new());
+        if !mesh.vertices.is_empty() {
+            self.mesh2d(mesh, Vector3::new(0.0, 0.0, 0.0), false);
+        }
+
+        let mesh3d = mem::replace(&mut self.geometry3d, VertexBuffers::new());
+        if mesh3d.vertices.len() > 0 {
+            self.mesh3d(&crate::geometry_data::Mesh3d { mesh_data: mesh3d });
+        }
+
+        if !self.screen_path_cache.is_empty() {
+            let data: Vec<_> = self.screen_path_cache.iter().map(|(_, (mesh, positions))| {
+                (mesh.clone(), positions.clone())
+            }).collect();
+            for (mesh, positions) in data {
+                if !positions.is_empty() {
+                    self.mesh2d_with_positions(mesh, positions, true);
+                }
+            }
+        }
+    }
+
+    fn tessellate_fill_path<F, VT>(path: &Path, geometry: &mut VertexBuffers<VT, u32>, ctor: F)
+    where
+        F: Fn(FillVertex) -> VT,
+    {
+        let mut tessellator = FillTessellator::new();
+        {
+            tessellator
+                .tessellate_path(
+                    path,
+                    &FillOptions::default(),
+                    &mut BuffersBuilder::new(geometry, ctor),
+                )
+                .unwrap();
+        }
+    }
+
+    fn tessellate_stroke_path<F>(&mut self, path: Path, ctor: F)
+    where
+        F: Fn(StrokeVertex) -> ShapeVertex,
+    {
+        let mut tessellator = StrokeTessellator::new();
+        {
+            tessellator
+                .tessellate_path(
+                    &path,
+                    &StrokeOptions::default().with_line_width(0.7),
+                    &mut BuffersBuilder::new(&mut self.geometry, ctor),
+                )
+                .unwrap();
+        }
+    }
+}

@@ -1,0 +1,16 @@
+[package]
+name = "old-tiles-gen"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+geo = { version = "0.31.0", features = ["use-serde"] }
+rusqlite = { version = "0.37.0", features = ["bundled"] }
+serde = {version = "1.0.227", features = ["derive"]}
+bincode = "1.3.3"
+rstar = "0.12.2"
+derivative = "2.2.0"
+reqwest = { version = "0.12.24", features = ["blocking"] }
+thiserror =  { workspace = true }
+error-stack = { workspace = true }
+openssl = { version = "0.10", features = ["vendored"] }

@@ -1,0 +1,25 @@
+# Xcode
+DerivedData/
+build/
+*.xcworkspace
+xcuserdata/
+
+# SwiftPM
+.build/
+.swiftpm/
+
+# Misc
+.DS_Store
+
+# UniFFI generated artifacts (not committed)
+/generated/
+generated/
+/iOSDemoApp/generated/**
+/iOSDemoApp/generated/lib/ffi_run.xcframework
+/iOSDemoApp/generated/lib/*.a
+/iOSDemoApp/generated/swift/ffi_run.swift
+/iOSDemoApp/generated/swift/*FFI.h
+/iOSDemoApp/generated/swift/*FFI.modulemap
+
+# Backup bindings
+/ffi-run/bindings/

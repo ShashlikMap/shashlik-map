@@ -1,0 +1,105 @@
+use crate::camera::{Camera, CameraController, CameraUniform};
+use crate::nodes::scene_tree::RenderContext;
+use crate::nodes::SceneNode;
+use cgmath::SquareMatrix;
+use std::cell::RefCell;
+use std::rc::Rc;
+use wgpu::{BindGroupLayout, Device, Queue, RenderPass};
+
+pub struct CameraNode {
+    camera: Camera,
+    camera_controller: Rc<RefCell<CameraController>>,
+    uniform: CameraUniform,
+    buffer: wgpu::Buffer,
+    bind_group_layout: BindGroupLayout,
+    bind_group: wgpu::BindGroup,
+}
+
+impl CameraNode {
+    pub fn new(
+        camera_controller: Rc<RefCell<CameraController>>,
+        config: &wgpu::SurfaceConfiguration,
+        device: &wgpu::Device,
+    ) -> Self {
+        let mut camera = Camera {
+            eye: (0.0, 0.0, 200.0).into(),
+            target: (0.0, 0.0, 0.0).into(),
+            up: cgmath::Vector3::unit_y(),
+            aspect: config.width as f32 / config.height as f32,
+            fovy: 45.0,
+            znear: 0.1,
+            zfar: 1000.0,
+            matrix: cgmath::Matrix4::identity().into(),
+        };
+
+        let mut uniform = CameraUniform::new();
+        uniform.update_view_proj(&mut camera);
+
+        // CameraUniform align is 16byte since vec4 is used
+        let vec4size = size_of::<[f32; 4]>() as u64;
+        let size = size_of::<CameraUniform>() as u64;
+        let align_mask = vec4size - 1;
+        let size =
+            ((size + align_mask) & !align_mask).max(vec4size);
+        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Camera Buffer"),
+            size,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
+            mapped_at_creation: false,
+        });
+
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("camera_bind_group_layout"),
+        });
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buffer.as_entire_binding(),
+            }],
+            label: Some("camera_bind_group"),
+        });
+
+        Self {
+            camera,
+            camera_controller,
+            uniform,
+            buffer,
+            bind_group_layout,
+            bind_group,
+        }
+    }
+}
+
+impl SceneNode for CameraNode {
+    fn setup(&mut self, render_context: &mut RenderContext, _device: &Device) {
+        render_context.bind_group_layouts.push(self.bind_group_layout.clone());
+    }
+    fn update(&mut self, _device: &Device, queue: &Queue) {
+        self.camera_controller.borrow_mut().update_camera(&mut self.camera);
+        self.uniform.update_view_proj(&mut self.camera);
+        self.camera_controller.borrow_mut().cached_matrix = self.camera.matrix;
+        queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(&[self.uniform]));
+    }
+
+    fn render(&self, render_pass: &mut RenderPass) {
+        render_pass.set_bind_group(0, &self.bind_group, &[]);
+    }
+
+    fn resize(&mut self, width: u32, height: u32, _queue: &Queue) {
+        if width > 0 && height > 0 {
+            self.camera.aspect = width as f32 / height as f32;
+        }
+    }
+}

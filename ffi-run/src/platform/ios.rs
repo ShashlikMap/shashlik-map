@@ -1,0 +1,56 @@
+use app_surface::{AppSurface, IOSViewObj};
+use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture};
+use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use crate::ShashlikMapApi;
+use map::tiles::old_tiles_provider::OldTilesProvider;
+// use old_tiles_gen::source::tiles_sqlite_store::TilesSQLiteStore;
+use old_tiles_gen::source::reqwest_source::ReqwestSource;
+use map::ShashlikMap;
+use std::sync::RwLock;
+use std::ffi::c_void;
+use objc::runtime::Object;
+use uniffi::Record;
+
+#[derive(Record)]
+pub struct IOSViewObjRecord {
+	pub view: u64,
+	pub metal_layer: u64,
+	pub maximum_frames: i32,
+}
+
+extern "C" fn ios_callback_stub(_arg: i32) {}
+
+#[uniffi::export]
+pub fn create_shashlik_map_api(view_obj: IOSViewObjRecord, _tiles_db: String) -> ShashlikMapApi {
+	let ios_view_obj = IOSViewObj {
+		view: view_obj.view as *mut Object,
+		metal_layer: view_obj.metal_layer as *mut c_void,
+		maximum_frames: view_obj.maximum_frames,
+		callback_to_swift: ios_callback_stub,
+	};
+	let app_surface = AppSurface::new(ios_view_obj);
+	let wrapper = IOSPlatformAppSurface { app_surface };
+	let reqwest_source = ReqwestSource::new();
+	let shashlik_map = pollster::block_on(ShashlikMap::new(Box::new(wrapper), OldTilesProvider::new(reqwest_source))).unwrap();
+	ShashlikMapApi { shashlik_map: RwLock::new(shashlik_map) }
+}
+
+pub struct IOSPlatformAppSurface {
+	pub app_surface: AppSurface,
+}
+
+// SAFETY: Under iOS we ensure AppSurface only used on main thread for rendering operations.
+unsafe impl Send for IOSPlatformAppSurface {}
+unsafe impl Sync for IOSPlatformAppSurface {}
+
+impl WgpuCanvas for IOSPlatformAppSurface {
+	fn queue(&self) -> &Queue { &self.app_surface.queue }
+	fn config(&self) -> &SurfaceConfiguration { &self.app_surface.config }
+	fn device(&self) -> &Device { &self.app_surface.device }
+	fn get_current_texture(&self) -> Result<SurfaceTexture, SurfaceError> {
+		self.app_surface.surface.get_current_texture()
+	}
+	fn on_resize(&mut self, _width: u32, _height: u32) {}
+	fn on_pre_render(&self) {}
+	fn on_post_render(&self) {}
+}

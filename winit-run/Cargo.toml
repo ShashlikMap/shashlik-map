@@ -1,0 +1,25 @@
+[package]
+name = "winit-run"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+map = { path = "../map" }
+renderer = { path = "../renderer" }
+wgpu-canvas = { workspace = true}
+env_logger = { workspace = true }
+pollster = { workspace = true }
+old-tiles-gen = { path = "../old-tiles-gen"}
+wgpu = { workspace = true}
+winit = { workspace = true }
+app-surface = { workspace = true, features = ["winit"] }
+futures-lite = "2.6.1"
+
+slint = "1.13.1"
+i-slint-backend-winit = "1.13.1"
+
+[build-dependencies]
+slint-build = "1.13.1"

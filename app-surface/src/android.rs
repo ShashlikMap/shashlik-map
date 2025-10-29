@@ -1,0 +1,116 @@
+use core::ffi::c_void;
+use jni::sys::jobject;
+use jni::JNIEnv;
+use raw_window_handle::{
+    AndroidDisplayHandle, AndroidNdkWindowHandle, DisplayHandle, HandleError, HasDisplayHandle,
+    HasWindowHandle, RawDisplayHandle, RawWindowHandle, WindowHandle,
+};
+use std::sync::{Arc, Mutex};
+
+pub struct AppSurface {
+    pub native_window: Arc<NativeWindow>,
+    pub scale_factor: f32,
+    pub ctx: crate::IASDQContext,
+    pub callback_to_app: Option<extern "C" fn(arg: i32)>,
+}
+
+impl AppSurface {
+    pub fn new(env: *mut JNIEnv, surface: jobject, is_emulator: bool) -> Self {
+        let native_window = Arc::new(NativeWindow::new(env, surface));
+        let backends = if is_emulator { wgpu::Backends::GL } else { wgpu::Backends::VULKAN };
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends,
+            ..Default::default()
+        });
+
+        let handle: Box<dyn wgpu::WindowHandle> = Box::new(native_window.clone());
+        let surface = instance
+            .create_surface(wgpu::SurfaceTarget::Window(handle))
+            .unwrap();
+
+        let ctx = futures_lite::future::block_on(crate::create_iasdq_context(
+            instance,
+            surface,
+            (native_window.get_width(), native_window.get_height()),
+        ));
+
+        Self {
+            native_window,
+            scale_factor: 1.0,
+            ctx,
+            callback_to_app: None,
+        }
+    }
+
+    pub fn get_view_size(&self) -> (u32, u32) {
+        (
+            self.native_window.get_width(),
+            self.native_window.get_height(),
+        )
+    }
+}
+
+pub struct NativeWindow {
+    a_native_window: Arc<Mutex<*mut ndk_sys::ANativeWindow>>,
+}
+
+impl NativeWindow {
+    fn new(env: *mut JNIEnv, surface: jobject) -> Self {
+        let a_native_window = unsafe {
+            // 获取与安卓端 surface 对象关联的 ANativeWindow，以便能通过 Rust 与之交互。
+            // 此函数在返回 ANativeWindow 的同时会自动将其引用计数 +1，以防止该对象在安卓端被意外释放。
+            ndk_sys::ANativeWindow_fromSurface(env as *mut _, surface as *mut _)
+        };
+        Self {
+            a_native_window: Arc::new(Mutex::new(a_native_window)),
+        }
+    }
+
+    pub fn get_raw_window(&self) -> *mut ndk_sys::ANativeWindow {
+        let a_native_window = self.a_native_window.lock().unwrap();
+        *a_native_window
+    }
+
+    fn get_width(&self) -> u32 {
+        unsafe { ndk_sys::ANativeWindow_getWidth(*self.a_native_window.lock().unwrap()) as u32 }
+    }
+
+    fn get_height(&self) -> u32 {
+        unsafe { ndk_sys::ANativeWindow_getHeight(*self.a_native_window.lock().unwrap()) as u32 }
+    }
+}
+
+impl Drop for NativeWindow {
+    fn drop(&mut self) {
+        unsafe {
+            ndk_sys::ANativeWindow_release(*self.a_native_window.lock().unwrap());
+        }
+    }
+}
+
+impl HasWindowHandle for NativeWindow {
+    fn window_handle(&self) -> Result<WindowHandle<'_>, HandleError> {
+        unsafe {
+            let a_native_window = self.a_native_window.lock().unwrap();
+            let handle = AndroidNdkWindowHandle::new(
+                core::ptr::NonNull::new(*a_native_window as *mut _ as *mut c_void).unwrap(),
+            );
+            Ok(WindowHandle::borrow_raw(RawWindowHandle::AndroidNdk(
+                handle,
+            )))
+        }
+    }
+}
+
+impl HasDisplayHandle for NativeWindow {
+    fn display_handle(&self) -> Result<DisplayHandle<'_>, HandleError> {
+        unsafe {
+            Ok(DisplayHandle::borrow_raw(RawDisplayHandle::Android(
+                AndroidDisplayHandle::new(),
+            )))
+        }
+    }
+}
+
+unsafe impl Send for NativeWindow {}
+unsafe impl Sync for NativeWindow {}

@@ -1,0 +1,175 @@
+use app_surface::{AppSurface, SurfaceFrame};
+use i_slint_backend_winit::{CustomApplicationHandler, EventResult};
+use map::tiles::tiles_provider::TilesProvider;
+use map::ShashlikMap;
+use renderer::camera::CameraController;
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::mpsc::Receiver;
+use std::sync::Arc;
+use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture};
+use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use winit::event::{KeyEvent, MouseButton, WindowEvent};
+use winit::event_loop::ActiveEventLoop;
+use winit::keyboard::{KeyCode, PhysicalKey};
+use winit::window::{Window, WindowId};
+
+pub struct App<T: TilesProvider> {
+    pub camera_controller: Rc<RefCell<CameraController>>,
+    pub receiver: Receiver<CustomUIEvent>,
+    pub get_tiles_provider: Box<dyn Fn() -> T>,
+    pub shashlik_map: Option<ShashlikMap<T>>,
+}
+
+pub enum CustomUIEvent {
+    Load,
+}
+
+impl<T: TilesProvider> App<T> {
+    pub fn new(get_tiles_provider: Box<dyn Fn() -> T>, receiver: Receiver<CustomUIEvent>) -> Self {
+        Self {
+            camera_controller: Rc::new(RefCell::new(CameraController::new(0.2))),
+            receiver,
+            get_tiles_provider,
+            shashlik_map: None,
+        }
+    }
+}
+
+pub struct WinitAppSurface {
+    pub app_surface: AppSurface,
+}
+impl WgpuCanvas for WinitAppSurface {
+    fn queue(&self) -> &Queue {
+        &self.app_surface.queue
+    }
+
+    fn config(&self) -> &SurfaceConfiguration {
+        &self.app_surface.config
+    }
+
+    fn device(&self) -> &Device {
+        &self.app_surface.device
+    }
+
+    fn get_current_texture(&self) -> Result<SurfaceTexture, SurfaceError> {
+        self.app_surface.surface.get_current_texture()
+    }
+
+    fn on_resize(&mut self, _width: u32, _height: u32) {
+        self.app_surface.resize_surface();
+    }
+
+    fn on_pre_render(&self) {
+        self.app_surface.pre_present_notify();
+    }
+
+    fn on_post_render(&self) {
+        self.app_surface.request_redraw();
+    }
+}
+
+impl<T: TilesProvider> CustomApplicationHandler for App<T> {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) -> EventResult {
+        #[allow(unused_mut)]
+        let mut window_attributes = Window::default_attributes();
+
+        let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+
+        let app_view = futures_lite::future::block_on(AppSurface::new(window));
+        let winit_surface = WinitAppSurface {
+            app_surface: app_view,
+        };
+
+        let tiles_provider = (self.get_tiles_provider)();
+        let wgpu_state = pollster::block_on(ShashlikMap::new_with_camera_controller(
+            Rc::clone(&self.camera_controller),
+            Box::new(winit_surface),
+            tiles_provider
+        ))
+        .unwrap();
+        self.shashlik_map = Some(wgpu_state);
+        EventResult::Propagate
+    }
+
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        _window_id: WindowId,
+        _winit_window: Option<&Window>,
+        _slint_window: Option<&slint::Window>,
+        event: &WindowEvent,
+    ) -> EventResult {
+        if self.shashlik_map.is_none() {
+            return EventResult::Propagate;
+        }
+        let map = self.shashlik_map.as_mut().unwrap();
+
+        if let Ok(_) = self.receiver.try_recv() {
+            map.temp_on_load_styles();
+        }
+
+        match event {
+            WindowEvent::CloseRequested => {
+                drop(self.shashlik_map.take());
+                event_loop.exit();
+            }
+            WindowEvent::Resized(size) => {
+                map.renderer().resize(size.width, size.height);
+            }
+            WindowEvent::RedrawRequested => {
+                map.update_and_render();
+            }
+            WindowEvent::MouseInput { state, button, .. } => match (button, state.is_pressed()) {
+                (MouseButton::Left, true) => {}
+                (MouseButton::Left, false) => {}
+                _ => {}
+            },
+            WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        physical_key: PhysicalKey::Code(code),
+                        state: key_state,
+                        ..
+                    },
+                ..
+            } => {
+                let is_pressed = key_state.is_pressed();
+                if *code == KeyCode::Escape && is_pressed {
+                    event_loop.exit();
+                } else {
+                    match code {
+                        KeyCode::Equal => {
+                            self.camera_controller.borrow_mut().is_forward_pressed = is_pressed;
+                        }
+                        KeyCode::Slash => {
+                            self.camera_controller.borrow_mut().is_backward_pressed = is_pressed;
+                        }
+                        KeyCode::KeyW | KeyCode::ArrowUp => {
+                            self.camera_controller.borrow_mut().is_up_pressed = is_pressed;
+                        }
+                        KeyCode::KeyA | KeyCode::ArrowLeft => {
+                            self.camera_controller.borrow_mut().is_left_pressed = is_pressed;
+                        }
+                        KeyCode::KeyS | KeyCode::ArrowDown => {
+                            self.camera_controller.borrow_mut().is_down_pressed = is_pressed;
+                        }
+                        KeyCode::KeyD | KeyCode::ArrowRight => {
+                            self.camera_controller.borrow_mut().is_right_pressed = is_pressed;
+                        }
+                        KeyCode::KeyZ => {
+                            self.camera_controller.borrow_mut().is_z_pressed = is_pressed;
+                        }
+                        KeyCode::KeyX => {
+                            self.camera_controller.borrow_mut().is_x_pressed = is_pressed;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            _ => {}
+        }
+        EventResult::Propagate
+    }
+}

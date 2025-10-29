@@ -1,0 +1,33 @@
+[workspace]
+resolver = "3"
+members = ["winit-run", "map", "app-surface", "ffi-run", "renderer", "wgpu-canvas", "old-tiles-gen", "tiles-server-sqlite"]
+
+[workspace.dependencies]
+app-surface = { path = "./app-surface", default-features = false }
+anyhow = "1.0"
+env_logger = "0.11.8"
+log = "0.4.28"
+pollster = "0.4.0"
+winit = { version = "0.30", features = ["android-native-activity"] }
+wgpu = "27.0.1"
+glam = "0.30"
+futures-lite = "2"
+raw-window-handle = "0.6"
+wgpu-canvas = { path = "wgpu-canvas" }
+lyon = "1.0.16"
+bytemuck = { version = "1.16", features = [ "derive" ] }
+geo-types = "0.7.17"
+error-stack = "0.6.0"
+tokio = { version = "1", features = ["full"] }
+thiserror = "2"
+
+# macOS, iOS
+libc = { version = "0.2", default-features = false }
+objc = "0.2.7"
+core-graphics-types = "0.2"
+
+# android target
+android_logger = "0.15"
+jni = "0.21.1"
+jni_fn = "0.1.2"
+ndk-sys = "0.6"

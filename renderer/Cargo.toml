@@ -1,0 +1,23 @@
+[package]
+name = "renderer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { workspace = true }
+bytemuck = { workspace = true}
+cgmath = "0.18"
+wgpu = { workspace = true}
+log = { workspace = true }
+wgpu_text = "27.0.1"
+lyon = { workspace = true}
+wgpu-canvas = { workspace = true}
+indexmap = "2.12.0"
+usvg = "0.41.0"
+geo-types = { workspace = true }
+tokio = { workspace = true }
+
+[build-dependencies]
+anyhow = "1.0"
+
+
