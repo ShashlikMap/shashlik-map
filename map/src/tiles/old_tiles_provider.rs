@@ -209,11 +209,14 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
             .map(|item| item.as_string_key())
             .collect();
 
-        spawn(move || {
-            if let Some(sender) = sender.as_ref() {
-                Self::internal_load(tile_store, to_load, removed, sender);
-            }
-        });
+        // start job only if it makes sense
+        if !to_load.is_empty() || !removed.is_empty() {
+            spawn(move || {
+                if let Some(sender) = sender.as_ref() {
+                    Self::internal_load(tile_store, to_load, removed, sender);
+                }
+            });
+        }
     }
 
     fn tiles(&mut self) -> impl Stream<Item = (TileData, HashSet<String>)> + Send + 'static {
