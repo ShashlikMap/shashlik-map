@@ -106,11 +106,11 @@ impl<S: TileSource> OldTilesProvider<S> {
                     }
                 }
                 MapGeometry::Line(line) => {
-                    if let Some(style_id) = match &obj_type.kind {
+                    if let Some((style_id, layer_level)) = match &obj_type.kind {
                         MapGeomObjectKind::Way(info) => match info.line_kind {
                             LineKind::Highway { kind } => {
                                 if kind != HighwayKind::Footway {
-                                    Some(Self::highway_style_id(&kind))
+                                    Some((Self::highway_style_id(&kind), info.layer))
                                 } else {
                                     None
                                 }
@@ -143,6 +143,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 path: path_builder.build(),
                                 geometry_type: GeometryType::Polyline,
                                 style_id,
+                                layer_level: layer_level as i8
                             }));
                         }
                     }
@@ -188,6 +189,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 path: path_builder.build(),
                                 geometry_type: GeometryType::Polygon,
                                 style_id,
+                                layer_level: -100 //no dedicated layer level for polygon in tiles-gen v1
                             }));
                         }
                     }

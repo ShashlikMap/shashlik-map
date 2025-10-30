@@ -33,17 +33,20 @@ impl TilesProvider for StubTilesProvider {
                 GeometryData::Shape(ShapeData {
                     path: line_path,
                     geometry_type: GeometryType::Polyline,
-                    style_id: StyleId("land")
+                    style_id: StyleId("land"),
+                    layer_level: 0
                 }),
                 GeometryData::Shape(ShapeData {
                     path: line_path2,
                     geometry_type: GeometryType::Polyline,
-                    style_id: StyleId("land")
+                    style_id: StyleId("land"),
+                    layer_level: 0
                 }),
                 GeometryData::Shape(ShapeData {
                     path: polygon_path,
                     geometry_type: GeometryType::Polygon,
-                    style_id: StyleId("land")
+                    style_id: StyleId("land"),
+                    layer_level: 0
                 }),
                 GeometryData::Mesh3d(Mesh3d {
                     mesh_data: obj_mesh,

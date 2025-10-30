@@ -16,6 +16,7 @@ pub struct ShapeData {
     pub path: Path,
     pub geometry_type: GeometryType,
     pub style_id: StyleId,
+    pub layer_level: i8
 }
 
 #[derive(Clone)]

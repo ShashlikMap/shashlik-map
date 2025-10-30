@@ -17,6 +17,7 @@ impl RenderGroup for TestSimplePathGroup {
                 path: self.path.clone(),
                 geometry_type: GeometryType::Polyline,
                 style_id: self.style_id.clone(),
+                layer_level: 0
             },
             true,
         );

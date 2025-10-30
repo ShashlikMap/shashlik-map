@@ -22,7 +22,7 @@ pub struct CanvasApi {
     flushed: bool,
     draw_commands: Vec<Box<dyn DrawCommand>>,
     geometry: VertexBuffers<ShapeVertex, u32>,
-    indices_by_layers: BTreeMap<u32, usize>,
+    indices_by_layers: BTreeMap<i8, usize>,
     geometry3d: VertexBuffers<MeshVertex, u32>,
     screen_path_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, Vec<Vector3<f32>>)>,
 }
@@ -171,15 +171,14 @@ impl CanvasApi {
                 normals: [0.0, 0.0, 0.0],
                 style_index: style_index as u32,
             });
-            self.indices_by_layers.insert(0, self.geometry.indices.len());
         } else {
             self.tessellate_stroke_path(path, |vertex| ShapeVertex {
                 position: [vertex.position().x, vertex.position().y, 0.0f32],
                 normals: [vertex.normal().x, vertex.normal().y, 0.0],
                 style_index: style_index as u32,
             });
-            self.indices_by_layers.insert(1, self.geometry.indices.len());
         }
+        self.indices_by_layers.insert(data.layer_level, self.geometry.indices.len());
 
         // TODO It should aggregate geometry for "screen" type layers
         if is_screen {
