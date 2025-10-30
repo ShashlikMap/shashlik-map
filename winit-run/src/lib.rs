@@ -28,7 +28,7 @@ pub enum CustomUIEvent {
 impl<T: TilesProvider> App<T> {
     pub fn new(get_tiles_provider: Box<dyn Fn() -> T>, receiver: Receiver<CustomUIEvent>) -> Self {
         Self {
-            camera_controller: Rc::new(RefCell::new(CameraController::new(0.2))),
+            camera_controller: Rc::new(RefCell::new(CameraController::new(1.0))),
             receiver,
             get_tiles_provider,
             shashlik_map: None,

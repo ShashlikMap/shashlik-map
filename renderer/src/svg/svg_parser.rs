@@ -3,7 +3,7 @@ use lyon::lyon_tessellation::{
     BuffersBuilder, FillOptions, FillTessellator, FillVertexConstructor, StrokeOptions,
     StrokeTessellator, StrokeVertex, StrokeVertexConstructor, VertexBuffers,
 };
-use lyon::math::Point;
+use lyon::math::{Point, Vector};
 use lyon::path::PathEvent;
 use lyon::tessellation;
 use usvg::{tiny_skia_path, Group, Size, Transform};
@@ -286,21 +286,6 @@ struct VertexCtor {
     pub style_index: u32,
 }
 
-impl FillVertexConstructor<ShapeVertex> for VertexCtor {
-    fn new_vertex(&mut self, vertex: tessellation::FillVertex) -> ShapeVertex {
-        ShapeVertex {
-            position: [
-                (vertex.position().x - self.original_size.width() / 2.0) * self.scale,
-                (vertex.position().y - self.original_size.height() / 2.0) * self.scale,
-                0.0,
-            ],
-
-            normals: [0.0, 0.0, 0.0],
-            style_index: self.style_index,
-        }
-    }
-}
-
 // A 2x3 matrix (last two members of data1 unused).
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -330,16 +315,30 @@ impl GpuPrimitive {
     }
 }
 
-impl StrokeVertexConstructor<ShapeVertex> for VertexCtor {
-    fn new_vertex(&mut self, vertex: StrokeVertex) -> ShapeVertex {
+impl VertexCtor {
+    fn to_shape_vertex(&self, position: &Point, normal: &Vector) -> ShapeVertex {
         ShapeVertex {
             position: [
-                (vertex.position().x - self.original_size.width() / 2.0) * self.scale,
-                (vertex.position().y - self.original_size.height() / 2.0) * self.scale,
+                (position.x - self.original_size.width() / 2.0) * self.scale,
+                // Y should be flipped since mercator coords are flipped
+                (self.original_size.height() / 2.0 - position.y) * self.scale,
                 0.0,
             ],
-            normals: [vertex.normal().x, vertex.normal().y, 0.0],
+
+            normals: [normal.x, normal.y, 0.0],
             style_index: self.style_index,
         }
+    }
+}
+
+impl FillVertexConstructor<ShapeVertex> for VertexCtor {
+    fn new_vertex(&mut self, vertex: tessellation::FillVertex) -> ShapeVertex {
+        self.to_shape_vertex(&vertex.position(), &Vector::new(0.0, 0.0))
+    }
+}
+
+impl StrokeVertexConstructor<ShapeVertex> for VertexCtor {
+    fn new_vertex(&mut self, vertex: StrokeVertex) -> ShapeVertex {
+        self.to_shape_vertex(&vertex.position(), &vertex.normal())
     }
 }

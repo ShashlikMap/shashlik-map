@@ -9,6 +9,14 @@ const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::from_cols(
     cgmath::Vector4::new(0.0, 0.0, 0.5, 1.0),
 );
 
+#[rustfmt::skip]
+pub const FLIP_Y: Matrix4<f32> = Matrix4::new(
+    1.0, 0.0, 0.0, 0.0,
+    0.0, -1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 0.0, 0.0, 1.0,
+);
+
 pub struct Camera {
     pub eye: cgmath::Point3<f32>,
     pub target: cgmath::Point3<f32>,
@@ -46,7 +54,7 @@ impl CameraUniform {
     }
 
     pub(crate) fn update_view_proj(&mut self, camera: &mut Camera) {
-        self.view_proj = (OPENGL_TO_WGPU_MATRIX * camera.build_view_projection_matrix()).into();
+        self.view_proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * camera.build_view_projection_matrix()).into();
         self.ratio = camera.aspect;
     }
 }
@@ -116,21 +124,21 @@ impl CameraController {
         }
 
         if self.is_up_pressed {
-            camera.eye.y += self.speed;
-            camera.target.y += self.speed;
-        }
-
-        if self.is_down_pressed {
             camera.eye.y -= self.speed;
             camera.target.y -= self.speed;
         }
 
+        if self.is_down_pressed {
+            camera.eye.y += self.speed;
+            camera.target.y += self.speed;
+        }
+
         if self.is_z_pressed {
-            camera.eye.y -= self.speed;
+            camera.eye.y += self.speed;
         }
 
         if self.is_x_pressed {
-            camera.eye.y += self.speed;
+            camera.eye.y -= self.speed;
         }
 
         self.camera_z = camera.eye.z;
