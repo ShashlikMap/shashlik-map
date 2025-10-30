@@ -8,9 +8,9 @@ use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::TilesProvider;
 use cgmath::Vector3;
 use futures::executor::block_on;
-use futures::{Stream, StreamExt, pin_mut};
+use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
-use geo_types::{Coord, Rect, coord};
+use geo_types::{coord, Coord, Rect};
 use geo_types::{LineString, Polygon};
 use renderer::camera::CameraController;
 use renderer::canvas_api::CanvasApi;
@@ -18,7 +18,6 @@ use renderer::geometry_data::GeometryData;
 use renderer::modifier::render_modifier::SpatialData;
 use renderer::render_group::RenderGroup;
 use renderer::renderer_api::RendererApi;
-use renderer::styles::render_style::RenderStyle;
 use renderer::styles::style_id::StyleId;
 use renderer::{Renderer, ShashlikRenderer};
 use std::cell::RefCell;
@@ -201,12 +200,12 @@ impl<T: TilesProvider> ShashlikMap<T> {
         if self.temp_color > 1.0 {
             self.temp_color = 0.0;
         }
-        let tt = self.temp_color;
-        self.renderer
-            .api
-            .update_style(StyleId("road"), move |style| {
-                *style = RenderStyle::border([0.87843, 0.48627, 0.56471, 1.0], tt);
-            });
+        // let tt = self.temp_color;
+        // self.renderer
+        //     .api
+        //     .update_style(StyleId("road"), move |style| {
+        //         *style = RenderStyle::border([0.87843, 0.48627, 0.56471, 1.0], tt);
+        //     });
 
         self.renderer
             .api

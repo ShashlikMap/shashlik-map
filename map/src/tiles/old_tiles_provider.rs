@@ -1,16 +1,18 @@
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::TilesProvider;
 use cgmath::Vector3;
-use futures::channel::mpsc::{unbounded, UnboundedSender};
 use futures::Stream;
+use futures::channel::mpsc::{UnboundedSender, unbounded};
 use geo::Winding;
 use geo_types::Rect;
 use googleprojection::{Coord, Mercator};
 use lyon::geom::point;
 use lyon::path::Path;
-use old_tiles_gen::map::{MapGeomObjectKind, MapGeometry, MapPointObjectKind, NatureKind};
+use old_tiles_gen::map::{
+    HighwayKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointObjectKind, NatureKind,
+};
 use old_tiles_gen::source::TileSource;
-use old_tiles_gen::tiles::{calc_tile_ranges, TileKey, TileStore, TILES_COUNT};
+use old_tiles_gen::tiles::{TILES_COUNT, TileKey, TileStore, calc_tile_ranges};
 use rand::Rng;
 use renderer::draw_commands::GeometryType;
 use renderer::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData};
@@ -104,26 +106,45 @@ impl<S: TileSource> OldTilesProvider<S> {
                     }
                 }
                 MapGeometry::Line(line) => {
-                    let line: Vec<(f64, f64)> = line
-                        .0
-                        .iter()
-                        .map(|item| (Self::lat_lon_to_world(&item) - tile_rect_origin).into())
-                        .collect();
-                    if line.len() >= 2 {
-                        // println!("new line");
-                        let mut path_builder = Path::builder();
-                        path_builder.begin(point(line[0].x() as f32, line[0].y() as f32));
+                    if let Some(style_id) = match &obj_type.kind {
+                        MapGeomObjectKind::Way(info) => match info.line_kind {
+                            LineKind::Highway { kind } => {
+                                if kind != HighwayKind::Footway {
+                                    Some(Self::highway_style_id(&kind))
+                                } else {
+                                    None
+                                }
+                            },
+                            LineKind::Railway { .. } => None,
+                        },
+                        _ => None,
+                    } {
+                        let line: Vec<(f64, f64)> = line
+                            .0
+                            .iter()
+                            .map(|item| (Self::lat_lon_to_world(&item) - tile_rect_origin).into())
+                            .collect();
+                        if line.len() >= 2 {
+                            // println!("new line");
+                            let mut path_builder = Path::builder();
+                            path_builder.begin(point(line[0].x() as f32, line[0].y() as f32));
 
-                        for &p in line[1..].iter() {
-                            path_builder.line_to(point(p.x() as f32, p.y() as f32));
+                            for &p in line[1..].iter() {
+                                path_builder.line_to(point(p.x() as f32, p.y() as f32));
+                            }
+                            path_builder.end(false);
+
+                            match &obj_type.kind {
+                                MapGeomObjectKind::Way(_) => {}
+                                _ => {}
+                            }
+
+                            geometry_data.push(GeometryData::Shape(ShapeData {
+                                path: path_builder.build(),
+                                geometry_type: GeometryType::Polyline,
+                                style_id,
+                            }));
                         }
-                        path_builder.end(false);
-
-                        geometry_data.push(GeometryData::Shape(ShapeData {
-                            path: path_builder.build(),
-                            geometry_type: GeometryType::Polyline,
-                            style_id: StyleId("road"),
-                        }));
                     }
                 }
                 MapGeometry::Poly(poly) => {
@@ -181,6 +202,18 @@ impl<S: TileSource> OldTilesProvider<S> {
         };
 
         sender.unbounded_send((tile_data, removed)).unwrap();
+    }
+
+    fn highway_style_id(kind: &HighwayKind) -> StyleId {
+        match kind {
+            HighwayKind::Motorway | HighwayKind::MotorwayLink => StyleId("highway_motorway"),
+            HighwayKind::Primary | HighwayKind::PrimaryLink => StyleId("highway_primary"),
+            HighwayKind::Trunk | HighwayKind::TrunkLink => StyleId("highway_trunk"),
+            HighwayKind::Secondary | HighwayKind::SecondaryLink => StyleId("highway_secondary"),
+            HighwayKind::Tertiary => StyleId("highway_tertiary"),
+            HighwayKind::Footway => StyleId("highway_footway"),
+            _ => StyleId("highway_default"),
+        }
     }
 }
 impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
