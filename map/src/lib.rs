@@ -14,7 +14,6 @@ use geo_types::{coord, Coord, Rect};
 use geo_types::{LineString, Polygon};
 use renderer::camera::CameraController;
 use renderer::canvas_api::CanvasApi;
-use renderer::geometry_data::GeometryData;
 use renderer::modifier::render_modifier::SpatialData;
 use renderer::render_group::RenderGroup;
 use renderer::renderer_api::RendererApi;
@@ -44,22 +43,9 @@ pub struct ShashlikMap<T: TilesProvider> {
 
 impl RenderGroup for TileData {
     fn content(&self, canvas: &mut CanvasApi) {
-        for data in &self.geometry_data {
-            match data {
-                GeometryData::Shape(data) => {
-                    canvas.path(data, false);
-                }
-                GeometryData::Mesh3d(data) => {
-                    canvas.mesh3d(data);
-                }
-                GeometryData::ExtrudedPolygon(data) => {
-                    canvas.extruded_polygon(data);
-                }
-                GeometryData::Svg(data) => {
-                    canvas.svg(&data);
-                }
-            }
-        }
+        self.geometry_data.iter().for_each(|data| {
+            canvas.geometry_data(data);
+        });
     }
 }
 

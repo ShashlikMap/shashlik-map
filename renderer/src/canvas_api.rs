@@ -1,7 +1,7 @@
 use crate::draw_commands::{
     DrawCommand, DrawCommands, GeometryType, Mesh2dDrawCommand, Mesh3dDrawCommand, MeshVertex,
 };
-use crate::geometry_data::{ExtrudedPolygonData, ShapeData, SvgData};
+use crate::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData};
 use crate::modifier::render_modifier::SpatialData;
 use crate::styles::render_style::RenderStyle;
 use crate::styles::style_id::StyleId;
@@ -46,10 +46,12 @@ impl CanvasApi {
         self.geometry3d.clear();
 
         // TODO Should be improved to per screen rather than per group
-        self.screen_path_cache.iter_mut().for_each(|(_, (_, positions))| {
-            // keep only buffers, clean positions
-            positions.clear();
-        })
+        self.screen_path_cache
+            .iter_mut()
+            .for_each(|(_, (_, positions))| {
+                // keep only buffers, clean positions
+                positions.clear();
+            })
     }
     pub fn update_style<F: FnOnce(&mut RenderStyle)>(&mut self, style_id: &StyleId, updater: F) {
         self.style_store.update_style(style_id, updater);
@@ -68,16 +70,28 @@ impl CanvasApi {
         )
     }
 
-    fn mesh2d(
-        &mut self,
-        positions: Vector3<f32>,
-        is_screen: bool,
-    ) {
+    pub fn geometry_data(&mut self, geometry_data: &GeometryData) {
+        match geometry_data {
+            GeometryData::Shape(data) => {
+                self.path(data);
+            }
+            GeometryData::Mesh3d(data) => {
+                self.mesh3d(data);
+            }
+            GeometryData::ExtrudedPolygon(data) => {
+                self.extruded_polygon(data);
+            }
+            GeometryData::Svg(data) => {
+                self.svg(&data);
+            }
+        }
+    }
 
+    fn mesh2d(&mut self, positions: Vector3<f32>, is_screen: bool) {
         let mesh = mem::replace(&mut self.geometry, VertexBuffers::new());
         if !mesh.vertices.is_empty() {
             let layers_indices = self.indices_by_layers.values().copied().collect();
-        self.mesh2d_with_positions(mesh, layers_indices, vec![positions], is_screen);
+            self.mesh2d_with_positions(mesh, layers_indices, vec![positions], is_screen);
         }
     }
 
@@ -161,7 +175,7 @@ impl CanvasApi {
             .push(Box::new(Mesh3dDrawCommand { mesh }));
     }
 
-    pub fn path(&mut self, data: &ShapeData, is_screen: bool) {
+    pub fn path(&mut self, data: &ShapeData) {
         let path = data.path.clone();
         let geom_type = data.geometry_type;
         let style_index = self.style_store.get_index(&data.style_id);
@@ -178,10 +192,11 @@ impl CanvasApi {
                 style_index: style_index as u32,
             });
         }
-        self.indices_by_layers.insert(data.layer_level, self.geometry.indices.len());
+        self.indices_by_layers
+            .insert(data.layer_level, self.geometry.indices.len());
 
         // TODO It should aggregate geometry for "screen" type layers
-        if is_screen {
+        if data.is_screen {
             self.mesh2d(Vector3::new(0.0, 0.0, 0.0), true);
         }
     }
@@ -203,7 +218,7 @@ impl CanvasApi {
         assert!(!self.flushed);
         self.flushed = true;
 
-        self.mesh2d(Vector3::new(0.0, 0.0, 0.0),false);
+        self.mesh2d(Vector3::new(0.0, 0.0, 0.0), false);
 
         let mesh3d = mem::replace(&mut self.geometry3d, VertexBuffers::new());
         if mesh3d.vertices.len() > 0 {
@@ -211,9 +226,11 @@ impl CanvasApi {
         }
 
         if !self.screen_path_cache.is_empty() {
-            let data: Vec<_> = self.screen_path_cache.iter().map(|(_, (mesh, positions))| {
-                (mesh.clone(), positions.clone())
-            }).collect();
+            let data: Vec<_> = self
+                .screen_path_cache
+                .iter()
+                .map(|(_, (mesh, positions))| (mesh.clone(), positions.clone()))
+                .collect();
             for (mesh, positions) in data {
                 if !positions.is_empty() {
                     let layers_indices = vec![mesh.indices.len()];

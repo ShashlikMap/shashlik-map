@@ -143,7 +143,8 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 path: path_builder.build(),
                                 geometry_type: GeometryType::Polyline,
                                 style_id,
-                                layer_level: layer_level as i8
+                                layer_level: layer_level as i8,
+                                is_screen: false
                             }));
                         }
                     }
@@ -189,7 +190,8 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 path: path_builder.build(),
                                 geometry_type: GeometryType::Polygon,
                                 style_id,
-                                layer_level: -100 //no dedicated layer level for polygon in tiles-gen v1
+                                layer_level: -100, //no dedicated layer level for polygon in tiles-gen v1
+                                is_screen: false
                             }));
                         }
                     }
