@@ -1,7 +1,7 @@
-use crate::draw_commands::{
-    DrawCommand, DrawCommands, GeometryType, Mesh2dDrawCommand, Mesh3dDrawCommand, MeshVertex,
-};
-use crate::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData};
+use crate::draw_commands::mesh2d_draw_command::Mesh2dDrawCommand;
+use crate::draw_commands::mesh3d_draw_command::Mesh3dDrawCommand;
+use crate::draw_commands::{DrawCommand, DrawCommands, GeometryType, MeshVertex};
+use crate::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData, TextData};
 use crate::modifier::render_modifier::SpatialData;
 use crate::styles::render_style::RenderStyle;
 use crate::styles::style_id::StyleId;
@@ -16,6 +16,7 @@ use lyon::lyon_tessellation::{
 use lyon::path::Path;
 use std::collections::{BTreeMap, HashMap};
 use std::mem;
+use crate::draw_commands::text_draw_command::TextDrawCommand;
 
 pub struct CanvasApi {
     style_store: StyleStore,
@@ -83,6 +84,9 @@ impl CanvasApi {
             }
             GeometryData::Svg(data) => {
                 self.svg(&data);
+            }
+            GeometryData::Text(data) => {
+                self.text(data);
             }
         }
     }
@@ -212,6 +216,10 @@ impl CanvasApi {
                 let mesh = svg_parse(data.icon.1, data.size, style_index);
                 (mesh, vec![data.position])
             });
+    }
+
+    pub fn text(&mut self, data: &TextData) {
+        self.draw_commands.push(Box::new(TextDrawCommand { data: data.clone() }))
     }
 
     pub(crate) fn flush(&mut self) {

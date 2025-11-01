@@ -3,35 +3,37 @@ extern crate core;
 use crate::depth_texture::DepthTexture;
 use crate::messages::RendererMessage;
 use crate::msaa_texture::MultisampledTexture;
+use crate::nodes::SceneNode;
 use crate::nodes::camera_node::CameraNode;
 use crate::nodes::fps_node::FpsNode;
 use crate::nodes::mesh_layer::MeshLayer;
 use crate::nodes::scene_tree::{RenderContext, SceneTree};
 use crate::nodes::style_adapter_node::StyleAdapterNode;
 use crate::nodes::world::World;
-use crate::nodes::SceneNode;
 use crate::pipeline_provider::PipeLineProvider;
-use canvas_api::CanvasApi;
 use crate::styles::style_store::StyleStore;
 use crate::vertex_attrs::{InstancePos, ShapeVertex, VertexAttrib, VertexNormal};
 use camera::CameraController;
+use canvas_api::CanvasApi;
 use messages::RendererApiMsg;
+use renderer_api::RendererApi;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::iter;
 use std::rc::Rc;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
-use wgpu::{include_wgsl, CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat};
-use renderer_api::RendererApi;
+use wgpu::{CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat, include_wgsl};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 pub mod camera;
+pub mod canvas_api;
 mod consts;
 mod depth_texture;
+pub mod draw_commands;
 mod fps;
 pub mod geometry_data;
 mod mesh;
@@ -40,13 +42,11 @@ pub mod modifier;
 mod msaa_texture;
 pub mod nodes;
 mod pipeline_provider;
-pub mod draw_commands;
 pub mod render_group;
+pub mod renderer_api;
 pub mod styles;
 mod svg;
 pub mod vertex_attrs;
-pub mod renderer_api;
-pub mod canvas_api;
 
 pub const SHADER_STYLE_GROUP_INDEX: u32 = 1;
 
@@ -99,7 +99,7 @@ impl ShashlikRenderer {
         let mut world_tree_node = SceneTree::new(World::new(), "".to_string());
 
         let camera_node =
-            world_tree_node.add_child(CameraNode::new(camera_controller, &config, &device));
+            world_tree_node.add_child(CameraNode::new(camera_controller.clone(), &config, &device));
 
         let depth_texture = DepthTexture::new(&device, config.width, config.height);
         let msaa_texture =
@@ -227,7 +227,7 @@ impl ShashlikRenderer {
                         canvas_api.begin_shape();
                         rg.content(&mut canvas_api);
                         canvas_api.flush();
-                        
+
                         let commands = canvas_api.draw_commands(key, spatial_data, spatial_tx);
                         renderer_tx.send(RendererMessage::Draw(commands)).unwrap();
                     }

@@ -15,7 +15,7 @@ use old_tiles_gen::source::TileSource;
 use old_tiles_gen::tiles::{TILES_COUNT, TileKey, TileStore, calc_tile_ranges};
 use rand::Rng;
 use renderer::draw_commands::GeometryType;
-use renderer::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData};
+use renderer::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData, TextData};
 use renderer::styles::style_id::StyleId;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -88,6 +88,15 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 _ => None,
                             };
                             if let Some(icon) = icon {
+                                // TODO Temporary test
+                                geometry_data.push(GeometryData::Text(TextData {
+                                    text: "some_text",
+                                    position: Vector3::from((
+                                        local_position.x,
+                                        local_position.y,
+                                        0.0,
+                                    )).cast().unwrap(),
+                                }));
                                 geometry_data.push(GeometryData::Svg(SvgData {
                                     icon,
                                     position: Vector3::from((

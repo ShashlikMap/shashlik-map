@@ -1,13 +1,15 @@
+pub mod mesh2d_draw_command;
+pub mod mesh3d_draw_command;
+pub mod text_draw_command;
+
 use crate::mesh::mesh::Mesh;
 use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::scene_tree::SceneTree;
-use crate::vertex_attrs::ShapeVertex;
 use bytemuck::NoUninit;
-use cgmath::Vector3;
 use lyon::lyon_tessellation::VertexBuffers;
 use std::cell::RefMut;
-use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::Device;
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -78,59 +80,6 @@ pub(crate) trait DrawCommand: Send {
     );
 }
 
-#[derive(Clone)]
-pub(crate) struct Mesh2dDrawCommand {
-    pub mesh: VertexBuffers<ShapeVertex, u32>,
-    pub layers_indices: Vec<usize>,
-    pub positions: Vec<Vector3<f32>>,
-    pub is_screen: bool,
-}
-
-#[derive(Clone)]
-pub(crate) struct Mesh3dDrawCommand {
-    pub mesh: VertexBuffers<MeshVertex, u32>,
-}
-
-impl DrawCommand for Mesh2dDrawCommand {
-    fn execute(
-        &self,
-        device: &wgpu::Device,
-        key: String,
-        spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-        shape_layer: &mut RefMut<SceneTree>,
-        screen_shape_layer: &mut RefMut<SceneTree>,
-        _mesh_layer: &mut RefMut<SceneTree>,
-    ) {
-        // TODO remove clone
-        let mesh = geometry_to_mesh_with_layers(&device, &self.mesh, self.layers_indices.clone());
-        let mesh = mesh.to_positioned_with_instances(
-            device,
-            self.positions.clone(), // mem::replace
-            spatial_rx,
-            true,
-        );
-        if self.is_screen {
-            screen_shape_layer.add_child_with_key(mesh, key);
-        } else {
-            shape_layer.add_child_with_key(mesh, key);
-        }
-    }
-}
-
-impl DrawCommand for Mesh3dDrawCommand {
-    fn execute(
-        &self,
-        device: &wgpu::Device,
-        key: String,
-        spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-        _shape_layer: &mut RefMut<SceneTree>,
-        _screen_shape_layer: &mut RefMut<SceneTree>,
-        mesh_layer: &mut RefMut<SceneTree>,
-    ) {
-        let mesh = geometry_to_mesh(&device, &self.mesh);
-        mesh_layer.add_child_with_key(mesh.to_positioned(device, spatial_rx), key.clone());
-    }
-}
 fn geometry_to_mesh<T: NoUninit>(device: &Device, geometry: &VertexBuffers<T, u32>) -> Mesh {
     geometry_to_mesh_with_layers(device, geometry, vec![geometry.indices.len()])
 }

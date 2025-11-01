@@ -9,6 +9,7 @@ pub enum GeometryData {
     ExtrudedPolygon(ExtrudedPolygonData),
     Mesh3d(Mesh3d),
     Svg(SvgData),
+    Text(TextData),
 }
 
 #[derive(Clone)]
@@ -37,4 +38,10 @@ pub struct SvgData {
     pub position: Vector3<f32>,
     pub size: f32,
     pub style_id: StyleId,
+}
+
+#[derive(Clone)]
+pub struct TextData {
+    pub text:  &'static str,
+    pub position: Vector3<f32>,
 }
