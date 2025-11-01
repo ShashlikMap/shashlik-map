@@ -6,6 +6,7 @@ use wgpu::{
     Device, Face, RenderPass, RenderPipeline, ShaderModule,
     ShaderModuleDescriptor, VertexBufferLayout,
 };
+use crate::GlobalContext;
 
 pub struct MeshLayer<'a> {
     shader_module: ShaderModule,
@@ -45,7 +46,7 @@ impl<'a> SceneNode for MeshLayer<'a> {
         ));
     }
 
-    fn render(&self, render_pass: &mut RenderPass) {
+    fn render(&self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
         render_pass.set_pipeline(self.render_pipeline.as_ref().unwrap());
     }
 }

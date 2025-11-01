@@ -1,36 +1,24 @@
 use crate::fps::FpsCounter;
 use crate::nodes::scene_tree::RenderContext;
 use crate::nodes::SceneNode;
-use wgpu::{DepthStencilState, Device, Queue, RenderPass, SurfaceConfiguration};
+use crate::GlobalContext;
+use wgpu::{Device, Queue, RenderPass};
 use wgpu_text::glyph_brush::ab_glyph::FontRef;
 use wgpu_text::glyph_brush::{OwnedSection, OwnedText};
-use wgpu_text::{BrushBuilder, TextBrush};
+use wgpu_text::TextBrush;
 
 pub struct FpsNode {
-    counter: FpsCounter<100>,
     text_brush: TextBrush<FontRef<'static>>,
+    counter: FpsCounter<100>,
     text_section: OwnedSection,
     current_fps: String,
 }
 
 impl FpsNode {
-    pub fn new(
-        device: &Device,
-        config: &SurfaceConfiguration,
-        depth_state: DepthStencilState,
-        multi_sample_state: wgpu::MultisampleState,
-    ) -> Self {
-        let mut depth_state = depth_state.clone();
-        depth_state.depth_write_enabled = false;
-        let text_brush = BrushBuilder::using_font_bytes(include_bytes!("../font.ttf"))
-            .unwrap()
-            .with_depth_stencil(Some(depth_state))
-            .with_multisample(multi_sample_state)
-            .build(device, config.width, config.height, config.format);
-
+    pub fn new(text_brush: TextBrush<FontRef<'static>>) -> Self {
         Self {
-            counter: FpsCounter::new(),
             text_brush,
+            counter: FpsCounter::new(),
             text_section: OwnedSection::default().with_screen_position((50f32, 50f32)),
             current_fps: "0".to_string(),
         }
@@ -40,7 +28,13 @@ impl FpsNode {
 impl SceneNode for FpsNode {
     fn setup(&mut self, _render_context: &mut RenderContext, _device: &Device) {}
 
-    fn update(&mut self, device: &Device, queue: &Queue) {
+    fn update(
+        &mut self,
+        device: &Device,
+        queue: &Queue,
+        _config: &wgpu::SurfaceConfiguration,
+        _global_context: &mut GlobalContext,
+    ) {
         self.current_fps = format!("{:.1}", self.counter.update());
 
         self.text_section.text.clear();
@@ -53,12 +47,7 @@ impl SceneNode for FpsNode {
             .unwrap();
     }
 
-    fn render(&self, render_pass: &mut RenderPass) {
-        self.text_brush.draw(render_pass);
-    }
-
-    fn resize(&mut self, width: u32, height: u32, queue: &Queue) {
-        self.text_brush
-            .resize_view(width as f32, height as f32, &queue);
+    fn render(&self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
+        self.text_brush.draw(render_pass)
     }
 }

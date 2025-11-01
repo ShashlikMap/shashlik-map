@@ -1,5 +1,6 @@
 use crate::draw_commands::mesh2d_draw_command::Mesh2dDrawCommand;
 use crate::draw_commands::mesh3d_draw_command::Mesh3dDrawCommand;
+use crate::draw_commands::text_draw_command::TextDrawCommand;
 use crate::draw_commands::{DrawCommand, DrawCommands, GeometryType, MeshVertex};
 use crate::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData, TextData};
 use crate::modifier::render_modifier::SpatialData;
@@ -16,7 +17,6 @@ use lyon::lyon_tessellation::{
 use lyon::path::Path;
 use std::collections::{BTreeMap, HashMap};
 use std::mem;
-use crate::draw_commands::text_draw_command::TextDrawCommand;
 
 pub struct CanvasApi {
     style_store: StyleStore,
@@ -25,6 +25,7 @@ pub struct CanvasApi {
     geometry: VertexBuffers<ShapeVertex, u32>,
     indices_by_layers: BTreeMap<i8, usize>,
     geometry3d: VertexBuffers<MeshVertex, u32>,
+    text_vec: Vec<TextData>,
     screen_path_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, Vec<Vector3<f32>>)>,
 }
 
@@ -37,6 +38,7 @@ impl CanvasApi {
             geometry: VertexBuffers::new(),
             indices_by_layers: BTreeMap::new(),
             geometry3d: VertexBuffers::new(),
+            text_vec: Vec::new(),
             screen_path_cache: HashMap::new(),
         }
     }
@@ -219,7 +221,7 @@ impl CanvasApi {
     }
 
     pub fn text(&mut self, data: &TextData) {
-        self.draw_commands.push(Box::new(TextDrawCommand { data: data.clone() }))
+        self.text_vec.push(data.clone());
     }
 
     pub(crate) fn flush(&mut self) {
@@ -245,6 +247,12 @@ impl CanvasApi {
                     self.mesh2d_with_positions(mesh, layers_indices, positions, true);
                 }
             }
+        }
+
+        if !self.text_vec.is_empty() {
+            self.draw_commands.push(Box::new(TextDrawCommand {
+                data: mem::replace(&mut self.text_vec, Vec::new()),
+            }));
         }
     }
 

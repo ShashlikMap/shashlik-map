@@ -1,8 +1,8 @@
-use crate::ReceiverExt;
 use crate::mesh::mesh::Mesh;
 use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::SceneNode;
 use crate::vertex_attrs::InstancePos;
+use crate::{GlobalContext, ReceiverExt};
 use cgmath::Vector3;
 use log::error;
 use std::ops::Range;
@@ -124,13 +124,19 @@ impl PositionedMesh {
 }
 
 impl SceneNode for Mesh {
-    fn render(&self, render_pass: &mut RenderPass) {
+    fn render(&self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
         self.render(render_pass, &(0..1));
     }
 }
 
 impl SceneNode for PositionedMesh {
-    fn update(&mut self, _device: &Device, queue: &Queue) {
+    fn update(
+        &mut self,
+        _device: &Device,
+        queue: &Queue,
+        _config: &wgpu::SurfaceConfiguration,
+        _global_context: &mut GlobalContext,
+    ) {
         if let Ok(spatial_data) = self.spatial_rx.no_lagged() {
             Self::update_attrs(
                 &mut self.attrs,
@@ -147,7 +153,7 @@ impl SceneNode for PositionedMesh {
         }
     }
 
-    fn render(&self, render_pass: &mut RenderPass) {
+    fn render(&self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
         render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
         let range = 0u32..self.attrs.len() as u32;
         self.mesh.render(render_pass, &range);

@@ -14,10 +14,12 @@ impl DrawCommand for Mesh3dDrawCommand {
         &self,
         device: &wgpu::Device,
         key: String,
+        _spatial_data: SpatialData,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         _shape_layer: &mut RefMut<SceneTree>,
         _screen_shape_layer: &mut RefMut<SceneTree>,
         mesh_layer: &mut RefMut<SceneTree>,
+        _text_layer: &mut RefMut<SceneTree>,
     ) {
         let mesh = geometry_to_mesh(&device, &self.mesh);
         mesh_layer.add_child_with_key(mesh.to_positioned(device, spatial_rx), key.clone());

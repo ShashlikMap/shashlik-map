@@ -51,15 +51,18 @@ impl DrawCommands {
         shape_layer: &mut RefMut<SceneTree>,
         screen_shape_layer: &mut RefMut<SceneTree>,
         mesh_layer: &mut RefMut<SceneTree>,
+        text_layer: &mut RefMut<SceneTree>,
     ) {
         self.draw_commands.iter().for_each(|d| {
             d.execute(
                 device,
                 self.key.clone(),
+                self.spatial_data.clone(),
                 self.spatial_tx.subscribe(),
                 shape_layer,
                 screen_shape_layer,
                 mesh_layer,
+                text_layer
             )
         });
         if self.spatial_tx.receiver_count() > 0 {
@@ -73,10 +76,12 @@ pub(crate) trait DrawCommand: Send {
         &self,
         device: &wgpu::Device,
         key: String,
+        spatial_data: SpatialData,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         shape_layer: &mut RefMut<SceneTree>,
         screen_shape_layer: &mut RefMut<SceneTree>,
         mesh_layer: &mut RefMut<SceneTree>,
+        text_layer: &mut RefMut<SceneTree>,
     );
 }
 

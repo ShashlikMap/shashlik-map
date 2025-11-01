@@ -1,4 +1,5 @@
 use crate::nodes::SceneNode;
+use crate::GlobalContext;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wgpu::{BindGroupLayout, CompareFunction, Device, Queue, RenderPass};
@@ -49,10 +50,13 @@ impl SceneTree {
     }
 
     pub fn clear_by_key(&mut self, key: String) {
-        self.children.retain(|node| {
-            node.borrow().key != key
-        });
-        println!("layer {:?}, key_to_remove:{:?}, count: {}",self.key, key, self.children.len());
+        self.children.retain(|node| node.borrow().key != key);
+        println!(
+            "layer {:?}, key_to_remove:{:?}, count: {}",
+            self.key,
+            key,
+            self.children.len()
+        );
     }
 
     pub fn clear(&mut self) {
@@ -74,20 +78,31 @@ impl SceneNode for SceneTree {
         });
     }
 
-    fn update(&mut self, device: &Device, queue: &Queue) {
+    fn update(
+        &mut self,
+        device: &Device,
+        queue: &Queue,
+        config: &wgpu::SurfaceConfiguration,
+        global_context: &mut GlobalContext,
+    ) {
         self.children.iter().for_each(|scene_node| {
             scene_node
                 .borrow_mut()
                 .value
-                .update(device, &queue);
-            scene_node.borrow_mut().update(device, queue);
+                .update(device, &queue, config, global_context);
+            scene_node
+                .borrow_mut()
+                .update(device, queue, config, global_context);
         });
     }
 
-    fn render(&self, render_pass: &mut RenderPass) {
+    fn render(&self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         self.children.iter().for_each(|scene_node| {
-            scene_node.borrow_mut().value.render(render_pass);
-            scene_node.borrow_mut().render(render_pass);
+            scene_node
+                .borrow_mut()
+                .value
+                .render(render_pass, global_context);
+            scene_node.borrow_mut().render(render_pass, global_context);
         });
     }
 

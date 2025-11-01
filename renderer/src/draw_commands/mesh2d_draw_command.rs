@@ -19,10 +19,12 @@ impl DrawCommand for Mesh2dDrawCommand {
         &self,
         device: &wgpu::Device,
         key: String,
+        _spatial_data: SpatialData,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         shape_layer: &mut RefMut<SceneTree>,
         screen_shape_layer: &mut RefMut<SceneTree>,
         _mesh_layer: &mut RefMut<SceneTree>,
+        _text_layer: &mut RefMut<SceneTree>,
     ) {
         // TODO remove clone
         let mesh = geometry_to_mesh_with_layers(&device, &self.mesh, self.layers_indices.clone());

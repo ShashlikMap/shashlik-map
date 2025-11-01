@@ -84,19 +84,24 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     Some(("traffic_light", Self::TRAFFIC_LIGHT_SVG))
                                 }
                                 MapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
-                                MapPointObjectKind::Parking => Some(("parking", Self::PARKING_SVG)),
+                                MapPointObjectKind::Parking => {
+                                    geometry_data.push(GeometryData::Text(TextData {
+                                        text: "PARKING".to_string(),
+                                        position: Vector3::from((
+                                            local_position.x,
+                                            local_position.y,
+                                            0.0,
+                                        ))
+                                        .cast()
+                                        .unwrap(),
+                                    }));
+                                    // Text instead of icon
+                                    // Some(("parking", Self::PARKING_SVG))
+                                    None
+                                }
                                 _ => None,
                             };
                             if let Some(icon) = icon {
-                                // TODO Temporary test
-                                geometry_data.push(GeometryData::Text(TextData {
-                                    text: "some_text",
-                                    position: Vector3::from((
-                                        local_position.x,
-                                        local_position.y,
-                                        0.0,
-                                    )).cast().unwrap(),
-                                }));
                                 geometry_data.push(GeometryData::Svg(SvgData {
                                     icon,
                                     position: Vector3::from((
@@ -123,7 +128,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 } else {
                                     None
                                 }
-                            },
+                            }
                             LineKind::Railway { .. } => None,
                         },
                         _ => None,
@@ -153,7 +158,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 geometry_type: GeometryType::Polyline,
                                 style_id,
                                 layer_level: layer_level as i8,
-                                is_screen: false
+                                is_screen: false,
                             }));
                         }
                     }
@@ -200,7 +205,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 geometry_type: GeometryType::Polygon,
                                 style_id,
                                 layer_level: -100, //no dedicated layer level for polygon in tiles-gen v1
-                                is_screen: false
+                                is_screen: false,
                             }));
                         }
                     }

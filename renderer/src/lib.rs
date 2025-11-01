@@ -3,15 +3,17 @@ extern crate core;
 use crate::depth_texture::DepthTexture;
 use crate::messages::RendererMessage;
 use crate::msaa_texture::MultisampledTexture;
-use crate::nodes::SceneNode;
 use crate::nodes::camera_node::CameraNode;
 use crate::nodes::fps_node::FpsNode;
 use crate::nodes::mesh_layer::MeshLayer;
 use crate::nodes::scene_tree::{RenderContext, SceneTree};
 use crate::nodes::style_adapter_node::StyleAdapterNode;
+use crate::nodes::text_node::TextLayer;
 use crate::nodes::world::World;
+use crate::nodes::SceneNode;
 use crate::pipeline_provider::PipeLineProvider;
 use crate::styles::style_store::StyleStore;
+use crate::text::create_default_text_brush;
 use crate::vertex_attrs::{InstancePos, ShapeVertex, VertexAttrib, VertexNormal};
 use camera::CameraController;
 use canvas_api::CanvasApi;
@@ -19,15 +21,18 @@ use messages::RendererApiMsg;
 use renderer_api::RendererApi;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::iter;
 use std::rc::Rc;
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
+use std::{iter, mem};
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
-use wgpu::{CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat, include_wgsl};
+use wgpu::{include_wgsl, CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use wgpu_text::glyph_brush::ab_glyph::FontRef;
+use wgpu_text::glyph_brush::OwnedSection;
+use wgpu_text::TextBrush;
 
 pub mod camera;
 pub mod canvas_api;
@@ -46,6 +51,7 @@ pub mod render_group;
 pub mod renderer_api;
 pub mod styles;
 mod svg;
+mod text;
 pub mod vertex_attrs;
 
 pub const SHADER_STYLE_GROUP_INDEX: u32 = 1;
@@ -76,16 +82,37 @@ impl<T: Clone> ReceiverExt<T> for tokio::sync::broadcast::Receiver<T> {
     }
 }
 
+pub struct GlobalContext {
+    camera_controller: Rc<RefCell<CameraController>>,
+    text_brush: TextBrush<FontRef<'static>>,
+    text_sections: Vec<OwnedSection>,
+}
+
+impl GlobalContext {
+    pub fn new(
+        camera_controller: Rc<RefCell<CameraController>>,
+        text_brush: TextBrush<FontRef<'static>>,
+    ) -> Self {
+        GlobalContext {
+            camera_controller,
+            text_brush,
+            text_sections: Vec::new(),
+        }
+    }
+}
+
 pub struct ShashlikRenderer {
     world_tree_node: SceneTree,
     shape_layer: Rc<RefCell<SceneTree>>,
     mesh_layer: Rc<RefCell<SceneTree>>,
     screen_shape_layer: Rc<RefCell<SceneTree>>,
+    text_layer: Rc<RefCell<SceneTree>>,
     depth_texture: DepthTexture,
     msaa_texture: MultisampledTexture,
     canvas: Box<dyn WgpuCanvas>,
     renderer_rx: Receiver<RendererMessage>,
     pub api: Arc<RendererApi>,
+    global_context: GlobalContext,
 }
 
 impl ShashlikRenderer {
@@ -117,6 +144,15 @@ impl ShashlikRenderer {
             alpha_to_coverage_enabled: false,
         };
 
+        let global_context = GlobalContext::new(
+            camera_controller.clone(),
+            create_default_text_brush(
+                device,
+                config,
+                depth_state.clone(),
+                multisample_state.clone(),
+            ),
+        );
         let pipeline_provider = PipeLineProvider::new(
             config.format,
             depth_state.clone(),
@@ -177,13 +213,19 @@ impl ShashlikRenderer {
             .borrow_mut()
             .add_child_with_key(screen_shape_layer, "screen shape".to_string());
 
-        let fps_node = FpsNode::new(
-            device,
-            config,
-            depth_state.clone(),
-            multisample_state.clone(),
+        let text_layer = camera_node
+            .borrow_mut()
+            .add_child_with_key(TextLayer {}, "text_layer".to_string());
+
+        text_layer.borrow_mut().add_child_with_key(
+            FpsNode::new(create_default_text_brush(
+                device,
+                config,
+                depth_state.clone(),
+                multisample_state.clone(),
+            )),
+            "fps_node".to_string(),
         );
-        world_tree_node.add_child(fps_node);
 
         let mut render_context = RenderContext::default();
         world_tree_node.setup(&mut render_context, &device);
@@ -200,11 +242,13 @@ impl ShashlikRenderer {
             shape_layer,
             mesh_layer,
             screen_shape_layer,
+            text_layer,
             depth_texture,
             msaa_texture,
             canvas,
             renderer_rx,
             api,
+            global_context,
         })
     }
 
@@ -266,6 +310,12 @@ impl ShashlikRenderer {
             self.depth_texture = DepthTexture::new(&device, config.width, config.height);
             self.msaa_texture =
                 MultisampledTexture::new(device, config.width, config.height, config.format);
+
+            self.global_context.text_brush.resize_view(
+                config.width as f32,
+                config.height as f32,
+                queue,
+            );
         }
     }
 
@@ -284,6 +334,7 @@ impl ShashlikRenderer {
                         &mut self.shape_layer.borrow_mut(),
                         &mut self.screen_shape_layer.borrow_mut(),
                         &mut self.mesh_layer.borrow_mut(),
+                        &mut self.text_layer.borrow_mut(),
                     );
                 }
                 RendererMessage::ClearGroups(keys) => {
@@ -300,7 +351,24 @@ impl ShashlikRenderer {
 
         let queue = self.canvas.queue();
         let device = self.canvas.device();
-        self.world_tree_node.update(device, queue);
+        let config = self.canvas.config();
+        self.world_tree_node
+            .update(device, queue, config, &mut self.global_context);
+
+        let sections = mem::replace(
+            &mut self
+                .global_context
+                .text_sections,
+            vec![],
+        );
+        self.global_context
+            .text_brush
+            .queue(
+                &device,
+                &queue,
+                sections.iter().map(|item| item.to_borrowed()).collect::<Vec<_>>(),
+                )
+            .unwrap();
     }
 
     fn render(&mut self) -> Result<(), SurfaceError> {
@@ -350,7 +418,8 @@ impl ShashlikRenderer {
                 timestamp_writes: None,
             });
 
-            self.world_tree_node.render(&mut render_pass);
+            self.world_tree_node
+                .render(&mut render_pass, &mut self.global_context);
         }
 
         queue.submit(iter::once(encoder.finish()));
