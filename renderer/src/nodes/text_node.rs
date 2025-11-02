@@ -1,11 +1,13 @@
-use crate::GlobalContext;
 use crate::camera::{FLIP_Y, OPENGL_TO_WGPU_MATRIX};
 use crate::geometry_data::TextData;
 use crate::modifier::render_modifier::SpatialData;
-use crate::nodes::SceneNode;
 use crate::nodes::scene_tree::RenderContext;
+use crate::nodes::SceneNode;
+use crate::GlobalContext;
 use cgmath::{Vector3, Vector4};
-use geo_types::coord;
+use geo_types::{coord, point};
+use rstar::primitives::{GeomWithData, Rectangle};
+use rstar::RTreeObject;
 use wgpu::{Device, Queue, RenderPass};
 use wgpu_text::glyph_brush::{Section, Text};
 
@@ -61,10 +63,25 @@ impl SceneNode for TextNode {
                 let screen_size = (config.width as f32, config.height as f32);
                 let screen_pos = coord! {x:  screen_size.0 * (clip_pos_x + 1.0) / 2.0,
                 y:   screen_size.1 - (screen_size.1 * (clip_pos_y + 1.0) / 2.0)};
+
                 let section = Section::default()
                     .add_text(Text::new(item.text.as_str()).with_scale(40.0))
                     .with_screen_position((screen_pos.x, screen_pos.y));
-                global_context.text_sections.push(section.to_owned())
+
+                let section_rect = global_context.text_brush.glyph_bounds(&section).unwrap();
+                let section_rect_envelope = Rectangle::from_corners(
+                    point! { x: section_rect.min.x, y: section_rect.min.y},
+                    point! { x: section_rect.max.x, y: section_rect.max.y},
+                ).envelope();
+                let count = global_context
+                    .text_sections
+                    .locate_in_envelope_intersecting(&section_rect_envelope)
+                    .count();
+                if count <= 0 {
+                    global_context
+                        .text_sections
+                        .insert(GeomWithData::new(Rectangle::from(section_rect_envelope), section.to_owned()))
+                }
             }
         });
     }

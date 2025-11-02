@@ -17,15 +17,18 @@ use crate::text::create_default_text_brush;
 use crate::vertex_attrs::{InstancePos, ShapeVertex, VertexAttrib, VertexNormal};
 use camera::CameraController;
 use canvas_api::CanvasApi;
+use geo_types::Point;
 use messages::RendererApiMsg;
 use renderer_api::RendererApi;
+use rstar::primitives::{GeomWithData, Rectangle};
+use rstar::RTree;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread::spawn;
-use std::{iter, mem};
+use std::iter;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
 use wgpu::{include_wgsl, CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat};
@@ -85,7 +88,7 @@ impl<T: Clone> ReceiverExt<T> for tokio::sync::broadcast::Receiver<T> {
 pub struct GlobalContext {
     camera_controller: Rc<RefCell<CameraController>>,
     text_brush: TextBrush<FontRef<'static>>,
-    text_sections: Vec<OwnedSection>,
+    text_sections: RTree<GeomWithData<Rectangle<Point<f32>>, OwnedSection>>,
 }
 
 impl GlobalContext {
@@ -96,7 +99,7 @@ impl GlobalContext {
         GlobalContext {
             camera_controller,
             text_brush,
-            text_sections: Vec::new(),
+            text_sections: RTree::new(),
         }
     }
 }
@@ -359,12 +362,10 @@ impl ShashlikRenderer {
         self.world_tree_node
             .update(device, queue, config, &mut self.global_context);
 
-        let sections = mem::replace(
-            &mut self
-                .global_context
-                .text_sections,
-            vec![],
-        );
+        let sections: Vec<OwnedSection> = self.global_context.text_sections
+            .drain()
+            .map(|item| item.data)
+            .collect();
 
         // TODO move to TextLayer somehow?
         self.global_context
@@ -373,7 +374,7 @@ impl ShashlikRenderer {
                 &device,
                 &queue,
                 sections.iter().map(|item| item.to_borrowed()).collect::<Vec<_>>(),
-                )
+            )
             .unwrap();
     }
 
