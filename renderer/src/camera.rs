@@ -69,6 +69,8 @@ pub struct CameraController {
     pub is_right_pressed: bool,
     pub is_z_pressed: bool,
     pub is_x_pressed: bool,
+    pub is_n_pressed: bool,
+    pub is_m_pressed: bool,
     pub cached_matrix: Matrix4<f32>,
     pub camera_z: f32,
 }
@@ -85,6 +87,8 @@ impl CameraController {
             is_right_pressed: false,
             is_z_pressed: false,
             is_x_pressed: false,
+            is_n_pressed: false,
+            is_m_pressed: false,
             cached_matrix: Matrix4::identity().into(),
             camera_z: 200.0
         }
@@ -139,6 +143,14 @@ impl CameraController {
 
         if self.is_x_pressed {
             camera.eye.y -= self.speed;
+        }
+
+        if self.is_n_pressed {
+            camera.eye.x -= self.speed;
+        }
+
+        if self.is_m_pressed {
+            camera.eye.x += self.speed;
         }
 
         self.camera_z = camera.eye.z;

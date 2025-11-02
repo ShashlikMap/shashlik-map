@@ -163,6 +163,12 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                         KeyCode::KeyX => {
                             self.camera_controller.borrow_mut().is_x_pressed = is_pressed;
                         }
+                        KeyCode::KeyN => {
+                            self.camera_controller.borrow_mut().is_n_pressed = is_pressed;
+                        }
+                        KeyCode::KeyM => {
+                            self.camera_controller.borrow_mut().is_m_pressed = is_pressed;
+                        }
                         _ => {}
                     }
                 }
