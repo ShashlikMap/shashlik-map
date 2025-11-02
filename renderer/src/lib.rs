@@ -126,7 +126,7 @@ impl ShashlikRenderer {
         let mut world_tree_node = SceneTree::new(World::new(), "".to_string());
 
         let camera_node =
-            world_tree_node.add_child(CameraNode::new(camera_controller.clone(), &config, &device));
+            world_tree_node.add_child(CameraNode::new(&config, &device));
 
         let depth_texture = DepthTexture::new(&device, config.width, config.height);
         let msaa_texture =
@@ -311,6 +311,7 @@ impl ShashlikRenderer {
             self.msaa_texture =
                 MultisampledTexture::new(device, config.width, config.height, config.format);
 
+            // TODO move to TextLayer?
             self.global_context.text_brush.resize_view(
                 config.width as f32,
                 config.height as f32,
@@ -344,6 +345,9 @@ impl ShashlikRenderer {
                         self.screen_shape_layer
                             .borrow_mut()
                             .clear_by_key(key.clone());
+                        self.text_layer
+                            .borrow_mut()
+                            .clear_by_key(key.clone());
                     });
                 }
             }
@@ -361,6 +365,8 @@ impl ShashlikRenderer {
                 .text_sections,
             vec![],
         );
+
+        // TODO move to TextLayer somehow?
         self.global_context
             .text_brush
             .queue(

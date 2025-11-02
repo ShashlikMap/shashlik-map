@@ -55,19 +55,17 @@ impl SceneNode for TextNode {
             * global_context.camera_controller.borrow().cached_matrix;
         self.data.iter_mut().for_each(|item| {
             let pos = matrix * Vector4::new(item.world_position.x, item.world_position.y, 0.0, 1.0);
-            let pos = pos.clone();
-            let screen_size = (config.width as f32, config.height as f32);
-            let screen_pos = coord! {x:  screen_size.0 * ((pos.x / pos.w) + 1.0) / 2.0,
-            y:   screen_size.1 - (screen_size.1 * ((pos.y / pos.w) + 1.0) / 2.0)};
-            let section = Section::default()
-                .add_text(Text::new(item.text.as_str()).with_scale(40.0))
-                .with_screen_position((screen_pos.x, screen_pos.y));
-            global_context.text_sections.push(section.to_owned())
-            // }
+            let clip_pos_x = pos.x / pos.w;
+            let clip_pos_y = pos.y / pos.w;
+            if clip_pos_x >= -1.1 && clip_pos_x <= 1.1 && clip_pos_y >= -1.1 && clip_pos_y <= 1.1 {
+                let screen_size = (config.width as f32, config.height as f32);
+                let screen_pos = coord! {x:  screen_size.0 * (clip_pos_x + 1.0) / 2.0,
+                y:   screen_size.1 - (screen_size.1 * (clip_pos_y + 1.0) / 2.0)};
+                let section = Section::default()
+                    .add_text(Text::new(item.text.as_str()).with_scale(40.0))
+                    .with_screen_position((screen_pos.x, screen_pos.y));
+                global_context.text_sections.push(section.to_owned())
+            }
         });
-    }
-
-    fn render(&self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        global_context.text_brush.draw(render_pass);
     }
 }

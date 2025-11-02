@@ -1,15 +1,12 @@
-use crate::camera::{Camera, CameraController, CameraUniform};
+use crate::camera::{Camera, CameraUniform};
 use crate::nodes::scene_tree::RenderContext;
 use crate::nodes::SceneNode;
 use crate::GlobalContext;
 use cgmath::SquareMatrix;
-use std::cell::RefCell;
-use std::rc::Rc;
 use wgpu::{BindGroupLayout, Device, Queue, RenderPass};
 
 pub struct CameraNode {
     camera: Camera,
-    camera_controller: Rc<RefCell<CameraController>>,
     uniform: CameraUniform,
     buffer: wgpu::Buffer,
     bind_group_layout: BindGroupLayout,
@@ -18,7 +15,6 @@ pub struct CameraNode {
 
 impl CameraNode {
     pub fn new(
-        camera_controller: Rc<RefCell<CameraController>>,
         config: &wgpu::SurfaceConfiguration,
         device: &wgpu::Device,
     ) -> Self {
@@ -73,7 +69,6 @@ impl CameraNode {
 
         Self {
             camera,
-            camera_controller,
             uniform,
             buffer,
             bind_group_layout,
@@ -93,13 +88,14 @@ impl SceneNode for CameraNode {
         _device: &Device,
         queue: &Queue,
         _config: &wgpu::SurfaceConfiguration,
-        _global_context: &mut GlobalContext,
+        global_context: &mut GlobalContext,
     ) {
-        self.camera_controller
+        let camera_controller = &global_context.camera_controller;
+        camera_controller
             .borrow_mut()
             .update_camera(&mut self.camera);
         self.uniform.update_view_proj(&mut self.camera);
-        self.camera_controller.borrow_mut().cached_matrix = self.camera.matrix;
+        camera_controller.borrow_mut().cached_matrix = self.camera.matrix;
         queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(&[self.uniform]));
     }
 

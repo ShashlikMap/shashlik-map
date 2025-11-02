@@ -47,6 +47,7 @@ impl CanvasApi {
         self.indices_by_layers.clear();
         self.geometry.clear();
         self.geometry3d.clear();
+        self.text_vec.clear();
 
         // TODO Should be improved to per screen rather than per group
         self.screen_path_cache
