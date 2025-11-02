@@ -17,6 +17,8 @@ pub struct PositionedMesh {
     original_positions: Vec<Vector3<f32>>,
     is_two_instances: bool,
     spatial_rx: Receiver<SpatialData>,
+    original_spatial_data: SpatialData,
+    color_alpha: f32,
 }
 
 impl Mesh {
@@ -84,6 +86,7 @@ impl PositionedMesh {
             &original_positions,
             &spatial_data,
             is_two_instances,
+            1.0,
         );
 
         let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -99,6 +102,8 @@ impl PositionedMesh {
             original_positions,
             is_two_instances,
             spatial_rx,
+            color_alpha: 1.0,
+            original_spatial_data: spatial_data,
         }
     }
 }
@@ -109,11 +114,13 @@ impl PositionedMesh {
         original_positions: &Vec<Vector3<f32>>,
         spatial_data: &SpatialData,
         is_two_instances: bool,
+        color_alpha: f32,
     ) {
         attrs.clear();
         for i in 0..original_positions.len() {
             let instance_pos = InstancePos {
                 position: (original_positions[i] + spatial_data.transform).into(),
+                color_alpha,
             };
             attrs.push(instance_pos);
             if is_two_instances {
@@ -137,20 +144,41 @@ impl SceneNode for PositionedMesh {
         _config: &wgpu::SurfaceConfiguration,
         _global_context: &mut GlobalContext,
     ) {
-        if let Ok(spatial_data) = self.spatial_rx.no_lagged() {
-            Self::update_attrs(
-                &mut self.attrs,
-                &self.original_positions,
-                &spatial_data,
-                self.is_two_instances,
-            );
-
-            queue.write_buffer(
-                &self.instance_buffer,
-                0,
-                bytemuck::cast_slice(self.attrs.as_slice()),
-            );
+        self.color_alpha -= 0.01;
+        if self.color_alpha < 0.0 {
+            self.color_alpha = 1.0;
         }
+
+        if let Ok(spatial_data) = self.spatial_rx.no_lagged() {
+            self.original_spatial_data = spatial_data;
+            // Self::update_attrs(
+            //     &mut self.attrs,
+            //     &self.original_positions,
+            //     &spatial_data,
+            //     self.is_two_instances,
+            //     self.color_alpha
+            // );
+            //
+            // queue.write_buffer(
+            //     &self.instance_buffer,
+            //     0,
+            //     bytemuck::cast_slice(self.attrs.as_slice()),
+            // );
+        }
+
+        Self::update_attrs(
+            &mut self.attrs,
+            &self.original_positions,
+            &self.original_spatial_data,
+            self.is_two_instances,
+            self.color_alpha,
+        );
+
+        queue.write_buffer(
+            &self.instance_buffer,
+            0,
+            bytemuck::cast_slice(self.attrs.as_slice()),
+        );
     }
 
     fn render(&self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {

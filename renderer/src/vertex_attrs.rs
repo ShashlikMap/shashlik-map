@@ -49,15 +49,18 @@ impl VertexAttrib for VertexNormal {
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct InstancePos {
     pub(crate) position: [f32; 3],
+    pub(crate) color_alpha: f32,
 }
 
 impl VertexAttrib for InstancePos {
     fn desc() -> VertexBufferLayout<'static> {
+        const ATTRIBUTES: &[VertexAttribute; 2] = &wgpu::vertex_attr_array![3 => Float32x3, 4 => Float32];
+
         wgpu::VertexBufferLayout {
             array_stride: size_of::<Self>() as wgpu::BufferAddress,
             // It's easy to forget it should be VertexStepMode::Instance!
             step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &wgpu::vertex_attr_array![3 => Float32x3],
+            attributes: ATTRIBUTES,
         }
     }
 }
