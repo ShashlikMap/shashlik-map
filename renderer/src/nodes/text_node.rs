@@ -1,13 +1,14 @@
+use crate::GlobalContext;
 use crate::camera::{FLIP_Y, OPENGL_TO_WGPU_MATRIX};
 use crate::geometry_data::TextData;
 use crate::modifier::render_modifier::SpatialData;
-use crate::nodes::scene_tree::RenderContext;
 use crate::nodes::SceneNode;
-use crate::GlobalContext;
+use crate::nodes::scene_tree::RenderContext;
+use cgmath::num_traits::clamp;
 use cgmath::{Vector3, Vector4};
 use geo_types::{coord, point};
-use rstar::primitives::{GeomWithData, Rectangle};
 use rstar::RTreeObject;
+use rstar::primitives::{GeomWithData, Rectangle};
 use wgpu::{Device, Queue, RenderPass};
 use wgpu_text::glyph_brush::{Section, Text};
 
@@ -22,6 +23,7 @@ impl SceneNode for TextLayer {
 struct TextNodeData {
     world_position: Vector3<f32>,
     text: String,
+    alpha: f32,
 }
 
 pub struct TextNode {
@@ -29,6 +31,8 @@ pub struct TextNode {
 }
 
 impl TextNode {
+    const FADE_ANIM_SPEED: f32 = 0.05;
+
     pub fn new(text_data: Vec<TextData>, spatial_data: SpatialData) -> Self {
         Self {
             data: text_data
@@ -36,6 +40,7 @@ impl TextNode {
                 .map(|item| TextNodeData {
                     world_position: item.position + spatial_data.transform,
                     text: item.text.clone(),
+                    alpha: 0.0,
                 })
                 .collect(),
         }
@@ -52,6 +57,7 @@ impl SceneNode for TextNode {
         config: &wgpu::SurfaceConfiguration,
         global_context: &mut GlobalContext,
     ) {
+
         let matrix = FLIP_Y
             * OPENGL_TO_WGPU_MATRIX
             * global_context.camera_controller.borrow().cached_matrix;
@@ -65,22 +71,37 @@ impl SceneNode for TextNode {
                 y:   screen_size.1 - (screen_size.1 * (clip_pos_y + 1.0) / 2.0)};
 
                 let section = Section::default()
-                    .add_text(Text::new(item.text.as_str()).with_scale(40.0))
+                    .add_text(
+                        Text::new(item.text.as_str())
+                            .with_scale(40.0)
+                            .with_color([0.0, 0.0, 0.0, item.alpha]),
+                    )
                     .with_screen_position((screen_pos.x, screen_pos.y));
 
                 let section_rect = global_context.text_brush.glyph_bounds(&section).unwrap();
                 let section_rect_envelope = Rectangle::from_corners(
                     point! { x: section_rect.min.x, y: section_rect.min.y},
                     point! { x: section_rect.max.x, y: section_rect.max.y},
-                ).envelope();
+                )
+                .envelope();
                 let count = global_context
                     .text_sections
                     .locate_in_envelope_intersecting(&section_rect_envelope)
                     .count();
-                if count <= 0 {
-                    global_context
-                        .text_sections
-                        .insert(GeomWithData::new(Rectangle::from(section_rect_envelope), section.to_owned()))
+
+                let to_add = if count <= 0 {
+                    item.alpha = clamp(item.alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                    true
+                } else {
+                    item.alpha = clamp(item.alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                    item.alpha > 0.0
+                };
+
+                if to_add {
+                    global_context.text_sections.insert(GeomWithData::new(
+                        Rectangle::from(section_rect_envelope),
+                        section.to_owned(),
+                    ))
                 }
             }
         });
