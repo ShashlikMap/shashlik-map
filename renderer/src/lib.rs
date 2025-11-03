@@ -85,10 +85,15 @@ impl<T: Clone> ReceiverExt<T> for tokio::sync::broadcast::Receiver<T> {
     }
 }
 
+pub enum RTreeData {
+    TextSection(OwnedSection),
+    Icon,
+}
+
 pub struct GlobalContext {
     camera_controller: Rc<RefCell<CameraController>>,
     text_brush: TextBrush<FontRef<'static>>,
-    text_sections: RTree<GeomWithData<Rectangle<Point<f32>>, OwnedSection>>,
+    text_sections: RTree<GeomWithData<Rectangle<Point<f32>>, RTreeData>>,
 }
 
 impl GlobalContext {
@@ -364,7 +369,10 @@ impl ShashlikRenderer {
 
         let sections: Vec<OwnedSection> = self.global_context.text_sections
             .drain()
-            .map(|item| item.data)
+            .filter_map(|item| match item.data {
+                RTreeData::TextSection(section) => Some(section),
+                RTreeData::Icon => None
+            })
             .collect();
 
         // TODO move to TextLayer somehow?

@@ -1,10 +1,15 @@
+use crate::camera::{FLIP_Y, OPENGL_TO_WGPU_MATRIX};
 use crate::mesh::mesh::Mesh;
 use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::SceneNode;
 use crate::vertex_attrs::InstancePos;
-use crate::{GlobalContext, ReceiverExt};
-use cgmath::Vector3;
+use crate::{GlobalContext, RTreeData, ReceiverExt};
+use cgmath::num_traits::clamp;
+use cgmath::{Vector3, Vector4};
+use geo_types::{coord, point};
 use log::error;
+use rstar::RTreeObject;
+use rstar::primitives::{GeomWithData, Rectangle};
 use std::ops::Range;
 use tokio::sync::broadcast::Receiver;
 use wgpu::util::DeviceExt;
@@ -14,11 +19,11 @@ pub struct PositionedMesh {
     mesh: Mesh,
     instance_buffer: Buffer,
     attrs: Vec<InstancePos>,
-    original_positions: Vec<Vector3<f32>>,
+    original_positions_alpha: Vec<(Vector3<f32>, f32)>,
     is_two_instances: bool,
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
-    color_alpha: f32,
+    with_collisions: bool,
 }
 
 impl Mesh {
@@ -33,6 +38,7 @@ impl Mesh {
             vec![Vector3::new(0.0, 0.0, 0.0)],
             spatial_rx,
             false,
+            false,
         )
     }
     pub fn to_positioned_with_instances(
@@ -41,6 +47,7 @@ impl Mesh {
         original_positions: Vec<Vector3<f32>>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
+        with_collisions: bool,
     ) -> PositionedMesh {
         PositionedMesh::new(
             device,
@@ -48,6 +55,7 @@ impl Mesh {
             original_positions,
             spatial_rx,
             is_two_instances,
+            with_collisions,
         )
     }
 
@@ -77,16 +85,17 @@ impl PositionedMesh {
         original_positions: Vec<Vector3<f32>>,
         mut spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
+        with_collisions: bool,
     ) -> Self {
+        let original_positions_alpha = original_positions.iter().map(|v| (*v, 1.0)).collect();
         let spatial_data = spatial_rx.try_recv().unwrap_or(SpatialData::new());
         let mut attrs = Vec::new();
 
         Self::update_attrs(
             &mut attrs,
-            &original_positions,
+            &original_positions_alpha,
             &spatial_data,
             is_two_instances,
-            1.0,
         );
 
         let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -99,11 +108,11 @@ impl PositionedMesh {
             mesh,
             instance_buffer,
             attrs,
-            original_positions,
+            original_positions_alpha,
             is_two_instances,
             spatial_rx,
-            color_alpha: 1.0,
             original_spatial_data: spatial_data,
+            with_collisions,
         }
     }
 }
@@ -111,16 +120,16 @@ impl PositionedMesh {
 impl PositionedMesh {
     fn update_attrs(
         attrs: &mut Vec<InstancePos>,
-        original_positions: &Vec<Vector3<f32>>,
+        original_positions_alpha: &Vec<(Vector3<f32>, f32)>,
         spatial_data: &SpatialData,
         is_two_instances: bool,
-        color_alpha: f32,
     ) {
         attrs.clear();
-        for i in 0..original_positions.len() {
+        for i in 0..original_positions_alpha.len() {
+            let item = original_positions_alpha[i];
             let instance_pos = InstancePos {
-                position: (original_positions[i] + spatial_data.transform).into(),
-                color_alpha,
+                position: (item.0 + spatial_data.transform).into(),
+                color_alpha: item.1,
             };
             attrs.push(instance_pos);
             if is_two_instances {
@@ -141,44 +150,73 @@ impl SceneNode for PositionedMesh {
         &mut self,
         _device: &Device,
         queue: &Queue,
-        _config: &wgpu::SurfaceConfiguration,
-        _global_context: &mut GlobalContext,
+        config: &wgpu::SurfaceConfiguration,
+        global_context: &mut GlobalContext,
     ) {
-        self.color_alpha -= 0.01;
-        if self.color_alpha < 0.0 {
-            self.color_alpha = 1.0;
+        if self.with_collisions {
+            let matrix = FLIP_Y
+                * OPENGL_TO_WGPU_MATRIX
+                * global_context.camera_controller.borrow().cached_matrix;
+
+            for item in &mut self.original_positions_alpha {
+                let pos = item.0;
+                let pos = matrix * Vector4::new(pos.x + self.original_spatial_data.transform.x,
+                                                pos.y + self.original_spatial_data.transform.y, 0.0, 1.0);
+                let clip_pos_x = pos.x / pos.w;
+                let clip_pos_y = pos.y / pos.w;
+                if clip_pos_x >= -1.1
+                    && clip_pos_x <= 1.1
+                    && clip_pos_y >= -1.1
+                    && clip_pos_y <= 1.1
+                {
+                    let screen_size = (config.width as f32, config.height as f32);
+                    let screen_pos = coord! {x:  screen_size.0 * (clip_pos_x + 1.0) / 2.0,y:   screen_size.1 - (screen_size.1 * (clip_pos_y + 1.0) / 2.0)};
+
+                    let envelope = Rectangle::from_corners(
+                        point! { x: screen_pos.x - 20.0, y: screen_pos.y - 20.0},
+                        point! { x: screen_pos.x + 20.0, y: screen_pos.y + 20.0},
+                    )
+                    .envelope();
+                    // println!("envelope {:?}", envelope);
+
+                    let count = global_context
+                        .text_sections
+                        .locate_in_envelope_intersecting(&envelope)
+                        .count();
+                    if count <= 0 {
+                        item.1 = clamp(item.1 + 0.05, 0.0, 1.0);
+                    } else {
+                        item.1 = clamp(item.1 - 0.05, 0.0, 1.0);
+                    };
+                    global_context.text_sections.insert(GeomWithData::new(
+                        Rectangle::from(envelope),
+                        RTreeData::Icon,
+                    ));
+                }
+            }
         }
+
+        let mut update_attrs = self.with_collisions;
 
         if let Ok(spatial_data) = self.spatial_rx.no_lagged() {
             self.original_spatial_data = spatial_data;
-            // Self::update_attrs(
-            //     &mut self.attrs,
-            //     &self.original_positions,
-            //     &spatial_data,
-            //     self.is_two_instances,
-            //     self.color_alpha
-            // );
-            //
-            // queue.write_buffer(
-            //     &self.instance_buffer,
-            //     0,
-            //     bytemuck::cast_slice(self.attrs.as_slice()),
-            // );
+            update_attrs = true;
         }
 
-        Self::update_attrs(
-            &mut self.attrs,
-            &self.original_positions,
-            &self.original_spatial_data,
-            self.is_two_instances,
-            self.color_alpha,
-        );
+        if update_attrs {
+            Self::update_attrs(
+                &mut self.attrs,
+                &self.original_positions_alpha,
+                &self.original_spatial_data,
+                self.is_two_instances,
+            );
 
-        queue.write_buffer(
-            &self.instance_buffer,
-            0,
-            bytemuck::cast_slice(self.attrs.as_slice()),
-        );
+            queue.write_buffer(
+                &self.instance_buffer,
+                0,
+                bytemuck::cast_slice(self.attrs.as_slice()),
+            );
+        }
     }
 
     fn render(&self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {

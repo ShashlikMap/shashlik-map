@@ -86,7 +86,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 MapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
                                 MapPointObjectKind::Parking => {
                                     geometry_data.push(GeometryData::Text(TextData {
-                                        text: "PARKING".to_string(),
+                                        text: "PARKINGPARKINGPARKINGPARKING".to_string(),
                                         position: Vector3::from((
                                             local_position.x,
                                             local_position.y,

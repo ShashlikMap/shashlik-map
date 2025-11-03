@@ -1,4 +1,4 @@
-use crate::GlobalContext;
+use crate::{GlobalContext, RTreeData};
 use crate::camera::{FLIP_Y, OPENGL_TO_WGPU_MATRIX};
 use crate::geometry_data::TextData;
 use crate::modifier::render_modifier::SpatialData;
@@ -100,7 +100,7 @@ impl SceneNode for TextNode {
                 if to_add {
                     global_context.text_sections.insert(GeomWithData::new(
                         Rectangle::from(section_rect_envelope),
-                        section.to_owned(),
+                        RTreeData::TextSection(section.to_owned()),
                     ))
                 }
             }
