@@ -23,7 +23,7 @@ impl CollisionHandler {
             (config.width as f32, config.height as f32).into(),
         );
         let envelope = rectangle.envelope();
-        if screen_rect.envelope().contains_envelope(&envelope) {
+        if screen_rect.envelope().intersects(&envelope) {
             let count = self
                 .objects
                 .locate_in_envelope_intersecting(&envelope)
