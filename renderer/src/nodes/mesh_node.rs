@@ -17,7 +17,7 @@ pub struct PositionedMesh {
     mesh: Mesh,
     instance_buffer: Buffer,
     attrs: Vec<InstancePos>,
-    original_positions_alpha: Vec<(Vector3<f32>, f32)>,
+    original_positions_alpha: Vec<(Vector3<f32>, f32)>, // TODO Proper structure with bound
     is_two_instances: bool,
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
