@@ -163,6 +163,7 @@ impl SceneNode for PositionedMesh {
                     item.0.y + self.original_spatial_data.transform.y,
                     0.0,
                 ));
+                // TODO Bounds for svg?
                 let bounds = Rectangle::from_corners(
                     point! { x: screen_pos.x - 20.0, y: screen_pos.y - 20.0},
                     point! { x: screen_pos.x + 20.0, y: screen_pos.y + 20.0},
