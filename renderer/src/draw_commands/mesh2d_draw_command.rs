@@ -33,6 +33,7 @@ impl DrawCommand for Mesh2dDrawCommand {
             self.positions.clone(), // mem::replace
             spatial_rx,
             true,
+            self.is_screen, // TODO It should be a proper with_collisions param
         );
         if self.is_screen {
             screen_shape_layer.add_child_with_key(mesh, key);

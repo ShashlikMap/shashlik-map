@@ -4,7 +4,10 @@ use crate::nodes::SceneNode;
 use crate::vertex_attrs::InstancePos;
 use crate::{GlobalContext, ReceiverExt};
 use cgmath::Vector3;
+use cgmath::num_traits::clamp;
+use geo_types::point;
 use log::error;
+use rstar::primitives::Rectangle;
 use std::ops::Range;
 use tokio::sync::broadcast::Receiver;
 use wgpu::util::DeviceExt;
@@ -14,9 +17,11 @@ pub struct PositionedMesh {
     mesh: Mesh,
     instance_buffer: Buffer,
     attrs: Vec<InstancePos>,
-    original_positions: Vec<Vector3<f32>>,
+    original_positions_alpha: Vec<(Vector3<f32>, f32)>, // TODO Proper structure with bound
     is_two_instances: bool,
     spatial_rx: Receiver<SpatialData>,
+    original_spatial_data: SpatialData,
+    with_collisions: bool,
 }
 
 impl Mesh {
@@ -31,6 +36,7 @@ impl Mesh {
             vec![Vector3::new(0.0, 0.0, 0.0)],
             spatial_rx,
             false,
+            false,
         )
     }
     pub fn to_positioned_with_instances(
@@ -39,6 +45,7 @@ impl Mesh {
         original_positions: Vec<Vector3<f32>>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
+        with_collisions: bool,
     ) -> PositionedMesh {
         PositionedMesh::new(
             device,
@@ -46,6 +53,7 @@ impl Mesh {
             original_positions,
             spatial_rx,
             is_two_instances,
+            with_collisions,
         )
     }
 
@@ -75,13 +83,15 @@ impl PositionedMesh {
         original_positions: Vec<Vector3<f32>>,
         mut spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
+        with_collisions: bool,
     ) -> Self {
+        let original_positions_alpha = original_positions.iter().map(|v| (*v, 1.0)).collect();
         let spatial_data = spatial_rx.try_recv().unwrap_or(SpatialData::new());
         let mut attrs = Vec::new();
 
         Self::update_attrs(
             &mut attrs,
-            &original_positions,
+            &original_positions_alpha,
             &spatial_data,
             is_two_instances,
         );
@@ -96,9 +106,11 @@ impl PositionedMesh {
             mesh,
             instance_buffer,
             attrs,
-            original_positions,
+            original_positions_alpha,
             is_two_instances,
             spatial_rx,
+            original_spatial_data: spatial_data,
+            with_collisions,
         }
     }
 }
@@ -106,14 +118,16 @@ impl PositionedMesh {
 impl PositionedMesh {
     fn update_attrs(
         attrs: &mut Vec<InstancePos>,
-        original_positions: &Vec<Vector3<f32>>,
+        original_positions_alpha: &Vec<(Vector3<f32>, f32)>,
         spatial_data: &SpatialData,
         is_two_instances: bool,
     ) {
         attrs.clear();
-        for i in 0..original_positions.len() {
+        for i in 0..original_positions_alpha.len() {
+            let item = original_positions_alpha[i];
             let instance_pos = InstancePos {
-                position: (original_positions[i] + spatial_data.transform).into(),
+                position: (item.0 + spatial_data.transform).into(),
+                color_alpha: item.1,
             };
             attrs.push(instance_pos);
             if is_two_instances {
@@ -134,14 +148,49 @@ impl SceneNode for PositionedMesh {
         &mut self,
         _device: &Device,
         queue: &Queue,
-        _config: &wgpu::SurfaceConfiguration,
-        _global_context: &mut GlobalContext,
+        config: &wgpu::SurfaceConfiguration,
+        global_context: &mut GlobalContext,
     ) {
+        if self.with_collisions {
+            let screen_position_calculator = global_context
+                .camera_controller
+                .borrow()
+                .screen_position_calculator(config);
+
+            for item in &mut self.original_positions_alpha {
+                let screen_pos = screen_position_calculator.screen_position(Vector3::new(
+                    item.0.x + self.original_spatial_data.transform.x,
+                    item.0.y + self.original_spatial_data.transform.y,
+                    0.0,
+                ));
+                // TODO Bounds for svg?
+                let bounds = Rectangle::from_corners(
+                    point! { x: screen_pos.x - 20.0, y: screen_pos.y - 20.0},
+                    point! { x: screen_pos.x + 20.0, y: screen_pos.y + 20.0},
+                );
+
+                if let Some(added) = global_context.collision_handler.insert(config, bounds) {
+                    if added {
+                        item.1 = clamp(item.1 + 0.05, 0.0, 1.0);
+                    } else {
+                        item.1 = clamp(item.1 - 0.05, 0.0, 1.0);
+                    };
+                }
+            }
+        }
+
+        let mut update_attrs = self.with_collisions;
+
         if let Ok(spatial_data) = self.spatial_rx.no_lagged() {
+            self.original_spatial_data = spatial_data;
+            update_attrs = true;
+        }
+
+        if update_attrs {
             Self::update_attrs(
                 &mut self.attrs,
-                &self.original_positions,
-                &spatial_data,
+                &self.original_positions_alpha,
+                &self.original_spatial_data,
                 self.is_two_instances,
             );
 

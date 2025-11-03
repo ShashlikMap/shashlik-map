@@ -1,5 +1,5 @@
 use crate::nodes::scene_tree::RenderContext;
-use wgpu::{BindGroupLayout, DepthStencilState, Device, Face, RenderPipeline, ShaderModule, TextureFormat, VertexBufferLayout};
+use wgpu::{BindGroupLayout, BlendState, DepthStencilState, Device, Face, RenderPipeline, ShaderModule, TextureFormat, VertexBufferLayout};
 
 #[derive(Clone, Debug)]
 pub struct PipeLineProvider {
@@ -47,10 +47,7 @@ impl PipeLineProvider {
                 entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: self.texture_format,
-                    blend: Some(wgpu::BlendState {
-                        color: wgpu::BlendComponent::REPLACE,
-                        alpha: wgpu::BlendComponent::REPLACE,
-                    }),
+                    blend: Some(BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
                 compilation_options: Default::default(),

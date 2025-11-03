@@ -26,12 +26,14 @@ struct VertexInput {
 
 struct InstanceInput {
     @location(3) position: vec3<f32>,
+    @location(4) color_alpha: f32,
 }
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) style_index: u32,
     @location(1) outline_flag: u32,
+    @location(2) color_alpha: f32,
 }
 
 // TODO pass as a parameter
@@ -48,6 +50,7 @@ fn vs_main(
 
     out.style_index = model.style_index;
     out.outline_flag = model.instance_index % 2;
+    out.color_alpha = pos.color_alpha;
 
     var pointPos = ratio_fixed_modelpos.xyz;
     if(model.instance_index % 2 == 0) {
@@ -69,13 +72,18 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // FIXME Requires better solution for param type
     let style_type = u32(round(style_params[0]));
 
-     if(style_type == 0) {
-        return solid_style(in.outline_flag, style_params);
-     } else if(style_type == 1) {
-        return border_style(in.outline_flag, style_params);
-     }
+    var res_color = vec4(0.0, 0.0, 0.0, 1.0);
+    if(style_type == 0) {
+       res_color = solid_style(in.outline_flag, style_params);
+    } else if(style_type == 1) {
+       res_color = border_style(in.outline_flag, style_params);
+    } else {
+       res_color = vec4(0.0, 0.0, 0.0, 1.0);
+    }
 
-    return vec4(0.0, 0.0, 0.0, 1.0);
+    res_color.a = in.color_alpha;
+
+    return res_color;
 }
 
 fn solid_style(outline_flag: u32, params: array<f32, PARAMS_COUNT>) -> vec4<f32> {

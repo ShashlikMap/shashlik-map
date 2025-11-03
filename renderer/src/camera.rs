@@ -1,5 +1,5 @@
 use cgmath::{Matrix4, SquareMatrix, Transform, Vector2, Vector3, Vector4};
-use geo_types::Coord;
+use geo_types::{Coord, coord};
 
 #[rustfmt::skip]
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::from_cols(
@@ -37,11 +37,33 @@ impl Camera {
     }
 }
 
+pub struct ScreenPositionCalculator<'a> {
+    matrix: Matrix4<f32>,
+    config: &'a wgpu::SurfaceConfiguration,
+}
+
+impl<'a> ScreenPositionCalculator<'a> {
+    pub fn new(matrix: Matrix4<f32>, config: &'a wgpu::SurfaceConfiguration) -> Self {
+        Self { matrix, config }
+    }
+    pub fn screen_position(&self, world_position: Vector3<f32>) -> Coord<f32> {
+        let pos = self.matrix * Vector4::new(world_position.x, world_position.y, 0.0, 1.0);
+        let clip_pos_x = pos.x / pos.w;
+        let clip_pos_y = pos.y / pos.w;
+
+        let screen_size = (self.config.width as f32, self.config.height as f32);
+        coord! {
+            x: screen_size.0 * (clip_pos_x + 1.0) / 2.0,
+            y: screen_size.1 - (screen_size.1 * (clip_pos_y + 1.0) / 2.0)
+        }
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniform {
     view_proj: [[f32; 4]; 4],
-    ratio: f32
+    ratio: f32,
 }
 
 impl CameraUniform {
@@ -49,12 +71,13 @@ impl CameraUniform {
         use cgmath::SquareMatrix;
         Self {
             view_proj: cgmath::Matrix4::identity().into(),
-            ratio: 1.0
+            ratio: 1.0,
         }
     }
 
     pub(crate) fn update_view_proj(&mut self, camera: &mut Camera) {
-        self.view_proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * camera.build_view_projection_matrix()).into();
+        self.view_proj =
+            (FLIP_Y * OPENGL_TO_WGPU_MATRIX * camera.build_view_projection_matrix()).into();
         self.ratio = camera.aspect;
     }
 }
@@ -90,8 +113,16 @@ impl CameraController {
             is_n_pressed: false,
             is_m_pressed: false,
             cached_matrix: Matrix4::identity().into(),
-            camera_z: 200.0
+            camera_z: 200.0,
         }
+    }
+
+    pub fn screen_position_calculator<'a>(
+        &self,
+        config: &'a wgpu::SurfaceConfiguration,
+    ) -> ScreenPositionCalculator<'a> {
+        let matrix = FLIP_Y * OPENGL_TO_WGPU_MATRIX * self.cached_matrix;
+        ScreenPositionCalculator::new(matrix, config)
     }
 
     pub(crate) fn update_camera(&mut self, camera: &mut Camera) {
@@ -159,10 +190,7 @@ impl CameraController {
     pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<Vector2<f64>> {
         let camera_matrix = self.cached_matrix;
         let inv_mat = camera_matrix.inverse_transform().unwrap();
-        Self::clip_to_world_at_ground(
-            &Vector2::new(coord.x, coord.y),
-            &inv_mat.cast().unwrap(),
-        )
+        Self::clip_to_world_at_ground(&Vector2::new(coord.x, coord.y), &inv_mat.cast().unwrap())
     }
 
     fn clip_to_world_at_ground(
@@ -190,7 +218,10 @@ impl CameraController {
         Some(Vector2::new(result.x, result.y))
     }
 
-    fn clip_to_world_internal(window: &Vector3<f64>, inverted_view_proj: &Matrix4<f64>) -> Vector3<f64> {
+    fn clip_to_world_internal(
+        window: &Vector3<f64>,
+        inverted_view_proj: &Matrix4<f64>,
+    ) -> Vector3<f64> {
         #[rustfmt::skip]
             let fixed_window = Vector4::new(
             window.x,
