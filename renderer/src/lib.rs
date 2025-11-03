@@ -1,5 +1,6 @@
 extern crate core;
 
+use crate::collision_handler::CollisionHandler;
 use crate::depth_texture::DepthTexture;
 use crate::messages::RendererMessage;
 use crate::msaa_texture::MultisampledTexture;
@@ -17,18 +18,15 @@ use crate::text::create_default_text_brush;
 use crate::vertex_attrs::{InstancePos, ShapeVertex, VertexAttrib, VertexNormal};
 use camera::CameraController;
 use canvas_api::CanvasApi;
-use geo_types::Point;
 use messages::RendererApiMsg;
 use renderer_api::RendererApi;
-use rstar::primitives::{GeomWithData, Rectangle};
-use rstar::RTree;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::{iter, mem};
 use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread::spawn;
-use std::iter;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
 use wgpu::{include_wgsl, CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat};
@@ -56,6 +54,7 @@ pub mod styles;
 mod svg;
 mod text;
 pub mod vertex_attrs;
+mod collision_handler;
 
 pub const SHADER_STYLE_GROUP_INDEX: u32 = 1;
 
@@ -85,26 +84,24 @@ impl<T: Clone> ReceiverExt<T> for tokio::sync::broadcast::Receiver<T> {
     }
 }
 
-pub enum RTreeData {
-    TextSection(OwnedSection),
-    Icon,
-}
-
 pub struct GlobalContext {
     camera_controller: Rc<RefCell<CameraController>>,
+    collision_handler: CollisionHandler,
     text_brush: TextBrush<FontRef<'static>>,
-    text_sections: RTree<GeomWithData<Rectangle<Point<f32>>, RTreeData>>,
+    text_sections: Vec<OwnedSection>,
 }
 
 impl GlobalContext {
     pub fn new(
         camera_controller: Rc<RefCell<CameraController>>,
+        collision_handler: CollisionHandler,
         text_brush: TextBrush<FontRef<'static>>,
     ) -> Self {
         GlobalContext {
             camera_controller,
+            collision_handler,
             text_brush,
-            text_sections: RTree::new(),
+            text_sections: Vec::new(),
         }
     }
 }
@@ -154,6 +151,7 @@ impl ShashlikRenderer {
 
         let global_context = GlobalContext::new(
             camera_controller.clone(),
+            CollisionHandler::new(),
             create_default_text_brush(
                 device,
                 config,
@@ -367,14 +365,9 @@ impl ShashlikRenderer {
         self.world_tree_node
             .update(device, queue, config, &mut self.global_context);
 
-        let sections: Vec<OwnedSection> = self.global_context.text_sections
-            .drain()
-            .filter_map(|item| match item.data {
-                RTreeData::TextSection(section) => Some(section),
-                RTreeData::Icon => None
-            })
-            .collect();
+        self.global_context.collision_handler.clear();
 
+        let sections = mem::replace(&mut self.global_context.text_sections, vec![]);
         // TODO move to TextLayer somehow?
         self.global_context
             .text_brush
