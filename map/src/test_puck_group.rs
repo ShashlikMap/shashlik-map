@@ -15,7 +15,7 @@ impl RenderGroup for TestSimplePuck {
                 geometry_type: GeometryType::Polygon,
                 style_id: StyleId("puck_style"),
                 layer_level: 0,
-                is_screen: true,
+                is_screen: false,
             },
         );
     }

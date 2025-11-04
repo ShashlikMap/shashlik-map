@@ -79,9 +79,11 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         let camera_offset = (camera_offset.x, camera_offset.y, 0.0).into();
 
+        let mut puck_spatial_data = SpatialData::transform(Vector3::new(0.0, 0.0, 0.0));
+        puck_spatial_data.scale(1.0);
         renderer.api.add_render_group(
             "puck".to_string(),
-            SpatialData::transform(Vector3::new(0.0, 0.0, 0.0)),
+            puck_spatial_data,
             Box::new(TestSimplePuck {}),
         );
 
@@ -182,21 +184,17 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     fn temp_update_some_styles(&mut self) {
-        self.temp_color += 0.01;
-        if self.temp_color > 1.0 {
-            self.temp_color = 0.0;
-        }
-        // let tt = self.temp_color;
-        // self.renderer
-        //     .api
-        //     .update_style(StyleId("road"), move |style| {
-        //         *style = RenderStyle::border([0.87843, 0.48627, 0.56471, 1.0], tt);
-        //     });
-
         self.renderer
             .api
             .update_spatial_data("some_icon".to_string(), |spatial_data| {
                 spatial_data.transform.y += 0.02;
+            });
+
+        let cam_zoom = -self.camera_controller.borrow().camera_z / 100.0;
+        self.renderer
+            .api
+            .update_spatial_data("puck".to_string(), move |spatial_data| {
+                spatial_data.scale = cam_zoom;
             });
     }
 

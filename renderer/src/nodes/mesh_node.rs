@@ -3,7 +3,7 @@ use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::SceneNode;
 use crate::vertex_attrs::InstancePos;
 use crate::{GlobalContext, ReceiverExt};
-use cgmath::Vector3;
+use cgmath::{Matrix4, Vector3};
 use cgmath::num_traits::clamp;
 use geo_types::point;
 use log::error;
@@ -123,11 +123,13 @@ impl PositionedMesh {
         is_two_instances: bool,
     ) {
         attrs.clear();
+        let matrix = Matrix4::<f32>::from_scale(spatial_data.scale);
         for i in 0..original_positions_alpha.len() {
             let item = original_positions_alpha[i];
             let instance_pos = InstancePos {
                 position: (item.0 + spatial_data.transform).into(),
                 color_alpha: item.1,
+                matrix: matrix.into()
             };
             attrs.push(instance_pos);
             if is_two_instances {
