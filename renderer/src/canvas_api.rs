@@ -17,13 +17,14 @@ use lyon::lyon_tessellation::{
 use lyon::path::Path;
 use std::collections::{BTreeMap, HashMap};
 use std::mem;
+use std::ops::Range;
 
 pub struct CanvasApi {
     style_store: StyleStore,
     flushed: bool,
     draw_commands: Vec<Box<dyn DrawCommand>>,
     geometry: VertexBuffers<ShapeVertex, u32>,
-    indices_by_layers: BTreeMap<i8, usize>,
+    indices_by_layers: BTreeMap<i8, Vec<Range<usize>>>,
     real_layer: usize,
     geometry3d: VertexBuffers<MeshVertex, u32>,
     text_vec: Vec<TextData>,
@@ -100,15 +101,15 @@ impl CanvasApi {
     fn mesh2d(&mut self, positions: Vector3<f32>, is_screen: bool) {
         let mesh = mem::replace(&mut self.geometry, VertexBuffers::new());
         if !mesh.vertices.is_empty() {
-            let layers_indices = self.indices_by_layers.values().copied().collect();
-            self.mesh2d_with_positions(mesh, layers_indices, vec![positions], is_screen);
+            let flatten_ranges = self.indices_by_layers.values().flatten().cloned().collect();
+            self.mesh2d_with_positions(mesh, flatten_ranges, vec![positions], is_screen);
         }
     }
 
     fn mesh2d_with_positions(
         &mut self,
         mesh: VertexBuffers<ShapeVertex, u32>,
-        layers_indices: Vec<usize>,
+        layers_indices: Vec<Range<usize>>,
         positions: Vec<Vector3<f32>>,
         is_screen: bool,
     ) {
@@ -190,6 +191,7 @@ impl CanvasApi {
         let path = data.path.clone();
         let geom_type = data.geometry_type;
         let style_index = self.style_store.get_index(&data.style_id);
+        let initial_index = self.geometry.indices.len();
         if geom_type == GeometryType::Polygon {
             Self::tessellate_fill_path(&path, &mut self.geometry, |vertex| ShapeVertex {
                 position: [vertex.position().x, vertex.position().y, 0.0f32],
@@ -203,8 +205,18 @@ impl CanvasApi {
                 style_index: style_index as u32,
             });
         }
-        self.indices_by_layers
-            .insert(data.layer_level, self.geometry.indices.len());
+        let last_index = self.geometry.indices.len();
+
+        let ranges = self.indices_by_layers.entry(data.layer_level).or_insert(Vec::new());
+        if let Some(last) = ranges.last_mut() {
+            if last.end == initial_index {
+                last.end = last_index;
+            } else {
+                ranges.push(initial_index..last_index);
+            }
+        } else {
+            ranges.push(initial_index..last_index);
+        }
 
         // TODO It should aggregate geometry for "screen" type layers
         if data.is_screen {
@@ -248,7 +260,7 @@ impl CanvasApi {
                 .collect();
             for (mesh, positions) in data {
                 if !positions.is_empty() {
-                    let layers_indices = vec![mesh.indices.len()];
+                    let layers_indices = vec![0..mesh.indices.len()];
                     self.mesh2d_with_positions(mesh, layers_indices, positions, true);
                 }
             }

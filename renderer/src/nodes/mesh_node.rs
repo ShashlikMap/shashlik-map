@@ -63,11 +63,11 @@ impl Mesh {
             if v_buf.size() > 0 && i_buf.size() > 0 {
                 render_pass.set_vertex_buffer(0, v_buf.slice(..));
                 render_pass.set_index_buffer(i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                let mut prev = 0u32;
-                for to_index in &self.layers_indices {
+                for range in &self.layers_indices {
+                    let start = range.start;
+                    let end = range.end;
                     // draw two instances, outlined and normal
-                    render_pass.draw_indexed(prev..*to_index as u32, 0, instances.clone());
-                    prev = *to_index as u32;
+                    render_pass.draw_indexed(start as u32..end as u32, 0, instances.clone());
                 }
             } else {
                 error!("Vertex/Index buffer are empty");

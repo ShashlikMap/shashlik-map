@@ -8,6 +8,7 @@ use crate::nodes::scene_tree::SceneTree;
 use bytemuck::NoUninit;
 use lyon::lyon_tessellation::VertexBuffers;
 use std::cell::RefMut;
+use std::ops::Range;
 use wgpu::Device;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use crate::nodes::shape_layers::ShapeLayers;
@@ -87,12 +88,12 @@ pub(crate) trait DrawCommand: Send {
 }
 
 fn geometry_to_mesh<T: NoUninit>(device: &Device, geometry: &VertexBuffers<T, u32>) -> Mesh {
-    geometry_to_mesh_with_layers(device, geometry, vec![geometry.indices.len()])
+    geometry_to_mesh_with_layers(device, geometry, vec![0..geometry.indices.len()])
 }
 fn geometry_to_mesh_with_layers<T: NoUninit>(
     device: &Device,
     geometry: &VertexBuffers<T, u32>,
-    layers_indices: Vec<usize>,
+    layers_indices: Vec<Range<usize>>,
 ) -> Mesh {
     let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
         label: Some("Vertex Buffer"),

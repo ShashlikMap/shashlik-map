@@ -6,12 +6,13 @@ use crate::vertex_attrs::ShapeVertex;
 use cgmath::Vector3;
 use lyon::tessellation::VertexBuffers;
 use std::cell::RefMut;
+use std::ops::Range;
 
 #[derive(Clone)]
 pub(crate) struct Mesh2dDrawCommand {
     pub mesh: VertexBuffers<ShapeVertex, u32>,
     pub real_layer: usize,
-    pub layers_indices: Vec<usize>,
+    pub layers_indices: Vec<Range<usize>>,
     pub positions: Vec<Vector3<f32>>,
     pub is_screen: bool,
 }
