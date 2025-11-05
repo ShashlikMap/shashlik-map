@@ -1,4 +1,3 @@
-#![feature(slice_as_array)]
 extern crate core;
 
 use crate::collision_handler::CollisionHandler;
