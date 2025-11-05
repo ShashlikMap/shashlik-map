@@ -1,3 +1,4 @@
+#![feature(slice_as_array)]
 extern crate core;
 
 use crate::collision_handler::CollisionHandler;
@@ -34,6 +35,7 @@ use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use wgpu_text::glyph_brush::ab_glyph::FontRef;
 use wgpu_text::glyph_brush::OwnedSection;
 use wgpu_text::TextBrush;
+use crate::nodes::shape_layers::ShapeLayers;
 
 pub mod camera;
 pub mod canvas_api;
@@ -108,7 +110,7 @@ impl GlobalContext {
 
 pub struct ShashlikRenderer {
     world_tree_node: SceneTree,
-    shape_layer: Rc<RefCell<SceneTree>>,
+    shape_layers: ShapeLayers,
     mesh_layer: Rc<RefCell<SceneTree>>,
     screen_shape_layer: Rc<RefCell<SceneTree>>,
     text_layer: Rc<RefCell<SceneTree>>,
@@ -167,25 +169,7 @@ impl ShashlikRenderer {
 
         let style_store = StyleStore::new();
 
-        let shape_layer = MeshLayer::new(
-            &device,
-            include_wgsl!("shaders/shape_shader.wgsl"),
-            Rc::new([ShapeVertex::desc(), InstancePos::desc()]),
-            pipeline_provider.clone(),
-            None,
-        );
-
-        let shape_layer: StyleAdapterNode<MeshLayer> = StyleAdapterNode::new(
-            device,
-            style_store.subscribe(),
-            shape_layer,
-            SHADER_STYLE_GROUP_INDEX,
-            CompareFunction::Always,
-        );
-
-        let shape_layer = camera_node
-            .borrow_mut()
-            .add_child_with_key(shape_layer, "shape layer".to_string());
+        let shape_layers = ShapeLayers::new(device, pipeline_provider.clone(), &style_store, camera_node.clone());
 
         let mesh_layer = camera_node.borrow_mut().add_child_with_key(
             MeshLayer::new(
@@ -245,7 +229,7 @@ impl ShashlikRenderer {
 
         Ok(Self {
             world_tree_node,
-            shape_layer,
+            shape_layers,
             mesh_layer,
             screen_shape_layer,
             text_layer,
@@ -269,12 +253,12 @@ impl ShashlikRenderer {
             loop {
                 let api_msg = receiver_api_rx.recv().unwrap();
                 match api_msg {
-                    RendererApiMsg::RenderGroup((key, spatial_data, rg)) => {
+                    RendererApiMsg::RenderGroup((key, layer, spatial_data, rg)) => {
                         let (spatial_tx, _) = broadcast::channel(1);
                         spatial_data_map
                             .insert(key.clone(), (spatial_data.clone(), spatial_tx.clone()));
 
-                        canvas_api.begin_shape();
+                        canvas_api.begin_shape(layer);
                         rg.content(&mut canvas_api);
                         canvas_api.flush();
 
@@ -338,7 +322,7 @@ impl ShashlikRenderer {
                 RendererMessage::Draw(draw_commands) => {
                     draw_commands.execute(
                         &device,
-                        &mut self.shape_layer.borrow_mut(),
+                        &mut self.shape_layers,
                         &mut self.screen_shape_layer.borrow_mut(),
                         &mut self.mesh_layer.borrow_mut(),
                         &mut self.text_layer.borrow_mut(),
@@ -347,7 +331,7 @@ impl ShashlikRenderer {
                 RendererMessage::ClearGroups(keys) => {
                     keys.iter().for_each(|key| {
                         self.mesh_layer.borrow_mut().clear_by_key(key.clone());
-                        self.shape_layer.borrow_mut().clear_by_key(key.clone());
+                        self.shape_layers.clear_by_key(key.clone());
                         self.screen_shape_layer
                             .borrow_mut()
                             .clear_by_key(key.clone());

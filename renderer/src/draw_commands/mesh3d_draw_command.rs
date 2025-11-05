@@ -3,6 +3,7 @@ use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::scene_tree::SceneTree;
 use lyon::lyon_tessellation::VertexBuffers;
 use std::cell::RefMut;
+use crate::nodes::shape_layers::ShapeLayers;
 
 #[derive(Clone)]
 pub(crate) struct Mesh3dDrawCommand {
@@ -16,7 +17,7 @@ impl DrawCommand for Mesh3dDrawCommand {
         key: String,
         _spatial_data: SpatialData,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-        _shape_layer: &mut RefMut<SceneTree>,
+        _shape_layers: &mut ShapeLayers,
         _screen_shape_layer: &mut RefMut<SceneTree>,
         mesh_layer: &mut RefMut<SceneTree>,
         _text_layer: &mut RefMut<SceneTree>,

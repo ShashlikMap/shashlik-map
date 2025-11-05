@@ -5,6 +5,7 @@ use crate::nodes::scene_tree::SceneTree;
 use crate::nodes::text_node::TextNode;
 use std::cell::RefMut;
 use wgpu::Device;
+use crate::nodes::shape_layers::ShapeLayers;
 
 #[derive(Clone)]
 pub(crate) struct TextDrawCommand {
@@ -18,7 +19,7 @@ impl DrawCommand for TextDrawCommand {
         key: String,
         spatial_data: SpatialData,
         _spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-        _shape_layer: &mut RefMut<SceneTree>,
+        _shape_layers: &mut ShapeLayers,
         _screen_shape_layer: &mut RefMut<SceneTree>,
         _mesh_layer: &mut RefMut<SceneTree>,
         text_layer: &mut RefMut<SceneTree>,

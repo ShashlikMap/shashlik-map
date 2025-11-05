@@ -21,11 +21,12 @@ impl RendererApi {
     pub fn add_render_group(
         &self,
         key: String,
+        layer: usize,
         spatial_data: SpatialData,
         group: Box<dyn RenderGroup>,
     ) {
         self.renderer_api_tx
-            .send(RendererApiMsg::RenderGroup((key, spatial_data, group)))
+            .send(RendererApiMsg::RenderGroup((key, layer, spatial_data, group)))
             .expect("RendererApi add_render_group sender failed.");
     }
 

@@ -1,6 +1,7 @@
 use crate::draw_commands::{DrawCommand, geometry_to_mesh_with_layers};
 use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::scene_tree::SceneTree;
+use crate::nodes::shape_layers::ShapeLayers;
 use crate::vertex_attrs::ShapeVertex;
 use cgmath::Vector3;
 use lyon::tessellation::VertexBuffers;
@@ -9,6 +10,7 @@ use std::cell::RefMut;
 #[derive(Clone)]
 pub(crate) struct Mesh2dDrawCommand {
     pub mesh: VertexBuffers<ShapeVertex, u32>,
+    pub real_layer: usize,
     pub layers_indices: Vec<usize>,
     pub positions: Vec<Vector3<f32>>,
     pub is_screen: bool,
@@ -21,7 +23,7 @@ impl DrawCommand for Mesh2dDrawCommand {
         key: String,
         _spatial_data: SpatialData,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-        shape_layer: &mut RefMut<SceneTree>,
+        shape_layers: &mut ShapeLayers,
         screen_shape_layer: &mut RefMut<SceneTree>,
         _mesh_layer: &mut RefMut<SceneTree>,
         _text_layer: &mut RefMut<SceneTree>,
@@ -38,7 +40,10 @@ impl DrawCommand for Mesh2dDrawCommand {
         if self.is_screen {
             screen_shape_layer.add_child_with_key(mesh, key);
         } else {
-            shape_layer.add_child_with_key(mesh, key);
+            shape_layers
+                .get_shape_layer(self.real_layer)
+                .borrow_mut()
+                .add_child_with_key(mesh, key);
         }
     }
 }

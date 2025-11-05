@@ -83,12 +83,14 @@ impl<T: TilesProvider> ShashlikMap<T> {
         puck_spatial_data.scale(1.0);
         renderer.api.add_render_group(
             "puck".to_string(),
+            1,
             puck_spatial_data,
             Box::new(TestSimplePuck {}),
         );
 
         renderer.api.add_render_group(
             "some_icon".to_string(),
+            0,
             SpatialData::transform(Vector3::new(30.0, 0.0, 0.0)),
             Box::new(TestSimplePathGroup {
                 path: MeshLoader::load_test_line_path(),
@@ -136,6 +138,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
                         Some((item, to_remove)) => {
                             renderer_api.add_render_group(
                                 item.key.to_string(),
+                                0,
                                 SpatialData::transform(
                                     item.position - camera_offset.cast().unwrap(),
                                 ),

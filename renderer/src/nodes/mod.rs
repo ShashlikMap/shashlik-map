@@ -10,6 +10,7 @@ pub mod scene_tree;
 pub mod style_adapter_node;
 pub mod text_node;
 pub mod world;
+pub mod shape_layers;
 
 pub trait SceneNode {
     fn setup(&mut self, _render_context: &mut RenderContext, _device: &Device) {}

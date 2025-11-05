@@ -10,6 +10,7 @@ use lyon::lyon_tessellation::VertexBuffers;
 use std::cell::RefMut;
 use wgpu::Device;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
+use crate::nodes::shape_layers::ShapeLayers;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -48,7 +49,7 @@ impl DrawCommands {
     pub(crate) fn execute(
         &self,
         device: &wgpu::Device,
-        shape_layer: &mut RefMut<SceneTree>,
+        shape_layers: &mut ShapeLayers,
         screen_shape_layer: &mut RefMut<SceneTree>,
         mesh_layer: &mut RefMut<SceneTree>,
         text_layer: &mut RefMut<SceneTree>,
@@ -59,7 +60,7 @@ impl DrawCommands {
                 self.key.clone(),
                 self.spatial_data.clone(),
                 self.spatial_tx.subscribe(),
-                shape_layer,
+                shape_layers,
                 screen_shape_layer,
                 mesh_layer,
                 text_layer
@@ -78,7 +79,7 @@ pub(crate) trait DrawCommand: Send {
         key: String,
         spatial_data: SpatialData,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-        shape_layer: &mut RefMut<SceneTree>,
+        shape_layers: &mut ShapeLayers,
         screen_shape_layer: &mut RefMut<SceneTree>,
         mesh_layer: &mut RefMut<SceneTree>,
         text_layer: &mut RefMut<SceneTree>,

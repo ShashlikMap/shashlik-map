@@ -11,7 +11,7 @@ pub(crate) enum RendererMessage {
 }
 
 pub enum RendererApiMsg {
-    RenderGroup((String, SpatialData, Box<dyn RenderGroup>)),
+    RenderGroup((String, usize, SpatialData, Box<dyn RenderGroup>)),
     UpdateStyle((StyleId, Box<dyn FnOnce(&mut RenderStyle) + Send>)),
     UpdateSpatialData((String, Box<dyn FnOnce(&mut SpatialData) + Send>)),
     ClearGroups(HashSet<String>)
