@@ -18,13 +18,14 @@ use renderer::draw_commands::GeometryType;
 use renderer::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData, TextData};
 use renderer::styles::style_id::StyleId;
 use std::collections::HashSet;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 
 pub struct OldTilesProvider<S: TileSource> {
     sender: Option<UnboundedSender<(TileData, HashSet<String>)>>,
     tile_store: Arc<TileStore<S>>,
     cache: HashSet<TileKey>,
+    global_visible_tiles: Arc<RwLock<HashSet<TileKey>>>,
 }
 
 impl<S: TileSource> OldTilesProvider<S> {
@@ -37,11 +38,13 @@ impl<S: TileSource> OldTilesProvider<S> {
             sender: None,
             tile_store: Arc::new(TileStore::new(source)),
             cache: HashSet::new(),
+            global_visible_tiles: Arc::new(RwLock::new(HashSet::new())),
         }
     }
 
     fn internal_load(
         tile_store: Arc<TileStore<S>>,
+        visible_items: Arc<RwLock<HashSet<TileKey>>>,
         to_load: HashSet<TileKey>,
         removed: HashSet<String>,
         sender: &UnboundedSender<(TileData, HashSet<String>)>,
@@ -53,12 +56,13 @@ impl<S: TileSource> OldTilesProvider<S> {
             } else {
                 HashSet::new()
             };
-            Self::internal_load_tile_key(key, tile_store.clone(), to_removed, sender);
+            Self::internal_load_tile_key(key, visible_items.clone(), tile_store.clone(), to_removed, sender);
         });
     }
 
     fn internal_load_tile_key(
         tile_key: &TileKey,
+        visible_items: Arc<RwLock<HashSet<TileKey>>>,
         tile_store: Arc<TileStore<S>>,
         removed: HashSet<String>,
         sender: &UnboundedSender<(TileData, HashSet<String>)>,
@@ -68,6 +72,10 @@ impl<S: TileSource> OldTilesProvider<S> {
         let tile_rect_origin = Self::lat_lon_to_world(&tile_rect.min());
 
         let geom = tile_store.load_geometries(&tile_key);
+        if !visible_items.read().unwrap().contains(tile_key) {
+            println!("skipping tile processing, key {:?}", tile_key);
+            return;
+        }
 
         let tile_position = [tile_rect_origin.x as f32, tile_rect_origin.y as f32, 0.0].into();
 
@@ -219,7 +227,11 @@ impl<S: TileSource> OldTilesProvider<S> {
             geometry_data,
         };
 
-        sender.unbounded_send((tile_data, removed)).unwrap();
+        if visible_items.read().unwrap().contains(tile_key) {
+            sender.unbounded_send((tile_data, removed)).unwrap();
+        } else {
+            println!("skipping tile sending to rendered, key {:?}", tile_key);
+        }
     }
 
     fn highway_style_id(kind: &HighwayKind) -> StyleId {
@@ -239,7 +251,7 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
         let sender = self.sender.clone();
         let tile_store = self.tile_store.clone();
         let ranges = calc_tile_ranges(TILES_COUNT, zoom_level, &area_latlon);
-        let mut visible_tiles: HashSet<TileKey> = HashSet::new();
+        let mut current_visible_tiles: HashSet<TileKey> = HashSet::new();
         let mut to_load: HashSet<TileKey> = HashSet::new();
         for tx in ranges.min_x..=ranges.max_x {
             for ty in ranges.min_y..=ranges.max_y {
@@ -248,7 +260,7 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
                     tile_y: ty as i32,
                     zoom_level,
                 };
-                visible_tiles.insert(tile_key);
+                current_visible_tiles.insert(tile_key);
                 if self.cache.insert(tile_key) {
                     to_load.insert(tile_key);
                 }
@@ -256,15 +268,17 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
         }
         let removed: HashSet<String> = self
             .cache
-            .extract_if(|key| !visible_tiles.contains(&key))
+            .extract_if(|key| !current_visible_tiles.contains(&key))
             .map(|item| item.as_string_key())
             .collect();
 
         // start job only if it makes sense
         if !to_load.is_empty() || !removed.is_empty() {
+            let global_visible_tiles = self.global_visible_tiles.clone();
             spawn(move || {
+                *global_visible_tiles.write().unwrap() = current_visible_tiles;
                 if let Some(sender) = sender.as_ref() {
-                    Self::internal_load(tile_store, to_load, removed, sender);
+                    Self::internal_load(tile_store, global_visible_tiles, to_load, removed, sender);
                 }
             });
         }
