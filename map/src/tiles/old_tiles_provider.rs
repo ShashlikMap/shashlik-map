@@ -156,11 +156,6 @@ impl<S: TileSource> OldTilesProvider<S> {
                             }
                             path_builder.end(false);
 
-                            match &obj_type.kind {
-                                MapGeomObjectKind::Way(_) => {}
-                                _ => {}
-                            }
-
                             geometry_data.push(GeometryData::Shape(ShapeData {
                                 path: path_builder.build(),
                                 geometry_type: GeometryType::Polyline,
@@ -204,6 +199,8 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     StyleId("water")
                                 } else if obj_type.kind == MapGeomObjectKind::Building {
                                     StyleId("building")
+                                } else if obj_type.kind == MapGeomObjectKind::Nature(NatureKind::Ground) {
+                                    StyleId("ground")
                                 } else {
                                     StyleId("land")
                                 };

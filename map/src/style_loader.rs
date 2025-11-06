@@ -32,6 +32,10 @@ impl StyleLoader {
                     RenderStyle::fill([0.447, 0.91, 0.651, 1.0]),
                 ),
                 (
+                    StyleId("ground"),
+                    RenderStyle::fill([0.52, 0.37, 0.29, 1.0]),
+                ),
+                (
                     StyleId("puck_style"),
                     RenderStyle::fill([0.0, 0.09, 1.0, 1.0]),
                 ),

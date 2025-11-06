@@ -388,10 +388,10 @@ impl ShashlikRenderer {
                     resolve_target: Some(&view),
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.52,
-                            g: 0.37,
-                            b: 0.29,
-                            a: 1.0, // just plane color
+                            r: 0.0,
+                            g: 0.741,
+                            b: 0.961,
+                            a: 1.0,
                         }),
                         store: wgpu::StoreOp::Store,
                     },
