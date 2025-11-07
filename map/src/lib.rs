@@ -125,7 +125,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     fn run_tiles(
         renderer_api: Arc<RendererApi>,
-        tiles_stream: impl Stream<Item = (TileData, HashSet<String>)> + Send + 'static,
+        tiles_stream: impl Stream<Item = (Option<TileData>, HashSet<String>)> + Send + 'static,
         camera_offset: Vector3<f64>,
     ) {
         spawn(move || {
@@ -136,14 +136,17 @@ impl<T: TilesProvider> ShashlikMap<T> {
                     match item {
                         None => break,
                         Some((item, to_remove)) => {
-                            renderer_api.add_render_group(
-                                item.key.to_string(),
-                                0,
-                                SpatialData::transform(
-                                    item.position - camera_offset.cast().unwrap(),
-                                ),
-                                Box::new(item),
-                            );
+                            if let Some(item) = item {
+                                renderer_api.add_render_group(
+                                    item.key.to_string(),
+                                    0,
+                                    SpatialData::transform(
+                                        item.position - camera_offset.cast().unwrap(),
+                                    ),
+                                    Box::new(item),
+                                );
+                            }
+
                             if !to_remove.is_empty() {
                                 renderer_api.clear_render_groups(to_remove);
                             }

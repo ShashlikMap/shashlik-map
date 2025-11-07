@@ -22,7 +22,7 @@ use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 
 pub struct OldTilesProvider<S: TileSource> {
-    sender: Option<UnboundedSender<(TileData, HashSet<String>)>>,
+    sender: Option<UnboundedSender<(Option<TileData>, HashSet<String>)>>,
     tile_store: Arc<TileStore<S>>,
     cache: HashSet<TileKey>,
     global_visible_tiles: Arc<RwLock<HashSet<TileKey>>>,
@@ -47,7 +47,7 @@ impl<S: TileSource> OldTilesProvider<S> {
         visible_items: Arc<RwLock<HashSet<TileKey>>>,
         to_load: HashSet<TileKey>,
         removed: HashSet<String>,
-        sender: &UnboundedSender<(TileData, HashSet<String>)>,
+        sender: &UnboundedSender<(Option<TileData>, HashSet<String>)>,
     ) {
         to_load.iter().enumerate().for_each(|(index, key)| {
             let is_last = index == to_load.len() - 1;
@@ -58,6 +58,9 @@ impl<S: TileSource> OldTilesProvider<S> {
             };
             Self::internal_load_tile_key(key, visible_items.clone(), tile_store.clone(), to_removed, sender);
         });
+        if to_load.is_empty() && !removed.is_empty(){
+            sender.unbounded_send((None, removed)).unwrap();
+        }
     }
 
     fn internal_load_tile_key(
@@ -65,7 +68,7 @@ impl<S: TileSource> OldTilesProvider<S> {
         visible_items: Arc<RwLock<HashSet<TileKey>>>,
         tile_store: Arc<TileStore<S>>,
         removed: HashSet<String>,
-        sender: &UnboundedSender<(TileData, HashSet<String>)>,
+        sender: &UnboundedSender<(Option<TileData>, HashSet<String>)>,
     ) {
         let tile_rect = tile_key.calc_tile_boundary(1.0);
 
@@ -74,6 +77,9 @@ impl<S: TileSource> OldTilesProvider<S> {
         let geom = tile_store.load_geometries(&tile_key);
         if !visible_items.read().unwrap().contains(tile_key) {
             println!("skipping tile processing, key {:?}", tile_key);
+            if !removed.is_empty() {
+                sender.unbounded_send((None, removed)).unwrap();
+            }
             return;
         }
 
@@ -225,9 +231,12 @@ impl<S: TileSource> OldTilesProvider<S> {
         };
 
         if visible_items.read().unwrap().contains(tile_key) {
-            sender.unbounded_send((tile_data, removed)).unwrap();
+            sender.unbounded_send((Some(tile_data), removed)).unwrap();
         } else {
             println!("skipping tile sending to rendered, key {:?}", tile_key);
+            if !removed.is_empty() {
+                sender.unbounded_send((None, removed)).unwrap();
+            }
         }
     }
 
@@ -268,7 +277,7 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
             .extract_if(|key| !current_visible_tiles.contains(&key))
             .map(|item| item.as_string_key())
             .collect();
-
+        
         // start job only if it makes sense
         if !to_load.is_empty() || !removed.is_empty() {
             let global_visible_tiles = self.global_visible_tiles.clone();
@@ -281,7 +290,7 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
         }
     }
 
-    fn tiles(&mut self) -> impl Stream<Item = (TileData, HashSet<String>)> + Send + 'static {
+    fn tiles(&mut self) -> impl Stream<Item = (Option<TileData>, HashSet<String>)> + Send + 'static {
         let (sender, receiver) = unbounded();
         self.sender = Some(sender);
 

@@ -10,7 +10,7 @@ use renderer::styles::style_id::StyleId;
 use std::collections::HashSet;
 
 pub struct StubTilesProvider {
-    sender: Option<UnboundedSender<(TileData, HashSet<String>)>>,
+    sender: Option<UnboundedSender<(Option<TileData>, HashSet<String>)>>,
 }
 
 impl StubTilesProvider {
@@ -58,11 +58,11 @@ impl TilesProvider for StubTilesProvider {
         };
 
         if let Some(sender) = &self.sender {
-            sender.unbounded_send((tile_data, HashSet::new())).unwrap();
+            sender.unbounded_send((Some(tile_data), HashSet::new())).unwrap();
         }
     }
 
-    fn tiles(&mut self) -> impl Stream<Item = (TileData, HashSet<String>)> + Send + 'static {
+    fn tiles(&mut self) -> impl Stream<Item = (Option<TileData>, HashSet<String>)> + Send + 'static {
         let (sender, receiver) = unbounded();
         self.sender = Some(sender);
 

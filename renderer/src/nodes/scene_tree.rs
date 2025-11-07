@@ -51,12 +51,12 @@ impl SceneTree {
 
     pub fn clear_by_key(&mut self, key: String) {
         self.children.retain(|node| node.borrow().key != key);
-        println!(
-            "layer {:?}, key_to_remove:{:?}, count: {}",
-            self.key,
-            key,
-            self.children.len()
-        );
+        // println!(
+        //     "layer {:?}, key_to_remove:{:?}, count: {}",
+        //     self.key,
+        //     key,
+        //     self.children.len()
+        // );
     }
 
     pub fn clear(&mut self) {
