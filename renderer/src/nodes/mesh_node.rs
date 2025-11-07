@@ -17,7 +17,7 @@ pub struct PositionedMesh {
     mesh: Mesh,
     instance_buffer: Buffer,
     attrs: Vec<InstancePos>,
-    original_positions_alpha: Vec<(Vector3<f32>, f32)>, // TODO Proper structure with bound
+    original_positions_alpha: Vec<(Vector3<f64>, f32)>, // TODO Proper structure with bound
     is_two_instances: bool,
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
@@ -42,7 +42,7 @@ impl Mesh {
     pub fn to_positioned_with_instances(
         self,
         device: &Device,
-        original_positions: Vec<Vector3<f32>>,
+        original_positions: Vec<Vector3<f64>>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
         with_collisions: bool,
@@ -80,7 +80,7 @@ impl PositionedMesh {
     pub fn new(
         device: &Device,
         mesh: Mesh,
-        original_positions: Vec<Vector3<f32>>,
+        original_positions: Vec<Vector3<f64>>,
         mut spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
         with_collisions: bool,
@@ -118,18 +118,23 @@ impl PositionedMesh {
 impl PositionedMesh {
     fn update_attrs(
         attrs: &mut Vec<InstancePos>,
-        original_positions_alpha: &Vec<(Vector3<f32>, f32)>,
+        original_positions_alpha: &Vec<(Vector3<f64>, f32)>,
         spatial_data: &SpatialData,
         is_two_instances: bool,
     ) {
         attrs.clear();
-        let matrix = Matrix4::<f32>::from_scale(spatial_data.scale);
+        let matrix = Matrix4::<f64>::from_scale(spatial_data.scale);
         for i in 0..original_positions_alpha.len() {
             let item = original_positions_alpha[i];
+
             let instance_pos = InstancePos {
-                position: (item.0 + spatial_data.transform).into(),
+                position: (item.0 + spatial_data.transform).cast().unwrap().into(),
                 color_alpha: item.1,
-                matrix: matrix.into()
+                matrix: matrix.cast().unwrap().into(),
+                bbox: [spatial_data.transform.x.round() as f32,
+                    spatial_data.transform.y.round() as f32,
+                    spatial_data.size.0.round() as f32,
+                    spatial_data.size.1.round() as f32],
             };
             attrs.push(instance_pos);
             if is_two_instances {
@@ -166,9 +171,10 @@ impl SceneNode for PositionedMesh {
                     0.0,
                 ));
                 // TODO Bounds for svg?
+                // no need to use f64 for collision detection
                 let bounds = Rectangle::from_corners(
-                    point! { x: screen_pos.x - 20.0, y: screen_pos.y - 20.0},
-                    point! { x: screen_pos.x + 20.0, y: screen_pos.y + 20.0},
+                    point! { x: screen_pos.x as f32 - 20.0, y: screen_pos.y as f32 - 20.0},
+                    point! { x: screen_pos.x as f32+ 20.0, y: screen_pos.y as f32 + 20.0},
                 );
 
                 if let Some(added) = global_context.collision_handler.insert(config, bounds) {

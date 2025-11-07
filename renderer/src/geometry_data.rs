@@ -35,7 +35,7 @@ pub struct Mesh3d {
 #[derive(Clone)]
 pub struct SvgData {
     pub icon: (&'static str, &'static [u8]),
-    pub position: Vector3<f32>,
+    pub position: Vector3<f64>,
     pub size: f32,
     pub style_id: StyleId,
 }

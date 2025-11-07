@@ -31,6 +31,7 @@ struct InstanceInput {
     @location(6) model_matrix_1: vec4<f32>,
     @location(7) model_matrix_2: vec4<f32>,
     @location(8) model_matrix_3: vec4<f32>,
+    @location(9) bbox: vec4<f32>,
 }
 
 struct VertexOutput {
@@ -38,6 +39,8 @@ struct VertexOutput {
     @location(0) style_index: u32,
     @location(1) outline_flag: u32,
     @location(2) color_alpha: f32,
+    @location(3) vertex_pos_xy: vec2<f32>,
+    @location(4) bbox: vec4<f32>,
 }
 
 // TODO pass as a parameter
@@ -68,6 +71,8 @@ fn vs_main(
         pointPos += vec3(model.normal.xy * inflate_factor, 0.0);
     }
 
+    out.vertex_pos_xy = pointPos.xy;
+    out.bbox = pos.bbox;
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
@@ -75,6 +80,16 @@ fn vs_main(
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    // ignore if both are zero
+    if in.bbox.z > 0.0 || in.bbox.w > 0.0 {
+        if in.vertex_pos_xy.x < in.bbox.x || in.vertex_pos_xy.x > in.bbox.x + in.bbox.z {
+            discard;
+        }
+        // carefull with sings, they are different from X axis
+        if in.vertex_pos_xy.y > in.bbox.y || in.vertex_pos_xy.y < in.bbox.y - in.bbox.w  {
+            discard;
+        }
+    }
     let style_params = styles[in.style_index].params;
     // FIXME Requires better solution for param type
     let style_type = u32(round(style_params[0]));

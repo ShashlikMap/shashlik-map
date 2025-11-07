@@ -2,7 +2,7 @@ use cgmath::{Matrix4, SquareMatrix, Transform, Vector2, Vector3, Vector4};
 use geo_types::{Coord, coord};
 
 #[rustfmt::skip]
-pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::from_cols(
+pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f64> = cgmath::Matrix4::from_cols(
     cgmath::Vector4::new(1.0, 0.0, 0.0, 0.0),
     cgmath::Vector4::new(0.0, 1.0, 0.0, 0.0),
     cgmath::Vector4::new(0.0, 0.0, 0.5, 0.0),
@@ -10,7 +10,7 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::from_co
 );
 
 #[rustfmt::skip]
-pub const FLIP_Y: Matrix4<f32> = Matrix4::new(
+pub const FLIP_Y: Matrix4<f64> = Matrix4::new(
     1.0, 0.0, 0.0, 0.0,
     0.0, -1.0, 0.0, 0.0,
     0.0, 0.0, 1.0, 0.0,
@@ -25,33 +25,33 @@ pub struct Camera {
     pub fovy: f32,
     pub znear: f32,
     pub zfar: f32,
-    pub matrix: cgmath::Matrix4<f32>,
+    pub matrix: cgmath::Matrix4<f64>,
 }
 
 impl Camera {
-    pub fn build_view_projection_matrix(&mut self) -> cgmath::Matrix4<f32> {
+    pub fn build_view_projection_matrix(&mut self) -> cgmath::Matrix4<f64> {
         let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
         let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
-        self.matrix = proj * view;
+        self.matrix = (proj * view).cast().unwrap();
         self.matrix
     }
 }
 
 pub struct ScreenPositionCalculator<'a> {
-    matrix: Matrix4<f32>,
+    matrix: Matrix4<f64>,
     config: &'a wgpu::SurfaceConfiguration,
 }
 
 impl<'a> ScreenPositionCalculator<'a> {
-    pub fn new(matrix: Matrix4<f32>, config: &'a wgpu::SurfaceConfiguration) -> Self {
+    pub fn new(matrix: Matrix4<f64>, config: &'a wgpu::SurfaceConfiguration) -> Self {
         Self { matrix, config }
     }
-    pub fn screen_position(&self, world_position: Vector3<f32>) -> Coord<f32> {
+    pub fn screen_position(&self, world_position: Vector3<f64>) -> Coord<f64> {
         let pos = self.matrix * Vector4::new(world_position.x, world_position.y, 0.0, 1.0);
         let clip_pos_x = pos.x / pos.w;
         let clip_pos_y = pos.y / pos.w;
 
-        let screen_size = (self.config.width as f32, self.config.height as f32);
+        let screen_size = (self.config.width as f64, self.config.height as f64);
         coord! {
             x: screen_size.0 * (clip_pos_x + 1.0) / 2.0,
             y: screen_size.1 - (screen_size.1 * (clip_pos_y + 1.0) / 2.0)
@@ -77,7 +77,7 @@ impl CameraUniform {
 
     pub(crate) fn update_view_proj(&mut self, camera: &mut Camera) {
         self.view_proj =
-            (FLIP_Y * OPENGL_TO_WGPU_MATRIX * camera.build_view_projection_matrix()).into();
+            (FLIP_Y * OPENGL_TO_WGPU_MATRIX * camera.build_view_projection_matrix()).cast().unwrap().into();
         self.ratio = camera.aspect;
     }
 }
@@ -94,7 +94,7 @@ pub struct CameraController {
     pub is_x_pressed: bool,
     pub is_n_pressed: bool,
     pub is_m_pressed: bool,
-    pub cached_matrix: Matrix4<f32>,
+    pub cached_matrix: Matrix4<f64>,
     pub camera_z: f32,
 }
 

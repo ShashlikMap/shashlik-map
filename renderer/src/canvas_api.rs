@@ -28,7 +28,7 @@ pub struct CanvasApi {
     real_layer: usize,
     geometry3d: VertexBuffers<MeshVertex, u32>,
     text_vec: Vec<TextData>,
-    screen_path_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, Vec<Vector3<f32>>)>,
+    screen_path_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, Vec<Vector3<f64>>)>,
 }
 
 impl CanvasApi {
@@ -98,7 +98,7 @@ impl CanvasApi {
         }
     }
 
-    fn mesh2d(&mut self, positions: Vector3<f32>, is_screen: bool) {
+    fn mesh2d(&mut self, positions: Vector3<f64>, is_screen: bool) {
         let mesh = mem::replace(&mut self.geometry, VertexBuffers::new());
         if !mesh.vertices.is_empty() {
             let flatten_ranges = self.indices_by_layers.values().flatten().cloned().collect();
@@ -110,7 +110,7 @@ impl CanvasApi {
         &mut self,
         mesh: VertexBuffers<ShapeVertex, u32>,
         layers_indices: Vec<Range<usize>>,
-        positions: Vec<Vector3<f32>>,
+        positions: Vec<Vector3<f64>>,
         is_screen: bool,
     ) {
         self.draw_commands.push(Box::new(Mesh2dDrawCommand {

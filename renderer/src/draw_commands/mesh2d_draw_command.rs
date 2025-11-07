@@ -13,7 +13,7 @@ pub(crate) struct Mesh2dDrawCommand {
     pub mesh: VertexBuffers<ShapeVertex, u32>,
     pub real_layer: usize,
     pub layers_indices: Vec<Range<usize>>,
-    pub positions: Vec<Vector3<f32>>,
+    pub positions: Vec<Vector3<f64>>,
     pub is_screen: bool,
 }
 
@@ -34,8 +34,7 @@ impl DrawCommand for Mesh2dDrawCommand {
         let mesh = mesh.to_positioned_with_instances(
             device,
             self.positions.clone(), // mem::replace
-            spatial_rx,
-            true,
+            spatial_rx, true,
             self.is_screen, // TODO It should be a proper with_collisions param
         );
         if self.is_screen {

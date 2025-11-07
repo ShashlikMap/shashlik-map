@@ -142,7 +142,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
                                     0,
                                     SpatialData::transform(
                                         item.position - camera_offset.cast().unwrap(),
-                                    ),
+                                    ).size(item.size),
                                     Box::new(item),
                                 );
                             }
@@ -200,7 +200,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.renderer
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
-                spatial_data.scale = cam_zoom;
+                spatial_data.scale = cam_zoom as f64;
             });
     }
 

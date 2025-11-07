@@ -29,6 +29,7 @@ impl TilesProvider for StubTilesProvider {
         let tile_data = TileData {
             key: "".to_string(),
             position: [1.0, 0.0, 0.0].into(),
+            size: (0.0, 0.0),
             geometry_data: vec![
                 GeometryData::Shape(ShapeData {
                     path: line_path,

@@ -36,7 +36,8 @@ impl TextNode {
             data: text_data
                 .iter()
                 .map(|item| TextNodeData {
-                    world_position: item.position + spatial_data.transform,
+                    // text node doesn't have to be super precise
+                    world_position: item.position + spatial_data.transform.cast().unwrap(),
                     text: item.text.clone(),
                     alpha: 0.0,
                 })
@@ -60,7 +61,7 @@ impl SceneNode for TextNode {
             .borrow()
             .screen_position_calculator(config);
         self.data.iter_mut().for_each(|item| {
-            let screen_pos = screen_position_calculator.screen_position(item.world_position);
+            let screen_pos = screen_position_calculator.screen_position(item.world_position.cast().unwrap());
 
             let section = Section::default()
                 .add_text(
@@ -68,7 +69,7 @@ impl SceneNode for TextNode {
                         .with_scale(40.0)
                         .with_color([0.0, 0.0, 0.0, item.alpha]),
                 )
-                .with_screen_position((screen_pos.x, screen_pos.y));
+                .with_screen_position((screen_pos.x as f32, screen_pos.y as f32));
 
             let section_rect = global_context.text_brush.glyph_bounds(&section).unwrap();
             let section_rect = Rectangle::from_corners(

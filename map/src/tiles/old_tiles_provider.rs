@@ -1,18 +1,16 @@
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::TilesProvider;
 use cgmath::Vector3;
+use futures::channel::mpsc::{unbounded, UnboundedSender};
 use futures::Stream;
-use futures::channel::mpsc::{UnboundedSender, unbounded};
 use geo::Winding;
 use geo_types::Rect;
 use googleprojection::{Coord, Mercator};
 use lyon::geom::point;
 use lyon::path::Path;
-use old_tiles_gen::map::{
-    HighwayKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointObjectKind, NatureKind,
-};
+use old_tiles_gen::map::{HighwayKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointObjectKind, NatureKind};
 use old_tiles_gen::source::TileSource;
-use old_tiles_gen::tiles::{TILES_COUNT, TileKey, TileStore, calc_tile_ranges};
+use old_tiles_gen::tiles::{calc_tile_ranges, TileKey, TileStore, TILES_COUNT};
 use rand::Rng;
 use renderer::draw_commands::GeometryType;
 use renderer::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData, TextData};
@@ -73,6 +71,8 @@ impl<S: TileSource> OldTilesProvider<S> {
         let tile_rect = tile_key.calc_tile_boundary(1.0);
 
         let tile_rect_origin = Self::lat_lon_to_world(&tile_rect.min());
+        let tile_rect_max = Self::lat_lon_to_world(&tile_rect.max());
+        let tile_rect_size = tile_rect_max - tile_rect_origin;
 
         let geom = tile_store.load_geometries(&tile_key);
         if !visible_items.read().unwrap().contains(tile_key) {
@@ -83,7 +83,7 @@ impl<S: TileSource> OldTilesProvider<S> {
             return;
         }
 
-        let tile_position = [tile_rect_origin.x as f32, tile_rect_origin.y as f32, 0.0].into();
+        let tile_position = [tile_rect_origin.x, tile_rect_origin.y, 0.0].into();
 
         let mut rng = rand::rng();
         let mut geometry_data: Vec<GeometryData> = vec![];
@@ -227,6 +227,8 @@ impl<S: TileSource> OldTilesProvider<S> {
         let tile_data = TileData {
             key: tile_key.as_string_key(),
             position: tile_position,
+            // can be negative
+            size: (tile_rect_size.x.abs(), tile_rect_size.y.abs()),
             geometry_data,
         };
 
