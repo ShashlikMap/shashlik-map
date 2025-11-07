@@ -24,8 +24,8 @@ impl CameraNode {
             up: cgmath::Vector3::unit_y(),
             aspect: config.width as f32 / config.height as f32,
             fovy: 45.0,
-            znear: 0.1,
-            zfar: 3000.0,
+            znear: 1.0,
+            zfar: 2000000.0,
             matrix: cgmath::Matrix4::identity().into(),
         };
 
