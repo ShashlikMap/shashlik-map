@@ -67,6 +67,10 @@ impl StyleLoader {
                     StyleId("highway_default"),
                     RenderStyle::border([1.0, 1.0, 1.0, 1.0], 0.3),
                 ),
+                (
+                    StyleId("admin_line"),
+                    RenderStyle::fill([0.0, 0.0, 0.0, 1.0]),
+                ),
             ];
 
             new_styles.into_iter().for_each(|(style_id, render_style)| {

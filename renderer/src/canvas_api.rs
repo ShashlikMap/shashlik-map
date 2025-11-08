@@ -192,18 +192,21 @@ impl CanvasApi {
         let geom_type = data.geometry_type;
         let style_index = self.style_store.get_index(&data.style_id);
         let initial_index = self.geometry.indices.len();
-        if geom_type == GeometryType::Polygon {
-            Self::tessellate_fill_path(&path, &mut self.geometry, |vertex| ShapeVertex {
-                position: [vertex.position().x, vertex.position().y, 0.0f32],
-                normals: [0.0, 0.0, 0.0],
-                style_index: style_index as u32,
-            });
-        } else {
-            self.tessellate_stroke_path(path, |vertex| ShapeVertex {
-                position: [vertex.position().x, vertex.position().y, 0.0f32],
-                normals: [vertex.normal().x, vertex.normal().y, 0.0],
-                style_index: style_index as u32,
-            });
+        match geom_type {
+            GeometryType::Polyline(options) => {
+                self.tessellate_stroke_path(path, options.width, |vertex| ShapeVertex {
+                    position: [vertex.position().x, vertex.position().y, 0.0f32],
+                    normals: [vertex.normal().x, vertex.normal().y, 0.0],
+                    style_index: style_index as u32,
+                });
+            }
+            GeometryType::Polygon => {
+                Self::tessellate_fill_path(&path, &mut self.geometry, |vertex| ShapeVertex {
+                    position: [vertex.position().x, vertex.position().y, 0.0f32],
+                    normals: [0.0, 0.0, 0.0],
+                    style_index: style_index as u32,
+                });
+            }
         }
         let last_index = self.geometry.indices.len();
 
@@ -289,7 +292,7 @@ impl CanvasApi {
         }
     }
 
-    fn tessellate_stroke_path<F>(&mut self, path: Path, ctor: F)
+    fn tessellate_stroke_path<F>(&mut self, path: Path, width: f32, ctor: F)
     where
         F: Fn(StrokeVertex) -> ShapeVertex,
     {
@@ -298,7 +301,7 @@ impl CanvasApi {
             tessellator
                 .tessellate_path(
                     &path,
-                    &StrokeOptions::default().with_line_width(0.7),
+                    &StrokeOptions::default().with_line_width(width),
                     &mut BuffersBuilder::new(&mut self.geometry, ctor),
                 )
                 .unwrap();

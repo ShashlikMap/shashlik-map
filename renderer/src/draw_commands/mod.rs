@@ -20,10 +20,15 @@ pub struct MeshVertex {
     pub normals: [f32; 3],
 }
 
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum GeometryType {
-    Polyline,
+    Polyline(PolylineOptions),
     Polygon,
+}
+
+#[derive(Clone, Copy)]
+pub struct PolylineOptions {
+    pub width: f32,
 }
 
 pub(crate) struct DrawCommands {

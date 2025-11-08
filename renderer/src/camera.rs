@@ -131,7 +131,7 @@ impl CameraController {
         let forward_norm = forward.normalize();
         let forward_mag = forward.magnitude();
 
-        let speed_koef = (self.camera_z / 150.0);
+        let speed_koef = self.camera_z / 150.0;
 
         // Prevents glitching when camera gets too close to the
         // center of the scene.
@@ -152,7 +152,7 @@ impl CameraController {
             // Rescale the distance between the target and eye so
             // that it doesn't change. The eye therefore still
             // lies on the circle made by the target and eye.
-            camera.eye.x += self.speed * speed_koef;;
+            camera.eye.x += self.speed * speed_koef;
             camera.target.x += self.speed * speed_koef;
         }
         if self.is_left_pressed {

@@ -12,7 +12,7 @@ use old_tiles_gen::map::{HighwayKind, LineKind, MapGeomObjectKind, MapGeometry, 
 use old_tiles_gen::source::TileSource;
 use old_tiles_gen::tiles::{calc_tile_ranges, TileKey, TileStore, TILES_COUNT};
 use rand::Rng;
-use renderer::draw_commands::GeometryType;
+use renderer::draw_commands::{GeometryType, PolylineOptions};
 use renderer::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData, TextData};
 use renderer::styles::style_id::StyleId;
 use std::collections::HashSet;
@@ -134,17 +134,20 @@ impl<S: TileSource> OldTilesProvider<S> {
                     }
                 }
                 MapGeometry::Line(line) => {
-                    if let Some((style_id, layer_level)) = match &obj_type.kind {
+                    if let Some((style_id, layer_level, width)) = match &obj_type.kind {
                         MapGeomObjectKind::Way(info) => match info.line_kind {
                             LineKind::Highway { kind } => {
                                 if kind != HighwayKind::Footway {
-                                    Some((Self::highway_style_id(&kind), info.layer))
+                                    Some((Self::highway_style_id(&kind), info.layer, 0.7))
                                 } else {
                                     None
                                 }
                             }
                             LineKind::Railway { .. } => None,
                         },
+                        MapGeomObjectKind::AdminLine => {
+                            Some((StyleId("admin_line"), 0, 250.0))
+                        }
                         _ => None,
                     } {
                         let line: Vec<(f64, f64)> = line
@@ -162,9 +165,13 @@ impl<S: TileSource> OldTilesProvider<S> {
                             }
                             path_builder.end(false);
 
+                            let options = PolylineOptions {
+                                width: width as f32,
+                            };
+
                             geometry_data.push(GeometryData::Shape(ShapeData {
                                 path: path_builder.build(),
-                                geometry_type: GeometryType::Polyline,
+                                geometry_type: GeometryType::Polyline(options),
                                 style_id,
                                 layer_level: layer_level as i8,
                                 is_screen: false,

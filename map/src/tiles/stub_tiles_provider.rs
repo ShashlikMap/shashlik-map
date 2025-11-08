@@ -4,7 +4,7 @@ use crate::tiles::tiles_provider::TilesProvider;
 use futures::Stream;
 use futures::channel::mpsc::{UnboundedSender, unbounded};
 use geo_types::Rect;
-use renderer::draw_commands::GeometryType;
+use renderer::draw_commands::{GeometryType, PolylineOptions};
 use renderer::geometry_data::{GeometryData, Mesh3d, ShapeData};
 use renderer::styles::style_id::StyleId;
 use std::collections::HashSet;
@@ -25,7 +25,10 @@ impl TilesProvider for StubTilesProvider {
         let line_path = MeshLoader::load_test_line_path();
         let line_path2 = MeshLoader::load_test_line2_path();
         let obj_mesh = MeshLoader::load_from_obj(include_bytes!("../../cube.obj"));
-
+        let options = PolylineOptions {
+            width: 0.7,
+        };
+        let poly_line_geom_type = GeometryType::Polyline(options);
         let tile_data = TileData {
             key: "".to_string(),
             position: [1.0, 0.0, 0.0].into(),
@@ -33,14 +36,14 @@ impl TilesProvider for StubTilesProvider {
             geometry_data: vec![
                 GeometryData::Shape(ShapeData {
                     path: line_path,
-                    geometry_type: GeometryType::Polyline,
+                    geometry_type: poly_line_geom_type,
                     style_id: StyleId("land"),
                     layer_level: 0,
                     is_screen: false,
                 }),
                 GeometryData::Shape(ShapeData {
                     path: line_path2,
-                    geometry_type: GeometryType::Polyline,
+                    geometry_type: poly_line_geom_type,
                     style_id: StyleId("land"),
                     layer_level: 0,
                     is_screen: false,
