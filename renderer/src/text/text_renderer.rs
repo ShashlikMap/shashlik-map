@@ -40,9 +40,6 @@ impl TextRenderer {
         collision_handler: &mut CollisionHandler,
         screen_position_calculator: &ScreenPositionCalculator,
     ) {
-        if data.text.text == "Nagano" {
-            println!("added alpha = {}", data.text.extra.color[3]);
-        }
         let screen_pos =
             screen_position_calculator.screen_position(data.world_position.cast().unwrap());
         let section = OwnedSection::default()
@@ -66,7 +63,7 @@ impl TextRenderer {
                 return;
             }
 
-            if collision_handler.insert2(section_rect) {
+            if collision_handler.insert(section_rect) {
                 alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
             } else {
                 alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);

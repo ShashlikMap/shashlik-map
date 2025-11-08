@@ -177,12 +177,13 @@ impl SceneNode for PositionedMesh {
                     point! { x: screen_pos.x as f32+ 20.0, y: screen_pos.y as f32 + 20.0},
                 );
 
-                if let Some(added) = global_context.collision_handler.insert(config, bounds) {
-                    if added {
+                let within_screen = global_context.collision_handler.within_screen(config, bounds);
+                if within_screen {
+                    if global_context.collision_handler.insert(bounds) {
                         item.1 = clamp(item.1 + 0.05, 0.0, 1.0);
                     } else {
                         item.1 = clamp(item.1 - 0.05, 0.0, 1.0);
-                    };
+                    }
                 }
             }
         }
