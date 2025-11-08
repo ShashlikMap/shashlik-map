@@ -18,6 +18,7 @@ use renderer::styles::style_id::StyleId;
 use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
+use seahash::hash;
 
 pub struct OldTilesProvider<S: TileSource> {
     sender: Option<UnboundedSender<(Option<TileData>, HashSet<String>)>>,
@@ -99,7 +100,9 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 }
                                 MapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
                                 MapPointObjectKind::Parking => {
+                                    let id = seahash::hash(format!("PARKING{}{}",local_position.x,local_position.y).as_bytes());
                                     geometry_data.push(GeometryData::Text(TextData {
+                                        id,
                                         text: "PARKINGPARKINGPARKINGPARKING".to_string(),
                                         position: Vector3::from((
                                             local_position.x,
@@ -115,6 +118,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 },
                                 MapPointObjectKind::PopArea(..) => {
                                     geometry_data.push(GeometryData::Text(TextData {
+                                        id: hash(poi.text.as_bytes()),
                                         text: poi.text.clone(),
                                         position: Vector3::from((
                                             local_position.x,

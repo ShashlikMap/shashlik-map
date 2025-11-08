@@ -42,6 +42,7 @@ pub struct SvgData {
 
 #[derive(Clone)]
 pub struct TextData {
+    pub id: u64,
     pub text: String,
     pub position: Vector3<f32>,
 }

@@ -4,17 +4,19 @@ use crate::collision_handler::CollisionHandler;
 use crate::depth_texture::DepthTexture;
 use crate::messages::RendererMessage;
 use crate::msaa_texture::MultisampledTexture;
+use crate::nodes::SceneNode;
 use crate::nodes::camera_node::CameraNode;
 use crate::nodes::fps_node::FpsNode;
 use crate::nodes::mesh_layer::MeshLayer;
 use crate::nodes::scene_tree::{RenderContext, SceneTree};
+use crate::nodes::shape_layers::ShapeLayers;
 use crate::nodes::style_adapter_node::StyleAdapterNode;
 use crate::nodes::text_node::TextLayer;
 use crate::nodes::world::World;
-use crate::nodes::SceneNode;
 use crate::pipeline_provider::PipeLineProvider;
 use crate::styles::style_store::StyleStore;
 use crate::text::create_default_text_brush;
+use crate::text::text_renderer::TextRenderer;
 use crate::vertex_attrs::{InstancePos, ShapeVertex, VertexAttrib, VertexNormal};
 use camera::CameraController;
 use canvas_api::CanvasApi;
@@ -22,22 +24,22 @@ use messages::RendererApiMsg;
 use renderer_api::RendererApi;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::{iter, mem};
 use std::rc::Rc;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
+use std::{iter, mem};
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
-use wgpu::{include_wgsl, CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat};
+use wgpu::{CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat, include_wgsl};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use wgpu_text::glyph_brush::ab_glyph::FontRef;
-use wgpu_text::glyph_brush::OwnedSection;
 use wgpu_text::TextBrush;
-use crate::nodes::shape_layers::ShapeLayers;
+use wgpu_text::glyph_brush::OwnedSection;
+use wgpu_text::glyph_brush::ab_glyph::FontRef;
 
 pub mod camera;
 pub mod canvas_api;
+mod collision_handler;
 mod consts;
 mod depth_texture;
 pub mod draw_commands;
@@ -55,7 +57,6 @@ pub mod styles;
 mod svg;
 mod text;
 pub mod vertex_attrs;
-mod collision_handler;
 
 pub const SHADER_STYLE_GROUP_INDEX: u32 = 1;
 
@@ -88,9 +89,7 @@ impl<T: Clone> ReceiverExt<T> for tokio::sync::broadcast::Receiver<T> {
 pub struct GlobalContext {
     camera_controller: Rc<RefCell<CameraController>>,
     collision_handler: CollisionHandler,
-    text_brush: TextBrush<FontRef<'static>>,
-    text_sections: Vec<OwnedSection>,
-    text_sections_map: HashMap<String, f32>,
+    text_renderer: TextRenderer,
 }
 
 impl GlobalContext {
@@ -102,9 +101,7 @@ impl GlobalContext {
         GlobalContext {
             camera_controller,
             collision_handler,
-            text_brush,
-            text_sections: Vec::new(),
-            text_sections_map: HashMap::new(),
+            text_renderer: TextRenderer::new(text_brush),
         }
     }
 }
@@ -133,8 +130,7 @@ impl ShashlikRenderer {
 
         let mut world_tree_node = SceneTree::new(World::new(), "".to_string());
 
-        let camera_node =
-            world_tree_node.add_child(CameraNode::new(&config, &device));
+        let camera_node = world_tree_node.add_child(CameraNode::new(&config, &device));
 
         let depth_texture = DepthTexture::new(&device, config.width, config.height);
         let msaa_texture =
@@ -170,7 +166,12 @@ impl ShashlikRenderer {
 
         let style_store = StyleStore::new();
 
-        let shape_layers = ShapeLayers::new(device, pipeline_provider.clone(), &style_store, camera_node.clone());
+        let shape_layers = ShapeLayers::new(
+            device,
+            pipeline_provider.clone(),
+            &style_store,
+            camera_node.clone(),
+        );
 
         let mesh_layer = camera_node.borrow_mut().add_child_with_key(
             MeshLayer::new(
@@ -302,8 +303,7 @@ impl ShashlikRenderer {
             self.msaa_texture =
                 MultisampledTexture::new(device, config.width, config.height, config.format);
 
-            // TODO move to TextLayer?
-            self.global_context.text_brush.resize_view(
+            self.global_context.text_renderer.text_brush.resize_view(
                 config.width as f32,
                 config.height as f32,
                 queue,
@@ -336,9 +336,7 @@ impl ShashlikRenderer {
                         self.screen_shape_layer
                             .borrow_mut()
                             .clear_by_key(key.clone());
-                        self.text_layer
-                            .borrow_mut()
-                            .clear_by_key(key.clone());
+                        self.text_layer.borrow_mut().clear_by_key(key.clone());
                     });
                 }
             }
@@ -351,17 +349,6 @@ impl ShashlikRenderer {
             .update(device, queue, config, &mut self.global_context);
 
         self.global_context.collision_handler.clear();
-
-        let sections = mem::replace(&mut self.global_context.text_sections, vec![]);
-        // TODO move to TextLayer somehow?
-        self.global_context
-            .text_brush
-            .queue(
-                &device,
-                &queue,
-                sections.iter().map(|item| item.to_borrowed()).collect::<Vec<_>>(),
-            )
-            .unwrap();
     }
 
     fn render(&mut self) -> Result<(), SurfaceError> {
@@ -413,6 +400,10 @@ impl ShashlikRenderer {
 
             self.world_tree_node
                 .render(&mut render_pass, &mut self.global_context);
+
+            self.global_context
+                .text_renderer
+                .render(&queue, &device, &mut render_pass)
         }
 
         queue.submit(iter::once(encoder.finish()));
