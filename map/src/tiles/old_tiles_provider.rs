@@ -112,6 +112,19 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     // Text instead of icon
                                     // Some(("parking", Self::PARKING_SVG))
                                     None
+                                },
+                                MapPointObjectKind::PopArea(..) => {
+                                    geometry_data.push(GeometryData::Text(TextData {
+                                        text: poi.text.clone(),
+                                        position: Vector3::from((
+                                            local_position.x,
+                                            local_position.y,
+                                            0.0,
+                                        ))
+                                            .cast()
+                                            .unwrap(),
+                                    }));
+                                    None
                                 }
                                 _ => None,
                             };
