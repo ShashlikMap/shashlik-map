@@ -1,3 +1,5 @@
+pub(crate) mod text_renderer;
+
 use wgpu::{DepthStencilState, Device, SurfaceConfiguration};
 use wgpu_text::glyph_brush::ab_glyph::FontRef;
 use wgpu_text::{BrushBuilder, TextBrush};
