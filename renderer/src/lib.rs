@@ -90,6 +90,7 @@ pub struct GlobalContext {
     collision_handler: CollisionHandler,
     text_brush: TextBrush<FontRef<'static>>,
     text_sections: Vec<OwnedSection>,
+    text_sections_map: HashMap<String, f32>,
 }
 
 impl GlobalContext {
@@ -103,6 +104,7 @@ impl GlobalContext {
             collision_handler,
             text_brush,
             text_sections: Vec::new(),
+            text_sections_map: HashMap::new(),
         }
     }
 }

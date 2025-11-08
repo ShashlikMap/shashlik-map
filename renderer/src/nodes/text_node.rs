@@ -22,6 +22,7 @@ struct TextNodeData {
     world_position: Vector3<f32>,
     text: String,
     alpha: f32,
+    alpha_set: bool,
 }
 
 pub struct TextNode {
@@ -40,6 +41,7 @@ impl TextNode {
                     world_position: item.position + spatial_data.transform.cast().unwrap(),
                     text: item.text.clone(),
                     alpha: 0.0,
+                    alpha_set: false,
                 })
                 .collect(),
         }
@@ -63,6 +65,11 @@ impl SceneNode for TextNode {
         self.data.iter_mut().for_each(|item| {
             let screen_pos = screen_position_calculator.screen_position(item.world_position.cast().unwrap());
 
+            if !item.alpha_set {
+                let prev_alpha = global_context.text_sections_map.get(&item.text).unwrap_or(&0.0);
+                item.alpha = *prev_alpha + Self::FADE_ANIM_SPEED;
+                item.alpha_set = true;
+            }
             let section = Section::default()
                 .add_text(
                     Text::new(item.text.as_str())
@@ -85,8 +92,13 @@ impl SceneNode for TextNode {
                 } else {
                     item.alpha = clamp(item.alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
                 }
-                global_context.text_sections.push(section.to_owned());
+                if item.alpha <= 0.0 {
+                    global_context.text_sections_map.remove(&item.text);
+                } else {
+                    global_context.text_sections_map.insert(item.text.clone(), item.alpha);
+                }
             }
+            global_context.text_sections.push(section.to_owned());
         });
     }
 }
