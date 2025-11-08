@@ -3,7 +3,7 @@ use crate::geometry_data::TextData;
 use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::SceneNode;
 use crate::nodes::scene_tree::RenderContext;
-use crate::text::text_renderer::TextNodeData2;
+use crate::text::text_renderer::TextNodeData;
 use wgpu::{Device, Queue};
 use wgpu_text::glyph_brush::OwnedText;
 
@@ -12,12 +12,10 @@ pub struct TextLayer;
 impl SceneNode for TextLayer {}
 
 pub struct TextNode {
-    data: Vec<TextNodeData2>,
+    data: Vec<TextNodeData>,
 }
 
 impl TextNode {
-    const FADE_ANIM_SPEED: f32 = 0.05;
-
     pub fn new(text_data: Vec<TextData>, spatial_data: SpatialData) -> Self {
         Self {
             data: text_data
@@ -26,7 +24,7 @@ impl TextNode {
                     let owned_text = OwnedText::new(item.text.as_str())
                         .with_scale(40.0)
                         .with_color([0.0, 0.0, 0.0, 0.0]);
-                    TextNodeData2 {
+                    TextNodeData {
                         id: item.id.clone(),
                         // text node doesn't have to be super precise
                         world_position: item.position + spatial_data.transform.cast().unwrap(),

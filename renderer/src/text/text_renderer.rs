@@ -4,14 +4,14 @@ use cgmath::Vector3;
 use cgmath::num_traits::clamp;
 use geo_types::point;
 use rstar::primitives::Rectangle;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::mem;
 use wgpu::RenderPass;
 use wgpu_text::TextBrush;
 use wgpu_text::glyph_brush::ab_glyph::FontRef;
 use wgpu_text::glyph_brush::{OwnedSection, OwnedText};
 
-pub struct TextNodeData2 {
+pub struct TextNodeData {
     pub id: u64,
     pub world_position: Vector3<f32>,
     pub text: OwnedText,
@@ -19,22 +19,23 @@ pub struct TextNodeData2 {
 
 pub struct TextRenderer {
     pub text_brush: TextBrush<FontRef<'static>>,
-    sss: HashMap<u64, f32>,
+    id_to_alpha_map: HashMap<u64, f32>,
     sections: Vec<OwnedSection>,
 }
 
 impl TextRenderer {
+    const FADE_ANIM_SPEED: f32 = 0.05;
     pub fn new(brush: TextBrush<FontRef<'static>>) -> TextRenderer {
         TextRenderer {
             text_brush: brush,
-            sss: HashMap::new(),
+            id_to_alpha_map: HashMap::new(),
             sections: vec![],
         }
     }
 
     pub fn insert(
         &mut self,
-        data: &mut TextNodeData2,
+        data: &mut TextNodeData,
         config: &wgpu::SurfaceConfiguration,
         collision_handler: &mut CollisionHandler,
         screen_position_calculator: &ScreenPositionCalculator,
@@ -55,28 +56,20 @@ impl TextRenderer {
         );
         let within_screen = collision_handler.within_screen(config, section_rect);
         if within_screen {
-            let cont = self.sss.contains_key(&data.id);
-            let mut alpha = *self.sss.entry(data.id).or_insert(data.text.extra.color[3]);
-            if cont {
-                data.text.extra.color[3] = 1.0;
-                // self.sections.push(section);
+            let contains = self.id_to_alpha_map.contains_key(&data.id);
+            let mut alpha = *self
+                .id_to_alpha_map
+                .entry(data.id)
+                .or_insert(data.text.extra.color[3]);
+            if contains {
+                data.text.extra.color[3] = alpha;
                 return;
             }
 
             if collision_handler.insert2(section_rect) {
-                if data.text.text == "Nagano" {
-                    println!("qqq");
-                }
-                alpha = clamp(alpha + 0.05, 0.0, 1.0);
+                alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
             } else {
-                if data.text.text == "Nagano" {
-                    println!("bbb");
-                }
-                alpha = clamp(alpha - 0.05, 0.0, 1.0);
-            }
-            if data.text.text == "Nagano" {
-                println!("hhh = {}", alpha);
-                println!("aaa = {}", data.text.extra.color[3]);
+                alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
             }
             data.text.extra.color[3] = alpha;
 
@@ -90,7 +83,7 @@ impl TextRenderer {
         device: &wgpu::Device,
         render_pass: &mut RenderPass,
     ) {
-        self.sss.clear();
+        self.id_to_alpha_map.clear();
         self.text_brush
             .queue(
                 &device,
