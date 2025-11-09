@@ -29,6 +29,7 @@ pub struct OldTilesProvider<S: TileSource> {
 
 impl<S: TileSource> OldTilesProvider<S> {
     const TRAFFIC_LIGHT_SVG: &'static [u8] = include_bytes!("../../svg/traffic_light.svg");
+    #[allow(dead_code)]
     const PARKING_SVG: &'static [u8] = include_bytes!("../../svg/parking.svg");
     const TOILETS_SVG: &'static [u8] = include_bytes!("../../svg/toilet.svg");
 

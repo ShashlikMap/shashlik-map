@@ -23,9 +23,14 @@ impl ShashlikMapApi {
         shashlik_map.update_and_render();
     }
 
-    fn temp_external_input(&self, pressed: bool) {
-        let mut shashlik_map = self.shashlik_map.write().unwrap();
-        shashlik_map.temp_external_input(pressed);
+    fn zoom_delta(&self, delta: f32) {
+        let shashlik_map = self.shashlik_map.read().unwrap();
+        shashlik_map.zoom_delta(delta);
+    }
+
+    fn pan_delta(&self, delta_x: f32, delta_y: f32) {
+        let shashlik_map = self.shashlik_map.read().unwrap();
+        shashlik_map.pan_delta(delta_x, delta_y);
     }
 }
 

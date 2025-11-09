@@ -8,8 +8,9 @@ use std::rc::Rc;
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture};
+use winit::dpi::PhysicalPosition;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use winit::event::{KeyEvent, MouseButton, WindowEvent};
+use winit::event::{KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
@@ -19,6 +20,8 @@ pub struct App<T: TilesProvider> {
     pub receiver: Receiver<CustomUIEvent>,
     pub get_tiles_provider: Box<dyn Fn() -> T>,
     pub shashlik_map: Option<ShashlikMap<T>>,
+    pub cursor_active: bool,
+    pub last_cursor_position: PhysicalPosition<f64>,
 }
 
 pub enum CustomUIEvent {
@@ -32,6 +35,8 @@ impl<T: TilesProvider> App<T> {
             receiver,
             get_tiles_provider,
             shashlik_map: None,
+            cursor_active: false,
+            last_cursor_position: PhysicalPosition::new(0.0, 0.0),
         }
     }
 }
@@ -121,10 +126,30 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                 map.update_and_render();
             }
             WindowEvent::MouseInput { state, button, .. } => match (button, state.is_pressed()) {
-                (MouseButton::Left, true) => {}
-                (MouseButton::Left, false) => {}
+                (MouseButton::Left, true) => {
+                    self.cursor_active = true;
+                }
+                (MouseButton::Left, false) => {
+                    self.cursor_active = false;
+                }
                 _ => {}
             },
+            WindowEvent::CursorMoved { position, .. } => {
+                if self.cursor_active {
+                    let delta_x = -(position.x - self.last_cursor_position.x) / 10.0;
+                    let delta_y = -(position.y - self.last_cursor_position.y) / 10.0;
+                    self.shashlik_map.as_ref().unwrap().pan_delta(delta_x as f32, delta_y as f32)
+                }
+                self.last_cursor_position = position.clone();
+            }
+            WindowEvent::MouseWheel { delta, .. } => {
+                match delta {
+                    MouseScrollDelta::LineDelta(_, _) => {}
+                    MouseScrollDelta::PixelDelta(delta_xy) => {
+                        self.shashlik_map.as_ref().unwrap().zoom_delta((delta_xy.y/10.0) as f32);
+                    }
+                }
+            }
             WindowEvent::KeyboardInput {
                 event:
                     KeyEvent {

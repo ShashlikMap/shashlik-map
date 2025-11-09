@@ -634,9 +634,11 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
+    external fun uniffi_ffi_run_checksum_method_shashlikmapapi_pan_delta(
+    ): Short
     external fun uniffi_ffi_run_checksum_method_shashlikmapapi_render(
     ): Short
-    external fun uniffi_ffi_run_checksum_method_shashlikmapapi_temp_external_input(
+    external fun uniffi_ffi_run_checksum_method_shashlikmapapi_zoom_delta(
     ): Short
     external fun ffi_ffi_run_uniffi_contract_version(
     ): Int
@@ -660,9 +662,11 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_ffi_run_fn_free_shashlikmapapi(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    external fun uniffi_ffi_run_fn_method_shashlikmapapi_pan_delta(`ptr`: Long,`deltaX`: Float,`deltaY`: Float,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     external fun uniffi_ffi_run_fn_method_shashlikmapapi_render(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
-    external fun uniffi_ffi_run_fn_method_shashlikmapapi_temp_external_input(`ptr`: Long,`pressed`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_ffi_run_fn_method_shashlikmapapi_zoom_delta(`ptr`: Long,`delta`: Float,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     external fun ffi_ffi_run_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -783,10 +787,13 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_ffi_run_checksum_method_shashlikmapapi_pan_delta() != 33064.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ffi_run_checksum_method_shashlikmapapi_render() != 13143.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ffi_run_checksum_method_shashlikmapapi_temp_external_input() != 20541.toShort()) {
+    if (lib.uniffi_ffi_run_checksum_method_shashlikmapapi_zoom_delta() != 41132.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -949,23 +956,23 @@ private class JavaLangRefCleanable(
 /**
  * @suppress
  */
-public object FfiConverterBoolean: FfiConverter<Boolean, Byte> {
-    override fun lift(value: Byte): Boolean {
-        return value.toInt() != 0
+public object FfiConverterFloat: FfiConverter<Float, Float> {
+    override fun lift(value: Float): Float {
+        return value
     }
 
-    override fun read(buf: ByteBuffer): Boolean {
-        return lift(buf.get())
+    override fun read(buf: ByteBuffer): Float {
+        return buf.getFloat()
     }
 
-    override fun lower(value: Boolean): Byte {
-        return if (value) 1.toByte() else 0.toByte()
+    override fun lower(value: Float): Float {
+        return value
     }
 
-    override fun allocationSize(value: Boolean) = 1UL
+    override fun allocationSize(value: Float) = 4UL
 
-    override fun write(value: Boolean, buf: ByteBuffer) {
-        buf.put(lower(value))
+    override fun write(value: Float, buf: ByteBuffer) {
+        buf.putFloat(value)
     }
 }
 
@@ -1125,9 +1132,11 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
 //
 public interface ShashlikMapApiInterface {
     
+    fun `panDelta`(`deltaX`: kotlin.Float, `deltaY`: kotlin.Float)
+    
     fun `render`()
     
-    fun `tempExternalInput`(`pressed`: kotlin.Boolean)
+    fun `zoomDelta`(`delta`: kotlin.Float)
     
     companion object
 }
@@ -1228,6 +1237,18 @@ open class ShashlikMapApi: Disposable, AutoCloseable, ShashlikMapApiInterface
         }
     }
 
+    override fun `panDelta`(`deltaX`: kotlin.Float, `deltaY`: kotlin.Float)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ffi_run_fn_method_shashlikmapapi_pan_delta(
+        it,
+        FfiConverterFloat.lower(`deltaX`),FfiConverterFloat.lower(`deltaY`),_status)
+}
+    }
+    
+    
+
     override fun `render`()
         = 
     callWithHandle {
@@ -1240,13 +1261,13 @@ open class ShashlikMapApi: Disposable, AutoCloseable, ShashlikMapApiInterface
     
     
 
-    override fun `tempExternalInput`(`pressed`: kotlin.Boolean)
+    override fun `zoomDelta`(`delta`: kotlin.Float)
         = 
     callWithHandle {
     uniffiRustCall() { _status ->
-    UniffiLib.uniffi_ffi_run_fn_method_shashlikmapapi_temp_external_input(
+    UniffiLib.uniffi_ffi_run_fn_method_shashlikmapapi_zoom_delta(
         it,
-        FfiConverterBoolean.lower(`pressed`),_status)
+        FfiConverterFloat.lower(`delta`),_status)
 }
     }
     

@@ -6,7 +6,10 @@ import android.graphics.Canvas
 import android.graphics.PixelFormat
 import android.os.Build
 import android.util.AttributeSet
+import android.util.Log
+import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import com.sun.jna.Pointer
@@ -15,14 +18,42 @@ import uniffi.ffi_run.UniffiWithHandle
 
 @SuppressLint("ClickableViewAccessibility")
 class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
+
+    private val scaleListener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            shashlikMapApi?.zoomDelta((detector.scaleFactor - 1.0f) * 150.0f)
+            return true
+        }
+    }
+
+    private val mScaleDetector = ScaleGestureDetector(context, scaleListener)
+
+    private val gestureListener = object : GestureDetector.SimpleOnGestureListener() {
+
+        override fun onScroll(
+            e1: MotionEvent?,
+            e2: MotionEvent,
+            distanceX: Float,
+            distanceY: Float
+        ): Boolean {
+            shashlikMapApi?.panDelta(distanceX / 15.0f, distanceY / 15.0f)
+            return super.onScroll(e1, e2, distanceX, distanceY)
+        }
+    }
+
+    private val gestureDetector = GestureDetector(context, gestureListener)
+
     private var rustBrige = RB()
 
     private var shashlikMapApi: ShashlikMapApi? = null
 
     constructor(context: Context) : super(context) {
     }
+
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs) {
     }
+
     constructor(context: Context, attrs: AttributeSet, defStyle: Int) : super(
         context,
         attrs,
@@ -35,18 +66,12 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
 
         this.setZOrderMediaOverlay(true)
         holder.setFormat(PixelFormat.TRANSPARENT)
+    }
 
-        setOnTouchListener { _, event ->
-            when(event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    shashlikMapApi?.tempExternalInput(true)
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    shashlikMapApi?.tempExternalInput(false)
-                }
-            }
-            true
-        }
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        gestureDetector.onTouchEvent(event)
+        mScaleDetector.onTouchEvent(event)
+        return true
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
@@ -54,10 +79,11 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
 
     override fun surfaceCreated(holder: SurfaceHolder) {
         holder.let { h ->
-            val ptr = rustBrige.createShashlikMapApi(h.surface,
+            val ptr = rustBrige.createShashlikMapApi(
+                h.surface,
                 Build.FINGERPRINT.contains("generic") ||
                         Build.FINGERPRINT.contains("sdk_gphone"),
-                context.filesDir.absolutePath+"/tiles.db"
+                context.filesDir.absolutePath + "/tiles.db"
             )
             shashlikMapApi = ShashlikMapApi(UniffiWithHandle, ptr)
             setWillNotDraw(false)

@@ -76,14 +76,19 @@ impl CameraUniform {
     }
 
     pub(crate) fn update_view_proj(&mut self, camera: &mut Camera) {
-        self.view_proj =
-            (FLIP_Y * OPENGL_TO_WGPU_MATRIX * camera.build_view_projection_matrix()).cast().unwrap().into();
+        self.view_proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * camera.build_view_projection_matrix())
+            .cast()
+            .unwrap()
+            .into();
         self.ratio = camera.aspect;
     }
 }
 
 pub struct CameraController {
+    #[allow(dead_code)]
     speed: f32,
+    pub zoom_delta: f32,
+    pub pan_delta: (f32, f32),
     pub is_up_pressed: bool,
     pub is_down_pressed: bool,
     pub is_forward_pressed: bool,
@@ -102,6 +107,8 @@ impl CameraController {
     pub fn new(speed: f32) -> Self {
         Self {
             speed,
+            zoom_delta: 0.0,
+            pan_delta: (0.0, 0.0),
             is_up_pressed: false,
             is_down_pressed: false,
             is_forward_pressed: false,
@@ -129,18 +136,10 @@ impl CameraController {
         use cgmath::InnerSpace;
         let forward = camera.target - camera.eye;
         let forward_norm = forward.normalize();
-        let forward_mag = forward.magnitude();
 
         let speed_koef = self.camera_z / 150.0;
 
-        // Prevents glitching when camera gets too close to the
-        // center of the scene.
-        if self.is_forward_pressed && forward_mag > self.speed {
-            camera.eye += forward_norm * self.speed * speed_koef;
-        }
-        if self.is_backward_pressed {
-            camera.eye -= forward_norm * self.speed * speed_koef;
-        }
+        camera.eye += forward_norm * self.zoom_delta * speed_koef;
 
         let _right = forward_norm.cross(camera.up);
 
@@ -148,43 +147,14 @@ impl CameraController {
         let forward = camera.target - camera.eye;
         let _forward_mag = forward.magnitude();
 
-        if self.is_right_pressed {
-            // Rescale the distance between the target and eye so
-            // that it doesn't change. The eye therefore still
-            // lies on the circle made by the target and eye.
-            camera.eye.x += self.speed * speed_koef;
-            camera.target.x += self.speed * speed_koef;
-        }
-        if self.is_left_pressed {
-            camera.eye.x -= self.speed * speed_koef;
-            camera.target.x -= self.speed * speed_koef;
-        }
+        camera.eye.x += self.pan_delta.0 * speed_koef;
+        camera.target.x += self.pan_delta.0 * speed_koef;
 
-        if self.is_up_pressed {
-            camera.eye.y -= self.speed * speed_koef;
-            camera.target.y -= self.speed * speed_koef;
-        }
+        camera.eye.y += self.pan_delta.1 * speed_koef;
+        camera.target.y += self.pan_delta.1 * speed_koef;
 
-        if self.is_down_pressed {
-            camera.eye.y += self.speed * speed_koef;
-            camera.target.y += self.speed * speed_koef;
-        }
-
-        if self.is_z_pressed {
-            camera.eye.y += self.speed * speed_koef;
-        }
-
-        if self.is_x_pressed {
-            camera.eye.y -= self.speed * speed_koef;
-        }
-
-        if self.is_n_pressed {
-            camera.eye.x -= self.speed * speed_koef;
-        }
-
-        if self.is_m_pressed {
-            camera.eye.x += self.speed * speed_koef;
-        }
+        self.pan_delta = (0.0, 0.0);
+        self.zoom_delta = 0.0;
 
         self.camera_z = camera.eye.z;
     }

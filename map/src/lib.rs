@@ -204,11 +204,14 @@ impl<T: TilesProvider> ShashlikMap<T> {
             });
     }
 
-    pub fn temp_external_input(&mut self, pressed: bool) {
-        let mut camera_controller = self.camera_controller.borrow_mut();
-        camera_controller.is_forward_pressed = pressed;
+    pub fn zoom_delta(&self, delta: f32) {
+        self.camera_controller.borrow_mut().zoom_delta = delta;
     }
 
+    pub fn pan_delta(&self, delta_x: f32, delta_y: f32) {
+        self.camera_controller.borrow_mut().pan_delta = (delta_x, delta_y);
+    }
+    
     pub fn temp_on_load_styles(&self) {
         self.style_loader.load(self.renderer.api.clone());
     }
