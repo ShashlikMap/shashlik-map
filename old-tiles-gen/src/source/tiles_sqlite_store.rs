@@ -1,5 +1,4 @@
 use error_stack::{Report, ResultExt};
-pub use rusqlite::fallible_iterator::FallibleIterator;
 use rusqlite::{named_params, Connection, OpenFlags};
 use std::path::Path;
 use std::sync::Mutex;

@@ -45,7 +45,7 @@ impl<S: TileSource> OldTilesProvider<S> {
         tile_store: Arc<TileStore<S>>,
         visible_items: Arc<RwLock<HashSet<TileKey>>>,
         to_load: HashSet<TileKey>,
-        removed: HashSet<String>,
+        mut removed: HashSet<TileKey>,
         sender: &UnboundedSender<(Option<TileData>, HashSet<String>)>,
     ) {
         to_load.iter().enumerate().for_each(|(index, key)| {
@@ -58,15 +58,24 @@ impl<S: TileSource> OldTilesProvider<S> {
             Self::internal_load_tile_key(key, visible_items.clone(), tile_store.clone(), to_removed, sender);
         });
         if to_load.is_empty() && !removed.is_empty(){
-            sender.unbounded_send((None, removed)).unwrap();
+            Self::fix_removed(&mut removed, visible_items.clone());
+            sender.unbounded_send((None, removed.iter().map(|item| item.as_string_key()).collect())).unwrap();
         }
+    }
+
+    fn fix_removed(removed: &mut HashSet<TileKey>, visible_items: Arc<RwLock<HashSet<TileKey>>>) {
+        visible_items.read().unwrap().iter().for_each(|key| {
+            if removed.remove(&key) {
+                println!("unremoved: {:?}", key);
+            }
+        })
     }
 
     fn internal_load_tile_key(
         tile_key: &TileKey,
         visible_items: Arc<RwLock<HashSet<TileKey>>>,
         tile_store: Arc<TileStore<S>>,
-        removed: HashSet<String>,
+        mut removed: HashSet<TileKey>,
         sender: &UnboundedSender<(Option<TileData>, HashSet<String>)>,
     ) {
         let tile_rect = tile_key.calc_tile_boundary(1.0);
@@ -78,8 +87,14 @@ impl<S: TileSource> OldTilesProvider<S> {
         let geom = tile_store.load_geometries(&tile_key);
         if !visible_items.read().unwrap().contains(tile_key) {
             println!("skipping tile processing, key {:?}", tile_key);
+
+            removed.retain(|item| {
+                item.zoom_level == tile_key.zoom_level
+            });
+
+            Self::fix_removed(&mut removed, visible_items.clone());
             if !removed.is_empty() {
-                sender.unbounded_send((None, removed)).unwrap();
+                sender.unbounded_send((None, removed.iter().map(|item| item.as_string_key()).collect())).unwrap();
             }
             return;
         }
@@ -256,12 +271,20 @@ impl<S: TileSource> OldTilesProvider<S> {
             geometry_data,
         };
 
+
         if visible_items.read().unwrap().contains(tile_key) {
-            sender.unbounded_send((Some(tile_data), removed)).unwrap();
+            // Self::fix_removed(&mut removed, visible_items.clone());
+            sender.unbounded_send((Some(tile_data), removed.iter().map(|item| item.as_string_key()).collect())).unwrap();
         } else {
             println!("skipping tile sending to rendered, key {:?}", tile_key);
+
+            removed.retain(|item| {
+                item.zoom_level == tile_key.zoom_level
+            });
+
+            Self::fix_removed(&mut removed, visible_items.clone());
             if !removed.is_empty() {
-                sender.unbounded_send((None, removed)).unwrap();
+                sender.unbounded_send((None, removed.iter().map(|item| item.as_string_key()).collect())).unwrap();
             }
         }
     }
@@ -298,10 +321,9 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
                 }
             }
         }
-        let removed: HashSet<String> = self
+        let removed: HashSet<TileKey> = self
             .cache
             .extract_if(|key| !current_visible_tiles.contains(&key))
-            .map(|item| item.as_string_key())
             .collect();
         
         // start job only if it makes sense
