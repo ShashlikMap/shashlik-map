@@ -178,6 +178,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let poly: Polygon<f64> = Polygon::new(LineString(vec![p1, p2, p4, p3]), Vec::new());
         let area_latlon = get_bounding_rect(poly.exterior()).unwrap();
 
+        self.tiles_provider.abc(zoom_level);
         if area_latlon != self.last_area_latlon {
             self.tiles_provider.load(area_latlon, zoom_level);
         }
