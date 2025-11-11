@@ -277,12 +277,12 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
         if let Ok(mut actual_cache) = self.actual_cache.try_write() {
             let sender = self.sender.clone().unwrap();
 
-            let llzl = self.last_loaded_zoom_level.load(Ordering::Relaxed);
+            let last_loaded_zoom_level = self.last_loaded_zoom_level.load(Ordering::Relaxed);
 
             let removed: HashSet<TileKey> = actual_cache
                 .extract_if(|key| {
                     (key.zoom_level == zoom_level && !current_visible_tiles.contains(&key))
-                        || (key.zoom_level != llzl && llzl == zoom_level)
+                        || (key.zoom_level != last_loaded_zoom_level && last_loaded_zoom_level == zoom_level)
                 })
                 .collect();
 
