@@ -1,30 +1,38 @@
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::TilesProvider;
 use cgmath::Vector3;
-use futures::channel::mpsc::{unbounded, UnboundedSender};
 use futures::Stream;
+use futures::channel::mpsc::{UnboundedSender, unbounded};
 use geo::Winding;
 use geo_types::Rect;
 use googleprojection::{Coord, Mercator};
 use lyon::geom::point;
 use lyon::path::Path;
-use old_tiles_gen::map::{HighwayKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointObjectKind, NatureKind};
+use old_tiles_gen::map::{
+    HighwayKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointObjectKind, NatureKind,
+};
 use old_tiles_gen::source::TileSource;
-use old_tiles_gen::tiles::{calc_tile_ranges, TileKey, TileStore, TILES_COUNT};
+use old_tiles_gen::tiles::{TILES_COUNT, TileKey, TileStore, calc_tile_ranges};
 use rand::Rng;
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::ParallelIterator;
 use renderer::draw_commands::{GeometryType, PolylineOptions};
 use renderer::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData, TextData};
 use renderer::styles::style_id::StyleId;
-use std::collections::HashSet;
+use seahash::hash;
+use std::collections::{HashMap, HashSet};
+use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
-use seahash::hash;
 
 pub struct OldTilesProvider<S: TileSource> {
     sender: Option<UnboundedSender<(Option<TileData>, HashSet<String>)>>,
     tile_store: Arc<TileStore<S>>,
-    cache: HashSet<TileKey>,
-    global_visible_tiles: Arc<RwLock<HashSet<TileKey>>>,
+    per_frame_cache: HashSet<TileKey>,
+    actual_cache: Arc<RwLock<HashSet<TileKey>>>,
+    last_loaded_zoom_level: Arc<AtomicI32>,
+    current_zoom_level: Arc<AtomicI32>,
+    loading_map: Arc<RwLock<HashMap<i32, i32>>>,
 }
 
 impl<S: TileSource> OldTilesProvider<S> {
@@ -37,48 +45,27 @@ impl<S: TileSource> OldTilesProvider<S> {
         Self {
             sender: None,
             tile_store: Arc::new(TileStore::new(source)),
-            cache: HashSet::new(),
-            global_visible_tiles: Arc::new(RwLock::new(HashSet::new())),
+            per_frame_cache: HashSet::new(),
+            actual_cache: Arc::new(RwLock::new(HashSet::new())),
+            last_loaded_zoom_level: Arc::new(AtomicI32::new(1)),
+            current_zoom_level: Arc::new(AtomicI32::new(1)),
+            loading_map: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
-    fn internal_load(
-        tile_store: Arc<TileStore<S>>,
-        visible_items: Arc<RwLock<HashSet<TileKey>>>,
-        to_load: HashSet<TileKey>,
-        mut removed: HashSet<TileKey>,
-        sender: &UnboundedSender<(Option<TileData>, HashSet<String>)>,
-    ) {
-        to_load.iter().enumerate().for_each(|(index, key)| {
-            let is_last = index == to_load.len() - 1;
-            let to_removed = if is_last {
-                removed.clone()
-            } else {
-                HashSet::new()
-            };
-            Self::internal_load_tile_key(key, visible_items.clone(), tile_store.clone(), to_removed, sender);
-        });
-        if to_load.is_empty() && !removed.is_empty(){
-            Self::fix_removed(&mut removed, visible_items.clone());
-            sender.unbounded_send((None, removed.iter().map(|item| item.as_string_key()).collect())).unwrap();
+    fn highway_style_id(kind: &HighwayKind) -> StyleId {
+        match kind {
+            HighwayKind::Motorway | HighwayKind::MotorwayLink => StyleId("highway_motorway"),
+            HighwayKind::Primary | HighwayKind::PrimaryLink => StyleId("highway_primary"),
+            HighwayKind::Trunk | HighwayKind::TrunkLink => StyleId("highway_trunk"),
+            HighwayKind::Secondary | HighwayKind::SecondaryLink => StyleId("highway_secondary"),
+            HighwayKind::Tertiary => StyleId("highway_tertiary"),
+            HighwayKind::Footway => StyleId("highway_footway"),
+            _ => StyleId("highway_default"),
         }
     }
 
-    fn fix_removed(removed: &mut HashSet<TileKey>, visible_items: Arc<RwLock<HashSet<TileKey>>>) {
-        visible_items.read().unwrap().iter().for_each(|key| {
-            if removed.remove(&key) {
-                println!("unremoved: {:?}", key);
-            }
-        })
-    }
-
-    fn internal_load_tile_key(
-        tile_key: &TileKey,
-        visible_items: Arc<RwLock<HashSet<TileKey>>>,
-        tile_store: Arc<TileStore<S>>,
-        mut removed: HashSet<TileKey>,
-        sender: &UnboundedSender<(Option<TileData>, HashSet<String>)>,
-    ) {
+    fn get_tile_key_data(tile_store: Arc<TileStore<S>>, tile_key: &TileKey) -> TileData {
         let tile_rect = tile_key.calc_tile_boundary(1.0);
 
         let tile_rect_origin = Self::lat_lon_to_world(&tile_rect.min());
@@ -86,19 +73,6 @@ impl<S: TileSource> OldTilesProvider<S> {
         let tile_rect_size = tile_rect_max - tile_rect_origin;
 
         let geom = tile_store.load_geometries(&tile_key);
-        if !visible_items.read().unwrap().contains(tile_key) {
-            println!("skipping tile processing, key {:?}", tile_key);
-
-            removed.retain(|item| {
-                item.zoom_level == tile_key.zoom_level
-            });
-
-            Self::fix_removed(&mut removed, visible_items.clone());
-            if !removed.is_empty() {
-                sender.unbounded_send((None, removed.iter().map(|item| item.as_string_key()).collect())).unwrap();
-            }
-            return;
-        }
 
         let tile_position = [tile_rect_origin.x, tile_rect_origin.y, 0.0].into();
 
@@ -116,7 +90,10 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 }
                                 MapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
                                 MapPointObjectKind::Parking => {
-                                    let id = seahash::hash(format!("PARKING{}{}",local_position.x,local_position.y).as_bytes());
+                                    let id = seahash::hash(
+                                        format!("PARKING{}{}", local_position.x, local_position.y)
+                                            .as_bytes(),
+                                    );
                                     geometry_data.push(GeometryData::Text(TextData {
                                         id,
                                         text: "PARKINGPARKINGPARKINGPARKING".to_string(),
@@ -131,7 +108,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     // Text instead of icon
                                     // Some(("parking", Self::PARKING_SVG))
                                     None
-                                },
+                                }
                                 MapPointObjectKind::PopArea(..) => {
                                     geometry_data.push(GeometryData::Text(TextData {
                                         id: hash(poi.text.as_bytes()),
@@ -141,8 +118,8 @@ impl<S: TileSource> OldTilesProvider<S> {
                                             local_position.y,
                                             0.0,
                                         ))
-                                            .cast()
-                                            .unwrap(),
+                                        .cast()
+                                        .unwrap(),
                                     }));
                                     None
                                 }
@@ -178,9 +155,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                             }
                             LineKind::Railway { .. } => None,
                         },
-                        MapGeomObjectKind::AdminLine => {
-                            Some((StyleId("admin_line"), 0, 250.0))
-                        }
+                        MapGeomObjectKind::AdminLine => Some((StyleId("admin_line"), 0, 250.0)),
                         _ => None,
                     } {
                         let line: Vec<(f64, f64)> = line
@@ -240,16 +215,18 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 },
                             ));
                         } else {
-                            let style_id =
-                                if obj_type.kind == MapGeomObjectKind::Nature(NatureKind::Water) {
-                                    StyleId("water")
-                                } else if obj_type.kind == MapGeomObjectKind::Building {
-                                    StyleId("building")
-                                } else if obj_type.kind == MapGeomObjectKind::Nature(NatureKind::Ground) {
-                                    StyleId("ground")
-                                } else {
-                                    StyleId("land")
-                                };
+                            let style_id = if obj_type.kind
+                                == MapGeomObjectKind::Nature(NatureKind::Water)
+                            {
+                                StyleId("water")
+                            } else if obj_type.kind == MapGeomObjectKind::Building {
+                                StyleId("building")
+                            } else if obj_type.kind == MapGeomObjectKind::Nature(NatureKind::Ground)
+                            {
+                                StyleId("ground")
+                            } else {
+                                StyleId("land")
+                            };
 
                             geometry_data.push(GeometryData::Shape(ShapeData {
                                 path: path_builder.build(),
@@ -272,43 +249,17 @@ impl<S: TileSource> OldTilesProvider<S> {
             geometry_data,
         };
 
-
-        if visible_items.read().unwrap().contains(tile_key) {
-            // Self::fix_removed(&mut removed, visible_items.clone());
-            sender.unbounded_send((Some(tile_data), removed.iter().map(|item| item.as_string_key()).collect())).unwrap();
-        } else {
-            println!("skipping tile sending to rendered, key {:?}", tile_key);
-
-            removed.retain(|item| {
-                item.zoom_level == tile_key.zoom_level
-            });
-
-            Self::fix_removed(&mut removed, visible_items.clone());
-            if !removed.is_empty() {
-                sender.unbounded_send((None, removed.iter().map(|item| item.as_string_key()).collect())).unwrap();
-            }
-        }
-    }
-
-    fn highway_style_id(kind: &HighwayKind) -> StyleId {
-        match kind {
-            HighwayKind::Motorway | HighwayKind::MotorwayLink => StyleId("highway_motorway"),
-            HighwayKind::Primary | HighwayKind::PrimaryLink => StyleId("highway_primary"),
-            HighwayKind::Trunk | HighwayKind::TrunkLink => StyleId("highway_trunk"),
-            HighwayKind::Secondary | HighwayKind::SecondaryLink => StyleId("highway_secondary"),
-            HighwayKind::Tertiary => StyleId("highway_tertiary"),
-            HighwayKind::Footway => StyleId("highway_footway"),
-            _ => StyleId("highway_default"),
-        }
+        tile_data
     }
 }
 impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
     fn load(&mut self, area_latlon: Rect, zoom_level: i32) {
-        let sender = self.sender.clone();
-        let tile_store = self.tile_store.clone();
         let ranges = calc_tile_ranges(TILES_COUNT, zoom_level, &area_latlon);
         let mut current_visible_tiles: HashSet<TileKey> = HashSet::new();
         let mut to_load: HashSet<TileKey> = HashSet::new();
+
+        self.current_zoom_level.store(zoom_level, Ordering::Relaxed);
+
         for tx in ranges.min_x..=ranges.max_x {
             for ty in ranges.min_y..=ranges.max_y {
                 let tile_key = TileKey {
@@ -317,29 +268,89 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
                     zoom_level,
                 };
                 current_visible_tiles.insert(tile_key);
-                if self.cache.insert(tile_key) {
+                if self.per_frame_cache.insert(tile_key) {
                     to_load.insert(tile_key);
                 }
             }
         }
+
+        if let Ok(mut actual_cache) = self.actual_cache.try_write() {
+            let sender = self.sender.clone().unwrap();
+
+            let last_loaded_zoom_level = self.last_loaded_zoom_level.load(Ordering::Relaxed);
+
+            let removed: HashSet<TileKey> = actual_cache
+                .extract_if(|key| {
+                    (key.zoom_level == zoom_level && !current_visible_tiles.contains(&key))
+                        || (key.zoom_level != last_loaded_zoom_level && last_loaded_zoom_level == zoom_level)
+                })
+                .collect();
+
+            if !removed.is_empty() {
+                sender
+                    .unbounded_send((
+                        None,
+                        removed.iter().map(|item| item.as_string_key()).collect(),
+                    ))
+                    .unwrap();
+            }
+        }
+
         let removed: HashSet<TileKey> = self
-            .cache
+            .per_frame_cache
             .extract_if(|key| !current_visible_tiles.contains(&key))
             .collect();
-        
-        // start job only if it makes sense
-        if !to_load.is_empty() || !removed.is_empty() {
-            let global_visible_tiles = self.global_visible_tiles.clone();
+
+        if !removed.is_empty() || !to_load.is_empty() {
+            let tile_store = self.tile_store.clone();
+            let current_zoom_level = self.current_zoom_level.clone();
+            let actual_cache = self.actual_cache.clone();
+            let last_loaded_zoom_level = self.last_loaded_zoom_level.clone();
+            let loading_map = self.loading_map.clone();
+            let sender = self.sender.clone().unwrap();
             spawn(move || {
-                *global_visible_tiles.write().unwrap() = current_visible_tiles;
-                if let Some(sender) = sender.as_ref() {
-                    Self::internal_load(tile_store, global_visible_tiles, to_load, removed, sender);
+                let mut loading_map = loading_map.write().unwrap();
+                let loading_count = loading_map
+                    .entry(zoom_level)
+                    .and_modify(|v| *v = *v + 1)
+                    .or_insert(1);
+                let data: Vec<(TileKey, TileData)> = to_load
+                    .par_iter()
+                    .filter_map(|key| {
+                        if current_zoom_level.load(Ordering::Relaxed) == zoom_level {
+                            let tile_data = Self::get_tile_key_data(tile_store.clone(), key);
+                            Some((key.clone(), tile_data))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                if !data.is_empty() && zoom_level == current_zoom_level.load(Ordering::Relaxed) {
+                    if *loading_count == 1 {
+                        last_loaded_zoom_level.store(zoom_level, Ordering::Relaxed);
+                    }
+
+                    actual_cache
+                        .write()
+                        .unwrap()
+                        .extend(data.iter().map(|item| item.0.clone()));
+
+                    data.into_iter().for_each(|(_, data)| {
+                        sender.unbounded_send((Some(data), HashSet::new())).unwrap();
+                    });
                 }
+
+                loading_map
+                    .entry(zoom_level)
+                    .and_modify(|v| *v = (*v - 1).max(0))
+                    .or_insert(0);
             });
         }
     }
 
-    fn tiles(&mut self) -> impl Stream<Item = (Option<TileData>, HashSet<String>)> + Send + 'static {
+    fn tiles(
+        &mut self,
+    ) -> impl Stream<Item = (Option<TileData>, HashSet<String>)> + Send + 'static {
         let (sender, receiver) = unbounded();
         self.sender = Some(sender);
 

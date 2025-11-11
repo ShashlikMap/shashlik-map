@@ -178,9 +178,9 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let poly: Polygon<f64> = Polygon::new(LineString(vec![p1, p2, p4, p3]), Vec::new());
         let area_latlon = get_bounding_rect(poly.exterior()).unwrap();
 
-        if area_latlon != self.last_area_latlon {
+        // if area_latlon != self.last_area_latlon {
             self.tiles_provider.load(area_latlon, zoom_level);
-        }
+        // }
 
         self.last_area_latlon = area_latlon;
     }
@@ -211,7 +211,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     pub fn pan_delta(&self, delta_x: f32, delta_y: f32) {
         self.camera_controller.borrow_mut().pan_delta = (delta_x, delta_y);
     }
-    
+
     pub fn temp_on_load_styles(&self) {
         self.style_loader.load(self.renderer.api.clone());
     }
