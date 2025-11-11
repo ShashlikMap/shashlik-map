@@ -1,10 +1,9 @@
+use lyon::geom::euclid::Point2D;
 use lyon::geom::point;
 use lyon::lyon_tessellation::VertexBuffers;
 use lyon::path::{Path, Winding};
 use renderer::draw_commands::MeshVertex;
 use std::io::BufReader;
-use geo_types::{point, Point};
-use lyon::geom::euclid::Point2D;
 use tobj::LoadError;
 
 pub struct MeshLoader {}
@@ -22,7 +21,7 @@ impl MeshLoader {
 
     pub fn load_simple_circle_puck() -> Path {
         let mut builder = Path::builder();
-        builder.add_circle(Point2D::new(0.0, 0.0), 1.0, Winding::Positive);
+        builder.add_circle(Point2D::new(0.0, 0.0), 1.5, Winding::Positive);
         let path = builder.build();
         path
     }
