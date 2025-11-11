@@ -20,9 +20,6 @@ impl StubTilesProvider {
 }
 
 impl TilesProvider for StubTilesProvider {
-    fn abc(&mut self, zoom_level: i32) {
-        
-    }
 
     fn load(&mut self, _area: Rect, _zoom_level: i32) {
         let polygon_path = MeshLoader::load_test_polygon_path();
