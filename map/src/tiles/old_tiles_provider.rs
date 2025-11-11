@@ -318,18 +318,14 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
                     .par_iter()
                     .filter_map(|key| {
                         if current_zoom_level.load(Ordering::Relaxed) == zoom_level {
-                            Some((
-                                key.clone(),
-                                Self::get_tile_key_data(tile_store.clone(), key),
-                            ))
+                            let tile_data = Self::get_tile_key_data(tile_store.clone(), key);
+                            Some((key.clone(), tile_data))
                         } else {
                             None
                         }
                     })
                     .collect();
-                let czl = current_zoom_level.load(Ordering::Relaxed);
-                if !data.is_empty() && zoom_level == czl {
-                    println!("loaded level: {}, curr zl: {}", zoom_level, czl);
+                if !data.is_empty() && zoom_level == current_zoom_level.load(Ordering::Relaxed) {
                     if *loading_count == 1 {
                         last_loaded_zoom_level.store(zoom_level, Ordering::Relaxed);
                     }
