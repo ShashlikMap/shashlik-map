@@ -638,6 +638,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ffi_run_checksum_method_shashlikmapapi_render(
     ): Short
+    external fun uniffi_ffi_run_checksum_method_shashlikmapapi_set_lat_lon(
+    ): Short
     external fun uniffi_ffi_run_checksum_method_shashlikmapapi_zoom_delta(
     ): Short
     external fun ffi_ffi_run_uniffi_contract_version(
@@ -665,6 +667,8 @@ internal object UniffiLib {
     external fun uniffi_ffi_run_fn_method_shashlikmapapi_pan_delta(`ptr`: Long,`deltaX`: Float,`deltaY`: Float,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     external fun uniffi_ffi_run_fn_method_shashlikmapapi_render(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_ffi_run_fn_method_shashlikmapapi_set_lat_lon(`ptr`: Long,`lat`: Double,`lon`: Double,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     external fun uniffi_ffi_run_fn_method_shashlikmapapi_zoom_delta(`ptr`: Long,`delta`: Float,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
@@ -791,6 +795,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ffi_run_checksum_method_shashlikmapapi_render() != 13143.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ffi_run_checksum_method_shashlikmapapi_set_lat_lon() != 47783.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ffi_run_checksum_method_shashlikmapapi_zoom_delta() != 41132.toShort()) {
@@ -979,6 +986,29 @@ public object FfiConverterFloat: FfiConverter<Float, Float> {
 /**
  * @suppress
  */
+public object FfiConverterDouble: FfiConverter<Double, Double> {
+    override fun lift(value: Double): Double {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Double {
+        return buf.getDouble()
+    }
+
+    override fun lower(value: Double): Double {
+        return value
+    }
+
+    override fun allocationSize(value: Double) = 8UL
+
+    override fun write(value: Double, buf: ByteBuffer) {
+        buf.putDouble(value)
+    }
+}
+
+/**
+ * @suppress
+ */
 public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
     // Note: we don't inherit from FfiConverterRustBuffer, because we use a
     // special encoding when lowering/lifting.  We can use `RustBuffer.len` to
@@ -1136,6 +1166,8 @@ public interface ShashlikMapApiInterface {
     
     fun `render`()
     
+    fun `setLatLon`(`lat`: kotlin.Double, `lon`: kotlin.Double)
+    
     fun `zoomDelta`(`delta`: kotlin.Float)
     
     companion object
@@ -1256,6 +1288,18 @@ open class ShashlikMapApi: Disposable, AutoCloseable, ShashlikMapApiInterface
     UniffiLib.uniffi_ffi_run_fn_method_shashlikmapapi_render(
         it,
         _status)
+}
+    }
+    
+    
+
+    override fun `setLatLon`(`lat`: kotlin.Double, `lon`: kotlin.Double)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ffi_run_fn_method_shashlikmapapi_set_lat_lon(
+        it,
+        FfiConverterDouble.lower(`lat`),FfiConverterDouble.lower(`lon`),_status)
 }
     }
     

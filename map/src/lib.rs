@@ -37,6 +37,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     tiles_provider: T,
     last_area_latlon: Rect,
     camera_offset: Vector3<f32>,
+    camera_offset2: Vector3<f32>,
     style_loader: StyleLoader,
     pub temp_color: f32,
 }
@@ -105,6 +106,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             tiles_provider,
             last_area_latlon: Rect::new((0.0, 0.0), (0.0, 0.0)),
             camera_offset: camera_offset.cast().unwrap(),
+            camera_offset2: camera_offset.cast().unwrap(),
             style_loader: StyleLoader::new(),
             temp_color: 0.0,
         };
@@ -210,6 +212,18 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     pub fn pan_delta(&self, delta_x: f32, delta_y: f32) {
         self.camera_controller.borrow_mut().pan_delta = (delta_x, delta_y);
+    }
+
+    pub fn set_lat_lon(&mut self, lat: f64, lon: f64) {
+        let camera_offset = T::lat_lon_to_world(&coord! {x: lon, y: lat});
+        println!("qqq: {:?}", camera_offset);
+        println!("self.camera_offset: {:?}", self.camera_offset2);
+        let camera_offset:Vector3<f64> = (camera_offset.x, camera_offset.y, 0.0).into();
+
+        let delta = camera_offset - self.camera_offset2.cast().unwrap();
+        println!("delta: {:?}", delta);
+        self.pan_delta(delta.x.round() as f32, delta.y.round() as f32);
+        self.camera_offset2 = camera_offset.cast().unwrap();
     }
 
     pub fn temp_on_load_styles(&self) {

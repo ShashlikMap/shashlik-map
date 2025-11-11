@@ -1,10 +1,17 @@
 package com.shashlik.demo
 
+import android.Manifest
+import android.content.Context
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.os.Bundle
+import android.util.Log
 import android.view.Surface
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -14,7 +21,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.lifecycleScope
 import com.shashlik.demo.ui.theme.MyApplicationTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class RB {
 
@@ -26,16 +36,46 @@ class RB {
 }
 
 class MainActivity : ComponentActivity() {
+
+    private var lastLocation: Location? = null
+
+    private val locationListener = LocationListener { location ->
+        lastLocation = location
+        val latitude: Double = location.latitude
+        val longitude: Double = location.longitude
+        Log.d("kiol", "latitude = $latitude, longitude = $longitude")
+
+        map?.shashlikMapApi?.setLatLon(latitude, longitude)
+    }
+
+    lateinit var locationService: LocationManager
+
+    private var map: WGPUSurfaceView? = null
+
+    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        locationService = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
-                Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp)
+                ) {
                     AndroidView(
                         factory = { ctx ->
                             val sv = WGPUSurfaceView(context = ctx)
-//                            surfaceView = sv
+                            map = sv
+                            this@MainActivity.lifecycleScope.launch {
+                                delay(1000)
+                                lastLocation?.let {
+                                    this@MainActivity.locationListener.onLocationChanged(it)
+                                }
+                            }
                             sv
                         },
                         modifier = Modifier
@@ -44,6 +84,30 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
+    override fun onStart() {
+        super.onStart()
+        Log.d("kiol", "onStart")
+        locationService.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.let {
+            Log.d("kiol", "getLastKnownLocation $it")
+            locationListener.onLocationChanged(it)
+        }
+
+        locationService.requestLocationUpdates(
+            LocationManager.GPS_PROVIDER,
+            1000L,
+            2f,
+            locationListener
+        )
+
+    }
+
+    override fun onStop() {
+        super.onStop()
+        Log.d("kiol", "onStop")
+        locationService.removeUpdates(locationListener)
     }
 }
 
