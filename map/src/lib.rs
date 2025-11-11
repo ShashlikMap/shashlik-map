@@ -24,6 +24,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::thread::spawn;
+use log::error;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 mod style_loader;
@@ -199,9 +200,11 @@ impl<T: TilesProvider> ShashlikMap<T> {
             });
 
         let cam_zoom = -self.camera_controller.borrow().camera_z / 100.0;
+        let puck_location = self.camera_offset2.cast().unwrap() - self.camera_offset.cast().unwrap();
         self.renderer
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
+                spatial_data.transform = puck_location;
                 spatial_data.scale = cam_zoom as f64;
             });
     }
@@ -216,13 +219,12 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     pub fn set_lat_lon(&mut self, lat: f64, lon: f64) {
         let camera_offset = T::lat_lon_to_world(&coord! {x: lon, y: lat});
-        println!("qqq: {:?}", camera_offset);
-        println!("self.camera_offset: {:?}", self.camera_offset2);
+        error!("kiol self.camera_offset: {:?}", self.camera_offset2);
         let camera_offset:Vector3<f64> = (camera_offset.x, camera_offset.y, 0.0).into();
 
         let delta = camera_offset - self.camera_offset2.cast().unwrap();
-        println!("delta: {:?}", delta);
-        self.pan_delta(delta.x.round() as f32, delta.y.round() as f32);
+        error!("kiol delta: {:?}", delta);
+        self.pan_delta((delta.x - delta.x*0.2).round() as f32, (delta.y - delta.y*0.2).round() as f32);
         self.camera_offset2 = camera_offset.cast().unwrap();
     }
 

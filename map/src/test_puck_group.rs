@@ -11,7 +11,7 @@ impl RenderGroup for TestSimplePuck {
     fn content(&self, canvas: &mut CanvasApi) {
         canvas.path(
             &ShapeData {
-                path: MeshLoader::load_simple_puck(),
+                path: MeshLoader::load_simple_circle_puck(),
                 geometry_type: GeometryType::Polygon,
                 style_id: StyleId("puck_style"),
                 layer_level: 0,
