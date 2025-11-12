@@ -24,7 +24,6 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::thread::spawn;
-use log::error;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 mod style_loader;
@@ -38,7 +37,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     tiles_provider: T,
     last_area_latlon: Rect,
     camera_offset: Vector3<f32>,
-    camera_offset2: Vector3<f32>,
+    current_lat_lon:Vector3<f32>,
     style_loader: StyleLoader,
     pub temp_color: f32,
 }
@@ -106,8 +105,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
             camera_controller,
             tiles_provider,
             last_area_latlon: Rect::new((0.0, 0.0), (0.0, 0.0)),
+            current_lat_lon: camera_offset.cast().unwrap(),
             camera_offset: camera_offset.cast().unwrap(),
-            camera_offset2: camera_offset.cast().unwrap(),
             style_loader: StyleLoader::new(),
             temp_color: 0.0,
         };
@@ -200,11 +199,12 @@ impl<T: TilesProvider> ShashlikMap<T> {
             });
 
         let cam_zoom = -self.camera_controller.borrow().camera_z / 100.0;
-        let puck_location = self.camera_offset2.cast().unwrap() - self.camera_offset.cast().unwrap();
+
+        let puck_location = self.current_lat_lon - self.camera_offset.cast().unwrap();
         self.renderer
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
-                spatial_data.transform = puck_location;
+                spatial_data.transform = puck_location.cast().unwrap();
                 spatial_data.scale = cam_zoom as f64;
             });
     }
@@ -218,14 +218,13 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn set_lat_lon(&mut self, lat: f64, lon: f64) {
-        let camera_offset = T::lat_lon_to_world(&coord! {x: lon, y: lat});
-        error!("kiol self.camera_offset: {:?}", self.camera_offset2);
-        let camera_offset:Vector3<f64> = (camera_offset.x, camera_offset.y, 0.0).into();
-
-        let delta = camera_offset - self.camera_offset2.cast().unwrap();
-        error!("kiol delta: {:?}", delta);
-        self.pan_delta((delta.x - delta.x*0.2).round() as f32, (delta.y - delta.y*0.2).round() as f32);
-        self.camera_offset2 = camera_offset.cast().unwrap();
+        let position = T::lat_lon_to_world(&coord! {x: lon, y: lat});
+        self.current_lat_lon = Vector3::new(position.x as f32, position.y as f32, 0.0);
+        let position = coord! {
+            x: position.x - self.camera_offset.x as f64,
+            y: position.y - self.camera_offset.y as f64
+        };
+        self.camera_controller.borrow_mut().set_new_position(position);
     }
 
     pub fn temp_on_load_styles(&self) {

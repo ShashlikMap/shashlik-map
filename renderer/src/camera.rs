@@ -1,4 +1,4 @@
-use cgmath::{Matrix4, SquareMatrix, Transform, Vector2, Vector3, Vector4};
+use cgmath::{Matrix4, Point3, SquareMatrix, Transform, Vector2, Vector3, Vector4};
 use geo_types::{Coord, coord};
 
 #[rustfmt::skip]
@@ -101,6 +101,7 @@ pub struct CameraController {
     pub is_m_pressed: bool,
     pub cached_matrix: Matrix4<f64>,
     pub camera_z: f32,
+    pub position: cgmath::Point3<f32>
 }
 
 impl CameraController {
@@ -121,6 +122,7 @@ impl CameraController {
             is_m_pressed: false,
             cached_matrix: Matrix4::identity().into(),
             camera_z: 200.0,
+            position: cgmath::Point3::new(0.0, 0.0, 0.0),
         }
     }
 
@@ -130,6 +132,10 @@ impl CameraController {
     ) -> ScreenPositionCalculator<'a> {
         let matrix = FLIP_Y * OPENGL_TO_WGPU_MATRIX * self.cached_matrix;
         ScreenPositionCalculator::new(matrix, config)
+    }
+
+    pub fn set_new_position(&mut self, coord: Coord) {
+        self.position = Point3::new(coord.x, coord.y, 0.0).cast().unwrap()
     }
 
     pub(crate) fn update_camera(&mut self, camera: &mut Camera) {
@@ -147,11 +153,24 @@ impl CameraController {
         let forward = camera.target - camera.eye;
         let _forward_mag = forward.magnitude();
 
+        camera.eye.x = self.position.x;
+        camera.eye.y = self.position.y;
+        camera.target.x = self.position.x;
+        camera.target.y = self.position.y;
+
+        let offset = self.position - camera.target;
+        camera.eye.x += offset.x;
+        camera.target.x += offset.x;
+        camera.eye.y += offset.y;
+        camera.target.y += offset.y;
+
         camera.eye.x += self.pan_delta.0 * speed_koef;
         camera.target.x += self.pan_delta.0 * speed_koef;
 
         camera.eye.y += self.pan_delta.1 * speed_koef;
         camera.target.y += self.pan_delta.1 * speed_koef;
+
+        self.position = camera.target.clone();
 
         self.pan_delta = (0.0, 0.0);
         self.zoom_delta = 0.0;
