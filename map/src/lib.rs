@@ -37,7 +37,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     tiles_provider: T,
     last_area_latlon: Rect,
     camera_offset: Vector3<f32>,
-    current_lat_lon:Vector3<f32>,
+    current_lat_lon: Vector3<f32>,
     style_loader: StyleLoader,
     pub temp_color: f32,
 }
@@ -220,11 +220,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     pub fn set_lat_lon(&mut self, lat: f64, lon: f64) {
         let position = T::lat_lon_to_world(&coord! {x: lon, y: lat});
         self.current_lat_lon = Vector3::new(position.x as f32, position.y as f32, 0.0);
-        let position = coord! {
-            x: position.x - self.camera_offset.x as f64,
-            y: position.y - self.camera_offset.y as f64
-        };
-        self.camera_controller.borrow_mut().set_new_position(position);
+        self.camera_controller.borrow_mut().set_new_position(self.current_lat_lon - self.camera_offset);
     }
 
     pub fn temp_on_load_styles(&self) {

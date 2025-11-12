@@ -134,7 +134,7 @@ impl CameraController {
         ScreenPositionCalculator::new(matrix, config)
     }
 
-    pub fn set_new_position(&mut self, coord: Coord) {
+    pub fn set_new_position(&mut self, coord: Vector3<f32>) {
         self.position = Point3::new(coord.x, coord.y, 0.0).cast().unwrap()
     }
 
