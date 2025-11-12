@@ -37,6 +37,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     tiles_provider: T,
     last_area_latlon: Rect,
     camera_offset: Vector3<f32>,
+    current_lat_lon: Vector3<f32>,
     style_loader: StyleLoader,
     pub temp_color: f32,
 }
@@ -104,6 +105,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             camera_controller,
             tiles_provider,
             last_area_latlon: Rect::new((0.0, 0.0), (0.0, 0.0)),
+            current_lat_lon: camera_offset.cast().unwrap(),
             camera_offset: camera_offset.cast().unwrap(),
             style_loader: StyleLoader::new(),
             temp_color: 0.0,
@@ -197,9 +199,12 @@ impl<T: TilesProvider> ShashlikMap<T> {
             });
 
         let cam_zoom = -self.camera_controller.borrow().camera_z / 100.0;
+
+        let puck_location = self.current_lat_lon - self.camera_offset.cast().unwrap();
         self.renderer
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
+                spatial_data.transform = puck_location.cast().unwrap();
                 spatial_data.scale = cam_zoom as f64;
             });
     }
@@ -210,6 +215,12 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     pub fn pan_delta(&self, delta_x: f32, delta_y: f32) {
         self.camera_controller.borrow_mut().pan_delta = (delta_x, delta_y);
+    }
+
+    pub fn set_lat_lon(&mut self, lat: f64, lon: f64) {
+        let position = T::lat_lon_to_world(&coord! {x: lon, y: lat});
+        self.current_lat_lon = Vector3::new(position.x as f32, position.y as f32, 0.0);
+        self.camera_controller.borrow_mut().set_new_position(self.current_lat_lon - self.camera_offset);
     }
 
     pub fn temp_on_load_styles(&self) {

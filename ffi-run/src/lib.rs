@@ -32,6 +32,11 @@ impl ShashlikMapApi {
         let shashlik_map = self.shashlik_map.read().unwrap();
         shashlik_map.pan_delta(delta_x, delta_y);
     }
+
+    fn set_lat_lon(&self, lat: f64, lon: f64) {
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
+        shashlik_map.set_lat_lon(lat, lon);
+    }
 }
 
 uniffi::setup_scaffolding!();

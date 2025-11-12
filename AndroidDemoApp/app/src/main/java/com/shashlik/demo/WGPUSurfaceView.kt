@@ -46,7 +46,7 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
 
     private var rustBrige = RB()
 
-    private var shashlikMapApi: ShashlikMapApi? = null
+    var shashlikMapApi: ShashlikMapApi? = null
 
     constructor(context: Context) : super(context) {
     }
