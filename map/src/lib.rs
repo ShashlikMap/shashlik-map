@@ -40,6 +40,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     current_lat_lon: Vector3<f32>,
     style_loader: StyleLoader,
     pub temp_color: f32,
+    pub cam_follow_mode: bool,
 }
 
 impl RenderGroup for TileData {
@@ -51,6 +52,8 @@ impl RenderGroup for TileData {
 }
 
 impl<T: TilesProvider> ShashlikMap<T> {
+
+    const TEMP_ANIMATION_SPEED: f32 = 0.03;
     pub async fn new(
         canvas: Box<dyn WgpuCanvas>,
         tiles_provider: T,
@@ -109,6 +112,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             camera_offset: camera_offset.cast().unwrap(),
             style_loader: StyleLoader::new(),
             temp_color: 0.0,
+            cam_follow_mode: true,
         };
         map.temp_on_load_styles();
         Ok(map)
@@ -204,9 +208,16 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.renderer
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
-                spatial_data.transform = puck_location.cast().unwrap();
+                spatial_data.transform += (puck_location.cast().unwrap() - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED as f64;
                 spatial_data.scale = cam_zoom as f64;
             });
+
+        if self.cam_follow_mode {
+            let cam_pos = self.camera_controller.borrow().position;
+            let cam_pos = Vector3::new(cam_pos.x, cam_pos.y, cam_pos.z);
+            let new_cam_pos = cam_pos + ((self.current_lat_lon - self.camera_offset) - cam_pos) * Self::TEMP_ANIMATION_SPEED;
+            self.camera_controller.borrow_mut().set_new_position(new_cam_pos);
+        }
     }
 
     pub fn zoom_delta(&self, delta: f32) {
@@ -220,7 +231,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
     pub fn set_lat_lon(&mut self, lat: f64, lon: f64) {
         let position = T::lat_lon_to_world(&coord! {x: lon, y: lat});
         self.current_lat_lon = Vector3::new(position.x as f32, position.y as f32, 0.0);
-        self.camera_controller.borrow_mut().set_new_position(self.current_lat_lon - self.camera_offset);
     }
 
     pub fn temp_on_load_styles(&self) {

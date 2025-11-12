@@ -189,10 +189,14 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                             self.camera_controller.borrow_mut().is_x_pressed = is_pressed;
                         }
                         KeyCode::KeyN => {
-                            self.camera_controller.borrow_mut().is_n_pressed = is_pressed;
+                            if is_pressed {
+                                map.cam_follow_mode = !map.cam_follow_mode;
+                            }
                         }
                         KeyCode::KeyM => {
-                            map.set_lat_lon(35.7248164, 139.7769298);
+                            if is_pressed {
+                                map.set_lat_lon(35.7248164, 139.7769298);
+                            }
                         }
                         _ => {}
                     }
