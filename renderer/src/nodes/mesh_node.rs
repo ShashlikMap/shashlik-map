@@ -3,7 +3,7 @@ use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::SceneNode;
 use crate::vertex_attrs::InstancePos;
 use crate::{GlobalContext, ReceiverExt};
-use cgmath::{Matrix4, Vector3};
+use cgmath::{Deg, Matrix4, Vector3};
 use cgmath::num_traits::clamp;
 use geo_types::point;
 use log::error;
@@ -123,7 +123,10 @@ impl PositionedMesh {
         is_two_instances: bool,
     ) {
         attrs.clear();
-        let matrix = Matrix4::<f64>::from_scale(spatial_data.scale);
+
+        let scale_matrix = Matrix4::<f64>::from_scale(spatial_data.scale);
+        let rotation_matrix = Matrix4::<f64>::from_angle_z(Deg(spatial_data.rotation as f64));
+        let matrix = scale_matrix * rotation_matrix;
         for i in 0..original_positions_alpha.len() {
             let item = original_positions_alpha[i];
 

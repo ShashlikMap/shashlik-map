@@ -51,8 +51,9 @@ class MainActivity : ComponentActivity() {
         val latitude: Double = location.latitude
         val longitude: Double = location.longitude
         Log.d("kiol", "latitude = $latitude, longitude = $longitude")
-
-        map?.shashlikMapApi?.setLatLon(latitude, longitude)
+        Log.d("kiol", "hasBearing = ${location.hasBearing()}, bearing = ${location.bearing}")
+        val bearing: Float? = if(location.hasBearing()) location.bearing else null
+        map?.shashlikMapApi?.setLatLonBearing(latitude, longitude, bearing)
     }
 
     lateinit var locationService: LocationManager

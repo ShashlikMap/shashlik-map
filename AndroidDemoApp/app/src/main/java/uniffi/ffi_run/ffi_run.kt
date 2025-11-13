@@ -640,7 +640,7 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ffi_run_checksum_method_shashlikmapapi_set_cam_follow_mode(
     ): Short
-    external fun uniffi_ffi_run_checksum_method_shashlikmapapi_set_lat_lon(
+    external fun uniffi_ffi_run_checksum_method_shashlikmapapi_set_lat_lon_bearing(
     ): Short
     external fun uniffi_ffi_run_checksum_method_shashlikmapapi_zoom_delta(
     ): Short
@@ -672,7 +672,7 @@ internal object UniffiLib {
     ): Unit
     external fun uniffi_ffi_run_fn_method_shashlikmapapi_set_cam_follow_mode(`ptr`: Long,`enabled`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
-    external fun uniffi_ffi_run_fn_method_shashlikmapapi_set_lat_lon(`ptr`: Long,`lat`: Double,`lon`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_ffi_run_fn_method_shashlikmapapi_set_lat_lon_bearing(`ptr`: Long,`lat`: Double,`lon`: Double,`bearing`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     external fun uniffi_ffi_run_fn_method_shashlikmapapi_zoom_delta(`ptr`: Long,`delta`: Float,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
@@ -804,7 +804,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ffi_run_checksum_method_shashlikmapapi_set_cam_follow_mode() != 20400.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ffi_run_checksum_method_shashlikmapapi_set_lat_lon() != 47783.toShort()) {
+    if (lib.uniffi_ffi_run_checksum_method_shashlikmapapi_set_lat_lon_bearing() != 7259.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ffi_run_checksum_method_shashlikmapapi_zoom_delta() != 41132.toShort()) {
@@ -1198,7 +1198,7 @@ public interface ShashlikMapApiInterface {
     
     fun `setCamFollowMode`(`enabled`: kotlin.Boolean)
     
-    fun `setLatLon`(`lat`: kotlin.Double, `lon`: kotlin.Double)
+    fun `setLatLonBearing`(`lat`: kotlin.Double, `lon`: kotlin.Double, `bearing`: kotlin.Float?)
     
     fun `zoomDelta`(`delta`: kotlin.Float)
     
@@ -1337,13 +1337,13 @@ open class ShashlikMapApi: Disposable, AutoCloseable, ShashlikMapApiInterface
     
     
 
-    override fun `setLatLon`(`lat`: kotlin.Double, `lon`: kotlin.Double)
+    override fun `setLatLonBearing`(`lat`: kotlin.Double, `lon`: kotlin.Double, `bearing`: kotlin.Float?)
         = 
     callWithHandle {
     uniffiRustCall() { _status ->
-    UniffiLib.uniffi_ffi_run_fn_method_shashlikmapapi_set_lat_lon(
+    UniffiLib.uniffi_ffi_run_fn_method_shashlikmapapi_set_lat_lon_bearing(
         it,
-        FfiConverterDouble.lower(`lat`),FfiConverterDouble.lower(`lon`),_status)
+        FfiConverterDouble.lower(`lat`),FfiConverterDouble.lower(`lon`),FfiConverterOptionalFloat.lower(`bearing`),_status)
 }
     }
     
@@ -1396,6 +1396,38 @@ public object FfiConverterTypeShashlikMapApi: FfiConverter<ShashlikMapApi, Long>
 
     override fun write(value: ShashlikMapApi, buf: ByteBuffer) {
         buf.putLong(lower(value))
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalFloat: FfiConverterRustBuffer<kotlin.Float?> {
+    override fun read(buf: ByteBuffer): kotlin.Float? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterFloat.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Float?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterFloat.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Float?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterFloat.write(value, buf)
+        }
     }
 }
 

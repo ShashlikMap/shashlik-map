@@ -33,9 +33,9 @@ impl ShashlikMapApi {
         shashlik_map.pan_delta(delta_x, delta_y);
     }
 
-    fn set_lat_lon(&self, lat: f64, lon: f64) {
+    fn set_lat_lon_bearing(&self, lat: f64, lon: f64, bearing: Option<f32>) {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
-        shashlik_map.set_lat_lon(lat, lon);
+        shashlik_map.set_lat_lon_bearing(lat, lon, bearing);
     }
 
     fn set_cam_follow_mode(&self, enabled: bool) {

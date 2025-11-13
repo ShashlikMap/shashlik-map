@@ -22,6 +22,7 @@ pub struct App<T: TilesProvider> {
     pub shashlik_map: Option<ShashlikMap<T>>,
     pub cursor_active: bool,
     pub last_cursor_position: PhysicalPosition<f64>,
+    pub fake_bearing: f32
 }
 
 pub enum CustomUIEvent {
@@ -37,6 +38,7 @@ impl<T: TilesProvider> App<T> {
             shashlik_map: None,
             cursor_active: false,
             last_cursor_position: PhysicalPosition::new(0.0, 0.0),
+            fake_bearing: 0.0
         }
     }
 }
@@ -195,7 +197,8 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                         }
                         KeyCode::KeyM => {
                             if is_pressed {
-                                map.set_lat_lon(35.7248164, 139.7769298);
+                                map.set_lat_lon_bearing(35.7248164, 139.7769298, Some(self.fake_bearing));
+                                self.fake_bearing += 30.0;
                             }
                         }
                         _ => {}
