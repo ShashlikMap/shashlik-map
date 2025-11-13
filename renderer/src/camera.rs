@@ -1,5 +1,8 @@
-use cgmath::{Matrix4, Point3, SquareMatrix, Transform, Vector2, Vector3, Vector4};
-use geo_types::{Coord, coord};
+use cgmath::{
+    Basis3, Deg, Matrix4, Point3, Rotation, Rotation3, SquareMatrix, Transform, Vector2,
+    Vector3, Vector4,
+};
+use geo_types::{coord, Coord};
 
 #[rustfmt::skip]
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f64> = cgmath::Matrix4::from_cols(
@@ -101,7 +104,8 @@ pub struct CameraController {
     pub is_m_pressed: bool,
     pub cached_matrix: Matrix4<f64>,
     pub camera_z: f32,
-    pub position: cgmath::Point3<f32>
+    pub position: cgmath::Point3<f32>,
+    pub rotation: f32,
 }
 
 impl CameraController {
@@ -123,6 +127,7 @@ impl CameraController {
             cached_matrix: Matrix4::identity().into(),
             camera_z: 200.0,
             position: cgmath::Point3::new(0.0, 0.0, 0.0),
+            rotation: 0.0,
         }
     }
 
@@ -147,28 +152,19 @@ impl CameraController {
 
         camera.eye += forward_norm * self.zoom_delta * speed_koef;
 
-        let _right = forward_norm.cross(camera.up);
-
-        // Redo radius calc in case the up/ down is pressed.
-        let forward = camera.target - camera.eye;
-        let _forward_mag = forward.magnitude();
-
         camera.eye.x = self.position.x;
         camera.eye.y = self.position.y;
         camera.target.x = self.position.x;
         camera.target.y = self.position.y;
 
-        let offset = self.position - camera.target;
-        camera.eye.x += offset.x;
-        camera.target.x += offset.x;
-        camera.eye.y += offset.y;
-        camera.target.y += offset.y;
-
         camera.eye.x += self.pan_delta.0 * speed_koef;
         camera.target.x += self.pan_delta.0 * speed_koef;
-
         camera.eye.y += self.pan_delta.1 * speed_koef;
         camera.target.y += self.pan_delta.1 * speed_koef;
+
+        let rotation_matrix = Basis3::from_angle_z(Deg(self.rotation));
+        // temporary fast trick for top-down view
+        camera.up = rotation_matrix.rotate_vector(cgmath::Vector3::unit_y());
 
         self.position = camera.target.clone();
 

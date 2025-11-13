@@ -216,12 +216,18 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 spatial_data.scale = cam_zoom as f64;
             });
 
-        if self.cam_follow_mode {
+        let cam_rotation = self.camera_controller.borrow_mut().rotation;
+        let new_cam_rotation = if self.cam_follow_mode {
             let cam_pos = self.camera_controller.borrow().position;
             let cam_pos = Vector3::new(cam_pos.x, cam_pos.y, cam_pos.z);
             let new_cam_pos = cam_pos + ((self.current_lat_lon - self.camera_offset) - cam_pos) * Self::TEMP_ANIMATION_SPEED;
             self.camera_controller.borrow_mut().set_new_position(new_cam_pos);
-        }
+
+            cam_rotation + ((self.current_bearing - cam_rotation) % 360.0) * Self::TEMP_ANIMATION_SPEED
+        } else {
+            cam_rotation * (1.0f32 - Self::TEMP_ANIMATION_SPEED) % 360.0
+        };
+        self.camera_controller.borrow_mut().rotation = new_cam_rotation;
     }
 
     pub fn zoom_delta(&self, delta: f32) {
@@ -229,14 +235,21 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn pan_delta(&self, delta_x: f32, delta_y: f32) {
-        self.camera_controller.borrow_mut().pan_delta = (delta_x, delta_y);
+        // pan is disabled for now
+        if !self.cam_follow_mode {
+            self.camera_controller.borrow_mut().pan_delta = (delta_x, delta_y);
+        }
     }
 
     pub fn set_lat_lon_bearing(&mut self, lat: f64, lon: f64, bearing: Option<f32>) {
         let position = T::lat_lon_to_world(&coord! {x: lon, y: lat});
         self.current_lat_lon = Vector3::new(position.x as f32, position.y as f32, 0.0);
         if let Some(bearing) = bearing {
-            self.current_bearing = bearing;
+            let mut rot_diff = (bearing % 360.0) - (self.current_bearing % 360.0);
+            if rot_diff.abs() > 180.0 {
+                rot_diff -= rot_diff.signum() * 360.0;
+            }
+            self.current_bearing += rot_diff % 360.0;
         }
     }
 

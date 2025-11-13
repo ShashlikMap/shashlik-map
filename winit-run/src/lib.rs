@@ -197,8 +197,8 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                         }
                         KeyCode::KeyM => {
                             if is_pressed {
-                                map.set_lat_lon_bearing(35.7248164, 139.7769298, Some(self.fake_bearing));
                                 self.fake_bearing += 30.0;
+                                map.set_lat_lon_bearing(35.7248164, 139.7769298, Some(self.fake_bearing));
                             }
                         }
                         _ => {}
