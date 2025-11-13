@@ -36,6 +36,15 @@ impl RenderStyle {
         style
     }
 
+    pub fn dashed(fill_color: [f32; 4], dash_color: [f32; 4]) -> RenderStyle {
+        let mut style = RenderStyle::fill(fill_color);
+
+        style.container[0] = 2.0;
+        style.container[5..dash_color.len() + 5].copy_from_slice(&dash_color);
+
+        style
+    }
+
     pub(crate) fn params(&self) -> [f32; STYLE_SHADER_PARAMS_COUNT] {
         self.container
     }

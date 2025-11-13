@@ -21,17 +21,18 @@ struct VertexInput {
     @builtin(instance_index) instance_index : u32,
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
-    @location(2) style_index: u32,
+    @location(2) dist: f32,
+    @location(3) style_index: u32,
 }
 
 struct InstanceInput {
-    @location(3) position: vec3<f32>,
-    @location(4) color_alpha: f32,
-    @location(5) model_matrix_0: vec4<f32>,
-    @location(6) model_matrix_1: vec4<f32>,
-    @location(7) model_matrix_2: vec4<f32>,
-    @location(8) model_matrix_3: vec4<f32>,
-    @location(9) bbox: vec4<f32>,
+    @location(4) position: vec3<f32>,
+    @location(5) color_alpha: f32,
+    @location(6) model_matrix_0: vec4<f32>,
+    @location(7) model_matrix_1: vec4<f32>,
+    @location(8) model_matrix_2: vec4<f32>,
+    @location(9) model_matrix_3: vec4<f32>,
+    @location(10) bbox: vec4<f32>,
 }
 
 struct VertexOutput {
@@ -41,6 +42,7 @@ struct VertexOutput {
     @location(2) color_alpha: f32,
     @location(3) vertex_pos_xy: vec2<f32>,
     @location(4) bbox: vec4<f32>,
+    @location(5) dist: f32,
 }
 
 // TODO pass as a parameter
@@ -73,6 +75,7 @@ fn vs_main(
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
+    out.dist = model.dist;
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
@@ -99,6 +102,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         res_color = solid_style(in.outline_flag, style_params);
     } else if(style_type == 1) {
         res_color = border_style(in.outline_flag, style_params);
+    } else if(style_type == 2) {
+        res_color = dashed_style(in.outline_flag, in.dist, style_params);
     } else {
         res_color = vec4(0.0, 0.0, 0.0, 1.0);
     }
@@ -123,4 +128,30 @@ fn border_style(outline_flag: u32, params: array<f32, PARAMS_COUNT>) -> vec4<f32
         return vec4(fill_color.x * koef, fill_color.y * koef, fill_color.z * koef, 1.0);
     }
     return fill_color;
+}
+
+fn dashed_style(outline_flag: u32, dist: f32, params: array<f32, PARAMS_COUNT>) -> vec4<f32> {
+    let fill_color = vec4(params[1], params[2], params[3], params[4]);
+    let dash_color = vec4(params[5], params[6], params[7], params[8]);
+    if(outline_flag == 0) {
+        // TODO Border + Dashed later
+        discard;
+    }
+    
+    return dash(4.0, 0.2*dist, dash_color, fill_color);
+}
+
+fn dash(freq: f32, dist: f32, extra_color: vec4f, main_color: vec4f) -> vec4f {
+    let koef = 1.0 / freq;
+    let lineUMod = (dist - (koef)*floor(dist/(koef))) * freq;
+    let dash = smoothstep(koef, koef, length(lineUMod-0.5));
+
+    var dashed_color = vec4(0.0, 0.0, 0.0, 0.0);
+
+    if(dash <= 0.0) {
+        dashed_color = extra_color;
+    } else {
+        dashed_color = main_color;
+    }
+    return dashed_color;
 }

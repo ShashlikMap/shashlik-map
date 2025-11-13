@@ -8,9 +8,7 @@ use geo_types::Rect;
 use googleprojection::{Coord, Mercator};
 use lyon::geom::point;
 use lyon::path::Path;
-use old_tiles_gen::map::{
-    HighwayKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointObjectKind, NatureKind,
-};
+use old_tiles_gen::map::{HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointObjectKind, NatureKind};
 use old_tiles_gen::source::TileSource;
 use old_tiles_gen::tiles::{TILES_COUNT, TileKey, TileStore, calc_tile_ranges};
 use rand::Rng;
@@ -153,7 +151,14 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     None
                                 }
                             }
-                            LineKind::Railway { .. } => None,
+                            LineKind::Railway { .. } => {
+                                // TODO Ignore rails tunnels for a while
+                                if info.layer_kind != LayerKind::Tunnel {
+                                    Some((StyleId("rails"), info.layer, 0.3))
+                                } else {
+                                    None
+                                }
+                            },
                         },
                         MapGeomObjectKind::AdminLine => Some((StyleId("admin_line"), 0, 250.0)),
                         _ => None,

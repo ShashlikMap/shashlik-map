@@ -71,6 +71,10 @@ impl StyleLoader {
                     StyleId("admin_line"),
                     RenderStyle::fill([0.0, 0.0, 0.0, 1.0]),
                 ),
+                (
+                    StyleId("rails"),
+                    RenderStyle::dashed([1.0, 1.0, 1.0, 1.0], [0.2, 0.2, 0.2, 1.0]),
+                ),
             ];
 
             new_styles.into_iter().for_each(|(style_id, render_style)| {

@@ -9,13 +9,14 @@ pub trait VertexAttrib {
 pub struct ShapeVertex {
     pub position: [f32; 3],
     pub normals: [f32; 3],
+    pub dist: f32,
     pub style_index: u32,
 }
 
 impl VertexAttrib for ShapeVertex {
     fn desc() -> wgpu::VertexBufferLayout<'static> {
-        const ATTRIBUTES: &[VertexAttribute; 3] =
-            &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Uint32];
+        const ATTRIBUTES: &[VertexAttribute; 4] =
+            &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32, 3 => Uint32];
         use std::mem;
         wgpu::VertexBufferLayout {
             array_stride: mem::size_of::<Self>() as wgpu::BufferAddress,
@@ -57,13 +58,13 @@ pub struct InstancePos {
 impl VertexAttrib for InstancePos {
     fn desc() -> VertexBufferLayout<'static> {
         const ATTRIBUTES: &[VertexAttribute; 7] = &wgpu::vertex_attr_array![
-            3 => Float32x3,
-            4 => Float32,
-            5 => Float32x4,
+            4 => Float32x3,
+            5 => Float32,
             6 => Float32x4,
             7 => Float32x4,
             8 => Float32x4,
-            9 => Float32x4
+            9 => Float32x4,
+            10 => Float32x4
         ];
 
         wgpu::VertexBufferLayout {
