@@ -10,7 +10,7 @@ use cgmath::Vector3;
 use futures::executor::block_on;
 use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
-use geo_types::{coord, Coord, Rect};
+use geo_types::{coord, Coord, GeometryCollection, Point, Rect};
 use geo_types::{LineString, Polygon};
 use renderer::camera::CameraController;
 use renderer::canvas_api::CanvasApi;
@@ -24,12 +24,17 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::thread::spawn;
+use std::time::SystemTime;
+use kml::KmlReader;
+use lyon::geom::point;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use crate::test_kml_viewer_group::TestKmlGroup;
 
 mod style_loader;
 mod test_puck_group;
 mod test_simple_path_group;
 pub mod tiles;
+mod test_kml_viewer_group;
 
 pub struct ShashlikMap<T: TilesProvider> {
     renderer: Box<ShashlikRenderer>,
@@ -82,7 +87,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
         let camera_offset = T::lat_lon_to_world(&initial_coord);
 
-        let camera_offset = (camera_offset.x, camera_offset.y, 0.0).into();
+        let camera_offset: Vector3<f64> = (camera_offset.x, camera_offset.y, 0.0).into();
 
         let mut puck_spatial_data = SpatialData::transform(Vector3::new(0.0, 0.0, 0.0));
         puck_spatial_data.scale(1.0);
@@ -101,6 +106,17 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 path: MeshLoader::load_test_line_path(),
                 style_id: StyleId("simple_icon_style"),
             }),
+        );
+
+        renderer.api.add_render_group(
+            "kml_data".to_string(),
+            0,
+            SpatialData::transform(Vector3::new(0.0, 0.0, 0.0)),
+            Box::new(TestKmlGroup::new(Box::new(move |p| {
+                let coord: Coord<f64> = (p.x(), p.y()).into();
+                let coord = T::lat_lon_to_world(&coord);
+                Point::new(coord.x - camera_offset.x, coord.y - camera_offset.y)
+            }))),
         );
 
         Self::run_tiles(renderer.api.clone(), tiles_stream, camera_offset);

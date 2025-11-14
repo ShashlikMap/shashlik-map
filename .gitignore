@@ -34,3 +34,5 @@ frame_*.png
 xcode/libs/*/**
 
 .idea/
+
+*.kml

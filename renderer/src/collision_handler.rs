@@ -27,13 +27,14 @@ impl CollisionHandler {
     }
 
     pub fn insert(&mut self, rectangle: Rectangle<Point<f32>>) -> bool {
-        let envelope = rectangle.envelope();
-        let count = self
-            .objects
-            .locate_in_envelope_intersecting(&envelope)
-            .count();
-        self.objects.insert(rectangle);
-        count <= 0
+        // let envelope = rectangle.envelope();
+        // let count = self
+        //     .objects
+        //     .locate_in_envelope_intersecting(&envelope)
+        //     .count();
+        // self.objects.insert(rectangle);
+        // count <= 0
+        true
     }
 
     pub fn clear(&mut self) {
