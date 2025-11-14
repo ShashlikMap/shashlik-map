@@ -21,6 +21,7 @@ use renderer::styles::style_id::StyleId;
 use renderer::{Renderer, ShashlikRenderer};
 use std::cell::RefCell;
 use std::collections::HashSet;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::thread::spawn;
@@ -106,17 +107,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 path: MeshLoader::load_test_line_path(),
                 style_id: StyleId("simple_icon_style"),
             }),
-        );
-
-        renderer.api.add_render_group(
-            "kml_data".to_string(),
-            0,
-            SpatialData::transform(Vector3::new(0.0, 0.0, 0.0)),
-            Box::new(TestKmlGroup::new(Box::new(move |p| {
-                let coord: Coord<f64> = (p.x(), p.y()).into();
-                let coord = T::lat_lon_to_world(&coord);
-                Point::new(coord.x - camera_offset.x, coord.y - camera_offset.y)
-            }))),
         );
 
         Self::run_tiles(renderer.api.clone(), tiles_stream, camera_offset);
@@ -271,5 +261,20 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     pub fn temp_on_load_styles(&self) {
         self.style_loader.load(self.renderer.api.clone());
+    }
+
+    pub fn load_kml_path(&self, path_buf: PathBuf) {
+        println!("Loading KML from {:?}", path_buf);
+        let camera_offset = self.camera_offset;
+        self.renderer.api.add_render_group(
+            "kml_data".to_string(),
+            0,
+            SpatialData::transform(Vector3::new(0.0, 0.0, 0.0)),
+            Box::new(TestKmlGroup::new(Box::new(move |p| {
+                let coord: Coord<f64> = (p.x(), p.y()).into();
+                let coord = T::lat_lon_to_world(&coord);
+                Point::new(coord.x - camera_offset.x as f64, coord.y - camera_offset.y as f64)
+            }))),
+        );
     }
 }

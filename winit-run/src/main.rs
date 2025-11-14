@@ -1,6 +1,7 @@
 use map::tiles::old_tiles_provider::OldTilesProvider;
 use old_tiles_gen::source::reqwest_source::ReqwestSource;
 use std::sync::mpsc;
+use native_dialog::DialogBuilder;
 use winit::event_loop::EventLoop;
 use winit_run::{App, CustomUIEvent};
 
@@ -27,8 +28,21 @@ fn main() {
     .unwrap();
 
     let ui = AppWindow::new().unwrap();
+    let sender_clone = sender.clone();
     ui.on_load_button_click(move || {
-        sender.send(CustomUIEvent::Load).unwrap();
+        sender_clone.send(CustomUIEvent::Load).unwrap();
+    });
+    let sender_clone = sender.clone();
+    ui.on_open_kml_button_click(move || {
+        let path = DialogBuilder::file()
+            .set_location("~/Desktop")
+            .add_filter("KML", ["kml"])
+            .open_single_file()
+            .show()
+            .unwrap();
+        if let Some(path) = path {
+            sender_clone.send(CustomUIEvent::KMLPath(path)).unwrap();
+        }
     });
 
     ui.run().unwrap();
