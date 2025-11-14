@@ -1,9 +1,9 @@
-use crate::draw_commands::{DrawCommand, geometry_to_mesh_with_layers};
+use crate::canvas_api::ScreenPaths;
+use crate::draw_commands::{geometry_to_mesh_with_layers, DrawCommand};
 use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::scene_tree::SceneTree;
 use crate::nodes::shape_layers::ShapeLayers;
 use crate::vertex_attrs::ShapeVertex;
-use cgmath::Vector3;
 use lyon::tessellation::VertexBuffers;
 use std::cell::RefMut;
 use std::ops::Range;
@@ -13,7 +13,7 @@ pub(crate) struct Mesh2dDrawCommand {
     pub mesh: VertexBuffers<ShapeVertex, u32>,
     pub real_layer: usize,
     pub layers_indices: Vec<Range<usize>>,
-    pub positions: Vec<Vector3<f64>>,
+    pub screen_paths: ScreenPaths,
     pub is_screen: bool,
 }
 
@@ -33,9 +33,9 @@ impl DrawCommand for Mesh2dDrawCommand {
         let mesh = geometry_to_mesh_with_layers(&device, &self.mesh, self.layers_indices.clone());
         let mesh = mesh.to_positioned_with_instances(
             device,
-            self.positions.clone(), // mem::replace
+            self.screen_paths.positions.clone(), // mem::replace
             spatial_rx, true,
-            self.is_screen, // TODO It should be a proper with_collisions param
+            self.screen_paths.with_collision,
         );
         if self.is_screen {
             screen_shape_layer.add_child_with_key(mesh, key);

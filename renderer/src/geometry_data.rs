@@ -38,6 +38,7 @@ pub struct SvgData {
     pub position: Vector3<f64>,
     pub size: f32,
     pub style_id: StyleId,
+    pub with_collision: bool
 }
 
 #[derive(Clone)]

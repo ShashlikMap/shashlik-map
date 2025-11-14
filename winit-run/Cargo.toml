@@ -17,6 +17,7 @@ wgpu = { workspace = true}
 winit = { workspace = true }
 app-surface = { workspace = true, features = ["winit"] }
 futures-lite = "2.6.1"
+native-dialog = "0.9.3"
 
 slint = "1.13.1"
 i-slint-backend-winit = "1.13.1"

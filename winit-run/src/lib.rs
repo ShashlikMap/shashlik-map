@@ -4,6 +4,7 @@ use map::tiles::tiles_provider::TilesProvider;
 use map::ShashlikMap;
 use renderer::camera::CameraController;
 use std::cell::RefCell;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
@@ -27,6 +28,7 @@ pub struct App<T: TilesProvider> {
 
 pub enum CustomUIEvent {
     Load,
+    KMLPath(PathBuf),
 }
 
 impl<T: TilesProvider> App<T> {
@@ -112,8 +114,15 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
         }
         let map = self.shashlik_map.as_mut().unwrap();
 
-        if let Ok(_) = self.receiver.try_recv() {
-            map.temp_on_load_styles();
+        if let Ok(event) = self.receiver.try_recv() {
+            match event {
+                CustomUIEvent::Load => {
+                    map.temp_on_load_styles();
+                }
+                CustomUIEvent::KMLPath(path) => {
+                    map.load_kml_path(path);
+                }
+            }
         }
 
         match event {
