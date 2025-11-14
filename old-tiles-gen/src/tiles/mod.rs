@@ -109,7 +109,10 @@ impl<S: TileSource> TileStore<S> {
             });
         let mut decoder = GzDecoder::new(&data[..]);
         let mut decompressed_data = Vec::new();
-        decoder.read_to_end(&mut decompressed_data).expect("Decompression failed");
+        decoder.read_to_end(&mut decompressed_data).unwrap_or_else(|err| {
+            println!("Failed to decompress tile key {tile_key:?}. Error: {err}");
+            0
+        });
         let collection: MapGeometryCollection = bincode::deserialize(&decompressed_data).unwrap_or_else(|err| {
             println!("Failed to deserialize tile key {tile_key:?}, Error: {err}");
             MapGeometryCollection(vec![])
