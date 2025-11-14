@@ -5,7 +5,7 @@ use renderer::canvas_api::CanvasApi;
 use renderer::geometry_data::{GeometryData, SvgData};
 use renderer::render_group::RenderGroup;
 use renderer::styles::style_id::StyleId;
-use std::time::SystemTime;
+use std::path::PathBuf;
 
 pub struct TestKmlGroup {
     pub geom_coll: GeometryCollection<f64>,
@@ -14,9 +14,8 @@ pub struct TestKmlGroup {
 impl TestKmlGroup {
     pub const CIRCLE_SVG: &'static [u8] = include_bytes!("../svg/just_circle.svg");
 
-    pub fn new(converter: Box<dyn Fn(&Point) -> Point>) -> TestKmlGroup {
-        let t1 = SystemTime::now();
-        let mut kml_reader = KmlReader::<_, f64>::from_path("./kiol.kml").unwrap();
+    pub fn new(path_buf: PathBuf, converter: Box<dyn Fn(&Point) -> Point>) -> TestKmlGroup {
+        let mut kml_reader = KmlReader::<_, f64>::from_path(path_buf).unwrap();
         let kml_data = kml_reader.read().unwrap();
         let mut geom_coll: GeometryCollection<f64> = kml_data.try_into().unwrap();
         geom_coll.0.iter_mut().for_each(|geom| match geom {
@@ -25,13 +24,6 @@ impl TestKmlGroup {
             }
             _ => {}
         });
-
-        let t2 = SystemTime::now();
-        println!(
-            "kml parse({}) = {:?}",
-            geom_coll.0.len(),
-            t2.duration_since(t1)
-        );
         TestKmlGroup { geom_coll }
     }
 }
@@ -41,7 +33,6 @@ impl RenderGroup for TestKmlGroup {
         let mut geometry_data = vec![];
         self.geom_coll.0.iter().for_each(|geom| match geom {
             Geometry::Point(point) => {
-                println!("qweqwe: {:?}", point);
                 geometry_data.push(GeometryData::Svg(SvgData {
                     icon: ("kml", Self::CIRCLE_SVG),
                     position: Vector3::new(point.x(), point.y(), 0.0).cast().unwrap(),

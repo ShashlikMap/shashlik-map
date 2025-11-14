@@ -1,6 +1,7 @@
 extern crate core;
 
 use crate::style_loader::StyleLoader;
+use crate::test_kml_viewer_group::TestKmlGroup;
 use crate::test_puck_group::TestSimplePuck;
 use crate::test_simple_path_group::TestSimplePathGroup;
 use crate::tiles::mesh_loader::MeshLoader;
@@ -10,7 +11,7 @@ use cgmath::Vector3;
 use futures::executor::block_on;
 use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
-use geo_types::{coord, Coord, GeometryCollection, Point, Rect};
+use geo_types::{coord, Coord, Point, Rect};
 use geo_types::{LineString, Polygon};
 use renderer::camera::CameraController;
 use renderer::canvas_api::CanvasApi;
@@ -25,11 +26,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::thread::spawn;
-use std::time::SystemTime;
-use kml::KmlReader;
-use lyon::geom::point;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use crate::test_kml_viewer_group::TestKmlGroup;
 
 mod style_loader;
 mod test_puck_group;
@@ -270,7 +267,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             "kml_data".to_string(),
             0,
             SpatialData::transform(Vector3::new(0.0, 0.0, 0.0)),
-            Box::new(TestKmlGroup::new(Box::new(move |p| {
+            Box::new(TestKmlGroup::new(path_buf, Box::new(move |p| {
                 let coord: Coord<f64> = (p.x(), p.y()).into();
                 let coord = T::lat_lon_to_world(&coord);
                 Point::new(coord.x - camera_offset.x as f64, coord.y - camera_offset.y as f64)
