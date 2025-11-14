@@ -15,3 +15,4 @@ thiserror =  { workspace = true }
 error-stack = { workspace = true }
 openssl = { version = "0.10", features = ["vendored"] }
 log = "0.4.28"
+flate2 = "1.1.5"

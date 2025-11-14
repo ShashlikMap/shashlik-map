@@ -24,7 +24,7 @@ impl TilesSQLiteStore {
     }
 
     pub fn new_default_db() -> TilesSQLiteStore {
-        Self::new("./old-tiles-gen/dbs/tiles.db")
+        Self::new("../shashlik-tiles-gen-v0/dbs/tiles.db")
     }
 
     fn create_tiles_db_connection<P: AsRef<Path>>(path: P) -> Connection {

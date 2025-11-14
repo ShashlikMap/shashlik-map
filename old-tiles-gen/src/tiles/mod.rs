@@ -1,3 +1,5 @@
+use std::io::Read;
+use flate2::read::GzDecoder;
 use crate::map::{get_world_boundary, MapGeomObject, MapGeometry, MapGeometryCollection};
 use crate::source::TileSource;
 use geo::{coord, Rect, Scale};
@@ -105,7 +107,10 @@ impl<S: TileSource> TileStore<S> {
                 println!("Failed to fetch tile key {tile_key:?}. Error: {err}");
                 vec![]
             });
-        let collection: MapGeometryCollection = bincode::deserialize(&data).unwrap_or_else(|err| {
+        let mut decoder = GzDecoder::new(&data[..]);
+        let mut decompressed_data = Vec::new();
+        decoder.read_to_end(&mut decompressed_data).expect("Decompression failed");
+        let collection: MapGeometryCollection = bincode::deserialize(&decompressed_data).unwrap_or_else(|err| {
             println!("Failed to deserialize tile key {tile_key:?}, Error: {err}");
             MapGeometryCollection(vec![])
         });
