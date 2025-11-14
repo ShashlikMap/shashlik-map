@@ -37,7 +37,8 @@ impl RenderGroup for TestKmlGroup {
                     icon: ("kml", Self::CIRCLE_SVG),
                     position: Vector3::new(point.x(), point.y(), 0.0).cast().unwrap(),
                     size: 1.0,
-                    style_id: StyleId("poi"),
+                    style_id: StyleId("kml_dots"),
+                    with_collision: false
                 }));
             }
             _ => {}

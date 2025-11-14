@@ -19,6 +19,12 @@ use std::collections::{BTreeMap, HashMap};
 use std::mem;
 use std::ops::Range;
 
+#[derive(Clone)]
+pub struct ScreenPaths {
+    pub positions: Vec<Vector3<f64>>,
+    pub with_collision: bool,
+}
+
 pub struct CanvasApi {
     style_store: StyleStore,
     flushed: bool,
@@ -28,7 +34,7 @@ pub struct CanvasApi {
     real_layer: usize,
     geometry3d: VertexBuffers<MeshVertex, u32>,
     text_vec: Vec<TextData>,
-    screen_path_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, Vec<Vector3<f64>>)>,
+    screen_path_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, ScreenPaths)>,
 }
 
 impl CanvasApi {
@@ -56,9 +62,10 @@ impl CanvasApi {
         // TODO Should be improved to per screen rather than per group
         self.screen_path_cache
             .iter_mut()
-            .for_each(|(_, (_, positions))| {
+            .for_each(|(_, (_, screen_paths))| {
                 // keep only buffers, clean positions
-                positions.clear();
+                screen_paths.positions.clear();
+                screen_paths.with_collision = false
             })
     }
     pub fn update_style<F: FnOnce(&mut RenderStyle)>(&mut self, style_id: &StyleId, updater: F) {
@@ -102,7 +109,11 @@ impl CanvasApi {
         let mesh = mem::replace(&mut self.geometry, VertexBuffers::new());
         if !mesh.vertices.is_empty() {
             let flatten_ranges = self.indices_by_layers.values().flatten().cloned().collect();
-            self.mesh2d_with_positions(mesh, flatten_ranges, vec![positions], is_screen);
+            let screen_paths = ScreenPaths {
+                positions: vec![positions],
+                with_collision: false,
+            };
+            self.mesh2d_with_positions(mesh, flatten_ranges, screen_paths, is_screen);
         }
     }
 
@@ -110,14 +121,14 @@ impl CanvasApi {
         &mut self,
         mesh: VertexBuffers<ShapeVertex, u32>,
         layers_indices: Vec<Range<usize>>,
-        positions: Vec<Vector3<f64>>,
+        screen_paths: ScreenPaths,
         is_screen: bool,
     ) {
         self.draw_commands.push(Box::new(Mesh2dDrawCommand {
             mesh,
             real_layer: self.real_layer,
             layers_indices,
-            positions,
+            screen_paths,
             is_screen,
         }));
     }
@@ -212,7 +223,10 @@ impl CanvasApi {
         }
         let last_index = self.geometry.indices.len();
 
-        let ranges = self.indices_by_layers.entry(data.layer_level).or_insert(Vec::new());
+        let ranges = self
+            .indices_by_layers
+            .entry(data.layer_level)
+            .or_insert(Vec::new());
         if let Some(last) = ranges.last_mut() {
             if last.end == initial_index {
                 last.end = last_index;
@@ -232,13 +246,20 @@ impl CanvasApi {
     pub fn svg(&mut self, data: &SvgData) {
         self.screen_path_cache
             .entry(data.icon.0)
-            .and_modify(|(_, positions)| {
-                positions.push(data.position);
+            .and_modify(|(_, screen_paths)| {
+                screen_paths.positions.push(data.position);
+                screen_paths.with_collision = data.with_collision
             })
             .or_insert_with(|| {
                 let style_index = self.style_store.get_index(&data.style_id);
                 let mesh = svg_parse(data.icon.1, data.size, style_index);
-                (mesh, vec![data.position])
+                (
+                    mesh,
+                    ScreenPaths {
+                        positions: vec![data.position],
+                        with_collision: data.with_collision,
+                    },
+                )
             });
     }
 
@@ -263,10 +284,10 @@ impl CanvasApi {
                 .iter()
                 .map(|(_, (mesh, positions))| (mesh.clone(), positions.clone()))
                 .collect();
-            for (mesh, positions) in data {
-                if !positions.is_empty() {
+            for (mesh, screen_paths) in data {
+                if !screen_paths.positions.is_empty() {
                     let layers_indices = vec![0..mesh.indices.len()];
-                    self.mesh2d_with_positions(mesh, layers_indices, positions, true);
+                    self.mesh2d_with_positions(mesh, layers_indices, screen_paths, true);
                 }
             }
         }

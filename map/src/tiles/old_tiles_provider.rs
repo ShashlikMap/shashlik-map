@@ -8,7 +8,10 @@ use geo_types::Rect;
 use googleprojection::{Coord, Mercator};
 use lyon::geom::point;
 use lyon::path::Path;
-use old_tiles_gen::map::{HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointObjectKind, NatureKind};
+use old_tiles_gen::map::{
+    HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointObjectKind,
+    NatureKind,
+};
 use old_tiles_gen::source::TileSource;
 use old_tiles_gen::tiles::{TILES_COUNT, TileKey, TileStore, calc_tile_ranges};
 use rand::Rng;
@@ -94,7 +97,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     );
                                     geometry_data.push(GeometryData::Text(TextData {
                                         id,
-                                        text: "PARKINGPARKINGPARKINGPARKING".to_string(),
+                                        text: "PARKING".to_string(),
                                         position: Vector3::from((
                                             local_position.x,
                                             local_position.y,
@@ -135,6 +138,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     .unwrap(),
                                     size: 2.0,
                                     style_id: StyleId("poi"),
+                                    with_collision: true,
                                 }));
                             }
                         }
@@ -158,7 +162,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 } else {
                                     None
                                 }
-                            },
+                            }
                         },
                         MapGeomObjectKind::AdminLine => Some((StyleId("admin_line"), 0, 250.0)),
                         _ => None,
@@ -287,7 +291,8 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
             let removed: HashSet<TileKey> = actual_cache
                 .extract_if(|key| {
                     (key.zoom_level == zoom_level && !current_visible_tiles.contains(&key))
-                        || (key.zoom_level != last_loaded_zoom_level && last_loaded_zoom_level == zoom_level)
+                        || (key.zoom_level != last_loaded_zoom_level
+                            && last_loaded_zoom_level == zoom_level)
                 })
                 .collect();
 
