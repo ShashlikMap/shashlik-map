@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-old-tiles-gen = { path = "../old-tiles-gen"}
+osm = { workspace = true }
 renderer = { path = "../renderer" }
 anyhow = { workspace = true }
 wgpu-canvas = { workspace = true}

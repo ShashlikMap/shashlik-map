@@ -1,7 +1,7 @@
 use map::tiles::old_tiles_provider::OldTilesProvider;
-use old_tiles_gen::source::reqwest_source::ReqwestSource;
 use std::sync::mpsc;
 use native_dialog::DialogBuilder;
+use osm::source::reqwest_source::ReqwestSource;
 use winit::event_loop::EventLoop;
 use winit_run::{App, CustomUIEvent};
 

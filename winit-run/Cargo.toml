@@ -7,12 +7,12 @@ edition = "2024"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+osm = { workspace = true }
 map = { path = "../map" }
 renderer = { path = "../renderer" }
 wgpu-canvas = { workspace = true}
 env_logger = { workspace = true }
 pollster = { workspace = true }
-old-tiles-gen = { path = "../old-tiles-gen"}
 wgpu = { workspace = true}
 winit = { workspace = true }
 app-surface = { workspace = true, features = ["winit"] }

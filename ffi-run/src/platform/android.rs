@@ -8,8 +8,7 @@ use map::ShashlikMap;
 use std::sync::{Arc, RwLock};
 use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture};
 use map::tiles::old_tiles_provider::OldTilesProvider;
-// use old_tiles_gen::source::tiles_sqlite_store::TilesSQLiteStore;
-use old_tiles_gen::source::reqwest_source::ReqwestSource;
+use osm::source::reqwest_source::ReqwestSource;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use jni::objects::JString;
 

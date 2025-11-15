@@ -8,12 +8,6 @@ use geo_types::Rect;
 use googleprojection::{Coord, Mercator};
 use lyon::geom::point;
 use lyon::path::Path;
-use old_tiles_gen::map::{
-    HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointObjectKind,
-    NatureKind,
-};
-use old_tiles_gen::source::TileSource;
-use old_tiles_gen::tiles::{TILES_COUNT, TileKey, TileStore, calc_tile_ranges};
 use rand::Rng;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
@@ -25,6 +19,9 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
+use osm::map::{HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointObjectKind, NatureKind};
+use osm::source::TileSource;
+use osm::tiles::{calc_tile_ranges, TileKey, TileStore, TILES_COUNT};
 
 pub struct OldTilesProvider<S: TileSource> {
     sender: Option<UnboundedSender<(Option<TileData>, HashSet<String>)>>,

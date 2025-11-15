@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["winit-run", "map", "app-surface", "ffi-run", "renderer", "wgpu-canvas", "old-tiles-gen", "tiles-server-sqlite"]
+members = ["winit-run", "map", "app-surface", "ffi-run", "renderer", "wgpu-canvas"]
 
 [workspace.dependencies]
 app-surface = { path = "./app-surface", default-features = false }
@@ -20,6 +20,7 @@ geo-types = "0.7.17"
 error-stack = "0.6.0"
 tokio = { version = "1", features = ["full"] }
 thiserror = "2"
+osm = { path = "../shashlik-tiles-gen-v0/osm"}
 
 # macOS, iOS
 libc = { version = "0.2", default-features = false }

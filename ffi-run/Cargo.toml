@@ -14,7 +14,7 @@ pollster = { workspace = true }
 wgpu = { workspace = true}
 wgpu-canvas = { workspace = true }
 log = { workspace = true }
-old-tiles-gen = { path = "../old-tiles-gen"}
+osm = { workspace = true }
 
 [target.'cfg(target_os = "android")'.dependencies]
 app-surface = { workspace = true, features = [] }
