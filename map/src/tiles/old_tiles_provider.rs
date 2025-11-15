@@ -38,6 +38,7 @@ impl<S: TileSource> OldTilesProvider<S> {
     #[allow(dead_code)]
     const PARKING_SVG: &'static [u8] = include_bytes!("../../svg/parking.svg");
     const TOILETS_SVG: &'static [u8] = include_bytes!("../../svg/toilet.svg");
+    const TRAIN_STATION_SVG: &'static [u8] = include_bytes!("../../svg/train_station.svg");
 
     pub fn new(source: S) -> OldTilesProvider<S> {
         Self {
@@ -83,29 +84,28 @@ impl<S: TileSource> OldTilesProvider<S> {
                     match &obj_type.kind {
                         MapGeomObjectKind::Poi(poi) => {
                             let icon: Option<(&str, &[u8])> = match &poi.kind {
-                                MapPointObjectKind::TrafficLight => {
-                                    Some(("traffic_light", Self::TRAFFIC_LIGHT_SVG))
-                                }
-                                MapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
-                                MapPointObjectKind::Parking => {
+                                MapPointObjectKind::TrainStation => {
                                     let id = seahash::hash(
-                                        format!("PARKING{}{}", local_position.x, local_position.y)
+                                        format!("{:?}{}{}", poi.text, local_position.x, local_position.y)
                                             .as_bytes(),
                                     );
                                     geometry_data.push(GeometryData::Text(TextData {
                                         id,
-                                        text: "PARKING".to_string(),
+                                        text: poi.text.to_string(),
                                         position: Vector3::from((
                                             local_position.x,
-                                            local_position.y,
+                                            local_position.y + 1.5,
                                             0.0,
-                                        ))
-                                        .cast()
-                                        .unwrap(),
+                                        )).cast().unwrap(),
                                     }));
-                                    // Text instead of icon
-                                    // Some(("parking", Self::PARKING_SVG))
-                                    None
+                                    Some(("train_station", Self::TRAIN_STATION_SVG))
+                                },
+                                MapPointObjectKind::TrafficLight => {
+                                    Some(("traffic_light", Self::TRAFFIC_LIGHT_SVG))
+                                },
+                                MapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
+                                MapPointObjectKind::Parking => {
+                                    Some(("parking", Self::PARKING_SVG))
                                 }
                                 MapPointObjectKind::PopArea(..) => {
                                     geometry_data.push(GeometryData::Text(TextData {

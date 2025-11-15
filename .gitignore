@@ -33,6 +33,8 @@ frame_*.png
 
 xcode/libs/*/**
 
+dbs/*.db
+
 .idea/
 
 *.kml
