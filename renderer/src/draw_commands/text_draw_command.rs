@@ -4,6 +4,7 @@ use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::scene_tree::SceneTree;
 use crate::nodes::text_node::TextNode;
 use std::cell::RefMut;
+use std::mem;
 use wgpu::Device;
 use crate::nodes::shape_layers::ShapeLayers;
 
@@ -14,7 +15,7 @@ pub(crate) struct TextDrawCommand {
 
 impl DrawCommand for TextDrawCommand {
     fn execute(
-        &self,
+        &mut self,
         _device: &Device,
         key: String,
         spatial_data: SpatialData,
@@ -24,7 +25,7 @@ impl DrawCommand for TextDrawCommand {
         _mesh_layer: &mut RefMut<SceneTree>,
         text_layer: &mut RefMut<SceneTree>,
     ) {
-        let text_node = TextNode::new(self.data.clone(), spatial_data); // replace?
+        let text_node = TextNode::new(mem::take(&mut self.data), spatial_data);
         text_layer.add_child_with_key(text_node, key.clone());
     }
 }

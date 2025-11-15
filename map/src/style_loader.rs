@@ -19,6 +19,8 @@ impl StyleLoader {
 
             let new_styles = vec![
                 (StyleId("poi"), RenderStyle::fill([0.0, 0.0, 1.0, 1.0])),
+                (StyleId("poi_traffic_light"), RenderStyle::fill([0.0, 0.0, 0.0, 1.0])),
+                (StyleId("poi_toilet"), RenderStyle::fill([0.6, 0.0, 0.6, 1.0])),
                 (StyleId("kml_dots"), RenderStyle::fill([1.0, 0.0, 0.0, 1.0])),
                 (
                     StyleId("water"),

@@ -317,7 +317,7 @@ impl ShashlikRenderer {
 
     fn update(&mut self) {
         let device = self.canvas.device();
-        if let Ok(message) = self.renderer_rx.try_recv() {
+        if let Ok(message) = self.renderer_rx.try_recv().as_mut() {
             match message {
                 RendererMessage::Draw(draw_commands) => {
                     draw_commands.execute(

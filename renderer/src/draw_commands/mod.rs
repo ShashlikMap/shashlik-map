@@ -53,14 +53,14 @@ impl DrawCommands {
         }
     }
     pub(crate) fn execute(
-        &self,
+        &mut self,
         device: &wgpu::Device,
         shape_layers: &mut ShapeLayers,
         screen_shape_layer: &mut RefMut<SceneTree>,
         mesh_layer: &mut RefMut<SceneTree>,
         text_layer: &mut RefMut<SceneTree>,
     ) {
-        self.draw_commands.iter().for_each(|d| {
+        self.draw_commands.iter_mut().for_each(|d| {
             d.execute(
                 device,
                 self.key.clone(),
@@ -80,7 +80,7 @@ impl DrawCommands {
 
 pub(crate) trait DrawCommand: Send {
     fn execute(
-        &self,
+        &mut self,
         device: &wgpu::Device,
         key: String,
         spatial_data: SpatialData,

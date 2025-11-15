@@ -12,7 +12,7 @@ pub(crate) struct Mesh3dDrawCommand {
 
 impl DrawCommand for Mesh3dDrawCommand {
     fn execute(
-        &self,
+        &mut self,
         device: &wgpu::Device,
         key: String,
         _spatial_data: SpatialData,

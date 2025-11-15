@@ -89,12 +89,13 @@ impl<S: TileSource> OldTilesProvider<S> {
                                         format!("{:?}{}{}", poi.text, local_position.x, local_position.y)
                                             .as_bytes(),
                                     );
+                                    let zoom_level = tile_key.zoom_level;
                                     geometry_data.push(GeometryData::Text(TextData {
                                         id,
                                         text: poi.text.to_string(),
                                         position: Vector3::from((
                                             local_position.x,
-                                            local_position.y + 1.5,
+                                            local_position.y + 2.0 * (1.0 + zoom_level as f64),
                                             0.0,
                                         )).cast().unwrap(),
                                     }));
@@ -123,6 +124,11 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 }
                                 _ => None,
                             };
+                            let style_id = match &poi.kind {
+                                MapPointObjectKind::TrafficLight => StyleId("poi_traffic_light"),
+                                MapPointObjectKind::Toilet => StyleId("poi_toilet"),
+                                _ => StyleId("poi")
+                            };
                             if let Some(icon) = icon {
                                 geometry_data.push(GeometryData::Svg(SvgData {
                                     icon,
@@ -134,7 +140,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     .cast()
                                     .unwrap(),
                                     size: 2.0,
-                                    style_id: StyleId("poi"),
+                                    style_id,
                                     with_collision: true,
                                 }));
                             }

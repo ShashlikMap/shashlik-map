@@ -6,6 +6,7 @@ use crate::nodes::shape_layers::ShapeLayers;
 use crate::vertex_attrs::ShapeVertex;
 use lyon::tessellation::VertexBuffers;
 use std::cell::RefMut;
+use std::mem;
 use std::ops::Range;
 
 #[derive(Clone)]
@@ -19,7 +20,7 @@ pub(crate) struct Mesh2dDrawCommand {
 
 impl DrawCommand for Mesh2dDrawCommand {
     fn execute(
-        &self,
+        &mut self,
         device: &wgpu::Device,
         key: String,
         _spatial_data: SpatialData,
@@ -29,11 +30,11 @@ impl DrawCommand for Mesh2dDrawCommand {
         _mesh_layer: &mut RefMut<SceneTree>,
         _text_layer: &mut RefMut<SceneTree>,
     ) {
-        // TODO remove clone
-        let mesh = geometry_to_mesh_with_layers(&device, &self.mesh, self.layers_indices.clone());
+        let mesh = geometry_to_mesh_with_layers(&device, &self.mesh, mem::take(&mut self.layers_indices));
+
         let mesh = mesh.to_positioned_with_instances(
             device,
-            self.screen_paths.positions.clone(), // mem::replace
+            mem::take(&mut self.screen_paths.positions),
             spatial_rx, true,
             self.screen_paths.with_collision,
         );
