@@ -20,7 +20,7 @@ geo-types = "0.7.17"
 error-stack = "0.6.0"
 tokio = { version = "1", features = ["full"] }
 thiserror = "2"
-osm = { path = "../shashlik-tiles-gen-v0/osm"}
+osm = { git = "https://github.com/ShashlikMap/shashlik-tiles-gen-v0.git"}
 
 # macOS, iOS
 libc = { version = "0.2", default-features = false }
