@@ -22,6 +22,7 @@ pub struct PositionedMesh {
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
     with_collisions: bool,
+    first_render: bool
 }
 
 impl Mesh {
@@ -111,6 +112,7 @@ impl PositionedMesh {
             spatial_rx,
             original_spatial_data: spatial_data,
             with_collisions,
+            first_render: true
         }
     }
 }
@@ -185,11 +187,17 @@ impl SceneNode for PositionedMesh {
                     if global_context.collision_handler.insert(bounds) {
                         item.1 = clamp(item.1 + 0.05, 0.0, 1.0);
                     } else {
-                        item.1 = clamp(item.1 - 0.05, 0.0, 1.0);
+                        if self.first_render {
+                            item.1 = 0.0;
+                        } else {
+                            item.1 = clamp(item.1 - 0.05, 0.0, 1.0);
+                        }
                     }
                 }
             }
         }
+
+        self.first_render = false;
 
         let mut update_attrs = self.with_collisions;
 

@@ -1,7 +1,7 @@
 use crate::camera::ScreenPositionCalculator;
 use crate::collision_handler::CollisionHandler;
-use cgmath::Vector3;
 use cgmath::num_traits::clamp;
+use cgmath::{Vector2, Vector3};
 use geo_types::point;
 use rstar::primitives::Rectangle;
 use std::collections::HashMap;
@@ -14,6 +14,7 @@ use wgpu_text::glyph_brush::{OwnedSection, OwnedText};
 pub struct TextNodeData {
     pub id: u64,
     pub world_position: Vector3<f32>,
+    pub screen_offset: Vector2<f32>,
     pub text: OwnedText,
 }
 
@@ -42,14 +43,19 @@ impl TextRenderer {
     ) {
         let screen_pos =
             screen_position_calculator.screen_position(data.world_position.cast().unwrap());
-        let section = OwnedSection::default()
+        let mut section = OwnedSection::default()
             .add_text(data.text.clone())
-            .with_screen_position((screen_pos.x as f32, screen_pos.y as f32));
+            .with_screen_position((
+                screen_pos.x as f32 + data.screen_offset.x,
+                screen_pos.y as f32 + data.screen_offset.y,
+            ));
 
         let section_rect = self.text_brush.glyph_bounds(&section).unwrap();
+        let center_offset = section_rect.width() * 0.5;
+        section.screen_position.0 -= center_offset;
         let section_rect = Rectangle::from_corners(
-            point! { x: section_rect.min.x, y: section_rect.min.y},
-            point! { x: section_rect.max.x, y: section_rect.max.y},
+            point! { x: section_rect.min.x - center_offset, y: section_rect.min.y},
+            point! { x: section_rect.max.x - center_offset, y: section_rect.max.y},
         );
         let within_screen = collision_handler.within_screen(config, section_rect);
         if within_screen {

@@ -1,6 +1,6 @@
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::TilesProvider;
-use cgmath::Vector3;
+use cgmath::{Vector2, Vector3};
 use futures::Stream;
 use futures::channel::mpsc::{UnboundedSender, unbounded};
 use geo::Winding;
@@ -89,15 +89,15 @@ impl<S: TileSource> OldTilesProvider<S> {
                                         format!("{:?}{}{}", poi.text, local_position.x, local_position.y)
                                             .as_bytes(),
                                     );
-                                    let zoom_level = tile_key.zoom_level;
                                     geometry_data.push(GeometryData::Text(TextData {
                                         id,
                                         text: poi.text.to_string(),
                                         position: Vector3::from((
                                             local_position.x,
-                                            local_position.y + 2.0 * (1.0 + zoom_level as f64),
+                                            local_position.y,
                                             0.0,
                                         )).cast().unwrap(),
+                                        screen_offset: Vector2::new(0.0, 22.0),
                                     }));
                                     Some(("train_station", Self::TRAIN_STATION_SVG))
                                 },
@@ -113,12 +113,13 @@ impl<S: TileSource> OldTilesProvider<S> {
                                         id: hash(poi.text.as_bytes()),
                                         text: poi.text.clone(),
                                         position: Vector3::from((
-                                            local_position.x,
-                                            local_position.y,
-                                            0.0,
-                                        ))
-                                        .cast()
-                                        .unwrap(),
+                                                                    local_position.x,
+                                                                    local_position.y,
+                                                                    0.0,
+                                                                ), )
+                                            .cast()
+                                            .unwrap(),
+                                        screen_offset: Vector2::new(0.0, 0.0),
                                     }));
                                     None
                                 }

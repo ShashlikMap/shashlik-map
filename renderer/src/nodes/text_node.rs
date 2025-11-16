@@ -28,6 +28,7 @@ impl TextNode {
                         id: item.id.clone(),
                         // text node doesn't have to be super precise
                         world_position: item.position + spatial_data.transform.cast().unwrap(),
+                        screen_offset: item.screen_offset,
                         text: owned_text,
                     }
                 })
