@@ -2,17 +2,8 @@ import { Button, VerticalBox } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
     in-out property <int> counter: 0;
-    callback rotate_button_click();
     callback open_kml_button_click();
-    callback load_button_click();
     VerticalBox {
-        Button {
-            text: "Load styles";
-            clicked => {
-                root.load_button_click();
-            }
-        }
-
         Button {
             text: "Open KML";
             clicked => {

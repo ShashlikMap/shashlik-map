@@ -3,8 +3,6 @@ extern crate core;
 use crate::style_loader::StyleLoader;
 use crate::test_kml_viewer_group::TestKmlGroup;
 use crate::test_puck_group::TestSimplePuck;
-use crate::test_simple_path_group::TestSimplePathGroup;
-use crate::tiles::mesh_loader::MeshLoader;
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::TilesProvider;
 use cgmath::Vector3;
@@ -18,7 +16,6 @@ use renderer::canvas_api::CanvasApi;
 use renderer::modifier::render_modifier::SpatialData;
 use renderer::render_group::RenderGroup;
 use renderer::renderer_api::RendererApi;
-use renderer::styles::style_id::StyleId;
 use renderer::{Renderer, ShashlikRenderer};
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -30,7 +27,6 @@ use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 mod style_loader;
 mod test_puck_group;
-mod test_simple_path_group;
 pub mod tiles;
 mod test_kml_viewer_group;
 
@@ -96,16 +92,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
             Box::new(TestSimplePuck {}),
         );
 
-        renderer.api.add_render_group(
-            "some_icon".to_string(),
-            0,
-            SpatialData::transform(Vector3::new(30.0, 0.0, 0.0)),
-            Box::new(TestSimplePathGroup {
-                path: MeshLoader::load_test_line_path(),
-                style_id: StyleId("simple_icon_style"),
-            }),
-        );
-
         Self::run_tiles(renderer.api.clone(), tiles_stream, camera_offset);
         let map = ShashlikMap {
             renderer: Box::new(renderer),
@@ -119,7 +105,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             temp_color: 0.0,
             cam_follow_mode: true,
         };
-        map.temp_on_load_styles();
+        map.load_styles();
         Ok(map)
     }
 
@@ -256,7 +242,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         }
     }
 
-    pub fn temp_on_load_styles(&self) {
+    fn load_styles(&self) {
         self.style_loader.load(self.renderer.api.clone());
     }
 

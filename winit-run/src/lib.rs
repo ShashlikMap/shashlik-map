@@ -27,7 +27,6 @@ pub struct App<T: TilesProvider> {
 }
 
 pub enum CustomUIEvent {
-    Load,
     KMLPath(PathBuf),
 }
 
@@ -116,9 +115,6 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
 
         if let Ok(event) = self.receiver.try_recv() {
             match event {
-                CustomUIEvent::Load => {
-                    map.temp_on_load_styles();
-                }
                 CustomUIEvent::KMLPath(path) => {
                     map.load_kml_path(path);
                 }
@@ -175,30 +171,6 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                     event_loop.exit();
                 } else {
                     match code {
-                        KeyCode::Equal => {
-                            self.camera_controller.borrow_mut().is_forward_pressed = is_pressed;
-                        }
-                        KeyCode::Slash => {
-                            self.camera_controller.borrow_mut().is_backward_pressed = is_pressed;
-                        }
-                        KeyCode::KeyW | KeyCode::ArrowUp => {
-                            self.camera_controller.borrow_mut().is_up_pressed = is_pressed;
-                        }
-                        KeyCode::KeyA | KeyCode::ArrowLeft => {
-                            self.camera_controller.borrow_mut().is_left_pressed = is_pressed;
-                        }
-                        KeyCode::KeyS | KeyCode::ArrowDown => {
-                            self.camera_controller.borrow_mut().is_down_pressed = is_pressed;
-                        }
-                        KeyCode::KeyD | KeyCode::ArrowRight => {
-                            self.camera_controller.borrow_mut().is_right_pressed = is_pressed;
-                        }
-                        KeyCode::KeyZ => {
-                            self.camera_controller.borrow_mut().is_z_pressed = is_pressed;
-                        }
-                        KeyCode::KeyX => {
-                            self.camera_controller.borrow_mut().is_x_pressed = is_pressed;
-                        }
                         KeyCode::KeyN => {
                             if is_pressed {
                                 map.cam_follow_mode = !map.cam_follow_mode;

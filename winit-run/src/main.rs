@@ -29,10 +29,6 @@ fn main() {
 
     let ui = AppWindow::new().unwrap();
     let sender_clone = sender.clone();
-    ui.on_load_button_click(move || {
-        sender_clone.send(CustomUIEvent::Load).unwrap();
-    });
-    let sender_clone = sender.clone();
     ui.on_open_kml_button_click(move || {
         let path = DialogBuilder::file()
             .set_location("~/Desktop")
