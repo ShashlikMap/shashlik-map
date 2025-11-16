@@ -52,7 +52,15 @@ fn vs_main(
 ) -> VertexOutput {
     var out: VertexOutput;
 
-    let ratio_fixed_modelpos = vec3(model.position.x, model.position.y * camera.ratio, model.position.z);
+     let model_matrix = mat4x4<f32>(
+                pos.model_matrix_0,
+                pos.model_matrix_1,
+                pos.model_matrix_2,
+                pos.model_matrix_3,
+     );
+
+    let model_position = model_matrix * vec4(model.position.xyz, 1.0);
+    let ratio_fixed_modelpos = vec4(model_position.x, model_position.y * camera.ratio, model_position.z, 1.0);
 
     out.style_index = model.style_index;
     out.outline_flag = model.instance_index % 2;
