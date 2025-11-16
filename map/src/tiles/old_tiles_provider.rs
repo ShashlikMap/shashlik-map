@@ -1,5 +1,5 @@
 use crate::tiles::tile_data::TileData;
-use crate::tiles::tiles_provider::TilesProvider;
+use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use cgmath::{Vector2, Vector3};
 use futures::Stream;
 use futures::channel::mpsc::{UnboundedSender, unbounded};
@@ -24,7 +24,7 @@ use osm::source::TileSource;
 use osm::tiles::{calc_tile_ranges, TileKey, TileStore, TILES_COUNT};
 
 pub struct OldTilesProvider<S: TileSource> {
-    sender: Option<UnboundedSender<(Option<TileData>, HashSet<String>)>>,
+    sender: Option<UnboundedSender<TilesMessage>>,
     tile_store: Arc<TileStore<S>>,
     per_frame_cache: HashSet<TileKey>,
     actual_cache: Arc<RwLock<HashSet<TileKey>>>,
@@ -301,12 +301,8 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
                 .collect();
 
             if !removed.is_empty() {
-                sender
-                    .unbounded_send((
-                        None,
-                        removed.iter().map(|item| item.as_string_key()).collect(),
-                    ))
-                    .unwrap();
+                sender.unbounded_send(TilesMessage::ToRemove(removed
+                    .iter().map(|item| item.as_string_key()).collect())).unwrap();
             }
         }
 
@@ -349,9 +345,9 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
                         .unwrap()
                         .extend(data.iter().map(|item| item.0.clone()));
 
-                    data.into_iter().for_each(|(_, data)| {
-                        sender.unbounded_send((Some(data), HashSet::new())).unwrap();
-                    });
+                    sender.unbounded_send(TilesMessage::TilesData(data.into_iter()
+                        .map(|(_, data)| data)
+                        .collect())).unwrap();
                 }
 
                 loading_map
@@ -364,7 +360,7 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
 
     fn tiles(
         &mut self,
-    ) -> impl Stream<Item = (Option<TileData>, HashSet<String>)> + Send + 'static {
+    ) -> impl Stream<Item = TilesMessage> + Send + 'static {
         let (sender, receiver) = unbounded();
         self.sender = Some(sender);
 
