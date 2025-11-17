@@ -29,7 +29,7 @@ impl TestKmlGroup {
 }
 
 impl RenderGroup for TestKmlGroup {
-    fn content(&self, canvas: &mut CanvasApi) {
+    fn content(&mut self, canvas: &mut CanvasApi) {
         let mut geometry_data = vec![];
         self.geom_coll.0.iter().for_each(|geom| match geom {
             Geometry::Point(point) => {
@@ -44,7 +44,7 @@ impl RenderGroup for TestKmlGroup {
             _ => {}
         });
 
-        geometry_data.iter().for_each(|data| {
+        geometry_data.into_iter().for_each(|data| {
             canvas.geometry_data(data);
         });
     }

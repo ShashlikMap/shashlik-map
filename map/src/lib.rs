@@ -18,6 +18,7 @@ use renderer::render_group::RenderGroup;
 use renderer::renderer_api::RendererApi;
 use renderer::{Renderer, ShashlikRenderer};
 use std::cell::RefCell;
+use std::mem;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -43,8 +44,8 @@ pub struct ShashlikMap<T: TilesProvider> {
 }
 
 impl RenderGroup for TileData {
-    fn content(&self, canvas: &mut CanvasApi) {
-        self.geometry_data.iter().for_each(|data| {
+    fn content(&mut self, canvas: &mut CanvasApi) {
+        mem::take(&mut self.geometry_data).into_iter().for_each(|data| {
             canvas.geometry_data(data);
         });
     }

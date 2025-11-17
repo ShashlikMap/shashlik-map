@@ -8,9 +8,9 @@ use renderer::styles::style_id::StyleId;
 pub struct TestSimplePuck {}
 
 impl RenderGroup for TestSimplePuck {
-    fn content(&self, canvas: &mut CanvasApi) {
+    fn content(&mut self, canvas: &mut CanvasApi) {
         canvas.path(
-            &ShapeData {
+            ShapeData {
                 path: MeshLoader::load_simple_puck(),
                 geometry_type: GeometryType::Polygon,
                 style_id: StyleId("puck_style"),

@@ -52,7 +52,9 @@ class MainActivity : ComponentActivity() {
         val latitude: Double = location.latitude
         val longitude: Double = location.longitude
         Log.d("kiol", "latitude = $latitude, longitude = $longitude")
+        Log.d("kiol", "hasAccuracy = ${location.hasAccuracy()}, accuracy = ${location.accuracy}")
         Log.d("kiol", "hasBearing = ${location.hasBearing()}, bearing = ${location.bearing}")
+        Log.d("kiol", "hasBearingAccuracy = ${location.hasBearingAccuracy()}, bearingAccuracyDegrees = ${location.bearingAccuracyDegrees}")
         val bearing: Float? = if(location.hasBearing()) location.bearing else null
         map?.shashlikMapApi?.setLatLonBearing(latitude, longitude, bearing)
     }

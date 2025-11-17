@@ -85,13 +85,13 @@ impl CanvasApi {
         )
     }
 
-    pub fn geometry_data(&mut self, geometry_data: &GeometryData) {
+    pub fn geometry_data(&mut self, geometry_data: GeometryData) {
         match geometry_data {
             GeometryData::Shape(data) => {
                 self.path(data);
             }
             GeometryData::Mesh3d(data) => {
-                self.mesh3d(data);
+                self.mesh3d(data.mesh_data);
             }
             GeometryData::ExtrudedPolygon(data) => {
                 self.extruded_polygon(data);
@@ -108,7 +108,7 @@ impl CanvasApi {
     fn mesh2d(&mut self, positions: Vector3<f64>, is_screen: bool) {
         let mesh = mem::replace(&mut self.geometry, VertexBuffers::new());
         if !mesh.vertices.is_empty() {
-            let flatten_ranges = self.indices_by_layers.values().flatten().cloned().collect();
+            let flatten_ranges = mem::take(&mut self.indices_by_layers).into_values().flatten().collect();
             let screen_paths = ScreenPaths {
                 positions: vec![positions],
                 with_collision: false,
@@ -133,7 +133,7 @@ impl CanvasApi {
         }));
     }
 
-    pub fn extruded_polygon(&mut self, data: &ExtrudedPolygonData) {
+    pub fn extruded_polygon(&mut self, data: ExtrudedPolygonData) {
         let path = &data.path;
         let height = data.height;
         let mut geometry_buffer: VertexBuffers<MeshVertex, u32> = VertexBuffers::new();
@@ -192,20 +192,18 @@ impl CanvasApi {
         );
     }
 
-    pub fn mesh3d(&mut self, data: &crate::geometry_data::Mesh3d) {
-        let mesh = data.mesh_data.clone();
+    pub fn mesh3d(&mut self, mesh: VertexBuffers<MeshVertex, u32>) {
         self.draw_commands
             .push(Box::new(Mesh3dDrawCommand { mesh }));
     }
 
-    pub fn path(&mut self, data: &ShapeData) {
-        let path = data.path.clone();
+    pub fn path(&mut self, data: ShapeData) {
         let geom_type = data.geometry_type;
         let style_index = self.style_store.get_index(&data.style_id);
         let initial_index = self.geometry.indices.len();
         match geom_type {
             GeometryType::Polyline(options) => {
-                self.tessellate_stroke_path(path, options.width, |vertex| ShapeVertex {
+                self.tessellate_stroke_path(&data.path, options.width, |vertex| ShapeVertex {
                     position: [vertex.position().x, vertex.position().y, 0.0f32],
                     normals: [vertex.normal().x, vertex.normal().y, 0.0],
                     dist: vertex.advancement(),
@@ -213,7 +211,7 @@ impl CanvasApi {
                 });
             }
             GeometryType::Polygon => {
-                Self::tessellate_fill_path(&path, &mut self.geometry, |vertex| ShapeVertex {
+                Self::tessellate_fill_path(&data.path, &mut self.geometry, |vertex| ShapeVertex {
                     position: [vertex.position().x, vertex.position().y, 0.0f32],
                     normals: [0.0, 0.0, 0.0],
                     dist: 0.0, // fill doesn't have length
@@ -263,8 +261,8 @@ impl CanvasApi {
             });
     }
 
-    pub fn text(&mut self, data: &TextData) {
-        self.text_vec.push(data.clone());
+    pub fn text(&mut self, data: TextData) {
+        self.text_vec.push(data);
     }
 
     pub(crate) fn flush(&mut self) {
@@ -275,7 +273,7 @@ impl CanvasApi {
 
         let mesh3d = mem::replace(&mut self.geometry3d, VertexBuffers::new());
         if mesh3d.vertices.len() > 0 {
-            self.mesh3d(&crate::geometry_data::Mesh3d { mesh_data: mesh3d });
+            self.mesh3d(mesh3d);
         }
 
         if !self.screen_path_cache.is_empty() {
@@ -315,7 +313,7 @@ impl CanvasApi {
         }
     }
 
-    fn tessellate_stroke_path<F>(&mut self, path: Path, width: f32, ctor: F)
+    fn tessellate_stroke_path<F>(&mut self, path: &Path, width: f32, ctor: F)
     where
         F: Fn(StrokeVertex) -> ShapeVertex,
     {
@@ -323,7 +321,7 @@ impl CanvasApi {
         {
             tessellator
                 .tessellate_path(
-                    &path,
+                    path,
                     &StrokeOptions::default().with_line_width(width),
                     &mut BuffersBuilder::new(&mut self.geometry, ctor),
                 )

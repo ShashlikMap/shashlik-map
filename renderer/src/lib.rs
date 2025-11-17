@@ -254,7 +254,7 @@ impl ShashlikRenderer {
             loop {
                 let api_msg = receiver_api_rx.recv().unwrap();
                 match api_msg {
-                    RendererApiMsg::RenderGroup((key, layer, spatial_data, rg)) => {
+                    RendererApiMsg::RenderGroup((key, layer, spatial_data, mut rg)) => {
                         let (spatial_tx, _) = broadcast::channel(1);
                         spatial_data_map
                             .insert(key.clone(), (spatial_data.clone(), spatial_tx.clone()));

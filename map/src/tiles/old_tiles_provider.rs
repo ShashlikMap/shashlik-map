@@ -77,7 +77,7 @@ impl<S: TileSource> OldTilesProvider<S> {
 
         let mut rng = rand::rng();
         let mut geometry_data: Vec<GeometryData> = vec![];
-        geom.iter().for_each(|(obj_type, geometry)| {
+        geom.into_iter().for_each(|(obj_type, geometry)| {
             match geometry {
                 MapGeometry::Coord(coord) => {
                     let local_position = Self::lat_lon_to_world(&coord) - tile_rect_origin;
@@ -201,7 +201,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                     }
                 }
                 MapGeometry::Poly(poly) => {
-                    let mut line_string = poly.exterior().clone();
+                    let mut line_string = poly.into_inner().0;
                     if obj_type.kind == MapGeomObjectKind::Building {
                         line_string.make_cw_winding();
                     }
