@@ -65,6 +65,7 @@ impl<S: TileSource> OldTilesProvider<S> {
     }
 
     fn get_tile_key_data(tile_store: Arc<TileStore<S>>, tile_key: &TileKey) -> TileData {
+        let zoom_level = tile_key.zoom_level;
         let tile_rect = tile_key.calc_tile_boundary(1.0);
 
         let tile_rect_origin = Self::lat_lon_to_world(&tile_rect.min());
@@ -219,7 +220,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                         }
                         path_builder.end(true);
 
-                        if obj_type.kind == MapGeomObjectKind::Building {
+                        if obj_type.kind == MapGeomObjectKind::Building && zoom_level == 0 {
                             let random_height: f32 = rng.random_range(1.0..=10.0);
                             geometry_data.push(GeometryData::ExtrudedPolygon(
                                 ExtrudedPolygonData {
@@ -228,14 +229,11 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 },
                             ));
                         } else {
-                            let style_id = if obj_type.kind
-                                == MapGeomObjectKind::Nature(NatureKind::Water)
-                            {
+                            let style_id = if obj_type.kind == MapGeomObjectKind::Nature(NatureKind::Water) {
                                 StyleId("water")
                             } else if obj_type.kind == MapGeomObjectKind::Building {
                                 StyleId("building")
-                            } else if obj_type.kind == MapGeomObjectKind::Nature(NatureKind::Ground)
-                            {
+                            } else if obj_type.kind == MapGeomObjectKind::Nature(NatureKind::Ground) {
                                 StyleId("ground")
                             } else {
                                 StyleId("land")
