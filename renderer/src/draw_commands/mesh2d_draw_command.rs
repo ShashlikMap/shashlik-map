@@ -1,11 +1,9 @@
 use crate::canvas_api::ScreenPaths;
 use crate::draw_commands::{geometry_to_mesh_with_layers, DrawCommand};
+use crate::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
-use crate::nodes::scene_tree::SceneTree;
-use crate::nodes::shape_layers::ShapeLayers;
 use crate::vertex_attrs::ShapeVertex;
 use lyon::tessellation::VertexBuffers;
-use std::cell::RefMut;
 use std::mem;
 use std::ops::Range;
 
@@ -25,10 +23,7 @@ impl DrawCommand for Mesh2dDrawCommand {
         key: String,
         _spatial_data: SpatialData,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-        shape_layers: &mut ShapeLayers,
-        screen_shape_layer: &mut RefMut<SceneTree>,
-        _mesh_layer: &mut RefMut<SceneTree>,
-        _text_layer: &mut RefMut<SceneTree>,
+        layers: &mut Layers,
     ) {
         let mesh = geometry_to_mesh_with_layers(&device, &self.mesh, mem::take(&mut self.layers_indices));
 
@@ -39,10 +34,9 @@ impl DrawCommand for Mesh2dDrawCommand {
             self.screen_paths.with_collision,
         );
         if self.is_screen {
-            screen_shape_layer.add_child_with_key(mesh, key);
+            layers.screen_shape_layer.borrow_mut().add_child_with_key(mesh, key);
         } else {
-            shape_layers
-                .get_shape_layer(self.real_layer)
+            layers.shape_layers(self.real_layer)
                 .borrow_mut()
                 .add_child_with_key(mesh, key);
         }

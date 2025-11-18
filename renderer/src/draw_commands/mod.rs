@@ -2,16 +2,14 @@ pub mod mesh2d_draw_command;
 pub mod mesh3d_draw_command;
 pub mod text_draw_command;
 
+use crate::layers::Layers;
 use crate::mesh::mesh::Mesh;
 use crate::modifier::render_modifier::SpatialData;
-use crate::nodes::scene_tree::SceneTree;
 use bytemuck::NoUninit;
 use lyon::lyon_tessellation::VertexBuffers;
-use std::cell::RefMut;
 use std::ops::Range;
-use wgpu::Device;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use crate::nodes::shape_layers::ShapeLayers;
+use wgpu::Device;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -55,21 +53,15 @@ impl DrawCommands {
     pub(crate) fn execute(
         &mut self,
         device: &wgpu::Device,
-        shape_layers: &mut ShapeLayers,
-        screen_shape_layer: &mut RefMut<SceneTree>,
-        mesh_layer: &mut RefMut<SceneTree>,
-        text_layer: &mut RefMut<SceneTree>,
+        layers: &mut Layers,
     ) {
-        self.draw_commands.iter_mut().for_each(|d| {
-            d.execute(
+        self.draw_commands.iter_mut().for_each(|command| {
+            command.execute(
                 device,
                 self.key.clone(),
                 self.spatial_data.clone(),
                 self.spatial_tx.subscribe(),
-                shape_layers,
-                screen_shape_layer,
-                mesh_layer,
-                text_layer
+                layers
             )
         });
         if self.spatial_tx.receiver_count() > 0 {
@@ -85,10 +77,7 @@ pub(crate) trait DrawCommand: Send {
         key: String,
         spatial_data: SpatialData,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-        shape_layers: &mut ShapeLayers,
-        screen_shape_layer: &mut RefMut<SceneTree>,
-        mesh_layer: &mut RefMut<SceneTree>,
-        text_layer: &mut RefMut<SceneTree>,
+        layers: &mut Layers
     );
 }
 

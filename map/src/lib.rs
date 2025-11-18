@@ -87,7 +87,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         puck_spatial_data.scale(1.0);
         renderer.api.add_render_group(
             "puck".to_string(),
-            1,
+            0,
             puck_spatial_data,
             Box::new(TestSimplePuck {}),
         );

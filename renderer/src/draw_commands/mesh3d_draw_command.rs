@@ -1,9 +1,7 @@
-use crate::draw_commands::{DrawCommand, MeshVertex, geometry_to_mesh};
+use crate::draw_commands::{geometry_to_mesh, DrawCommand, MeshVertex};
+use crate::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
-use crate::nodes::scene_tree::SceneTree;
 use lyon::lyon_tessellation::VertexBuffers;
-use std::cell::RefMut;
-use crate::nodes::shape_layers::ShapeLayers;
 
 #[derive(Clone)]
 pub(crate) struct Mesh3dDrawCommand {
@@ -17,12 +15,9 @@ impl DrawCommand for Mesh3dDrawCommand {
         key: String,
         _spatial_data: SpatialData,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-        _shape_layers: &mut ShapeLayers,
-        _screen_shape_layer: &mut RefMut<SceneTree>,
-        mesh_layer: &mut RefMut<SceneTree>,
-        _text_layer: &mut RefMut<SceneTree>,
+        layers: &mut Layers,
     ) {
         let mesh = geometry_to_mesh(&device, &self.mesh);
-        mesh_layer.add_child_with_key(mesh.to_positioned(device, spatial_rx), key.clone());
+        layers.mesh_layer.borrow_mut().add_child_with_key(mesh.to_positioned(device, spatial_rx), key.clone());
     }
 }

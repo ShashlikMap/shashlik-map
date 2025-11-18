@@ -10,7 +10,7 @@ use std::cmp::min;
 use std::rc::Rc;
 use wgpu::{include_wgsl, CompareFunction, Device};
 
-const MAX_SHAPE_LAYERS: usize = 2;
+const MAX_SHAPE_LAYERS: usize = 1;
 pub struct ShapeLayers {
     shape_layers: Vec<Rc<RefCell<SceneTree>>>,
 }

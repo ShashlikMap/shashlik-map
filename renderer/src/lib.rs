@@ -35,6 +35,7 @@ use wgpu::{include_wgsl, CompareFunction, DepthStencilState, Face, SurfaceError,
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use wgpu_text::glyph_brush::ab_glyph::FontRef;
 use wgpu_text::TextBrush;
+use crate::layers::Layers;
 
 pub mod camera;
 pub mod canvas_api;
@@ -56,6 +57,7 @@ pub mod styles;
 mod svg;
 mod text;
 pub mod vertex_attrs;
+mod layers;
 
 pub const SHADER_STYLE_GROUP_INDEX: u32 = 1;
 
@@ -107,10 +109,7 @@ impl GlobalContext {
 
 pub struct ShashlikRenderer {
     world_tree_node: SceneTree,
-    shape_layers: ShapeLayers,
-    mesh_layer: Rc<RefCell<SceneTree>>,
-    screen_shape_layer: Rc<RefCell<SceneTree>>,
-    text_layer: Rc<RefCell<SceneTree>>,
+    layers: Layers,
     depth_texture: DepthTexture,
     msaa_texture: MultisampledTexture,
     canvas: Box<dyn WgpuCanvas>,
@@ -230,10 +229,11 @@ impl ShashlikRenderer {
 
         Ok(Self {
             world_tree_node,
-            shape_layers,
-            mesh_layer,
-            screen_shape_layer,
-            text_layer,
+            layers: Layers::new(
+                shape_layers,
+                mesh_layer,
+                screen_shape_layer,
+                text_layer),
             depth_texture,
             msaa_texture,
             canvas,
@@ -317,25 +317,17 @@ impl ShashlikRenderer {
 
     fn update(&mut self) {
         let device = self.canvas.device();
-        if let Ok(message) = self.renderer_rx.try_recv().as_mut() {
+        if let Ok(message) = self.renderer_rx.try_recv() {
             match message {
-                RendererMessage::Draw(draw_commands) => {
+                RendererMessage::Draw(mut draw_commands) => {
                     draw_commands.execute(
                         &device,
-                        &mut self.shape_layers,
-                        &mut self.screen_shape_layer.borrow_mut(),
-                        &mut self.mesh_layer.borrow_mut(),
-                        &mut self.text_layer.borrow_mut(),
+                        &mut self.layers
                     );
                 }
                 RendererMessage::ClearGroups(keys) => {
-                    keys.iter().for_each(|key| {
-                        self.mesh_layer.borrow_mut().clear_by_key(key.clone());
-                        self.shape_layers.clear_by_key(key.clone());
-                        self.screen_shape_layer
-                            .borrow_mut()
-                            .clear_by_key(key.clone());
-                        self.text_layer.borrow_mut().clear_by_key(key.clone());
+                    keys.into_iter().for_each(|key| {
+                        self.layers.clear(key);
                     });
                 }
             }
