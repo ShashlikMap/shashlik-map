@@ -17,7 +17,7 @@ pub struct ShapeData {
     pub path: Path,
     pub geometry_type: GeometryType,
     pub style_id: StyleId,
-    pub layer_level: i8,
+    pub index_layer_level: i8,
     pub is_screen: bool // might not be the best idea
 }
 

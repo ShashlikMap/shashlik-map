@@ -7,7 +7,7 @@ use tokio::sync::broadcast::{Receiver, Sender};
 
 #[derive(Clone)]
 pub struct StyleStore {
-    uniform_tx: Sender<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
+    style_uniform_tx: Sender<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
     style_map: IndexMap<StyleId, RenderStyle>,
 }
 
@@ -16,7 +16,7 @@ impl StyleStore {
     pub fn new() -> StyleStore {
         let (uniform_tx, _) = tokio::sync::broadcast::channel(1);
         let mut store = StyleStore {
-            uniform_tx,
+            style_uniform_tx: uniform_tx,
             style_map: IndexMap::new(),
         };
         store.register_styles(vec![(Self::STUB_STYLE_ID, RenderStyle::default())]);
@@ -35,7 +35,7 @@ impl StyleStore {
     }
 
     pub fn subscribe(&self) -> Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>> {
-        let receiver = self.uniform_tx.subscribe();
+        let receiver = self.style_uniform_tx.subscribe();
         self.generate_uniforms_and_send();
         receiver
     }
@@ -46,8 +46,8 @@ impl StyleStore {
             .iter()
             .map(|it| it.params())
             .collect::<Vec<_>>();
-        if self.uniform_tx.receiver_count() > 0 {
-            self.uniform_tx.send(styles).unwrap();
+        if self.style_uniform_tx.receiver_count() > 0 {
+            self.style_uniform_tx.send(styles).unwrap();
         } else {
             error!("No uniform_tx in style_store");
         }

@@ -14,13 +14,13 @@ pub struct StyleAdapterNode<T: SceneNode> {
     styles_bind_group_layout: BindGroupLayout,
     style_bind_group: Option<BindGroup>,
     depth_compare: CompareFunction,
-    uniform_rx: Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
+    style_uniform_rx: Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
 }
 
 impl<T: SceneNode> StyleAdapterNode<T> {
     pub fn new(
         device: &Device,
-        uniform_rx: Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
+        style_uniform_rx: Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
         scene_node: T,
         shader_group_index: u32,
         depth_compare: CompareFunction,
@@ -45,7 +45,7 @@ impl<T: SceneNode> StyleAdapterNode<T> {
             styles_bind_group_layout,
             style_bind_group: None,
             depth_compare,
-            uniform_rx,
+            style_uniform_rx: style_uniform_rx,
         }
     }
 }
@@ -67,7 +67,7 @@ impl<T: SceneNode> SceneNode for StyleAdapterNode<T> {
         _config: &wgpu::SurfaceConfiguration,
         _global_context: &mut GlobalContext,
     ) {
-        if let Ok(uniforms) = self.uniform_rx.no_lagged() {
+        if let Ok(uniforms) = self.style_uniform_rx.no_lagged() {
             // TODO We could reuse the buffer if styles count has not changed
             let styles_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Style Buffer"),
