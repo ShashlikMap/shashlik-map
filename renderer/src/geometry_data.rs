@@ -47,4 +47,6 @@ pub struct TextData {
     pub text: String,
     pub position: Vector3<f32>,
     pub screen_offset: Vector2<f32>,
+    pub size: f32,
+    pub rotation: f32,
 }

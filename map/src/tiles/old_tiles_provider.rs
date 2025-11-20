@@ -99,6 +99,8 @@ impl<S: TileSource> OldTilesProvider<S> {
                                             0.0,
                                         )).cast().unwrap(),
                                         screen_offset: Vector2::new(0.0, 22.0),
+                                        size: 40.0,
+                                        rotation: 0.0,
                                     }));
                                     Some(("train_station", Self::TRAIN_STATION_SVG))
                                 },
@@ -117,10 +119,12 @@ impl<S: TileSource> OldTilesProvider<S> {
                                                                     local_position.x,
                                                                     local_position.y,
                                                                     0.0,
-                                                                ), )
+                                                                ))
                                             .cast()
                                             .unwrap(),
                                         screen_offset: Vector2::new(0.0, 0.0),
+                                        size: 40.0,
+                                        rotation: 0.0,
                                     }));
                                     None
                                 }
@@ -151,11 +155,11 @@ impl<S: TileSource> OldTilesProvider<S> {
                     }
                 }
                 MapGeometry::Line(line) => {
-                    if let Some((style_id, layer_level, width)) = match &obj_type.kind {
+                    if let Some((style_id, layer_level, width, name)) = match &obj_type.kind {
                         MapGeomObjectKind::Way(info) => match info.line_kind {
                             LineKind::Highway { kind } => {
                                 if kind != HighwayKind::Footway {
-                                    Some((Self::highway_style_id(&kind), info.layer, 0.7))
+                                    Some((Self::highway_style_id(&kind), info.layer, 0.7, info.name_en.clone()))
                                 } else {
                                     None
                                 }
@@ -163,13 +167,13 @@ impl<S: TileSource> OldTilesProvider<S> {
                             LineKind::Railway { .. } => {
                                 // TODO Ignore rails tunnels for a while
                                 if info.layer_kind != LayerKind::Tunnel {
-                                    Some((StyleId("rails"), info.layer, 0.3))
+                                    Some((StyleId("rails"), info.layer, 0.3, None))
                                 } else {
                                     None
                                 }
                             }
                         },
-                        MapGeomObjectKind::AdminLine => Some((StyleId("admin_line"), 0, 250.0)),
+                        MapGeomObjectKind::AdminLine => Some((StyleId("admin_line"), 0, 250.0, None)),
                         _ => None,
                     } {
                         let line: Vec<(f64, f64)> = line
@@ -178,7 +182,6 @@ impl<S: TileSource> OldTilesProvider<S> {
                             .map(|item| (Self::lat_lon_to_world(&item) - tile_rect_origin).into())
                             .collect();
                         if line.len() >= 2 {
-                            // println!("new line");
                             let mut path_builder = Path::builder();
                             path_builder.begin(point(line[0].x() as f32, line[0].y() as f32));
 
@@ -198,6 +201,22 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 index_layer_level: layer_level as i8,
                                 is_screen: false,
                             }));
+
+                            if let Some(name) = name {
+                                let some_middle_point = line.get(line.len() / 2).unwrap();
+                                geometry_data.push(GeometryData::Text(TextData {
+                                    id: hash(name.as_bytes()),
+                                    text: name,
+                                    position: Vector3::from((some_middle_point.0,
+                                                             some_middle_point.1,
+                                                             0.0))
+                                        .cast()
+                                        .unwrap(),
+                                    screen_offset: Vector2::new(0.0, 0.0),
+                                    size: 30.0,
+                                    rotation: 0.0,
+                                }));
+                            }
                         }
                     }
                 }

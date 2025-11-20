@@ -22,7 +22,7 @@ impl TextNode {
                 .iter()
                 .map(|item| {
                     let owned_text = OwnedText::new(item.text.as_str())
-                        .with_scale(40.0)
+                        .with_scale(item.size)
                         .with_color([0.0, 0.0, 0.0, 0.0]);
                     TextNodeData {
                         id: item.id.clone(),
