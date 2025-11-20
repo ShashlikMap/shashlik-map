@@ -18,5 +18,6 @@ impl RenderGroup for TestSimplePuck {
                 is_screen: true,
             },
         );
+        canvas.rb_text_experiment();
     }
 }

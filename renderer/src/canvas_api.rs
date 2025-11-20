@@ -8,16 +8,20 @@ use crate::styles::render_style::RenderStyle;
 use crate::styles::style_id::StyleId;
 use crate::styles::style_store::StyleStore;
 use crate::svg::svg_parser::svg_parse;
+use crate::text::glyph_tesselator::GlyphTesselator;
 use crate::vertex_attrs::ShapeVertex;
-use cgmath::Vector3;
+use cgmath::{Vector2, Vector3};
 use lyon::lyon_tessellation::{
     BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator,
     StrokeVertex, VertexBuffers,
 };
 use lyon::path::Path;
+use rustybuzz::ttf_parser::GlyphId;
+use rustybuzz::{ttf_parser, UnicodeBuffer};
 use std::collections::{BTreeMap, HashMap};
 use std::mem;
 use std::ops::Range;
+use wgpu::Color;
 
 #[derive(Clone)]
 pub struct ScreenPaths {
@@ -105,12 +109,12 @@ impl CanvasApi {
         }
     }
 
-    fn mesh2d(&mut self, positions: Vector3<f64>, is_screen: bool) {
+    fn mesh2d(&mut self, is_screen: bool) {
         let mesh = mem::replace(&mut self.geometry, VertexBuffers::new());
         if !mesh.vertices.is_empty() {
             let flatten_ranges = mem::take(&mut self.indices_by_layers).into_values().flatten().collect();
             let screen_paths = ScreenPaths {
-                positions: vec![positions],
+                positions: vec![Vector3::new(0.0, 0.0, 0.0)],
                 with_collision: false,
             };
             self.mesh2d_with_positions(mesh, flatten_ranges, screen_paths, is_screen);
@@ -237,7 +241,7 @@ impl CanvasApi {
 
         // TODO It should aggregate geometry for "screen" type layers
         if data.is_screen {
-            self.mesh2d(Vector3::new(0.0, 0.0, 0.0), true);
+            self.mesh2d(true);
         }
     }
 
@@ -261,6 +265,29 @@ impl CanvasApi {
             });
     }
 
+    pub fn rb_text_experiment(&mut self) {
+        let face = ttf_parser::Face::parse(include_bytes!("font.ttf"), 0).unwrap();
+        let face = rustybuzz::Face::from_face(face);
+        let mut buffer = UnicodeBuffer::new();
+        buffer.push_str("SHASHLIK");
+        buffer.guess_segment_properties();
+
+        let glyph_buffer = rustybuzz::shape(&face, &[], buffer);
+        let mut fill = vec![];
+        let mut pos = 5.0f32;
+        for index in 0..glyph_buffer.len() {
+            let position = glyph_buffer.glyph_positions()[index];
+            println!("pp = {:?}", position);
+            let glyph_info = glyph_buffer.glyph_infos()[index];
+            let mut path_builder = GlyphTesselator::new(0.01);
+            face.outline_glyph(GlyphId(glyph_info.glyph_id as u16), &mut path_builder);
+
+            let glyph_position = Vector2::new(pos, 0.0f32);
+            pos += 5.0f32;
+            fill.push(path_builder.tessellate_fill(&mut self.geometry3d, glyph_position, Color::RED));
+        }
+    }
+
     pub fn text(&mut self, data: TextData) {
         self.text_vec.push(data);
     }
@@ -269,7 +296,7 @@ impl CanvasApi {
         assert!(!self.flushed);
         self.flushed = true;
 
-        self.mesh2d(Vector3::new(0.0, 0.0, 0.0), false);
+        self.mesh2d(false);
 
         let mesh3d = mem::replace(&mut self.geometry3d, VertexBuffers::new());
         if mesh3d.vertices.len() > 0 {

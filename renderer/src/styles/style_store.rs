@@ -23,7 +23,7 @@ impl StyleStore {
         store
     }
 
-    pub fn register_styles(&mut self, styles: Vec<(StyleId, RenderStyle)>) {
+    fn register_styles(&mut self, styles: Vec<(StyleId, RenderStyle)>) {
         styles.into_iter().for_each(|(style_id, style)| {
             self.style_map.insert(style_id, style);
         });

@@ -17,6 +17,7 @@ usvg = "0.41.0"
 geo-types = { workspace = true, features = ["rstar_0_12"] }
 tokio = { workspace = true }
 rstar = "0.12.2"
+rustybuzz = "0.20.1"
 
 [build-dependencies]
 anyhow = "1.0"
