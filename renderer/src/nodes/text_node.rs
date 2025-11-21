@@ -1,9 +1,9 @@
-use crate::GlobalContext;
 use crate::geometry_data::TextData;
 use crate::modifier::render_modifier::SpatialData;
-use crate::nodes::SceneNode;
 use crate::nodes::scene_tree::RenderContext;
-use crate::text::text_renderer::TextNodeData;
+use crate::nodes::SceneNode;
+use crate::text::text_renderer::{GlyphData, TextNodeData};
+use crate::GlobalContext;
 use wgpu::{Device, Queue};
 use wgpu_text::glyph_brush::OwnedText;
 
@@ -13,6 +13,8 @@ impl SceneNode for TextLayer {}
 
 pub struct TextNode {
     data: Vec<TextNodeData>,
+    data2: Vec<GlyphData>,
+    data2done: bool
 }
 
 impl TextNode {
@@ -33,6 +35,16 @@ impl TextNode {
                     }
                 })
                 .collect(),
+            data2: Vec::new(),
+            data2done: false,
+        }
+    }
+
+    pub fn new2(text_data: Vec<GlyphData>, spatial_data: SpatialData) -> Self {
+        Self {
+            data: Vec::new(),
+            data2: text_data,
+            data2done: false,
         }
     }
 }
@@ -59,5 +71,9 @@ impl SceneNode for TextNode {
                 &screen_position_calculator,
             )
         });
+        if !self.data2done {
+            global_context.text_renderer.insert2(self.data2.clone());
+            self.data2done = true;
+        }
     }
 }

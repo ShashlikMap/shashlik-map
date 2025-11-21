@@ -2,15 +2,14 @@ extern crate core;
 
 use crate::collision_handler::CollisionHandler;
 use crate::depth_texture::DepthTexture;
+use crate::layers::Layers;
 use crate::messages::RendererMessage;
 use crate::msaa_texture::MultisampledTexture;
 use crate::nodes::camera_node::CameraNode;
-use crate::nodes::fps_node::FpsNode;
 use crate::nodes::mesh_layer::MeshLayer;
 use crate::nodes::scene_tree::{RenderContext, SceneTree};
 use crate::nodes::shape_layers::ShapeLayers;
 use crate::nodes::style_adapter_node::StyleAdapterNode;
-use crate::nodes::text_node::TextLayer;
 use crate::nodes::world::World;
 use crate::nodes::SceneNode;
 use crate::pipeline_provider::PipeLineProvider;
@@ -24,18 +23,17 @@ use messages::RendererApiMsg;
 use renderer_api::RendererApi;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::iter;
 use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread::spawn;
-use std::iter;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
 use wgpu::{include_wgsl, CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use wgpu_text::glyph_brush::ab_glyph::FontRef;
 use wgpu_text::TextBrush;
-use crate::layers::Layers;
 
 pub mod camera;
 pub mod canvas_api;
@@ -98,11 +96,12 @@ impl GlobalContext {
         camera_controller: Rc<RefCell<CameraController>>,
         collision_handler: CollisionHandler,
         text_brush: TextBrush<FontRef<'static>>,
+        device: &wgpu::Device,
     ) -> Self {
         GlobalContext {
             camera_controller,
             collision_handler,
-            text_renderer: TextRenderer::new(text_brush),
+            text_renderer: TextRenderer::new(text_brush, device),
         }
     }
 }
@@ -155,6 +154,7 @@ impl ShashlikRenderer {
                 depth_state.clone(),
                 multisample_state.clone(),
             ),
+            device,
         );
         let pipeline_provider = PipeLineProvider::new(
             config.format,
@@ -203,19 +203,27 @@ impl ShashlikRenderer {
             .borrow_mut()
             .add_child_with_key(screen_shape_layer, "screen shape".to_string());
 
-        let text_layer = camera_node
-            .borrow_mut()
-            .add_child_with_key(TextLayer {}, "text_layer".to_string());
-
-        text_layer.borrow_mut().add_child_with_key(
-            FpsNode::new(create_default_text_brush(
-                device,
-                config,
-                depth_state.clone(),
-                multisample_state.clone(),
-            )),
-            "fps_node".to_string(),
+        let text_layer = camera_node.borrow_mut().add_child_with_key(
+            MeshLayer::new(
+                &device,
+                include_wgsl!("shaders/mesh_shader.wgsl"),
+                Rc::new([VertexNormal::desc(), InstancePos::desc()]),
+                pipeline_provider.clone(),
+                Some(Face::Front),
+            ),
+            "text_layer".to_string(),
         );
+
+        // FIXME
+        // text_layer.borrow_mut().add_child_with_key(
+        //     FpsNode::new(create_default_text_brush(
+        //         device,
+        //         config,
+        //         depth_state.clone(),
+        //         multisample_state.clone(),
+        //     )),
+        //     "fps_node".to_string(),
+        // );
 
         let mut render_context = RenderContext::default();
         world_tree_node.setup(&mut render_context, &device);

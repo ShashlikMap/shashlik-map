@@ -1,15 +1,30 @@
 use crate::camera::ScreenPositionCalculator;
 use crate::collision_handler::CollisionHandler;
+use crate::draw_commands::geometry_to_mesh;
+use crate::mesh::mesh::Mesh;
+use crate::text::glyph_tesselator::GlyphTesselator;
+use crate::vertex_attrs::InstancePos;
 use cgmath::num_traits::clamp;
-use cgmath::{Vector2, Vector3};
+use cgmath::{Deg, Matrix4, Vector2, Vector3};
 use geo_types::point;
 use rstar::primitives::Rectangle;
+use rustybuzz::ttf_parser::GlyphId;
+use rustybuzz::{ttf_parser, UnicodeBuffer};
 use std::collections::HashMap;
 use std::mem;
-use wgpu::RenderPass;
-use wgpu_text::TextBrush;
+use wgpu::util::DeviceExt;
+use wgpu::{Buffer, Color, Device, RenderPass};
 use wgpu_text::glyph_brush::ab_glyph::FontRef;
 use wgpu_text::glyph_brush::{OwnedSection, OwnedText};
+use wgpu_text::TextBrush;
+
+#[derive(Clone)]
+pub struct GlyphData {
+    pub glyph_id: GlyphId,
+    pub rotation: f32,
+    pub offset: Vector2<f32>,
+}
+
 
 pub struct TextNodeData {
     pub id: u64,
@@ -22,16 +37,54 @@ pub struct TextRenderer {
     pub text_brush: TextBrush<FontRef<'static>>,
     id_to_alpha_map: HashMap<u64, f32>,
     sections: Vec<OwnedSection>,
+
+    glyph_mesh_map: HashMap<GlyphId, Mesh>,
+    glyph_data: HashMap<GlyphId, Vec<GlyphData>>,
+    dirty: bool,
+    instance_buffer: Option<(Buffer, Vec<i32>)>,
 }
 
 impl TextRenderer {
     const FADE_ANIM_SPEED: f32 = 0.05;
-    pub fn new(brush: TextBrush<FontRef<'static>>) -> TextRenderer {
+    pub fn new(brush: TextBrush<FontRef<'static>>, device: &Device) -> TextRenderer {
+
+        let face = ttf_parser::Face::parse(include_bytes!("../font.ttf"), 0).unwrap();
+        let face = rustybuzz::Face::from_face(face);
+
+        let mut buffer = UnicodeBuffer::new();
+        buffer.push_str("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+        buffer.guess_segment_properties();
+
+        let glyph_buffer = rustybuzz::shape(&face, &[], buffer);
+
+        let mut glyph_mesh_map = HashMap::new();
+        for index in 0..glyph_buffer.len() {
+            let glyph_info = glyph_buffer.glyph_infos()[index];
+            let mut path_builder = GlyphTesselator::new(0.01);
+            face.outline_glyph(GlyphId(glyph_info.glyph_id as u16), &mut path_builder);
+            let glyph_buf = path_builder.tessellate_fill(Vector2::new(0.0, 0.0f32), Color::RED);
+            glyph_mesh_map.insert(GlyphId(glyph_info.glyph_id as u16), geometry_to_mesh(device, &glyph_buf));
+        }
+
         TextRenderer {
             text_brush: brush,
             id_to_alpha_map: HashMap::new(),
             sections: vec![],
+
+            glyph_mesh_map,
+            glyph_data: HashMap::new(),
+            dirty: true,
+            instance_buffer: None,
         }
+    }
+
+    pub fn insert2(&mut self, glyph_data: Vec<GlyphData>) {
+        glyph_data.into_iter().for_each(|item| {
+            self.glyph_data.entry(item.glyph_id).and_modify(|list| {
+                list.push(item.clone());
+            }).or_insert(vec![item.clone()]);
+        });
+        // self.dirty = true;
     }
 
     pub fn insert(
@@ -80,6 +133,29 @@ impl TextRenderer {
         }
     }
 
+    fn update_attrs(&self) -> (Vec<InstancePos>, Vec<i32>) {
+        let mut attrs = vec![];
+        let mut indicies = vec![];
+
+        self.glyph_data.values().for_each(|list| {
+            indicies.push(list.len() as i32);
+
+            list.iter().for_each(|glyph_data| {
+                let rotation_matrix = Matrix4::<f64>::from_angle_z(Deg(glyph_data.rotation as f64));
+                let matrix = rotation_matrix;
+
+                let instance_pos = InstancePos {
+                    position: Vector3::new(glyph_data.offset.x, glyph_data.offset.y, 0.0).into(),
+                    color_alpha: 1.0,
+                    matrix: matrix.cast().unwrap().into(),
+                    bbox: [0.0, 0.0, 0.0, 0.0],
+                };
+                attrs.push(instance_pos);
+            });
+        });
+        (attrs, indicies)
+    }
+
     pub fn render(
         &mut self,
         queue: &wgpu::Queue,
@@ -87,6 +163,37 @@ impl TextRenderer {
         render_pass: &mut RenderPass,
     ) {
         self.id_to_alpha_map.clear();
+
+
+        if self.dirty {
+            let (attrs, indicies) = self.update_attrs();
+
+            let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Instance Buffer"),
+                contents: bytemuck::cast_slice(attrs.as_slice()),
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            });
+            self.instance_buffer = Some((instance_buffer, indicies));
+            self.dirty = false;
+        }
+
+        if let Some((instance_buffer, indicies)) = &self.instance_buffer {
+            render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
+            let mut qq = 0;
+            self.glyph_data.iter().enumerate().for_each(|(index, (glyph_id, list))| {
+
+                let mesh = self.glyph_mesh_map.get(glyph_id).unwrap();
+                let v_buf = mesh.vertex_buf.get(0).unwrap();
+                let i_buf = mesh.index_buf.get(0).unwrap();
+
+                render_pass.set_vertex_buffer(0, v_buf.slice(..));
+                render_pass.set_index_buffer(i_buf.0.slice(..), wgpu::IndexFormat::Uint32);
+
+                render_pass.draw_indexed(0..i_buf.1 as u32, 0, qq..qq + list.len() as u32);
+                qq += list.len() as u32;
+            });
+        }
+
         self.text_brush
             .queue(
                 &device,

@@ -48,6 +48,6 @@ impl SceneNode for FpsNode {
     }
 
     fn render(&self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
-        self.text_brush.draw(render_pass)
+        // self.text_brush.draw(render_pass)
     }
 }

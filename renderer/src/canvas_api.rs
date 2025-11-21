@@ -1,6 +1,7 @@
 use crate::draw_commands::mesh2d_draw_command::Mesh2dDrawCommand;
 use crate::draw_commands::mesh3d_draw_command::Mesh3dDrawCommand;
 use crate::draw_commands::text_draw_command::TextDrawCommand;
+use crate::draw_commands::text_draw_command2::TextDrawCommand2;
 use crate::draw_commands::{DrawCommand, DrawCommands, GeometryType, MeshVertex};
 use crate::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData, TextData};
 use crate::modifier::render_modifier::SpatialData;
@@ -9,6 +10,7 @@ use crate::styles::style_id::StyleId;
 use crate::styles::style_store::StyleStore;
 use crate::svg::svg_parser::svg_parse;
 use crate::text::glyph_tesselator::GlyphTesselator;
+use crate::text::text_renderer::GlyphData;
 use crate::vertex_attrs::ShapeVertex;
 use cgmath::{Deg, Matrix4, Vector2, Vector3, Vector4};
 use lyon::lyon_tessellation::{
@@ -21,8 +23,6 @@ use rustybuzz::{ttf_parser, UnicodeBuffer};
 use std::collections::{BTreeMap, HashMap};
 use std::mem;
 use std::ops::Range;
-use wgpu::Color;
-use crate::draw_commands::text_draw_command2::TextDrawCommand2;
 
 #[derive(Clone)]
 pub struct ScreenPaths {
@@ -275,10 +275,12 @@ impl CanvasApi {
         buffer.guess_segment_properties();
 
         let glyph_buffer = rustybuzz::shape(&face, &[], buffer);
-        let mut fill = vec![];
         let mut pos = 5.0f32;
 
+        let mut glyphs = vec![];
+
         let mut rotation = 0.0f32;
+        let mut rotation2 = 0.0f32;
         for index in 0..glyph_buffer.len() {
             let position = glyph_buffer.glyph_positions()[index];
             let glyph_info = glyph_buffer.glyph_infos()[index];
@@ -287,21 +289,20 @@ impl CanvasApi {
 
             let rotation_matrix = Matrix4::<f32>::from_angle_z(Deg(rotation));
             let p = rotation_matrix * Vector4::new(pos, 0.0, 0.0, 1.0);
-            fill.push((Vector2::new(p.x, p.y), path_builder.tessellate_fill(Vector2::new(0.0, 0.0f32), Color::RED)));
 
+            glyphs.push(GlyphData {
+                glyph_id: GlyphId(glyph_info.glyph_id as u16),
+                rotation: rotation2,
+                offset: Vector2::new(p.x, p.y),
+            });
             pos += position.x_advance as f32 * 0.01;
             rotation += 6.42857142865f32;
+            rotation2 += 12.8571428571f32;
         }
 
-        let mut rotation = 0.0f32;
-        fill.into_iter().for_each(|(pos, mesh)| {
-            self.draw_commands.push(Box::new(TextDrawCommand2 {
-                glyph_mesh: mesh,
-                offset: pos,
-                rotation,
-            }));
-            rotation += 12.8571428571f32;
-        })
+        self.draw_commands.push(Box::new(TextDrawCommand2 {
+            glyphs,
+        }));
     }
 
     pub fn text(&mut self, data: TextData) {
