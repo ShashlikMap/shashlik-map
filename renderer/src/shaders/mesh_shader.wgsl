@@ -34,8 +34,15 @@ fn vs_main(
     model: VertexInput,
     pos: InstanceInput
 ) -> VertexOutput {
+    let model_matrix = mat4x4<f32>(
+            pos.model_matrix_0,
+            pos.model_matrix_1,
+            pos.model_matrix_2,
+            pos.model_matrix_3,
+    );
+    let model_position = model_matrix * vec4(model.position.xyz, 1.0);
     var out: VertexOutput;
-    var modelpos = model.position + pos.position;
+    var modelpos = model_position.xyz + pos.position;
     var modelnormal = model.normal;
     out.world_position = modelpos;
     out.world_normal = modelnormal;
