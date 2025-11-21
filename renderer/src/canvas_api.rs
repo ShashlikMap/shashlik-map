@@ -266,16 +266,16 @@ impl CanvasApi {
             });
     }
 
-    pub fn rb_text_experiment(&mut self) {
+    pub fn rb_text_experiment(&mut self, str: &str, x_off: f32) {
         let face = ttf_parser::Face::parse(include_bytes!("font.ttf"), 0).unwrap();
         let face = rustybuzz::Face::from_face(face);
 
         let mut buffer = UnicodeBuffer::new();
-        buffer.push_str("SHASHLIK");
+        buffer.push_str(str);
         buffer.guess_segment_properties();
 
         let glyph_buffer = rustybuzz::shape(&face, &[], buffer);
-        let mut pos = 5.0f32;
+        let mut pos = x_off;
 
         let mut glyphs = vec![];
 
