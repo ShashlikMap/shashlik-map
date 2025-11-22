@@ -284,8 +284,6 @@ impl CanvasApi {
         for index in 0..glyph_buffer.len() {
             let position = glyph_buffer.glyph_positions()[index];
             let glyph_info = glyph_buffer.glyph_infos()[index];
-            let mut path_builder = GlyphTesselator::new(0.01);
-            face.outline_glyph(GlyphId(glyph_info.glyph_id as u16), &mut path_builder);
 
             let rotation_matrix = Matrix4::<f32>::from_angle_z(Deg(rotation));
             let p = rotation_matrix * Vector4::new(pos, 0.0, 0.0, 1.0);

@@ -31,9 +31,11 @@ use std::thread::spawn;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
 use wgpu::{include_wgsl, CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat};
+use wgpu::naga::compact::KeepUnused::No;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use wgpu_text::glyph_brush::ab_glyph::FontRef;
 use wgpu_text::TextBrush;
+use crate::nodes::fps_node::FpsNode;
 
 pub mod camera;
 pub mod canvas_api;
@@ -206,24 +208,23 @@ impl ShashlikRenderer {
         let text_layer = camera_node.borrow_mut().add_child_with_key(
             MeshLayer::new(
                 &device,
-                include_wgsl!("shaders/mesh_shader.wgsl"),
+                include_wgsl!("shaders/text_shader.wgsl"),
                 Rc::new([VertexNormal::desc(), InstancePos::desc()]),
                 pipeline_provider.clone(),
-                Some(Face::Front),
+                None,
             ),
             "text_layer".to_string(),
         );
 
-        // FIXME
-        // text_layer.borrow_mut().add_child_with_key(
-        //     FpsNode::new(create_default_text_brush(
-        //         device,
-        //         config,
-        //         depth_state.clone(),
-        //         multisample_state.clone(),
-        //     )),
-        //     "fps_node".to_string(),
-        // );
+        text_layer.borrow_mut().add_child_with_key(
+            FpsNode::new(create_default_text_brush(
+                device,
+                config,
+                depth_state.clone(),
+                multisample_state.clone(),
+            )),
+            "fps_node".to_string(),
+        );
 
         let mut render_context = RenderContext::default();
         world_tree_node.setup(&mut render_context, &device);

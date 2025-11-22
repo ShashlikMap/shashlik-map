@@ -50,26 +50,26 @@ impl GlyphTesselator {
 impl OutlineBuilder for GlyphTesselator {
     fn move_to(&mut self, x: f32, y: f32) {
         self.builder
-            .begin(lyon::geom::point(x * self.scale, y * -self.scale));
+            .begin(lyon::geom::point(x * self.scale, y * self.scale));
     }
 
     fn line_to(&mut self, x: f32, y: f32) {
         self.builder
-            .line_to(lyon::geom::point(x * self.scale, y * -self.scale));
+            .line_to(lyon::geom::point(x * self.scale, y * self.scale));
     }
 
     fn quad_to(&mut self, x1: f32, y1: f32, x: f32, y: f32) {
         self.builder.quadratic_bezier_to(
-            lyon::geom::point(x1 * self.scale, y1 * -self.scale),
-            lyon::geom::point(x * self.scale, y * -self.scale),
+            lyon::geom::point(x1 * self.scale, y1 * self.scale),
+            lyon::geom::point(x * self.scale, y * self.scale),
         );
     }
 
     fn curve_to(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, x: f32, y: f32) {
         self.builder.cubic_bezier_to(
-            lyon::geom::point(x1 * self.scale, y1 * -self.scale),
-            lyon::geom::point(x2 * self.scale, y2 * -self.scale),
-            lyon::geom::point(x * self.scale, y * -self.scale),
+            lyon::geom::point(x1 * self.scale, y1 * self.scale),
+            lyon::geom::point(x2 * self.scale, y2 * self.scale),
+            lyon::geom::point(x * self.scale, y * self.scale),
         );
     }
 
