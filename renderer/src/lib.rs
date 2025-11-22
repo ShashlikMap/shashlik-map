@@ -189,7 +189,7 @@ impl ShashlikRenderer {
             Rc::new([ShapeVertex::desc(), InstancePos::desc()]),
             pipeline_provider.clone(),
             None,
-            CompareFunction::Less
+            CompareFunction::Always
         );
 
         // TODO Why does it need a specific CompareFunction while e.g. FpsNode doesn't need it to be on top of screen?

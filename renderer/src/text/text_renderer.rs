@@ -9,7 +9,7 @@ use cgmath::{Matrix4, Vector2, Vector3};
 use geo_types::point;
 use rstar::primitives::Rectangle;
 use rustybuzz::ttf_parser::GlyphId;
-use rustybuzz::{ttf_parser, Direction, Face, ShapePlan, UnicodeBuffer};
+use rustybuzz::{Direction, Face, ShapePlan, UnicodeBuffer, ttf_parser};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 use wgpu::{Buffer, Color, Device, RenderPass};
@@ -43,7 +43,7 @@ pub struct TextRenderer {
 }
 
 impl TextRenderer {
-    const SCALE: f32 = 0.04;
+    const SCALE: f32 = 0.035;
     const FADE_ANIM_SPEED: f32 = 0.05;
     pub fn new(device: &Device) -> TextRenderer {
         let face = ttf_parser::Face::parse(include_bytes!("../font.ttf"), 0).unwrap();
@@ -53,8 +53,13 @@ impl TextRenderer {
         buffer.push_str("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
         buffer.guess_segment_properties();
 
-
-        let face_shape_plan = ShapePlan::new(&face, Direction::LeftToRight, Some(buffer.script()), None, &[]);
+        let face_shape_plan = ShapePlan::new(
+            &face,
+            Direction::LeftToRight,
+            Some(buffer.script()),
+            None,
+            &[],
+        );
 
         let glyph_buffer = rustybuzz::shape(&face, &[], buffer);
 
@@ -99,10 +104,12 @@ impl TextRenderer {
         let width = glyph_buffer
             .glyph_positions()
             .iter()
-            .fold(0, |aggr, glyph| aggr + glyph.x_advance) as f32 * Self::SCALE;
+            .fold(0, |aggr, glyph| aggr + glyph.x_advance) as f32
+            * Self::SCALE;
         let height = (self.face.ascender() + self.face.descender()) as f32 * Self::SCALE;
 
-        let origin = screen_position_calculator.screen_position(data.world_position.cast().unwrap());
+        let origin =
+            screen_position_calculator.screen_position(data.world_position.cast().unwrap());
         let section_rect = Rectangle::from_corners(
             point! { x: origin.x as f32, y: origin.y as f32 },
             point! { x: origin.x as f32 + width, y: origin.y as f32 + height },
@@ -111,10 +118,7 @@ impl TextRenderer {
         let within_screen = collision_handler.within_screen(config, section_rect);
         if within_screen {
             let contains = self.id_to_alpha_map.contains_key(&data.id);
-            let mut alpha = *self
-                .id_to_alpha_map
-                .entry(data.id)
-                .or_insert(data.alpha);
+            let mut alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
             if contains {
                 data.alpha = alpha;
                 return;
@@ -136,7 +140,7 @@ impl TextRenderer {
                     rotation: 0.0,
                     alpha,
                     position: (data.world_position.x, data.world_position.y).into(),
-                    offset: Vector2::new(pos, 0.0),
+                    offset: Vector2::new(pos, -height),
                 };
                 self.glyph_data
                     .entry(item.glyph_id)
@@ -150,17 +154,22 @@ impl TextRenderer {
         }
     }
 
-    fn update_attrs(&mut self, device: &Device, config: &wgpu::SurfaceConfiguration,) {
+    fn update_attrs(&mut self, device: &Device, config: &wgpu::SurfaceConfiguration) {
         self.instance_buffer_map.clear();
         self.glyph_data.iter().for_each(|(key, list)| {
             let mut attrs = vec![];
             list.iter().for_each(|glyph_data| {
                 // let rotation_matrix = Matrix4::<f64>::from_angle_z(Deg(glyph_data.rotation as f64));
                 // let matrix = rotation_matrix;
-                let matrix = Matrix4::<f32>::from_translation(Vector3::new(glyph_data.offset.x, 0.0, 0.0));
+                let matrix = Matrix4::<f32>::from_translation(Vector3::new(
+                    glyph_data.offset.x,
+                    glyph_data.offset.y,
+                    0.0,
+                ));
 
                 let instance_pos = InstancePos {
-                    position: Vector3::new(glyph_data.position.0, glyph_data.position.1, 0.0).into(),
+                    position: Vector3::new(glyph_data.position.0, glyph_data.position.1, 0.0)
+                        .into(),
                     color_alpha: glyph_data.alpha,
                     matrix: matrix.cast().unwrap().into(),
                     bbox: [0.0, 0.0, 0.0, 0.0],
