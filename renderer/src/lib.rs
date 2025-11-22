@@ -6,6 +6,7 @@ use crate::layers::Layers;
 use crate::messages::RendererMessage;
 use crate::msaa_texture::MultisampledTexture;
 use crate::nodes::camera_node::CameraNode;
+use crate::nodes::fps_node::FpsNode;
 use crate::nodes::mesh_layer::MeshLayer;
 use crate::nodes::scene_tree::{RenderContext, SceneTree};
 use crate::nodes::shape_layers::ShapeLayers;
@@ -31,11 +32,9 @@ use std::thread::spawn;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
 use wgpu::{include_wgsl, CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat};
-use wgpu::naga::compact::KeepUnused::No;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use wgpu_text::glyph_brush::ab_glyph::FontRef;
 use wgpu_text::TextBrush;
-use crate::nodes::fps_node::FpsNode;
 
 pub mod camera;
 pub mod canvas_api;
@@ -180,6 +179,7 @@ impl ShashlikRenderer {
                 Rc::new([VertexNormal::desc(), InstancePos::desc()]),
                 pipeline_provider.clone(),
                 Some(Face::Front),
+                CompareFunction::Less
             ),
             "mesh layer".to_string(),
         );
@@ -190,6 +190,7 @@ impl ShashlikRenderer {
             Rc::new([ShapeVertex::desc(), InstancePos::desc()]),
             pipeline_provider.clone(),
             None,
+            CompareFunction::Less
         );
 
         // TODO Why does it need a specific CompareFunction while e.g. FpsNode doesn't need it to be on top of screen?
@@ -205,14 +206,17 @@ impl ShashlikRenderer {
             .borrow_mut()
             .add_child_with_key(screen_shape_layer, "screen shape".to_string());
 
+
+        let text_layer = MeshLayer::new(
+            &device,
+            include_wgsl!("shaders/text_shader.wgsl"),
+            Rc::new([VertexNormal::desc(), InstancePos::desc()]),
+            pipeline_provider.clone(),
+            None,
+            CompareFunction::Always
+        );
         let text_layer = camera_node.borrow_mut().add_child_with_key(
-            MeshLayer::new(
-                &device,
-                include_wgsl!("shaders/text_shader.wgsl"),
-                Rc::new([VertexNormal::desc(), InstancePos::desc()]),
-                pipeline_provider.clone(),
-                None,
-            ),
+            text_layer,
             "text_layer".to_string(),
         );
 
@@ -365,6 +369,7 @@ impl ShashlikRenderer {
 
         let device = self.canvas.device();
         let queue = self.canvas.queue();
+        let config = self.canvas.config();
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
@@ -403,7 +408,7 @@ impl ShashlikRenderer {
 
             self.global_context
                 .text_renderer
-                .render(&queue, &device, &mut render_pass)
+                .render(&queue, &config, &device, &mut render_pass)
         }
 
         queue.submit(iter::once(encoder.finish()));

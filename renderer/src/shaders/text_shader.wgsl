@@ -32,28 +32,6 @@ fn vs_main(
     model: VertexInput,
     pos: InstanceInput
 ) -> VertexOutput {
-//    var out: VertexOutput;
-//
-//     let model_matrix = mat4x4<f32>(
-//                pos.model_matrix_0,
-//                pos.model_matrix_1,
-//                pos.model_matrix_2,
-//                pos.model_matrix_3,
-//     );
-//
-//    let model_position = model_matrix * vec4(model.position.xyz, 1.0);
-//    let ratio_fixed_modelpos = vec4(model_position.x, model_position.y * camera.ratio, model_position.z, 1.0);
-//
-//    out.color_alpha = pos.color_alpha;
-//
-//    var pointPos = ratio_fixed_modelpos.xyz;
-//    let coord = camera.view_proj * vec4<f32>(pos.position.xy, 0.0, 1.0);
-//
-//    out.clip_position = vec4(pointPos*1.025, 0.0) + vec4(coord.xyz/coord.w, 1.0);
-//
-//    return out;
-//
-
     var out: VertexOutput;
 
     let model_matrix = mat4x4<f32>(
@@ -62,14 +40,14 @@ fn vs_main(
             pos.model_matrix_2,
             pos.model_matrix_3,
     );
-    let model_position = vec4(model.position.xyz, 1.0);
-//    let ratio_fixed_modelpos = vec4(model_position.x, model_position.y * camera.ratio, model_position.z, 1.0);
+    let model_position = model_matrix * vec4(model.position.xyz, 1.0);
+    let ratio_fixed_modelpos = vec4(model_position.x, model_position.y * camera.ratio, model_position.z, 1.0);
 
     out.color_alpha = pos.color_alpha;
 
     let coord = camera.view_proj * vec4<f32>(pos.position.xy, 0.0, 1.0);
 
-    out.clip_position = vec4<f32>(model_position.xyz * 0.007, 0.0) + vec4(coord.xyz/coord.w, 1.0);
+    out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz * 0.00005, 0.0) + vec4(coord.xyz/coord.w, 1.0);
     return out;
 }
 

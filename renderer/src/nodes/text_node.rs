@@ -7,10 +7,6 @@ use crate::GlobalContext;
 use wgpu::{Device, Queue};
 use wgpu_text::glyph_brush::OwnedText;
 
-pub struct TextLayer;
-
-impl SceneNode for TextLayer {}
-
 pub struct TextNode {
     data: Vec<TextNodeData>,
     data2: Vec<GlyphData>,

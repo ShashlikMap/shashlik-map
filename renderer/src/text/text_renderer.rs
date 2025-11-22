@@ -4,24 +4,21 @@ use crate::draw_commands::geometry_to_mesh;
 use crate::mesh::mesh::Mesh;
 use crate::text::glyph_tesselator::GlyphTesselator;
 use crate::vertex_attrs::InstancePos;
-use cgmath::num_traits::clamp;
-use cgmath::{Deg, Matrix4, SquareMatrix, Vector2, Vector3};
-use geo_types::point;
-use rstar::primitives::Rectangle;
+use cgmath::{Matrix4, Vector2, Vector3};
 use rustybuzz::ttf_parser::GlyphId;
-use rustybuzz::{UnicodeBuffer, ttf_parser, Face};
+use rustybuzz::{ttf_parser, Face, UnicodeBuffer};
 use std::collections::HashMap;
-use std::mem;
 use wgpu::util::DeviceExt;
 use wgpu::{Buffer, Color, Device, RenderPass};
-use wgpu_text::TextBrush;
 use wgpu_text::glyph_brush::ab_glyph::FontRef;
 use wgpu_text::glyph_brush::{OwnedSection, OwnedText};
+use wgpu_text::TextBrush;
 
 #[derive(Clone)]
 pub struct GlyphData {
     pub glyph_id: GlyphId,
     pub rotation: f32,
+    pub position: (f32, f32),
     pub offset: Vector2<f32>,
 }
 
@@ -60,7 +57,7 @@ impl TextRenderer {
         let mut glyph_mesh_map = HashMap::new();
         for index in 0..glyph_buffer.len() {
             let glyph_info = glyph_buffer.glyph_infos()[index];
-            let mut path_builder = GlyphTesselator::new(0.01);
+            let mut path_builder = GlyphTesselator::new(1.0);
             face.outline_glyph(GlyphId(glyph_info.glyph_id as u16), &mut path_builder);
             let glyph_buf = path_builder.tessellate_fill(Vector2::new(0.0, 0.0f32), Color::RED);
             glyph_mesh_map.insert(
@@ -100,12 +97,8 @@ impl TextRenderer {
         collision_handler: &mut CollisionHandler,
         screen_position_calculator: &ScreenPositionCalculator,
     ) {
-        // let screen_pos =
-        //     screen_position_calculator.screen_position(data.world_position.cast().unwrap());
-
         let mut buffer = UnicodeBuffer::new();
         buffer.push_str(data.text.text.to_uppercase().as_str());
-        // buffer.push_str("KIOL");
         buffer.guess_segment_properties();
 
         let glyph_buffer = rustybuzz::shape(&self.face, &[], buffer);
@@ -115,15 +108,11 @@ impl TextRenderer {
             let position = glyph_buffer.glyph_positions()[index];
             let glyph_info = glyph_buffer.glyph_infos()[index];
 
-            // let xx = screen_pos.x as f32;
-            let xx = data.world_position.x as f32 + pos;
-            // let yy = screen_pos.y as f32;
-            let yy = data.world_position.y as f32;
-
             let item = GlyphData {
                 glyph_id: GlyphId(glyph_info.glyph_id as u16),
                 rotation: 0.0,
-                offset: Vector2::new(xx, yy),
+                position: (data.world_position.x,  data.world_position.y).into(),
+                offset: Vector2::new(pos, 0.0),
             };
             self.glyph_data
                 .entry(item.glyph_id)
@@ -132,7 +121,7 @@ impl TextRenderer {
                 })
                 .or_insert(vec![item.clone()]);
 
-            pos += position.x_advance as f32 * 0.007;
+            pos += position.x_advance as f32;
         }
 
         // let mut section = OwnedSection::default()
@@ -172,18 +161,17 @@ impl TextRenderer {
         // }
     }
 
-    fn update_attrs(&mut self, device: &Device) {
+    fn update_attrs(&mut self, device: &Device, config: &wgpu::SurfaceConfiguration,) {
         self.instance_buffer_map.clear();
         self.glyph_data.iter().for_each(|(key, list)| {
             let mut attrs = vec![];
             list.iter().for_each(|glyph_data| {
                 // let rotation_matrix = Matrix4::<f64>::from_angle_z(Deg(glyph_data.rotation as f64));
                 // let matrix = rotation_matrix;
-                let matrix = Matrix4::<f64>::identity();
+                let matrix = Matrix4::<f32>::from_translation(Vector3::new(glyph_data.offset.x, 0.0, 0.0));
 
                 let instance_pos = InstancePos {
-                    position: Vector3::new(glyph_data.offset.x, glyph_data.offset.y, 0.0).into(),
-                    // position: Vector3::new(0.0, 0.0, 0.0).into(),
+                    position: Vector3::new(glyph_data.position.0, glyph_data.position.1, 0.0).into(),
                     color_alpha: 1.0,
                     matrix: matrix.cast().unwrap().into(),
                     bbox: [0.0, 0.0, 0.0, 0.0],
@@ -204,12 +192,13 @@ impl TextRenderer {
     pub fn render(
         &mut self,
         queue: &wgpu::Queue,
+        config: &wgpu::SurfaceConfiguration,
         device: &wgpu::Device,
         render_pass: &mut RenderPass,
     ) {
         self.id_to_alpha_map.clear();
 
-        self.update_attrs(device);
+        self.update_attrs(device, config);
 
 
         if !self.instance_buffer_map.is_empty() && !self.glyph_data.is_empty() {
