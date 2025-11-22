@@ -4,47 +4,48 @@ use crate::draw_commands::geometry_to_mesh;
 use crate::mesh::mesh::Mesh;
 use crate::text::glyph_tesselator::GlyphTesselator;
 use crate::vertex_attrs::InstancePos;
+use cgmath::num_traits::clamp;
 use cgmath::{Matrix4, Vector2, Vector3};
+use geo_types::point;
+use rstar::primitives::Rectangle;
 use rustybuzz::ttf_parser::GlyphId;
-use rustybuzz::{ttf_parser, Face, UnicodeBuffer};
+use rustybuzz::{ttf_parser, Direction, Face, ShapePlan, UnicodeBuffer};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 use wgpu::{Buffer, Color, Device, RenderPass};
-use wgpu_text::glyph_brush::ab_glyph::FontRef;
-use wgpu_text::glyph_brush::{OwnedSection, OwnedText};
-use wgpu_text::TextBrush;
 
 #[derive(Clone)]
 pub struct GlyphData {
     pub glyph_id: GlyphId,
     pub rotation: f32,
     pub position: (f32, f32),
+    pub alpha: f32,
     pub offset: Vector2<f32>,
 }
 
 pub struct TextNodeData {
     pub id: u64,
+    pub textv: String,
+    pub alpha: f32,
     pub world_position: Vector3<f32>,
     pub screen_offset: Vector2<f32>,
-    pub text: OwnedText,
 }
 
 pub struct TextRenderer {
-    pub text_brush: TextBrush<FontRef<'static>>,
     id_to_alpha_map: HashMap<u64, f32>,
-    sections: Vec<OwnedSection>,
 
     face: Face<'static>,
+    face_shape_plan: ShapePlan,
 
     glyph_mesh_map: HashMap<GlyphId, Mesh>,
     glyph_data: HashMap<GlyphId, Vec<GlyphData>>,
-    dirty: bool,
     instance_buffer_map: HashMap<GlyphId, Buffer>,
 }
 
 impl TextRenderer {
+    const SCALE: f32 = 0.04;
     const FADE_ANIM_SPEED: f32 = 0.05;
-    pub fn new(brush: TextBrush<FontRef<'static>>, device: &Device) -> TextRenderer {
+    pub fn new(device: &Device) -> TextRenderer {
         let face = ttf_parser::Face::parse(include_bytes!("../font.ttf"), 0).unwrap();
         let face = rustybuzz::Face::from_face(face);
 
@@ -52,12 +53,15 @@ impl TextRenderer {
         buffer.push_str("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
         buffer.guess_segment_properties();
 
+
+        let face_shape_plan = ShapePlan::new(&face, Direction::LeftToRight, Some(buffer.script()), None, &[]);
+
         let glyph_buffer = rustybuzz::shape(&face, &[], buffer);
 
         let mut glyph_mesh_map = HashMap::new();
         for index in 0..glyph_buffer.len() {
             let glyph_info = glyph_buffer.glyph_infos()[index];
-            let mut path_builder = GlyphTesselator::new(1.0);
+            let mut path_builder = GlyphTesselator::new(Self::SCALE);
             face.outline_glyph(GlyphId(glyph_info.glyph_id as u16), &mut path_builder);
             let glyph_buf = path_builder.tessellate_fill(Vector2::new(0.0, 0.0f32), Color::RED);
             glyph_mesh_map.insert(
@@ -67,27 +71,13 @@ impl TextRenderer {
         }
 
         TextRenderer {
-            text_brush: brush,
             id_to_alpha_map: HashMap::new(),
-            sections: vec![],
             face,
+            face_shape_plan,
             glyph_mesh_map,
             glyph_data: HashMap::new(),
-            dirty: false,
             instance_buffer_map: HashMap::new(),
         }
-    }
-
-    pub fn insert2(&mut self, glyph_data: Vec<GlyphData>) {
-        // glyph_data.into_iter().for_each(|item| {
-        //     self.glyph_data
-        //         .entry(item.glyph_id)
-        //         .and_modify(|list| {
-        //             list.push(item.clone());
-        //         })
-        //         .or_insert(vec![item.clone()]);
-        // });
-        // self.dirty = true;
     }
 
     pub fn insert(
@@ -98,67 +88,66 @@ impl TextRenderer {
         screen_position_calculator: &ScreenPositionCalculator,
     ) {
         let mut buffer = UnicodeBuffer::new();
-        buffer.push_str(data.text.text.to_uppercase().as_str());
+        buffer.push_str(data.textv.as_str());
         buffer.guess_segment_properties();
 
-        let glyph_buffer = rustybuzz::shape(&self.face, &[], buffer);
+        let glyph_buffer = rustybuzz::shape_with_plan(&self.face, &self.face_shape_plan, buffer);
+        let glyphs_positions = glyph_buffer.glyph_positions();
+        let glyphs_infos = glyph_buffer.glyph_infos();
         let mut pos = 0.0;
 
-        for index in 0..glyph_buffer.len() {
-            let position = glyph_buffer.glyph_positions()[index];
-            let glyph_info = glyph_buffer.glyph_infos()[index];
+        let width = glyph_buffer
+            .glyph_positions()
+            .iter()
+            .fold(0, |aggr, glyph| aggr + glyph.x_advance) as f32 * Self::SCALE;
+        let height = (self.face.ascender() + self.face.descender()) as f32 * Self::SCALE;
 
-            let item = GlyphData {
-                glyph_id: GlyphId(glyph_info.glyph_id as u16),
-                rotation: 0.0,
-                position: (data.world_position.x,  data.world_position.y).into(),
-                offset: Vector2::new(pos, 0.0),
-            };
-            self.glyph_data
-                .entry(item.glyph_id)
-                .and_modify(|list| {
-                    list.push(item.clone());
-                })
-                .or_insert(vec![item.clone()]);
+        let origin = screen_position_calculator.screen_position(data.world_position.cast().unwrap());
+        let section_rect = Rectangle::from_corners(
+            point! { x: origin.x as f32, y: origin.y as f32 },
+            point! { x: origin.x as f32 + width, y: origin.y as f32 + height },
+        );
 
-            pos += position.x_advance as f32;
+        let within_screen = collision_handler.within_screen(config, section_rect);
+        if within_screen {
+            let contains = self.id_to_alpha_map.contains_key(&data.id);
+            let mut alpha = *self
+                .id_to_alpha_map
+                .entry(data.id)
+                .or_insert(data.alpha);
+            if contains {
+                data.alpha = alpha;
+                return;
+            }
+
+            if collision_handler.insert(section_rect) {
+                alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
+            } else {
+                alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
+            }
+            data.alpha = alpha;
+
+            for index in 0..glyph_buffer.len() {
+                let position = glyphs_positions[index];
+                let glyph_info = glyphs_infos[index];
+
+                let item = GlyphData {
+                    glyph_id: GlyphId(glyph_info.glyph_id as u16),
+                    rotation: 0.0,
+                    alpha,
+                    position: (data.world_position.x, data.world_position.y).into(),
+                    offset: Vector2::new(pos, 0.0),
+                };
+                self.glyph_data
+                    .entry(item.glyph_id)
+                    .and_modify(|list| {
+                        list.push(item.clone());
+                    })
+                    .or_insert(vec![item.clone()]);
+
+                pos += position.x_advance as f32 * Self::SCALE;
+            }
         }
-
-        // let mut section = OwnedSection::default()
-        //     .add_text(data.text.clone())
-        //     .with_screen_position((
-        //         screen_pos.x as f32 + data.screen_offset.x,
-        //         screen_pos.y as f32 + data.screen_offset.y,
-        //     ));
-        //
-        // let section_rect = self.text_brush.glyph_bounds(&section).unwrap();
-        // let center_offset = section_rect.width() * 0.5;
-        // section.screen_position.0 -= center_offset;
-        // let section_rect = Rectangle::from_corners(
-        //     point! { x: section_rect.min.x - center_offset, y: section_rect.min.y},
-        //     point! { x: section_rect.max.x - center_offset, y: section_rect.max.y},
-        // );
-        // let within_screen = collision_handler.within_screen(config, section_rect);
-        // if within_screen {
-        //     let contains = self.id_to_alpha_map.contains_key(&data.id);
-        //     let mut alpha = *self
-        //         .id_to_alpha_map
-        //         .entry(data.id)
-        //         .or_insert(data.text.extra.color[3]);
-        //     if contains {
-        //         data.text.extra.color[3] = alpha;
-        //         return;
-        //     }
-        //
-        //     if collision_handler.insert(section_rect) {
-        //         alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
-        //     } else {
-        //         alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
-        //     }
-        //     data.text.extra.color[3] = alpha;
-        //
-        //     self.sections.push(section);
-        // }
     }
 
     fn update_attrs(&mut self, device: &Device, config: &wgpu::SurfaceConfiguration,) {
@@ -172,7 +161,7 @@ impl TextRenderer {
 
                 let instance_pos = InstancePos {
                     position: Vector3::new(glyph_data.position.0, glyph_data.position.1, 0.0).into(),
-                    color_alpha: 1.0,
+                    color_alpha: glyph_data.alpha,
                     matrix: matrix.cast().unwrap().into(),
                     bbox: [0.0, 0.0, 0.0, 0.0],
                 };
@@ -200,7 +189,6 @@ impl TextRenderer {
 
         self.update_attrs(device, config);
 
-
         if !self.instance_buffer_map.is_empty() && !self.glyph_data.is_empty() {
             self.glyph_data.iter().for_each(|(glyph_id, list)| {
                 if self.glyph_mesh_map.contains_key(glyph_id) {
@@ -220,18 +208,5 @@ impl TextRenderer {
         }
 
         self.glyph_data.clear();
-
-        // self.text_brush
-        //     .queue(
-        //         &device,
-        //         &queue,
-        //         mem::take(&mut self.sections)
-        //             .iter()
-        //             .map(|item| item.to_borrowed())
-        //             .collect::<Vec<_>>(),
-        //     )
-        //     .unwrap();
-        //
-        // self.text_brush.draw(render_pass);
     }
 }

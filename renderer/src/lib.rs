@@ -33,8 +33,6 @@ use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
 use wgpu::{include_wgsl, CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use wgpu_text::glyph_brush::ab_glyph::FontRef;
-use wgpu_text::TextBrush;
 
 pub mod camera;
 pub mod canvas_api;
@@ -96,13 +94,12 @@ impl GlobalContext {
     pub fn new(
         camera_controller: Rc<RefCell<CameraController>>,
         collision_handler: CollisionHandler,
-        text_brush: TextBrush<FontRef<'static>>,
         device: &wgpu::Device,
     ) -> Self {
         GlobalContext {
             camera_controller,
             collision_handler,
-            text_renderer: TextRenderer::new(text_brush, device),
+            text_renderer: TextRenderer::new(device),
         }
     }
 }
@@ -157,12 +154,6 @@ impl ShashlikRenderer {
         let global_context = GlobalContext::new(
             camera_controller.clone(),
             CollisionHandler::new(),
-            create_default_text_brush(
-                device,
-                config,
-                depth_state.clone(),
-                multisample_state.clone(),
-            ),
             device,
         );
         let pipeline_provider = PipeLineProvider::new(
@@ -313,12 +304,6 @@ impl ShashlikRenderer {
             self.depth_texture = DepthTexture::new(&device, config.width, config.height);
             self.msaa_texture =
                 MultisampledTexture::new(device, config.width, config.height, config.format);
-
-            self.global_context.text_renderer.text_brush.resize_view(
-                config.width as f32,
-                config.height as f32,
-                queue,
-            );
         }
     }
 

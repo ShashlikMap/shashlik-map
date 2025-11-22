@@ -41,18 +41,19 @@ fn vs_main(
             pos.model_matrix_3,
     );
     let model_position = model_matrix * vec4(model.position.xyz, 1.0);
-    let ratio_fixed_modelpos = vec4(model_position.x, model_position.y * camera.ratio, model_position.z, 1.0);
+//    let ratio_fixed_modelpos = vec4(model_position.xy, model_position.z, 1.0);
+    let ratio_fixed_modelpos = vec4(model_position.xy * vec2(1.0/800.0, 1.0/600.0), model_position.z, 1.0);
 
     out.color_alpha = pos.color_alpha;
 
     let coord = camera.view_proj * vec4<f32>(pos.position.xy, 0.0, 1.0);
 
-    out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz * 0.00005, 0.0) + vec4(coord.xyz/coord.w, 1.0);
+    out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
     return out;
 }
 
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return vec4(0.0, 0.0, 0.0, 1.0);
+    return vec4(0.0, 0.0, 0.0, in.color_alpha);
 }
