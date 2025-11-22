@@ -116,6 +116,7 @@ pub struct ShashlikRenderer {
     renderer_rx: Receiver<RendererMessage>,
     pub api: Arc<RendererApi>,
     global_context: GlobalContext,
+    fps_node: FpsNode,
 }
 
 impl ShashlikRenderer {
@@ -145,6 +146,13 @@ impl ShashlikRenderer {
             mask: !0,
             alpha_to_coverage_enabled: false,
         };
+
+        let fps_node = FpsNode::new(create_default_text_brush(
+            device,
+            config,
+            depth_state.clone(),
+            multisample_state.clone(),
+        ));
 
         let global_context = GlobalContext::new(
             camera_controller.clone(),
@@ -220,16 +228,6 @@ impl ShashlikRenderer {
             "text_layer".to_string(),
         );
 
-        text_layer.borrow_mut().add_child_with_key(
-            FpsNode::new(create_default_text_brush(
-                device,
-                config,
-                depth_state.clone(),
-                multisample_state.clone(),
-            )),
-            "fps_node".to_string(),
-        );
-
         let mut render_context = RenderContext::default();
         world_tree_node.setup(&mut render_context, &device);
 
@@ -253,6 +251,7 @@ impl ShashlikRenderer {
             renderer_rx,
             api,
             global_context,
+            fps_node
         })
     }
 
@@ -353,6 +352,9 @@ impl ShashlikRenderer {
             .update(device, queue, config, &mut self.global_context);
 
         self.global_context.collision_handler.clear();
+
+
+        self.fps_node.update(device, queue, config, &mut self.global_context);
     }
 
     fn render(&mut self) -> Result<(), SurfaceError> {
@@ -408,7 +410,9 @@ impl ShashlikRenderer {
 
             self.global_context
                 .text_renderer
-                .render(&queue, &config, &device, &mut render_pass)
+                .render(&queue, &config, &device, &mut render_pass);
+
+            self.fps_node.render(&mut render_pass, &mut self.global_context);
         }
 
         queue.submit(iter::once(encoder.finish()));

@@ -36,19 +36,18 @@ impl SceneNode for FpsNode {
         _global_context: &mut GlobalContext,
     ) {
         self.current_fps = format!("{:.1}", self.counter.update());
-        println!("FPS: {}", self.current_fps);
 
-        // self.text_section.text.clear();
-        // self.text_section
-        //     .text
-        //     .push(OwnedText::new(self.current_fps.as_str()).with_scale(60.0));
-        //
-        // self.text_brush
-        //     .queue(&device, &queue, [&self.text_section])
-        //     .unwrap();
+        self.text_section.text.clear();
+        self.text_section
+            .text
+            .push(OwnedText::new(self.current_fps.as_str()).with_scale(60.0));
+
+        self.text_brush
+            .queue(&device, &queue, [&self.text_section])
+            .unwrap();
     }
 
     fn render(&self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
-        // self.text_brush.draw(render_pass)
+        self.text_brush.draw(render_pass)
     }
 }
