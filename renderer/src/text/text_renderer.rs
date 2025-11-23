@@ -133,6 +133,7 @@ impl TextRenderer {
                 println!("start, glyphs_len = {}, lines = {}",glyphs_len, hh);
             }
             let mut vv_mag = 0.0;
+            let mut lll = Vector3::new(0.0, 0.0, 0.0);
             line_positions
                 .iter()
                 .enumerate()
@@ -150,26 +151,36 @@ impl TextRenderer {
                             let vv = current - prev;
                             let vv = Vector3::new(vv.x, vv.y, 0.0);
                             vv_mag += vv.magnitude();
+
                             let tm: Quaternion<f32> =
                                 Rotation::between_vectors(vv.normalize(), Vector3::unit_x());
                             if ttt {
                                 println!("pos = {}, vv_mga = {}", pos, vv_mag);
                             }
+                            let mut pos2  = 0.0;
                             while glyph_pos < glyphs_len {
                                 let position = glyphs_positions[glyph_pos];
-                                if index < hh - 1 && pos >= vv_mag {
-                                    break;
-                                }
-
-                                let glyph_info = glyphs_infos[glyph_pos];
 
                                 let rot_m: Matrix4<f32> = tm.into();
-                                let matrix = rot_m
-                                    * Matrix4::from_translation(Vector3::new(pos, 0.0, 0.0)) * scale_m;
+
+                                let ppp = lll + (rot_m * Vector4::new(pos2, 0.0, 0.0, 1.0)).truncate();
+                                let matrix =
+                                    Matrix4::from_translation(ppp) * scale_m * rot_m;
                                 if ttt {
                                     let jj = matrix * Vector4::new(pos, 0.0, 0.0, 1.0);
                                     // println!("mmm = {:?}",jj);
                                 }
+
+                                if index < hh - 1 && pos > vv_mag {
+                                    break;
+                                }
+                                pos2 += position.x_advance as f32 * scale;
+
+                                let glyph_info = glyphs_infos[glyph_pos];
+
+
+                                // lll += Vector3::new(position.x_advance as f32 * scale, 0.0, 0.0);
+
 
                                 let item = GlyphData {
                                     glyph_id: GlyphId(glyph_info.glyph_id as u16),
@@ -188,6 +199,7 @@ impl TextRenderer {
 
                                 glyph_pos += 1;
                             }
+                            lll += Vector3::new(vv.x, -vv.y, 0.0);
                         }
                         prev = Some(current);
                     }
