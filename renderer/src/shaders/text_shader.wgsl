@@ -1,5 +1,6 @@
 struct CameraUniform {
     view_proj: mat4x4<f32>,
+    inv_screen_size: vec2<f32>,
     ratio: f32,
 };
 
@@ -41,8 +42,7 @@ fn vs_main(
             pos.model_matrix_3,
     );
     let model_position = model_matrix * vec4(model.position.xyz, 1.0);
-//    let ratio_fixed_modelpos = vec4(model_position.xy, model_position.z, 1.0);
-    let ratio_fixed_modelpos = vec4(model_position.xy * vec2(1.0/800.0, 1.0/600.0), model_position.z, 1.0);
+    let ratio_fixed_modelpos = vec4(model_position.xy * vec2(2.0*camera.inv_screen_size.x, 2.0*camera.inv_screen_size.y), model_position.z, 1.0);
 
     out.color_alpha = pos.color_alpha;
 
