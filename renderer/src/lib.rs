@@ -356,7 +356,6 @@ impl ShashlikRenderer {
 
         let device = self.canvas.device();
         let queue = self.canvas.queue();
-        let config = self.canvas.config();
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
@@ -395,7 +394,7 @@ impl ShashlikRenderer {
 
             self.global_context
                 .text_renderer
-                .render(&queue, &config, &device, &mut render_pass);
+                .render(&device, &mut render_pass);
 
             self.fps_node.render(&mut render_pass, &mut self.global_context);
         }

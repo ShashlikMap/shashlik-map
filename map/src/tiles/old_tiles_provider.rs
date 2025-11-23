@@ -98,7 +98,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                             local_position.y,
                                             0.0,
                                         )).cast().unwrap(),
-                                        screen_offset: Vector2::new(0.0, 22.0),
+                                        screen_offset: Vector2::new(0.0, -25.0),
                                         size: 40.0,
                                         rotation: 0.0,
                                     }));
