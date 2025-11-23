@@ -22,6 +22,7 @@ impl TextNode {
                     TextNodeData {
                         id: item.id.clone(),
                         text: item.text.to_uppercase(),
+                        size: item.size,
                         alpha: 0.0,
                         // text node doesn't have to be super precise
                         world_position: item.position + spatial_data.transform.cast().unwrap(),

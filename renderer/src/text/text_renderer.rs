@@ -21,11 +21,13 @@ pub struct GlyphData {
     pub position: (f32, f32),
     pub alpha: f32,
     pub offset: Vector2<f32>,
+    pub scale: f32,
 }
 
 pub struct TextNodeData {
     pub id: u64,
     pub text: String,
+    pub size: f32,
     pub alpha: f32,
     pub world_position: Vector3<f32>,
     pub screen_offset: Vector2<f32>,
@@ -43,14 +45,14 @@ pub struct TextRenderer {
 }
 
 impl TextRenderer {
-    const SCALE: f32 = 0.035;
+    const MAX_SCALE: f32 = 0.035;
     const FADE_ANIM_SPEED: f32 = 0.05;
     pub fn new(device: &Device) -> TextRenderer {
         let face = ttf_parser::Face::parse(include_bytes!("../font.ttf"), 0).unwrap();
         let face = rustybuzz::Face::from_face(face);
 
         let mut buffer = UnicodeBuffer::new();
-        buffer.push_str("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+        buffer.push_str("ABCDEFGHIJKLMNOPQRSTUVWXYZ-");
         buffer.guess_segment_properties();
 
         let face_shape_plan = ShapePlan::new(
@@ -66,7 +68,7 @@ impl TextRenderer {
         let mut glyph_mesh_map = HashMap::new();
         for index in 0..glyph_buffer.len() {
             let glyph_info = glyph_buffer.glyph_infos()[index];
-            let mut path_builder = GlyphTesselator::new(Self::SCALE);
+            let mut path_builder = GlyphTesselator::new(Self::MAX_SCALE);
             face.outline_glyph(GlyphId(glyph_info.glyph_id as u16), &mut path_builder);
             let glyph_buf = path_builder.tessellate_fill(Vector2::new(0.0, 0.0f32), Color::RED);
             glyph_mesh_map.insert(
@@ -101,12 +103,15 @@ impl TextRenderer {
         let glyphs_infos = glyph_buffer.glyph_infos();
         let mut pos = 0.0;
 
+        let units = self.face.units_per_em() as f32;
+        let scale = data.size / units;
+
         let width = glyph_buffer
             .glyph_positions()
             .iter()
             .fold(0, |aggr, glyph| aggr + glyph.x_advance) as f32
-            * Self::SCALE;
-        let height = (self.face.ascender() + self.face.descender()) as f32 * Self::SCALE;
+            * scale;
+        let height = (self.face.ascender() + self.face.descender()) as f32 * scale;
 
         let origin = screen_position_calculator
             .screen_position(data.world_position.cast().unwrap())
@@ -147,6 +152,7 @@ impl TextRenderer {
                         pos + data.screen_offset.x + (-width / 2.0),
                         -height + data.screen_offset.y,
                     ),
+                    scale: scale / Self::MAX_SCALE,
                 };
                 self.glyph_data
                     .entry(item.glyph_id)
@@ -155,7 +161,7 @@ impl TextRenderer {
                     })
                     .or_insert(vec![item.clone()]);
 
-                pos += position.x_advance as f32 * Self::SCALE;
+                pos += position.x_advance as f32 * scale;
             }
         }
     }
@@ -166,10 +172,10 @@ impl TextRenderer {
             let mut attrs = vec![];
             list.iter().for_each(|glyph_data| {
                 let matrix = Matrix4::<f32>::from_translation(Vector3::new(
-                    glyph_data.offset.x,
-                    glyph_data.offset.y,
-                    0.0,
-                ));
+                        glyph_data.offset.x,
+                        glyph_data.offset.y,
+                        0.0,
+                    )) * Matrix4::<f32>::from_scale(glyph_data.scale);
 
                 let instance_pos = InstancePos {
                     position: Vector3::new(glyph_data.position.0, glyph_data.position.1, 0.0)
@@ -191,11 +197,7 @@ impl TextRenderer {
         });
     }
 
-    pub fn render(
-        &mut self,
-        device: &wgpu::Device,
-        render_pass: &mut RenderPass,
-    ) {
+    pub fn render(&mut self, device: &wgpu::Device, render_pass: &mut RenderPass) {
         self.id_to_alpha_map.clear();
 
         self.update_attrs(device);
