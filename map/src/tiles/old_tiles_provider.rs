@@ -78,6 +78,7 @@ impl<S: TileSource> OldTilesProvider<S> {
 
         let mut rng = rand::rng();
         let mut geometry_data: Vec<GeometryData> = vec![];
+        let mut line_text_map = HashMap::new();
         geom.into_iter().for_each(|(obj_type, geometry)| {
             match geometry {
                 MapGeometry::Coord(coord) => {
@@ -203,19 +204,24 @@ impl<S: TileSource> OldTilesProvider<S> {
                             }));
 
                             if let Some(name) = name {
-                                let some_middle_point = line.get(line.len() / 2).unwrap();
-                                geometry_data.push(GeometryData::Text(TextData {
-                                    id: hash(name.as_bytes()),
-                                    text: name,
-                                    position: Vector3::from((some_middle_point.0,
-                                                             some_middle_point.1,
-                                                             0.0))
-                                        .cast()
-                                        .unwrap(),
-                                    screen_offset: Vector2::new(0.0, 0.0),
-                                    size: 30.0,
-                                    rotation: 0.0,
-                                }));
+                                // TODO When text render along the path is ready, it has to be decided how to reduce the repetitive data inside tile
+                                //  So far just accept every 30 item. There might be more then 500 lines with the same name!
+                                let name_count = line_text_map.entry(name.clone()).and_modify(|entry| *entry += 1).or_insert(0);
+                                if *name_count % 30 == 0 {
+                                    let some_middle_point = line.get(line.len() / 2).unwrap();
+                                    geometry_data.push(GeometryData::Text(TextData {
+                                        id: hash(name.as_bytes()),
+                                        text: name,
+                                        position: Vector3::from((some_middle_point.0,
+                                                                 some_middle_point.1,
+                                                                 0.0))
+                                            .cast()
+                                            .unwrap(),
+                                        screen_offset: Vector2::new(0.0, 0.0),
+                                        size: 30.0,
+                                        rotation: 0.0,
+                                    }));
+                                }
                             }
                         }
                     }

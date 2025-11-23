@@ -7,7 +7,7 @@ use crate::GlobalContext;
 use wgpu::{Device, Queue};
 
 pub struct TextNode {
-    data: Vec<TextNodeData>,
+    pub data: Vec<TextNodeData>,
 }
 
 impl TextNode {
@@ -24,6 +24,7 @@ impl TextNode {
                         // text node doesn't have to be super precise
                         world_position: item.position + spatial_data.transform.cast().unwrap(),
                         screen_offset: item.screen_offset,
+                        glyph_buffer: None,
                     }
                 })
                 .collect(),

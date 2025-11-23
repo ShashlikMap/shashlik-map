@@ -8,8 +8,9 @@ use cgmath::num_traits::clamp;
 use cgmath::{Matrix4, Vector2, Vector3};
 use geo_types::{coord, point};
 use rstar::primitives::Rectangle;
+use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
-use rustybuzz::{Direction, Face, ShapePlan, UnicodeBuffer, ttf_parser};
+use rustybuzz::{ttf_parser, Direction, Face, GlyphBuffer, ShapePlan, UnicodeBuffer};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 use wgpu::{Buffer, Color, Device, RenderPass};
@@ -31,6 +32,7 @@ pub struct TextNodeData {
     pub alpha: f32,
     pub world_position: Vector3<f32>,
     pub screen_offset: Vector2<f32>,
+    pub glyph_buffer: Option<GlyphBuffer>
 }
 
 pub struct TextRenderer {
@@ -39,9 +41,9 @@ pub struct TextRenderer {
     face: Face<'static>,
     face_shape_plan: ShapePlan,
 
-    glyph_mesh_map: HashMap<GlyphId, Mesh>,
-    glyph_data: HashMap<GlyphId, Vec<GlyphData>>,
-    instance_buffer_map: HashMap<GlyphId, Buffer>,
+    glyph_mesh_map: FxHashMap<GlyphId, Mesh>,
+    glyph_data: FxHashMap<GlyphId, Vec<GlyphData>>,
+    instance_buffer_map: FxHashMap<GlyphId, Buffer>,
 }
 
 impl TextRenderer {
@@ -65,7 +67,7 @@ impl TextRenderer {
 
         let glyph_buffer = rustybuzz::shape(&face, &[], buffer);
 
-        let mut glyph_mesh_map = HashMap::new();
+        let mut glyph_mesh_map = FxHashMap::default();
         for index in 0..glyph_buffer.len() {
             let glyph_info = glyph_buffer.glyph_infos()[index];
             let mut path_builder = GlyphTesselator::new(Self::MAX_SCALE);
@@ -82,8 +84,8 @@ impl TextRenderer {
             face,
             face_shape_plan,
             glyph_mesh_map,
-            glyph_data: HashMap::new(),
-            instance_buffer_map: HashMap::new(),
+            glyph_data: FxHashMap::default(),
+            instance_buffer_map: FxHashMap::default(),
         }
     }
 
@@ -94,11 +96,13 @@ impl TextRenderer {
         collision_handler: &mut CollisionHandler,
         screen_position_calculator: &ScreenPositionCalculator,
     ) {
-        let mut buffer = UnicodeBuffer::new();
-        buffer.push_str(data.text.as_str());
-        buffer.guess_segment_properties();
+        let glyph_buffer = data.glyph_buffer.get_or_insert_with(|| {
+            let mut buffer = UnicodeBuffer::new();
+            buffer.push_str(data.text.as_str());
+            buffer.guess_segment_properties();
+            rustybuzz::shape_with_plan(&self.face, &self.face_shape_plan, buffer)
+        });
 
-        let glyph_buffer = rustybuzz::shape_with_plan(&self.face, &self.face_shape_plan, buffer);
         let glyphs_positions = glyph_buffer.glyph_positions();
         let glyphs_infos = glyph_buffer.glyph_infos();
         let mut pos = 0.0;
