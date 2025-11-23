@@ -16,9 +16,6 @@ impl TextNode {
             data: text_data
                 .iter()
                 .map(|item| {
-                    // let owned_text = OwnedText::new(item.text.as_str())
-                    //     .with_scale(item.size)
-                    //     .with_color([0.0, 0.0, 0.0, 0.0]);
                     TextNodeData {
                         id: item.id.clone(),
                         text: item.text.to_uppercase(),
