@@ -4,7 +4,7 @@ use cgmath::{Vector2, Vector3};
 use futures::Stream;
 use futures::channel::mpsc::{UnboundedSender, unbounded};
 use geo::Winding;
-use geo_types::Rect;
+use geo_types::{coord, Rect};
 use googleprojection::{Coord, Mercator};
 use lyon::geom::point;
 use lyon::path::Path;
@@ -93,7 +93,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     );
                                     geometry_data.push(GeometryData::Text(TextData {
                                         id,
-                                        text: poi.text.to_string(),
+                                        text: poi.text.to_uppercase(),
                                         position: Vector3::from((
                                             local_position.x,
                                             local_position.y,
@@ -101,7 +101,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                         )).cast().unwrap(),
                                         screen_offset: Vector2::new(0.0, -25.0),
                                         size: 40.0,
-                                        rotation: 0.0,
+                                        positions: None
                                     }));
                                     Some(("train_station", Self::TRAIN_STATION_SVG))
                                 },
@@ -115,7 +115,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 MapPointObjectKind::PopArea(..) => {
                                     geometry_data.push(GeometryData::Text(TextData {
                                         id: hash(poi.text.as_bytes()),
-                                        text: poi.text.clone(),
+                                        text: poi.text.to_uppercase(),
                                         position: Vector3::from((
                                                                     local_position.x,
                                                                     local_position.y,
@@ -125,7 +125,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                             .unwrap(),
                                         screen_offset: Vector2::new(0.0, 0.0),
                                         size: 40.0,
-                                        rotation: 0.0,
+                                        positions: None
                                     }));
                                     None
                                 }
@@ -211,7 +211,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     let some_middle_point = line.get(line.len() / 2).unwrap();
                                     geometry_data.push(GeometryData::Text(TextData {
                                         id: hash(name.as_bytes()),
-                                        text: name,
+                                        text: name.to_uppercase(),
                                         position: Vector3::from((some_middle_point.0,
                                                                  some_middle_point.1,
                                                                  0.0))
@@ -219,7 +219,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                             .unwrap(),
                                         screen_offset: Vector2::new(0.0, 0.0),
                                         size: 30.0,
-                                        rotation: 0.0,
+                                        positions: Some(line.iter().map(|item| coord! { x: item.x(), y: item.y() }).collect()),
                                     }));
                                 }
                             }

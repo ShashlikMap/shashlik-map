@@ -6,7 +6,7 @@ use crate::text::glyph_tesselator::GlyphTesselator;
 use crate::vertex_attrs::InstancePos;
 use cgmath::num_traits::clamp;
 use cgmath::{Matrix4, Vector2, Vector3};
-use geo_types::{coord, point};
+use geo_types::{coord, point, Coord};
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
@@ -31,6 +31,7 @@ pub struct TextNodeData {
     pub size: f32,
     pub alpha: f32,
     pub world_position: Vector3<f32>,
+    pub positions: Option<Vec<Coord>>,
     pub screen_offset: Vector2<f32>,
     pub glyph_buffer: Option<GlyphBuffer>
 }

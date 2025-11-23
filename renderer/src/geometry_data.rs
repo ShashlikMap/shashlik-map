@@ -1,5 +1,6 @@
 use lyon::path::Path;
 use cgmath::{Vector2, Vector3};
+use geo_types::Coord;
 use lyon::lyon_tessellation::VertexBuffers;
 use crate::draw_commands::{GeometryType, MeshVertex};
 use crate::styles::style_id::StyleId;
@@ -48,5 +49,5 @@ pub struct TextData {
     pub position: Vector3<f32>,
     pub screen_offset: Vector2<f32>,
     pub size: f32,
-    pub rotation: f32,
+    pub positions: Option<Vec<Coord>>
 }
