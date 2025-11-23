@@ -81,7 +81,7 @@ pub(crate) trait DrawCommand: Send {
     );
 }
 
-fn geometry_to_mesh<T: NoUninit>(device: &Device, geometry: &VertexBuffers<T, u32>) -> Mesh {
+pub fn geometry_to_mesh<T: NoUninit>(device: &Device, geometry: &VertexBuffers<T, u32>) -> Mesh {
     geometry_to_mesh_with_layers(device, geometry, vec![0..geometry.indices.len()])
 }
 fn geometry_to_mesh_with_layers<T: NoUninit>(

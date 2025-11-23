@@ -24,6 +24,7 @@ pub struct Camera {
     pub eye: cgmath::Point3<f32>,
     pub target: cgmath::Point3<f32>,
     pub up: cgmath::Vector3<f32>,
+    pub inv_screen_size: cgmath::Vector2<f32>,
     pub aspect: f32,
     pub fovy: f32,
     pub znear: f32,
@@ -66,6 +67,7 @@ impl<'a> ScreenPositionCalculator<'a> {
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniform {
     view_proj: [[f32; 4]; 4],
+    inv_screen_size: [f32; 2],
     ratio: f32,
 }
 
@@ -75,6 +77,7 @@ impl CameraUniform {
         Self {
             view_proj: cgmath::Matrix4::identity().into(),
             ratio: 1.0,
+            inv_screen_size: [0.0, 0.0],
         }
     }
 
@@ -84,6 +87,7 @@ impl CameraUniform {
             .unwrap()
             .into();
         self.ratio = camera.aspect;
+        self.inv_screen_size = camera.inv_screen_size.into();
     }
 }
 

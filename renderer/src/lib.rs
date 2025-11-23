@@ -2,6 +2,7 @@ extern crate core;
 
 use crate::collision_handler::CollisionHandler;
 use crate::depth_texture::DepthTexture;
+use crate::layers::Layers;
 use crate::messages::RendererMessage;
 use crate::msaa_texture::MultisampledTexture;
 use crate::nodes::camera_node::CameraNode;
@@ -10,7 +11,6 @@ use crate::nodes::mesh_layer::MeshLayer;
 use crate::nodes::scene_tree::{RenderContext, SceneTree};
 use crate::nodes::shape_layers::ShapeLayers;
 use crate::nodes::style_adapter_node::StyleAdapterNode;
-use crate::nodes::text_node::TextLayer;
 use crate::nodes::world::World;
 use crate::nodes::SceneNode;
 use crate::pipeline_provider::PipeLineProvider;
@@ -24,18 +24,15 @@ use messages::RendererApiMsg;
 use renderer_api::RendererApi;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::iter;
 use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread::spawn;
-use std::iter;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
 use wgpu::{include_wgsl, CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use wgpu_text::glyph_brush::ab_glyph::FontRef;
-use wgpu_text::TextBrush;
-use crate::layers::Layers;
 
 pub mod camera;
 pub mod canvas_api;
@@ -97,12 +94,12 @@ impl GlobalContext {
     pub fn new(
         camera_controller: Rc<RefCell<CameraController>>,
         collision_handler: CollisionHandler,
-        text_brush: TextBrush<FontRef<'static>>,
+        device: &wgpu::Device,
     ) -> Self {
         GlobalContext {
             camera_controller,
             collision_handler,
-            text_renderer: TextRenderer::new(text_brush),
+            text_renderer: TextRenderer::new(device),
         }
     }
 }
@@ -116,6 +113,7 @@ pub struct ShashlikRenderer {
     renderer_rx: Receiver<RendererMessage>,
     pub api: Arc<RendererApi>,
     global_context: GlobalContext,
+    fps_node: FpsNode,
 }
 
 impl ShashlikRenderer {
@@ -146,15 +144,17 @@ impl ShashlikRenderer {
             alpha_to_coverage_enabled: false,
         };
 
+        let fps_node = FpsNode::new(create_default_text_brush(
+            device,
+            config,
+            depth_state.clone(),
+            multisample_state.clone(),
+        ));
+
         let global_context = GlobalContext::new(
             camera_controller.clone(),
             CollisionHandler::new(),
-            create_default_text_brush(
-                device,
-                config,
-                depth_state.clone(),
-                multisample_state.clone(),
-            ),
+            device,
         );
         let pipeline_provider = PipeLineProvider::new(
             config.format,
@@ -178,6 +178,7 @@ impl ShashlikRenderer {
                 Rc::new([VertexNormal::desc(), InstancePos::desc()]),
                 pipeline_provider.clone(),
                 Some(Face::Front),
+                CompareFunction::Less
             ),
             "mesh layer".to_string(),
         );
@@ -188,6 +189,7 @@ impl ShashlikRenderer {
             Rc::new([ShapeVertex::desc(), InstancePos::desc()]),
             pipeline_provider.clone(),
             None,
+            CompareFunction::Always
         );
 
         // TODO Why does it need a specific CompareFunction while e.g. FpsNode doesn't need it to be on top of screen?
@@ -203,18 +205,18 @@ impl ShashlikRenderer {
             .borrow_mut()
             .add_child_with_key(screen_shape_layer, "screen shape".to_string());
 
-        let text_layer = camera_node
-            .borrow_mut()
-            .add_child_with_key(TextLayer {}, "text_layer".to_string());
 
-        text_layer.borrow_mut().add_child_with_key(
-            FpsNode::new(create_default_text_brush(
-                device,
-                config,
-                depth_state.clone(),
-                multisample_state.clone(),
-            )),
-            "fps_node".to_string(),
+        let text_layer = MeshLayer::new(
+            &device,
+            include_wgsl!("shaders/text_shader.wgsl"),
+            Rc::new([VertexNormal::desc(), InstancePos::desc()]),
+            pipeline_provider.clone(),
+            None,
+            CompareFunction::Always
+        );
+        let text_layer = camera_node.borrow_mut().add_child_with_key(
+            text_layer,
+            "text_layer".to_string(),
         );
 
         let mut render_context = RenderContext::default();
@@ -240,6 +242,7 @@ impl ShashlikRenderer {
             renderer_rx,
             api,
             global_context,
+            fps_node
         })
     }
 
@@ -301,12 +304,6 @@ impl ShashlikRenderer {
             self.depth_texture = DepthTexture::new(&device, config.width, config.height);
             self.msaa_texture =
                 MultisampledTexture::new(device, config.width, config.height, config.format);
-
-            self.global_context.text_renderer.text_brush.resize_view(
-                config.width as f32,
-                config.height as f32,
-                queue,
-            );
         }
     }
 
@@ -340,6 +337,9 @@ impl ShashlikRenderer {
             .update(device, queue, config, &mut self.global_context);
 
         self.global_context.collision_handler.clear();
+
+
+        self.fps_node.update(device, queue, config, &mut self.global_context);
     }
 
     fn render(&mut self) -> Result<(), SurfaceError> {
@@ -394,7 +394,9 @@ impl ShashlikRenderer {
 
             self.global_context
                 .text_renderer
-                .render(&queue, &device, &mut render_pass)
+                .render(&device, &mut render_pass);
+
+            self.fps_node.render(&mut render_pass, &mut self.global_context);
         }
 
         queue.submit(iter::once(encoder.finish()));

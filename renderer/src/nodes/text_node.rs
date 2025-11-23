@@ -1,15 +1,10 @@
-use crate::GlobalContext;
 use crate::geometry_data::TextData;
 use crate::modifier::render_modifier::SpatialData;
-use crate::nodes::SceneNode;
 use crate::nodes::scene_tree::RenderContext;
+use crate::nodes::SceneNode;
 use crate::text::text_renderer::TextNodeData;
+use crate::GlobalContext;
 use wgpu::{Device, Queue};
-use wgpu_text::glyph_brush::OwnedText;
-
-pub struct TextLayer;
-
-impl SceneNode for TextLayer {}
 
 pub struct TextNode {
     data: Vec<TextNodeData>,
@@ -21,15 +16,14 @@ impl TextNode {
             data: text_data
                 .iter()
                 .map(|item| {
-                    let owned_text = OwnedText::new(item.text.as_str())
-                        .with_scale(item.size)
-                        .with_color([0.0, 0.0, 0.0, 0.0]);
                     TextNodeData {
                         id: item.id.clone(),
+                        text: item.text.to_uppercase(),
+                        size: item.size,
+                        alpha: 0.0,
                         // text node doesn't have to be super precise
                         world_position: item.position + spatial_data.transform.cast().unwrap(),
                         screen_offset: item.screen_offset,
-                        text: owned_text,
                     }
                 })
                 .collect(),

@@ -2,7 +2,7 @@ use crate::camera::{Camera, CameraUniform};
 use crate::nodes::scene_tree::RenderContext;
 use crate::nodes::SceneNode;
 use crate::GlobalContext;
-use cgmath::SquareMatrix;
+use cgmath::{SquareMatrix, Vector2};
 use wgpu::{BindGroupLayout, Device, Queue, RenderPass};
 
 pub struct CameraNode {
@@ -22,6 +22,7 @@ impl CameraNode {
             eye: (0.0, 0.0, 200.0).into(),
             target: (0.0, 0.0, 0.0).into(),
             up: cgmath::Vector3::unit_y(),
+            inv_screen_size: Vector2::new(1.0 / config.width as f32, 1.0 / config.height as f32),
             aspect: config.width as f32 / config.height as f32,
             fovy: 45.0,
             znear: 1.0,
@@ -106,6 +107,7 @@ impl SceneNode for CameraNode {
     fn resize(&mut self, width: u32, height: u32, _queue: &Queue) {
         if width > 0 && height > 0 {
             self.camera.aspect = width as f32 / height as f32;
+            self.camera.inv_screen_size = Vector2::new(1.0/width as f32, 1.0/height as f32);
         }
     }
 }

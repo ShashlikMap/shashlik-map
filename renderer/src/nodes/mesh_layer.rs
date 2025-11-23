@@ -2,10 +2,7 @@ use crate::nodes::scene_tree::RenderContext;
 use crate::nodes::SceneNode;
 use crate::pipeline_provider::PipeLineProvider;
 use std::rc::Rc;
-use wgpu::{
-    Device, Face, RenderPass, RenderPipeline, ShaderModule,
-    ShaderModuleDescriptor, VertexBufferLayout,
-};
+use wgpu::{CompareFunction, Device, Face, RenderPass, RenderPipeline, ShaderModule, ShaderModuleDescriptor, VertexBufferLayout};
 use crate::GlobalContext;
 
 pub struct MeshLayer<'a> {
@@ -14,6 +11,7 @@ pub struct MeshLayer<'a> {
     custom_cull_mode: Option<Face>,
     pipeline_provider: PipeLineProvider,
     render_pipeline: Option<RenderPipeline>,
+    depth_compare: CompareFunction,
 }
 
 impl<'a> MeshLayer<'a> {
@@ -23,6 +21,7 @@ impl<'a> MeshLayer<'a> {
         buffer_layouts: Rc<[VertexBufferLayout<'a>]>,
         pipeline_provider: PipeLineProvider,
         custom_cull_mode: Option<Face>,
+        depth_compare: CompareFunction,
     ) -> Self {
         let shader_module = device.create_shader_module(shader_module_desc);
         MeshLayer {
@@ -31,12 +30,14 @@ impl<'a> MeshLayer<'a> {
             custom_cull_mode,
             pipeline_provider,
             render_pipeline: None,
+            depth_compare,
         }
     }
 }
 
 impl<'a> SceneNode for MeshLayer<'a> {
     fn setup(&mut self, render_context: &mut RenderContext, device: &Device) {
+        render_context.depth_compare = self.depth_compare;
         self.render_pipeline = Some(self.pipeline_provider.create(
             device,
             render_context,

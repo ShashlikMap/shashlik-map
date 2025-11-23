@@ -30,6 +30,7 @@ impl ShapeLayers {
                 Rc::new([ShapeVertex::desc(), InstancePos::desc()]),
                 pipeline_provider.clone(),
                 None,
+                CompareFunction::Less
             );
 
             let shape_layer: StyleAdapterNode<MeshLayer> = StyleAdapterNode::new(

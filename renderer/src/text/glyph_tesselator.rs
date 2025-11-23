@@ -17,21 +17,23 @@ pub struct GlyphTesselator {
 impl GlyphTesselator {
     pub(crate) fn tessellate_fill(
         self,
-        buffer: &mut VertexBuffers<MeshVertex, u32>,
         offset: Vector2<f32>,
         color: Color,
-    ) {
+    ) -> VertexBuffers<MeshVertex, u32> {
+        let mut buffer = VertexBuffers::new();
         let vertex_constructor = GlyphVertexConstructor { offset, color };
         let mut tessellator = FillTessellator::new();
         if tessellator
             .tessellate(
                 &self.builder.build(),
                 &FillOptions::default().with_fill_rule(lyon::path::FillRule::NonZero),
-                &mut BuffersBuilder::new(buffer, vertex_constructor),
+                &mut BuffersBuilder::new(&mut buffer, vertex_constructor),
             )
             .is_ok()
         {
+            buffer
         } else {
+            panic!("Tessellate failed.");
         }
     }
 }

@@ -18,6 +18,7 @@ pub struct PositionedMesh {
     instance_buffer: Buffer,
     attrs: Vec<InstancePos>,
     original_positions_alpha: Vec<(Vector3<f64>, f32)>, // TODO Proper structure with bound
+    original_rotation: f32,
     is_two_instances: bool,
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
@@ -35,6 +36,7 @@ impl Mesh {
             device,
             self,
             vec![Vector3::new(0.0, 0.0, 0.0)],
+            0.0,
             spatial_rx,
             false,
             false,
@@ -44,6 +46,7 @@ impl Mesh {
         self,
         device: &Device,
         original_positions: Vec<Vector3<f64>>,
+        rotation: f32,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
         with_collisions: bool,
@@ -52,6 +55,7 @@ impl Mesh {
             device,
             self,
             original_positions,
+            rotation,
             spatial_rx,
             is_two_instances,
             with_collisions,
@@ -82,6 +86,7 @@ impl PositionedMesh {
         device: &Device,
         mesh: Mesh,
         original_positions: Vec<Vector3<f64>>,
+        rotation: f32,
         mut spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
         with_collisions: bool,
@@ -93,6 +98,7 @@ impl PositionedMesh {
         Self::update_attrs(
             &mut attrs,
             &original_positions_alpha,
+            rotation,
             &spatial_data,
             is_two_instances,
         );
@@ -108,6 +114,7 @@ impl PositionedMesh {
             instance_buffer,
             attrs,
             original_positions_alpha,
+            original_rotation: rotation,
             is_two_instances,
             spatial_rx,
             original_spatial_data: spatial_data,
@@ -121,13 +128,14 @@ impl PositionedMesh {
     fn update_attrs(
         attrs: &mut Vec<InstancePos>,
         original_positions_alpha: &Vec<(Vector3<f64>, f32)>,
+        original_rotation: f32,
         spatial_data: &SpatialData,
         is_two_instances: bool,
     ) {
         attrs.clear();
 
         let scale_matrix = Matrix4::<f64>::from_scale(spatial_data.scale);
-        let rotation_matrix = Matrix4::<f64>::from_angle_z(Deg(spatial_data.rotation as f64));
+        let rotation_matrix = Matrix4::<f64>::from_angle_z(Deg(original_rotation as f64 + spatial_data.rotation as f64));
         let matrix = scale_matrix * rotation_matrix;
         for i in 0..original_positions_alpha.len() {
             let item = original_positions_alpha[i];
@@ -210,6 +218,7 @@ impl SceneNode for PositionedMesh {
             Self::update_attrs(
                 &mut self.attrs,
                 &self.original_positions_alpha,
+                self.original_rotation,
                 &self.original_spatial_data,
                 self.is_two_instances,
             );
