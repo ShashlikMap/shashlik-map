@@ -5,7 +5,7 @@ use crate::mesh::mesh::Mesh;
 use crate::text::glyph_tesselator::GlyphTesselator;
 use crate::vertex_attrs::InstancePos;
 use cgmath::num_traits::clamp;
-use cgmath::{InnerSpace, Matrix4, Quaternion, Rotation, Vector2, Vector3, Vector4};
+use cgmath::{InnerSpace, Matrix4, Quaternion, Rotation, Vector2, Vector3};
 use geo_types::{Coord, coord, point};
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
@@ -104,7 +104,7 @@ impl TextRenderer {
 
         let glyphs_positions = glyph_buffer.glyph_positions();
         let glyphs_infos = glyph_buffer.glyph_infos();
-        let mut pos = 0.0;
+        let mut glyph_total_xadvance = 0.0;
 
         let units = self.face.units_per_em() as f32;
         let scale = data.size / units;
@@ -124,88 +124,67 @@ impl TextRenderer {
 
             let some_middle_point_index = line_positions.len() / 2;
             let mut prev: Option<Coord<f32>> = None;
-            let mut glyph_pos = 0;
+            let mut glyph_index = 0;
             let glyphs_len = glyph_buffer.len();
-            let hh = line_positions.len();
+            let segments_count = line_positions.len();
 
-            let ttt = data.text == "SHUTO EXPRESSWAY INNER CIRCULAR ROUTE";
-            if ttt {
-                println!("start, glyphs_len = {}, lines = {}",glyphs_len, hh);
-            }
-            let mut vv_mag = 0.0;
-            let mut lll = Vector3::new(0.0, 0.0, 0.0);
-            line_positions
+            let mut segments_len = 0.0;
+            let mut segments_vector = Vector3::new(0.0, 0.0, 0.0);
+
+            for (index, current) in line_positions[some_middle_point_index..]
                 .iter()
                 .enumerate()
-                .for_each(|(index, current)| {
-                    if glyph_pos < glyphs_len {
-                        let current = screen_position_calculator
-                            .screen_position(current.cast().unwrap())
-                            - origin;
-                        let current = coord! {x : current.x as f32, y: current.y as f32 };
-                        if index > some_middle_point_index {
-                            if ttt {
-                                println!("qwer");
-                            }
-                            let prev = prev.unwrap();
-                            let vv = current - prev;
-                            let vv = Vector3::new(vv.x, vv.y, 0.0);
-                            vv_mag += vv.magnitude();
+            {
+                if glyph_index >= glyphs_len {
+                    break;
+                }
 
-                            let tm: Quaternion<f32> =
-                                Rotation::between_vectors(vv.normalize(), Vector3::unit_x());
-                            if ttt {
-                                println!("pos = {}, vv_mga = {}", pos, vv_mag);
-                            }
-                            let mut pos2  = 0.0;
-                            while glyph_pos < glyphs_len {
-                                let position = glyphs_positions[glyph_pos];
+                let current =
+                    screen_position_calculator.screen_position(current.cast().unwrap()) - origin;
+                let current = coord! {x : current.x as f32, y: current.y as f32 };
+                if let Some(prev) = prev {
+                    let seg_vector = current - prev;
+                    let seg_vector = Vector3::new(seg_vector.x, seg_vector.y, 0.0);
+                    segments_len += seg_vector.magnitude();
 
-                                let rot_m: Matrix4<f32> = tm.into();
-
-                                let ppp = lll + (rot_m * Vector4::new(pos2, 0.0, 0.0, 1.0)).truncate();
-                                let matrix =
-                                    Matrix4::from_translation(ppp) * scale_m * rot_m;
-                                if ttt {
-                                    let jj = matrix * Vector4::new(pos, 0.0, 0.0, 1.0);
-                                    // println!("mmm = {:?}",jj);
-                                }
-
-                                if index < hh - 1 && pos > vv_mag {
-                                    break;
-                                }
-                                pos2 += position.x_advance as f32 * scale;
-
-                                let glyph_info = glyphs_infos[glyph_pos];
-
-
-                                // lll += Vector3::new(position.x_advance as f32 * scale, 0.0, 0.0);
-
-
-                                let item = GlyphData {
-                                    glyph_id: GlyphId(glyph_info.glyph_id as u16),
-                                    alpha: 1.0,
-                                    position: (data.world_position.x, data.world_position.y).into(),
-                                    matrix,
-                                };
-                                self.glyph_data
-                                    .entry(item.glyph_id)
-                                    .and_modify(|list| {
-                                        list.push(item.clone());
-                                    })
-                                    .or_insert(vec![item.clone()]);
-
-                                pos += position.x_advance as f32 * scale;
-
-                                glyph_pos += 1;
-                            }
-                            lll += Vector3::new(vv.x, -vv.y, 0.0);
+                    let seg_rotation: Quaternion<f32> =
+                        Rotation::between_vectors(seg_vector.normalize(), Vector3::unit_x());
+                    while glyph_index < glyphs_len {
+                        let position = glyphs_positions[glyph_index];
+                        if index < segments_count - 1 && segments_vector.magnitude() > segments_len
+                        {
+                            break;
                         }
-                        prev = Some(current);
+
+                        let glyph_info = glyphs_infos[glyph_index];
+
+                        let rot_m: Matrix4<f32> = seg_rotation.into();
+                        let matrix = Matrix4::from_translation(segments_vector) * scale_m * rot_m;
+
+                        let x_advance = position.x_advance as f32 * scale;
+                        segments_vector +=
+                            seg_rotation.rotate_vector(Vector3::new(x_advance, 0.0, 0.0));
+
+                        let item = GlyphData {
+                            glyph_id: GlyphId(glyph_info.glyph_id as u16),
+                            alpha: 1.0,
+                            position: (data.world_position.x, data.world_position.y).into(),
+                            matrix,
+                        };
+                        self.glyph_data
+                            .entry(item.glyph_id)
+                            .and_modify(|list| {
+                                list.push(item.clone());
+                            })
+                            .or_insert(vec![item.clone()]);
+
+                        glyph_total_xadvance += x_advance;
+
+                        glyph_index += 1;
                     }
-                });
-            if ttt {
-                println!("stop");
+                }
+
+                prev = Some(current);
             }
 
             return;
@@ -242,7 +221,7 @@ impl TextRenderer {
                 let glyph_info = glyphs_infos[index];
 
                 let matrix = Matrix4::from_translation(Vector3::new(
-                    pos + data.screen_offset.x + (-width / 2.0),
+                    glyph_total_xadvance + data.screen_offset.x + (-width / 2.0),
                     -height + data.screen_offset.y,
                     0.0,
                 )) * scale_m;
@@ -259,7 +238,7 @@ impl TextRenderer {
                     })
                     .or_insert(vec![item.clone()]);
 
-                pos += position.x_advance as f32 * scale;
+                glyph_total_xadvance += position.x_advance as f32 * scale;
             }
         }
     }
