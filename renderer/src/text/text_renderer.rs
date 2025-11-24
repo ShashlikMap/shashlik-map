@@ -6,11 +6,11 @@ use crate::text::glyph_tesselator::GlyphTesselator;
 use crate::vertex_attrs::InstancePos;
 use cgmath::num_traits::clamp;
 use cgmath::{InnerSpace, Matrix4, Quaternion, Rotation, Vector2, Vector3};
-use geo_types::{Coord, coord, point};
+use geo_types::{coord, point, Coord};
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
-use rustybuzz::{Direction, Face, GlyphBuffer, ShapePlan, UnicodeBuffer, ttf_parser};
+use rustybuzz::{ttf_parser, Direction, Face, GlyphBuffer, ShapePlan, UnicodeBuffer};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 use wgpu::{Buffer, Color, Device, RenderPass};
@@ -131,10 +131,9 @@ impl TextRenderer {
             let mut segments_len = 0.0;
             let mut segments_vector = Vector3::new(0.0, 0.0, 0.0);
 
-            for (index, current) in line_positions[some_middle_point_index..]
-                .iter()
-                .enumerate()
-            {
+            let mut glyphs_to_draw = vec![];
+
+            for (index, current) in line_positions[some_middle_point_index..].iter().enumerate() {
                 if glyph_index >= glyphs_len {
                     break;
                 }
@@ -149,6 +148,8 @@ impl TextRenderer {
 
                     let seg_rotation: Quaternion<f32> =
                         Rotation::between_vectors(seg_vector.normalize(), Vector3::unit_x());
+                    let rot_m: Matrix4<f32> = seg_rotation.into();
+                    let scale_rot_m = scale_m * rot_m;
                     while glyph_index < glyphs_len {
                         let position = glyphs_positions[glyph_index];
                         if index < segments_count - 1 && segments_vector.magnitude() > segments_len
@@ -158,10 +159,22 @@ impl TextRenderer {
 
                         let glyph_info = glyphs_infos[glyph_index];
 
-                        let rot_m: Matrix4<f32> = seg_rotation.into();
-                        let matrix = Matrix4::from_translation(segments_vector) * scale_m * rot_m;
+                        let matrix = Matrix4::from_translation(segments_vector) * scale_rot_m;
 
                         let x_advance = position.x_advance as f32 * scale;
+
+                        let section_rect = Rectangle::from_corners(
+                            point! { x: origin.x as f32 + segments_vector.x, y: origin.y as f32 + segments_vector.y },
+                            point! { x: origin.x as f32 + segments_vector.x + 3.0*x_advance, y: origin.y as f32 + segments_vector.y + 2.0*height },
+                        );
+
+                        // FIXME find a root cause, or rstar crashes
+                        if section_rect.lower().x().is_nan() {
+                            // fast exit
+                            glyph_index = glyphs_len;
+                            break;
+                        }
+
                         segments_vector +=
                             seg_rotation.rotate_vector(Vector3::new(x_advance, 0.0, 0.0));
 
@@ -171,12 +184,7 @@ impl TextRenderer {
                             position: (data.world_position.x, data.world_position.y).into(),
                             matrix,
                         };
-                        self.glyph_data
-                            .entry(item.glyph_id)
-                            .and_modify(|list| {
-                                list.push(item.clone());
-                            })
-                            .or_insert(vec![item.clone()]);
+                        glyphs_to_draw.push((section_rect, item));
 
                         glyph_total_xadvance += x_advance;
 
@@ -185,6 +193,37 @@ impl TextRenderer {
                 }
 
                 prev = Some(current);
+            }
+
+            // render only completed text
+            if glyph_index >= glyphs_len {
+                let contains = self.id_to_alpha_map.contains_key(&data.id);
+                let mut alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
+                if contains {
+                    data.alpha = alpha;
+                    return;
+                }
+
+                let rects = glyphs_to_draw
+                    .iter()
+                    .map(|(rect, _)| rect.clone())
+                    .collect();
+                if collision_handler.insert_rectangles(rects) {
+                    alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                } else {
+                    alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                };
+                data.alpha = alpha;
+
+                for (_, mut item) in glyphs_to_draw {
+                    item.alpha = data.alpha;
+                    self.glyph_data
+                        .entry(item.glyph_id)
+                        .and_modify(|list| {
+                            list.push(item.clone());
+                        })
+                        .or_insert(vec![item.clone()]);
+                }
             }
 
             return;

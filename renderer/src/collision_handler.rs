@@ -1,6 +1,6 @@
 use geo_types::Point;
 use rstar::primitives::Rectangle;
-use rstar::{Envelope, RTree, RTreeObject};
+use rstar::{AABB, Envelope, RTree, RTreeObject};
 
 pub struct CollisionHandler {
     objects: RTree<Rectangle<Point<f32>>>,
@@ -32,8 +32,32 @@ impl CollisionHandler {
             .objects
             .locate_in_envelope_intersecting(&envelope)
             .count();
+        if count > 0 {
+            return false;
+        }
+
         self.objects.insert(rectangle);
-        count <= 0
+        true
+    }
+
+    pub fn insert_rectangles(&mut self, rectangles: Vec<Rectangle<Point<f32>>>) -> bool {
+        let envelopes: Vec<AABB<Point<f32>>> =
+            rectangles.iter().map(|rect| rect.envelope()).collect();
+
+        for envelope in &envelopes {
+            let count = self
+                .objects
+                .locate_in_envelope_intersecting(envelope)
+                .count();
+            if count > 0 {
+                return false;
+            }
+        }
+
+        rectangles.into_iter().for_each(|rect| {
+            self.objects.insert(rect);
+        });
+        true
     }
 
     pub fn clear(&mut self) {
