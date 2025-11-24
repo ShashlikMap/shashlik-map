@@ -1,13 +1,19 @@
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use cgmath::{Vector2, Vector3};
+use futures::channel::mpsc::{unbounded, UnboundedSender};
 use futures::Stream;
-use futures::channel::mpsc::{UnboundedSender, unbounded};
 use geo::Winding;
 use geo_types::Rect;
 use googleprojection::{Coord, Mercator};
 use lyon::geom::point;
 use lyon::path::Path;
+use osm::map::{
+    HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointObjectKind,
+    NatureKind,
+};
+use osm::source::TileSource;
+use osm::tiles::{calc_tile_ranges, TileKey, TileStore, TILES_COUNT};
 use rand::Rng;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
@@ -19,9 +25,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
-use osm::map::{HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointObjectKind, NatureKind};
-use osm::source::TileSource;
-use osm::tiles::{calc_tile_ranges, TileKey, TileStore, TILES_COUNT};
 
 pub struct OldTilesProvider<S: TileSource> {
     sender: Option<UnboundedSender<TilesMessage>>,
@@ -88,44 +91,47 @@ impl<S: TileSource> OldTilesProvider<S> {
                             let icon: Option<(&str, &[u8])> = match &poi.kind {
                                 MapPointObjectKind::TrainStation => {
                                     let id = seahash::hash(
-                                        format!("{:?}{}{}", poi.text, local_position.x, local_position.y)
-                                            .as_bytes(),
+                                        format!(
+                                            "{:?}{}{}",
+                                            poi.text, local_position.x, local_position.y
+                                        )
+                                        .as_bytes(),
                                     );
                                     geometry_data.push(GeometryData::Text(TextData {
                                         id,
-                                        text: poi.text.to_string(),
+                                        text: poi.text.to_uppercase(),
                                         position: Vector3::from((
                                             local_position.x,
                                             local_position.y,
                                             0.0,
-                                        )).cast().unwrap(),
+                                        ))
+                                        .cast()
+                                        .unwrap(),
                                         screen_offset: Vector2::new(0.0, -25.0),
                                         size: 40.0,
-                                        rotation: 0.0,
+                                        positions: None,
                                     }));
                                     Some(("train_station", Self::TRAIN_STATION_SVG))
-                                },
+                                }
                                 MapPointObjectKind::TrafficLight => {
                                     Some(("traffic_light", Self::TRAFFIC_LIGHT_SVG))
-                                },
-                                MapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
-                                MapPointObjectKind::Parking => {
-                                    Some(("parking", Self::PARKING_SVG))
                                 }
+                                MapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
+                                MapPointObjectKind::Parking => Some(("parking", Self::PARKING_SVG)),
                                 MapPointObjectKind::PopArea(..) => {
                                     geometry_data.push(GeometryData::Text(TextData {
                                         id: hash(poi.text.as_bytes()),
-                                        text: poi.text.clone(),
+                                        text: poi.text.to_uppercase(),
                                         position: Vector3::from((
-                                                                    local_position.x,
-                                                                    local_position.y,
-                                                                    0.0,
-                                                                ))
-                                            .cast()
-                                            .unwrap(),
+                                            local_position.x,
+                                            local_position.y,
+                                            0.0,
+                                        ))
+                                        .cast()
+                                        .unwrap(),
                                         screen_offset: Vector2::new(0.0, 0.0),
                                         size: 40.0,
-                                        rotation: 0.0,
+                                        positions: None,
                                     }));
                                     None
                                 }
@@ -134,7 +140,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                             let style_id = match &poi.kind {
                                 MapPointObjectKind::TrafficLight => StyleId("poi_traffic_light"),
                                 MapPointObjectKind::Toilet => StyleId("poi_toilet"),
-                                _ => StyleId("poi")
+                                _ => StyleId("poi"),
                             };
                             if let Some(icon) = icon {
                                 geometry_data.push(GeometryData::Svg(SvgData {
@@ -160,7 +166,12 @@ impl<S: TileSource> OldTilesProvider<S> {
                         MapGeomObjectKind::Way(info) => match info.line_kind {
                             LineKind::Highway { kind } => {
                                 if kind != HighwayKind::Footway {
-                                    Some((Self::highway_style_id(&kind), info.layer, 0.7, info.name_en.clone()))
+                                    Some((
+                                        Self::highway_style_id(&kind),
+                                        info.layer,
+                                        0.7,
+                                        info.name_en.clone(),
+                                    ))
                                 } else {
                                     None
                                 }
@@ -174,7 +185,9 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 }
                             }
                         },
-                        MapGeomObjectKind::AdminLine => Some((StyleId("admin_line"), 0, 250.0, None)),
+                        MapGeomObjectKind::AdminLine => {
+                            Some((StyleId("admin_line"), 0, 250.0, None))
+                        }
                         _ => None,
                     } {
                         let line: Vec<(f64, f64)> = line
@@ -206,20 +219,35 @@ impl<S: TileSource> OldTilesProvider<S> {
                             if let Some(name) = name {
                                 // TODO When text render along the path is ready, it has to be decided how to reduce the repetitive data inside tile
                                 //  So far just accept every 30 item. There might be more then 500 lines with the same name!
-                                let name_count = line_text_map.entry(name.clone()).and_modify(|entry| *entry += 1).or_insert(0);
+                                let name_count = line_text_map
+                                    .entry(name.clone())
+                                    .and_modify(|entry| *entry += 1)
+                                    .or_insert(0);
                                 if *name_count % 30 == 0 {
                                     let some_middle_point = line.get(line.len() / 2).unwrap();
                                     geometry_data.push(GeometryData::Text(TextData {
                                         id: hash(name.as_bytes()),
-                                        text: name,
-                                        position: Vector3::from((some_middle_point.0,
-                                                                 some_middle_point.1,
-                                                                 0.0))
-                                            .cast()
-                                            .unwrap(),
+                                        text: name.to_uppercase(),
+                                        position: Vector3::from((
+                                            some_middle_point.0,
+                                            some_middle_point.1,
+                                            0.0,
+                                        ))
+                                        .cast()
+                                        .unwrap(),
                                         screen_offset: Vector2::new(0.0, 0.0),
                                         size: 30.0,
-                                        rotation: 0.0,
+                                        positions: Some(
+                                            line.iter()
+                                                .map(|item| {
+                                                    Vector3::new(
+                                                        item.x() as f32,
+                                                        item.y() as f32,
+                                                        0.0,
+                                                    )
+                                                })
+                                                .collect(),
+                                        ),
                                     }));
                                 }
                             }
@@ -254,11 +282,14 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 },
                             ));
                         } else {
-                            let style_id = if obj_type.kind == MapGeomObjectKind::Nature(NatureKind::Water) {
+                            let style_id = if obj_type.kind
+                                == MapGeomObjectKind::Nature(NatureKind::Water)
+                            {
                                 StyleId("water")
                             } else if obj_type.kind == MapGeomObjectKind::Building {
                                 StyleId("building")
-                            } else if obj_type.kind == MapGeomObjectKind::Nature(NatureKind::Ground) {
+                            } else if obj_type.kind == MapGeomObjectKind::Nature(NatureKind::Ground)
+                            {
                                 StyleId("ground")
                             } else {
                                 StyleId("land")
@@ -324,8 +355,11 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
                 .collect();
 
             if !removed.is_empty() {
-                sender.unbounded_send(TilesMessage::ToRemove(removed
-                    .iter().map(|item| item.as_string_key()).collect())).unwrap();
+                sender
+                    .unbounded_send(TilesMessage::ToRemove(
+                        removed.iter().map(|item| item.as_string_key()).collect(),
+                    ))
+                    .unwrap();
             }
         }
 
@@ -368,9 +402,11 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
                         .unwrap()
                         .extend(data.iter().map(|item| item.0.clone()));
 
-                    sender.unbounded_send(TilesMessage::TilesData(data.into_iter()
-                        .map(|(_, data)| data)
-                        .collect())).unwrap();
+                    sender
+                        .unbounded_send(TilesMessage::TilesData(
+                            data.into_iter().map(|(_, data)| data).collect(),
+                        ))
+                        .unwrap();
                 }
 
                 loading_map
@@ -381,9 +417,7 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
         }
     }
 
-    fn tiles(
-        &mut self,
-    ) -> impl Stream<Item = TilesMessage> + Send + 'static {
+    fn tiles(&mut self) -> impl Stream<Item = TilesMessage> + Send + 'static {
         let (sender, receiver) = unbounded();
         self.sender = Some(sender);
 

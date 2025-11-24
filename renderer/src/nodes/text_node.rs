@@ -14,15 +14,16 @@ impl TextNode {
     pub fn new(text_data: Vec<TextData>, spatial_data: SpatialData) -> Self {
         Self {
             data: text_data
-                .iter()
+                .into_iter()
                 .map(|item| {
                     TextNodeData {
-                        id: item.id.clone(),
-                        text: item.text.to_uppercase(),
+                        id: item.id,
+                        text: item.text,
                         size: item.size,
                         alpha: 0.0,
                         // text node doesn't have to be super precise
                         world_position: item.position + spatial_data.transform.cast().unwrap(),
+                        positions: item.positions,
                         screen_offset: item.screen_offset,
                         glyph_buffer: None,
                     }

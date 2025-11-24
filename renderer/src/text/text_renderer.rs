@@ -5,12 +5,12 @@ use crate::mesh::mesh::Mesh;
 use crate::text::glyph_tesselator::GlyphTesselator;
 use crate::vertex_attrs::InstancePos;
 use cgmath::num_traits::clamp;
-use cgmath::{Matrix4, Vector2, Vector3};
-use geo_types::{coord, point};
+use cgmath::{InnerSpace, Matrix4, Quaternion, Rotation, Vector2, Vector3};
+use geo_types::{Coord, coord, point};
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
-use rustybuzz::{ttf_parser, Direction, Face, GlyphBuffer, ShapePlan, UnicodeBuffer};
+use rustybuzz::{Direction, Face, GlyphBuffer, ShapePlan, UnicodeBuffer, ttf_parser};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 use wgpu::{Buffer, Color, Device, RenderPass};
@@ -18,11 +18,9 @@ use wgpu::{Buffer, Color, Device, RenderPass};
 #[derive(Clone)]
 pub struct GlyphData {
     pub glyph_id: GlyphId,
-    pub rotation: f32,
     pub position: (f32, f32),
     pub alpha: f32,
-    pub offset: Vector2<f32>,
-    pub scale: f32,
+    pub matrix: Matrix4<f32>,
 }
 
 pub struct TextNodeData {
@@ -31,8 +29,9 @@ pub struct TextNodeData {
     pub size: f32,
     pub alpha: f32,
     pub world_position: Vector3<f32>,
+    pub positions: Option<Vec<Vector3<f32>>>,
     pub screen_offset: Vector2<f32>,
-    pub glyph_buffer: Option<GlyphBuffer>
+    pub glyph_buffer: Option<GlyphBuffer>,
 }
 
 pub struct TextRenderer {
@@ -105,7 +104,7 @@ impl TextRenderer {
 
         let glyphs_positions = glyph_buffer.glyph_positions();
         let glyphs_infos = glyph_buffer.glyph_infos();
-        let mut pos = 0.0;
+        let mut glyph_total_xadvance = 0.0;
 
         let units = self.face.units_per_em() as f32;
         let scale = data.size / units;
@@ -116,6 +115,80 @@ impl TextRenderer {
             .fold(0, |aggr, glyph| aggr + glyph.x_advance) as f32
             * scale;
         let height = (self.face.ascender() + self.face.descender()) as f32 * scale;
+
+        let scale_m = Matrix4::from_scale(scale / Self::MAX_SCALE);
+
+        if let Some(line_positions) = &data.positions {
+            let origin =
+                screen_position_calculator.screen_position(data.world_position.cast().unwrap());
+
+            let some_middle_point_index = line_positions.len() / 2;
+            let mut prev: Option<Coord<f32>> = None;
+            let mut glyph_index = 0;
+            let glyphs_len = glyph_buffer.len();
+            let segments_count = line_positions.len();
+
+            let mut segments_len = 0.0;
+            let mut segments_vector = Vector3::new(0.0, 0.0, 0.0);
+
+            for (index, current) in line_positions[some_middle_point_index..]
+                .iter()
+                .enumerate()
+            {
+                if glyph_index >= glyphs_len {
+                    break;
+                }
+
+                let current =
+                    screen_position_calculator.screen_position(current.cast().unwrap()) - origin;
+                let current = coord! {x : current.x as f32, y: current.y as f32 };
+                if let Some(prev) = prev {
+                    let seg_vector = current - prev;
+                    let seg_vector = Vector3::new(seg_vector.x, seg_vector.y, 0.0);
+                    segments_len += seg_vector.magnitude();
+
+                    let seg_rotation: Quaternion<f32> =
+                        Rotation::between_vectors(seg_vector.normalize(), Vector3::unit_x());
+                    while glyph_index < glyphs_len {
+                        let position = glyphs_positions[glyph_index];
+                        if index < segments_count - 1 && segments_vector.magnitude() > segments_len
+                        {
+                            break;
+                        }
+
+                        let glyph_info = glyphs_infos[glyph_index];
+
+                        let rot_m: Matrix4<f32> = seg_rotation.into();
+                        let matrix = Matrix4::from_translation(segments_vector) * scale_m * rot_m;
+
+                        let x_advance = position.x_advance as f32 * scale;
+                        segments_vector +=
+                            seg_rotation.rotate_vector(Vector3::new(x_advance, 0.0, 0.0));
+
+                        let item = GlyphData {
+                            glyph_id: GlyphId(glyph_info.glyph_id as u16),
+                            alpha: 1.0,
+                            position: (data.world_position.x, data.world_position.y).into(),
+                            matrix,
+                        };
+                        self.glyph_data
+                            .entry(item.glyph_id)
+                            .and_modify(|list| {
+                                list.push(item.clone());
+                            })
+                            .or_insert(vec![item.clone()]);
+
+                        glyph_total_xadvance += x_advance;
+
+                        glyph_index += 1;
+                    }
+                }
+
+                prev = Some(current);
+            }
+
+            return;
+        }
 
         let origin = screen_position_calculator
             .screen_position(data.world_position.cast().unwrap())
@@ -147,16 +220,16 @@ impl TextRenderer {
                 let position = glyphs_positions[index];
                 let glyph_info = glyphs_infos[index];
 
+                let matrix = Matrix4::from_translation(Vector3::new(
+                    glyph_total_xadvance + data.screen_offset.x + (-width / 2.0),
+                    -height + data.screen_offset.y,
+                    0.0,
+                )) * scale_m;
                 let item = GlyphData {
                     glyph_id: GlyphId(glyph_info.glyph_id as u16),
-                    rotation: 0.0,
                     alpha: data.alpha,
                     position: (data.world_position.x, data.world_position.y).into(),
-                    offset: Vector2::new(
-                        pos + data.screen_offset.x + (-width / 2.0),
-                        -height + data.screen_offset.y,
-                    ),
-                    scale: scale / Self::MAX_SCALE,
+                    matrix,
                 };
                 self.glyph_data
                     .entry(item.glyph_id)
@@ -165,7 +238,7 @@ impl TextRenderer {
                     })
                     .or_insert(vec![item.clone()]);
 
-                pos += position.x_advance as f32 * scale;
+                glyph_total_xadvance += position.x_advance as f32 * scale;
             }
         }
     }
@@ -175,17 +248,11 @@ impl TextRenderer {
         self.glyph_data.iter().for_each(|(key, list)| {
             let mut attrs = vec![];
             list.iter().for_each(|glyph_data| {
-                let matrix = Matrix4::<f32>::from_translation(Vector3::new(
-                        glyph_data.offset.x,
-                        glyph_data.offset.y,
-                        0.0,
-                    )) * Matrix4::<f32>::from_scale(glyph_data.scale);
-
                 let instance_pos = InstancePos {
                     position: Vector3::new(glyph_data.position.0, glyph_data.position.1, 0.0)
                         .into(),
                     color_alpha: glyph_data.alpha,
-                    matrix: matrix.cast().unwrap().into(),
+                    matrix: glyph_data.matrix.cast().unwrap().into(),
                     bbox: [0.0, 0.0, 0.0, 0.0],
                 };
                 attrs.push(instance_pos);
