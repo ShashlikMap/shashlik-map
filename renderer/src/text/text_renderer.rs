@@ -6,11 +6,11 @@ use crate::text::glyph_tesselator::GlyphTesselator;
 use crate::vertex_attrs::InstancePos;
 use cgmath::num_traits::clamp;
 use cgmath::{InnerSpace, Matrix4, Quaternion, Rotation, Vector2, Vector3};
-use geo_types::{coord, point, Coord};
+use geo_types::{Coord, coord, point};
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
-use rustybuzz::{ttf_parser, Direction, Face, GlyphBuffer, ShapePlan, UnicodeBuffer};
+use rustybuzz::{Direction, Face, GlyphBuffer, ShapePlan, UnicodeBuffer, ttf_parser};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 use wgpu::{Buffer, Color, Device, RenderPass};
@@ -157,26 +157,34 @@ impl TextRenderer {
                             break;
                         }
 
-                        let glyph_info = glyphs_infos[glyph_index];
-
-                        let matrix = Matrix4::from_translation(segments_vector) * scale_rot_m;
-
                         let x_advance = position.x_advance as f32 * scale;
 
-                        let section_rect = Rectangle::from_corners(
-                            point! { x: origin.x as f32 + segments_vector.x, y: origin.y as f32 + segments_vector.y },
-                            point! { x: origin.x as f32 + segments_vector.x + 3.0*x_advance, y: origin.y as f32 + segments_vector.y + 2.0*height },
+                        let glyph_info = glyphs_infos[glyph_index];
+
+                        let rotated_glyph_vector =
+                            seg_rotation.rotate_vector(Vector3::new(x_advance, 0.0, 0.0));
+
+                        let height_offset = rotated_glyph_vector.normalize();
+                        let height_offset =
+                            -height / 2.0 * Vector3::new(-height_offset.y, height_offset.x, 0.0);
+
+                        let matrix = Matrix4::from_translation(height_offset)
+                            * Matrix4::from_translation(segments_vector)
+                            * scale_rot_m;
+
+                        let glyph_rect = Rectangle::from_corners(
+                            point! { x: origin.x as f32 + segments_vector.x - height, y: origin.y as f32 + segments_vector.y - height },
+                            point! { x: origin.x as f32 + segments_vector.x + height, y: origin.y as f32 + segments_vector.y + height},
                         );
 
                         // FIXME find a root cause, or rstar crashes
-                        if section_rect.lower().x().is_nan() {
+                        if glyph_rect.lower().x().is_nan() {
                             // fast exit
                             glyph_index = glyphs_len;
                             break;
                         }
 
-                        segments_vector +=
-                            seg_rotation.rotate_vector(Vector3::new(x_advance, 0.0, 0.0));
+                        segments_vector += rotated_glyph_vector;
 
                         let item = GlyphData {
                             glyph_id: GlyphId(glyph_info.glyph_id as u16),
@@ -184,7 +192,7 @@ impl TextRenderer {
                             position: (data.world_position.x, data.world_position.y).into(),
                             matrix,
                         };
-                        glyphs_to_draw.push((section_rect, item));
+                        glyphs_to_draw.push((glyph_rect, item));
 
                         glyph_total_xadvance += x_advance;
 
