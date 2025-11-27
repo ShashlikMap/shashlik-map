@@ -194,9 +194,10 @@ impl TextRenderer {
                             Matrix4::from_translation(segments_vector) * scale_rot_height_m
                         };
 
+                        // note: segments_vector.y goes negative so we should diff y-axis!
                         let glyph_rect = Rectangle::from_corners(
-                            point! { x: origin.x as f32 + segments_vector.x - height, y: origin.y as f32 + segments_vector.y - height },
-                            point! { x: origin.x as f32 + segments_vector.x + height, y: origin.y as f32 + segments_vector.y + height},
+                            point! { x: origin.x as f32 + segments_vector.x - height, y: origin.y as f32 - segments_vector.y - height },
+                            point! { x: origin.x as f32 + segments_vector.x + height, y: origin.y as f32 - segments_vector.y + height},
                         );
 
                         // FIXME find a root cause, or rstar crashes

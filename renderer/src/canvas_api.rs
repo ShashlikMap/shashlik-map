@@ -97,7 +97,7 @@ impl CanvasApi {
                 self.extruded_polygon(data);
             }
             GeometryData::Svg(data) => {
-                self.svg(&data);
+                self.svg(data);
             }
             GeometryData::Text(data) => {
                 self.text(data);
@@ -241,7 +241,7 @@ impl CanvasApi {
         }
     }
 
-    pub fn svg(&mut self, data: &SvgData) {
+    pub fn svg(&mut self, data: SvgData) {
         self.screen_path_cache
             .entry(data.icon.0)
             .and_modify(|(_, screen_paths)| {

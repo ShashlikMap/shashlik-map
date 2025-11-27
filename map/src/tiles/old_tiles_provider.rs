@@ -224,31 +224,34 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     .and_modify(|entry| *entry += 1)
                                     .or_insert(0);
                                 if *name_count % 30 == 0 {
-                                    let some_middle_point = line.get(line.len() / 2).unwrap();
-                                    geometry_data.push(GeometryData::Text(TextData {
-                                        id: hash(name.as_bytes()),
-                                        text: name.to_uppercase(),
-                                        position: Vector3::from((
-                                            some_middle_point.0,
-                                            some_middle_point.1,
-                                            0.0,
-                                        ))
-                                        .cast()
-                                        .unwrap(),
-                                        screen_offset: Vector2::new(0.0, 0.0),
-                                        size: 30.0,
-                                        positions: Some(
-                                            line.iter()
-                                                .map(|item| {
-                                                    Vector3::new(
-                                                        item.x() as f32,
-                                                        item.y() as f32,
-                                                        0.0,
-                                                    )
-                                                })
-                                                .collect(),
-                                        ),
-                                    }));
+                                    // FIXME TextRenderer has a bug for only 2 coords line, let's skip it for now
+                                    if line.len() > 2 {
+                                        let some_middle_point = line.get(line.len() / 2).unwrap();
+                                        geometry_data.push(GeometryData::Text(TextData {
+                                            id: hash(name.as_bytes()),
+                                            text: name.to_uppercase(),
+                                            position: Vector3::from((
+                                                some_middle_point.0,
+                                                some_middle_point.1,
+                                                0.0,
+                                            ))
+                                                .cast()
+                                                .unwrap(),
+                                            screen_offset: Vector2::new(0.0, 0.0),
+                                            size: 30.0,
+                                            positions: Some(
+                                                line.iter()
+                                                    .map(|item| {
+                                                        Vector3::new(
+                                                            item.x() as f32,
+                                                            item.y() as f32,
+                                                            0.0,
+                                                        )
+                                                    })
+                                                    .collect(),
+                                            ),
+                                        }));
+                                    }
                                 }
                             }
                         }
