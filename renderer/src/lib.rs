@@ -299,6 +299,7 @@ impl ShashlikRenderer {
             let config = self.canvas.config();
             let device = self.canvas.device();
             let queue = self.canvas.queue();
+            self.global_context.collision_handler.resize(config.width as f32, config.height as f32);
             self.world_tree_node
                 .resize(config.width, config.height, queue);
             self.depth_texture = DepthTexture::new(&device, config.width, config.height);

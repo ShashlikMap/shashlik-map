@@ -4,15 +4,12 @@ use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::vertex_attrs::InstancePos;
 use cgmath::num_traits::clamp;
 use cgmath::{Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector2, Vector3};
-use geo_types::{Coord, coord, point};
-use log::error;
+use geo_types::{coord, point};
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
-use rustybuzz::GlyphBuffer;
 use rustybuzz::ttf_parser::GlyphId;
-use std::alloc::System;
+use rustybuzz::GlyphBuffer;
 use std::collections::HashMap;
-use std::time::SystemTime;
 use wgpu::util::DeviceExt;
 use wgpu::{Buffer, Device, Queue, RenderPass};
 
@@ -58,7 +55,6 @@ impl TextRenderer {
     pub fn insert(
         &mut self,
         data: &mut TextNodeData,
-        config: &wgpu::SurfaceConfiguration,
         collision_handler: &mut CollisionHandler,
         screen_position_calculator: &ScreenPositionCalculator,
     ) {
@@ -68,7 +64,6 @@ impl TextRenderer {
 
         let glyphs_positions = glyph_buffer.glyph_positions();
         let glyphs_infos = glyph_buffer.glyph_infos();
-        let mut glyph_total_x_advance = 0.0;
 
         let (scale_m, width, height, scale) =
             self.default_face.get_text_params(&glyph_buffer, data.size);
@@ -82,14 +77,14 @@ impl TextRenderer {
             .unwrap()
             .cast()
             .unwrap();
+        let origin = screen_position_calculator.screen_position(initial_position)
+            + coord! { x: data.screen_offset.x as f64, y: data.screen_offset.y as f64};
 
         if data.positions.len() > 1 {
             let line_positions = &data.positions;
 
-            let origin = screen_position_calculator.screen_position(initial_position);
-
             let middle_point_index = line_positions.len() / 2;
-            let mut prev: Option<Coord<f32>> = None;
+            let mut prev: Option<Vector3<f32>> = None;
             let mut glyph_index = 0;
             let glyphs_len = glyph_buffer.len();
             let segments_count = line_positions.len();
@@ -100,6 +95,8 @@ impl TextRenderer {
             let mut backward = false;
 
             let flip_rot_m = Matrix4::from_angle_z(Deg(180.0));
+            let half_height_translation =
+                Matrix4::from_translation(Vector3::new(0.0, -height / 2.0, 0.0));
 
             for (index, current) in line_positions[middle_point_index..].iter().enumerate() {
                 if glyph_index >= glyphs_len {
@@ -108,7 +105,7 @@ impl TextRenderer {
 
                 let current =
                     screen_position_calculator.screen_position(current.cast().unwrap()) - origin;
-                let current = coord! {x : current.x as f32, y: current.y as f32 };
+                let current = Vector3::new(current.x as f32, current.y as f32, 0.0);
 
                 // skip if two point are the same
                 if let Some(prev) = prev
@@ -121,17 +118,20 @@ impl TextRenderer {
                         }
                     }
                     let seg_vector = current - prev;
-                    let seg_vector = Vector3::new(seg_vector.x, seg_vector.y, 0.0);
                     segments_len += seg_vector.magnitude();
 
                     let seg_rotation: Quaternion<f32> =
                         Rotation::between_vectors(seg_vector.normalize(), Vector3::unit_x());
-                    let half_height_translation =
-                        Matrix4::from_translation(Vector3::new(0.0, -height / 2.0, 0.0));
+
                     let rot_m: Matrix4<f32> = seg_rotation.into();
                     let scale_rot_height_m = scale_m * rot_m * half_height_translation;
 
                     while glyph_index < glyphs_len {
+                        if index < segments_count - 1 && segments_vector.magnitude() > segments_len
+                        {
+                            break;
+                        }
+
                         let real_glyph_index = if backward {
                             glyphs_len - glyph_index - 1
                         } else {
@@ -139,16 +139,10 @@ impl TextRenderer {
                         };
 
                         let position = glyphs_positions[real_glyph_index];
-                        if index < segments_count - 1 && segments_vector.magnitude() > segments_len
-                        {
-                            break;
-                        }
-
-                        let x_advance = position.x_advance as f32 * scale;
-
-                        let x_advance_vector = Vector3::new(x_advance, 0.0, 0.0);
                         let glyph_info = glyphs_infos[real_glyph_index];
 
+                        let x_advance = position.x_advance as f32 * scale;
+                        let x_advance_vector = Vector3::new(x_advance, 0.0, 0.0);
                         let rotated_glyph_vector = seg_rotation.rotate_vector(x_advance_vector);
 
                         let matrix = if backward {
@@ -177,8 +171,6 @@ impl TextRenderer {
                             matrix,
                         };
                         glyphs_to_draw.push((glyph_rect, item));
-
-                        glyph_total_x_advance += x_advance;
 
                         glyph_index += 1;
                     }
@@ -210,16 +202,16 @@ impl TextRenderer {
                 glyphs_to_draw.clear();
             }
         } else {
-            let origin = screen_position_calculator.screen_position(initial_position)
-                + coord! { x: data.screen_offset.x as f64, y: data.screen_offset.y as f64}
-                + coord! { x: (-width/2.0) as f64, y: 0.0 };
+            let origin = origin + coord! { x: (-width/2.0) as f64, y: 0.0 };
 
+            let mut glyph_total_x_advance = 0.0;
+            
             let section_rect = Rectangle::from_corners(
                 point! { x: origin.x as f32, y: origin.y as f32 },
                 point! { x: origin.x as f32 + width, y: origin.y as f32 + height },
             );
 
-            let within_screen = collision_handler.within_screen(config, section_rect);
+            let within_screen = collision_handler.within_screen(section_rect);
             if within_screen {
                 let contains = self.id_to_alpha_map.contains_key(&data.id);
                 let mut alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
@@ -236,6 +228,7 @@ impl TextRenderer {
                 data.alpha = alpha;
 
                 if data.alpha > 0.0 {
+                    let stub_rect = Rectangle::from_corners(point!(x: 0.0, y: 0.0), point!(x: 0.0, y: 0.0));
                     for index in 0..glyph_buffer.len() {
                         let position = glyphs_positions[index];
                         let glyph_info = glyphs_infos[index];
@@ -255,7 +248,7 @@ impl TextRenderer {
                             matrix,
                         };
                         glyphs_to_draw.push((
-                            Rectangle::from_corners(point!(x: 0.0, y: 0.0), point!(x: 0.0, y: 0.0)),
+                            stub_rect,
                             item,
                         ));
                     }

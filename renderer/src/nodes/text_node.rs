@@ -50,7 +50,6 @@ impl SceneNode for TextNode {
         self.data.iter_mut().for_each(|item| {
             global_context.text_renderer.insert(
                 item,
-                config,
                 &mut global_context.collision_handler,
                 &screen_position_calculator,
             )

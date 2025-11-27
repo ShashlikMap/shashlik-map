@@ -4,26 +4,27 @@ use rstar::{AABB, Envelope, RTree, RTreeObject};
 
 pub struct CollisionHandler {
     objects: RTree<Rectangle<Point<f32>>>,
+    screen_rect: Rectangle<Point<f32>>,
 }
 
 impl CollisionHandler {
     pub fn new() -> Self {
         CollisionHandler {
             objects: RTree::new(),
+            screen_rect: Rectangle::from_corners(Point::new(0.0, 0.0), Point::new(0.0, 0.0)),
         }
+    }
+
+    pub fn resize(&mut self, width: f32, height: f32) {
+        self.screen_rect = Rectangle::from_corners(Point::new(0.0, 0.0), Point::new(width, height));
     }
 
     pub fn within_screen(
         &self,
-        config: &wgpu::SurfaceConfiguration,
         rectangle: Rectangle<Point<f32>>,
     ) -> bool {
-        let screen_rect: Rectangle<Point<f32>> = Rectangle::from_corners(
-            (0.0, 0.0).into(),
-            (config.width as f32, config.height as f32).into(),
-        );
         let envelope = rectangle.envelope();
-        screen_rect.envelope().intersects(&envelope)
+        self.screen_rect.envelope().intersects(&envelope)
     }
 
     pub fn insert(&mut self, rectangle: Rectangle<Point<f32>>) -> bool {
