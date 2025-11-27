@@ -100,16 +100,13 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     geometry_data.push(GeometryData::Text(TextData {
                                         id,
                                         text: poi.text.to_uppercase(),
-                                        position: Vector3::from((
+                                        screen_offset: Vector2::new(0.0, 25.0),
+                                        size: 40.0,
+                                        positions: vec![Vector3::from((
                                             local_position.x,
                                             local_position.y,
                                             0.0,
-                                        ))
-                                        .cast()
-                                        .unwrap(),
-                                        screen_offset: Vector2::new(0.0, -25.0),
-                                        size: 40.0,
-                                        positions: None,
+                                        )).cast().unwrap()],
                                     }));
                                     Some(("train_station", Self::TRAIN_STATION_SVG))
                                 }
@@ -122,16 +119,13 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     geometry_data.push(GeometryData::Text(TextData {
                                         id: hash(poi.text.as_bytes()),
                                         text: poi.text.to_uppercase(),
-                                        position: Vector3::from((
+                                        screen_offset: Vector2::new(0.0, 0.0),
+                                        size: 40.0,
+                                        positions: vec![Vector3::from((
                                             local_position.x,
                                             local_position.y,
                                             0.0,
-                                        ))
-                                        .cast()
-                                        .unwrap(),
-                                        screen_offset: Vector2::new(0.0, 0.0),
-                                        size: 40.0,
-                                        positions: None,
+                                        )).cast().unwrap()],
                                     }));
                                     None
                                 }
@@ -226,20 +220,12 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 if *name_count % 30 == 0 {
                                     // FIXME TextRenderer has a bug for only 2 coords line, let's skip it for now
                                     if line.len() > 2 {
-                                        let some_middle_point = line.get(line.len() / 2).unwrap();
                                         geometry_data.push(GeometryData::Text(TextData {
                                             id: hash(name.as_bytes()),
                                             text: name.to_uppercase(),
-                                            position: Vector3::from((
-                                                some_middle_point.0,
-                                                some_middle_point.1,
-                                                0.0,
-                                            ))
-                                                .cast()
-                                                .unwrap(),
                                             screen_offset: Vector2::new(0.0, 0.0),
                                             size: 30.0,
-                                            positions: Some(
+                                            positions:
                                                 line.iter()
                                                     .map(|item| {
                                                         Vector3::new(
@@ -249,7 +235,6 @@ impl<S: TileSource> OldTilesProvider<S> {
                                                         )
                                                     })
                                                     .collect(),
-                                            ),
                                         }));
                                     }
                                 }

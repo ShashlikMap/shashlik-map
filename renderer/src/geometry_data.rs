@@ -45,8 +45,7 @@ pub struct SvgData {
 pub struct TextData {
     pub id: u64,
     pub text: String,
-    pub position: Vector3<f32>,
     pub screen_offset: Vector2<f32>,
     pub size: f32,
-    pub positions: Option<Vec<Vector3<f32>>>
+    pub positions: Vec<Vector3<f32>>
 }

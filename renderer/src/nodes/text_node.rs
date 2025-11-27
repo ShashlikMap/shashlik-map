@@ -1,9 +1,9 @@
+use crate::GlobalContext;
 use crate::geometry_data::TextData;
 use crate::modifier::render_modifier::SpatialData;
-use crate::nodes::scene_tree::RenderContext;
 use crate::nodes::SceneNode;
+use crate::nodes::scene_tree::RenderContext;
 use crate::text::text_renderer::TextNodeData;
-use crate::GlobalContext;
 use wgpu::{Device, Queue};
 
 pub struct TextNode {
@@ -15,18 +15,18 @@ impl TextNode {
         Self {
             data: text_data
                 .into_iter()
-                .map(|item| {
-                    TextNodeData {
-                        id: item.id,
-                        text: item.text,
-                        size: item.size,
-                        alpha: 0.0,
-                        // text node doesn't have to be super precise
-                        world_position: item.position + spatial_data.transform.cast().unwrap(),
-                        positions: item.positions,
-                        screen_offset: item.screen_offset,
-                        glyph_buffer: None,
-                    }
+                .map(|item| TextNodeData {
+                    id: item.id,
+                    text: item.text,
+                    size: item.size,
+                    alpha: 0.0,
+                    positions: item
+                        .positions
+                        .iter()
+                        .map(|pos| pos + spatial_data.transform.cast().unwrap())
+                        .collect(),
+                    screen_offset: item.screen_offset,
+                    glyph_buffer: None,
                 })
                 .collect(),
         }
