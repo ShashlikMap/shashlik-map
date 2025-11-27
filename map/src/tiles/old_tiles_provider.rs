@@ -210,7 +210,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 is_screen: false,
                             }));
 
-                            if let Some(name) = name {
+                            if let Some(name) = name && tile_key.zoom_level <= 3 {
                                 // TODO When text render along the path is ready, it has to be decided how to reduce the repetitive data inside tile
                                 //  So far just accept every 30 item. There might be more then 500 lines with the same name!
                                 let name_count = line_text_map

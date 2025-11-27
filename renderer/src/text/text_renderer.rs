@@ -5,13 +5,16 @@ use crate::vertex_attrs::InstancePos;
 use cgmath::num_traits::clamp;
 use cgmath::{Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector2, Vector3};
 use geo_types::{Coord, coord, point};
+use log::error;
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
 use rustybuzz::GlyphBuffer;
 use rustybuzz::ttf_parser::GlyphId;
+use std::alloc::System;
 use std::collections::HashMap;
+use std::time::SystemTime;
 use wgpu::util::DeviceExt;
-use wgpu::{Buffer, Device, RenderPass};
+use wgpu::{Buffer, Device, Queue, RenderPass};
 
 #[derive(Clone)]
 pub struct GlyphData {
@@ -35,7 +38,7 @@ pub struct TextRenderer {
     id_to_alpha_map: HashMap<u64, f32>,
     default_face: DefaultFaceWrapper,
     glyph_data: FxHashMap<GlyphId, Vec<GlyphData>>,
-    instance_buffer_map: FxHashMap<GlyphId, Buffer>,
+    instance_buffer_map: FxHashMap<GlyphId, (usize, Buffer)>,
 }
 
 impl TextRenderer {
@@ -73,13 +76,17 @@ impl TextRenderer {
         let mut glyphs_to_draw = vec![];
 
         let middle_point_index = data.positions.len() / 2;
-        let initial_position: Vector3<f64> = data.positions.get(middle_point_index).unwrap().cast().unwrap();
+        let initial_position: Vector3<f64> = data
+            .positions
+            .get(middle_point_index)
+            .unwrap()
+            .cast()
+            .unwrap();
 
         if data.positions.len() > 1 {
             let line_positions = &data.positions;
 
-            let origin =
-                screen_position_calculator.screen_position(initial_position);
+            let origin = screen_position_calculator.screen_position(initial_position);
 
             let middle_point_index = line_positions.len() / 2;
             let mut prev: Option<Coord<f32>> = None;
@@ -203,8 +210,7 @@ impl TextRenderer {
                 glyphs_to_draw.clear();
             }
         } else {
-            let origin = screen_position_calculator
-                .screen_position(initial_position)
+            let origin = screen_position_calculator.screen_position(initial_position)
                 + coord! { x: data.screen_offset.x as f64, y: data.screen_offset.y as f64}
                 + coord! { x: (-width/2.0) as f64, y: 0.0 };
 
@@ -229,28 +235,30 @@ impl TextRenderer {
                 }
                 data.alpha = alpha;
 
-                for index in 0..glyph_buffer.len() {
-                    let position = glyphs_positions[index];
-                    let glyph_info = glyphs_infos[index];
+                if data.alpha > 0.0 {
+                    for index in 0..glyph_buffer.len() {
+                        let position = glyphs_positions[index];
+                        let glyph_info = glyphs_infos[index];
 
-                    let matrix = Matrix4::from_translation(Vector3::new(
-                        glyph_total_x_advance + data.screen_offset.x + (-width / 2.0),
-                        -height - data.screen_offset.y,
-                        0.0,
-                    )) * scale_m;
+                        let matrix = Matrix4::from_translation(Vector3::new(
+                            glyph_total_x_advance + data.screen_offset.x + (-width / 2.0),
+                            -height - data.screen_offset.y,
+                            0.0,
+                        )) * scale_m;
 
-                    glyph_total_x_advance += position.x_advance as f32 * scale;
+                        glyph_total_x_advance += position.x_advance as f32 * scale;
 
-                    let item = GlyphData {
-                        glyph_id: GlyphId(glyph_info.glyph_id as u16),
-                        alpha: data.alpha,
-                        position: (initial_position.x as f32, initial_position.y as f32),
-                        matrix,
-                    };
-                    glyphs_to_draw.push((
-                        Rectangle::from_corners(point!(x: 0.0, y: 0.0), point!(x: 0.0, y: 0.0)),
-                        item,
-                    ));
+                        let item = GlyphData {
+                            glyph_id: GlyphId(glyph_info.glyph_id as u16),
+                            alpha: data.alpha,
+                            position: (initial_position.x as f32, initial_position.y as f32),
+                            matrix,
+                        };
+                        glyphs_to_draw.push((
+                            Rectangle::from_corners(point!(x: 0.0, y: 0.0), point!(x: 0.0, y: 0.0)),
+                            item,
+                        ));
+                    }
                 }
             }
         }
@@ -260,14 +268,15 @@ impl TextRenderer {
             self.glyph_data
                 .entry(item.glyph_id)
                 .and_modify(|list| {
-                    list.push(item.clone());
+                    if data.alpha > 0.0 {
+                        list.push(item.clone());
+                    }
                 })
                 .or_insert(vec![item.clone()]);
         }
     }
 
-    fn update_attrs(&mut self, device: &Device) {
-        self.instance_buffer_map.clear();
+    fn update_attrs(&mut self, queue: &Queue, device: &Device) {
         self.glyph_data.iter().for_each(|(key, list)| {
             let mut attrs = vec![];
             list.iter().for_each(|glyph_data| {
@@ -281,20 +290,36 @@ impl TextRenderer {
                 attrs.push(instance_pos);
             });
 
-            let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Instance Buffer"),
-                contents: bytemuck::cast_slice(attrs.as_slice()),
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            });
+            let attrs_len = attrs.len();
             self.instance_buffer_map
-                .insert(key.clone(), instance_buffer);
+                .entry(*key)
+                .and_modify(|list| {
+                    if list.0 < attrs_len {
+                        list.1 = Self::create_instance_buffer(device, &attrs);
+                    } else {
+                        queue.write_buffer(&list.1, 0, bytemuck::cast_slice(attrs.as_slice()));
+                    }
+                    list.0 = attrs_len;
+                })
+                .or_insert_with(|| {
+                    let instance_buffer = Self::create_instance_buffer(device, &attrs);
+                    (attrs_len, instance_buffer)
+                });
         });
     }
 
-    pub fn render(&mut self, device: &wgpu::Device, render_pass: &mut RenderPass) {
+    fn create_instance_buffer(device: &Device, instances: &Vec<InstancePos>) -> Buffer {
+        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Instance Buffer"),
+            contents: bytemuck::cast_slice(instances.as_slice()),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        })
+    }
+
+    pub fn render(&mut self, queue: &Queue, device: &wgpu::Device, render_pass: &mut RenderPass) {
         self.id_to_alpha_map.clear();
 
-        self.update_attrs(device);
+        self.update_attrs(queue, device);
 
         if !self.instance_buffer_map.is_empty() && !self.glyph_data.is_empty() {
             self.glyph_data.iter().for_each(|(glyph_id, list)| {
@@ -306,7 +331,7 @@ impl TextRenderer {
                     render_pass.set_vertex_buffer(0, v_buf.slice(..));
                     render_pass.set_index_buffer(i_buf.0.slice(..), wgpu::IndexFormat::Uint32);
 
-                    render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
+                    render_pass.set_vertex_buffer(1, instance_buffer.1.slice(..));
 
                     render_pass.draw_indexed(0..i_buf.1 as u32, 0, 0..list.len() as u32);
                 }

@@ -394,7 +394,7 @@ impl ShashlikRenderer {
 
             self.global_context
                 .text_renderer
-                .render(&device, &mut render_pass);
+                .render(queue, device, &mut render_pass);
 
             self.fps_node.render(&mut render_pass, &mut self.global_context);
         }
