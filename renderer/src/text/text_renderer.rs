@@ -5,7 +5,7 @@ use crate::mesh::mesh::Mesh;
 use crate::text::glyph_tesselator::GlyphTesselator;
 use crate::vertex_attrs::InstancePos;
 use cgmath::num_traits::clamp;
-use cgmath::{InnerSpace, Matrix4, Quaternion, Rotation, Vector2, Vector3};
+use cgmath::{Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector2, Vector3};
 use geo_types::{Coord, coord, point};
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
@@ -133,6 +133,10 @@ impl TextRenderer {
 
             let mut glyphs_to_draw = vec![];
 
+            let mut backward = false;
+
+            let flip_rot_m = Matrix4::from_angle_z(Deg(180.0));
+
             for (index, current) in line_positions[some_middle_point_index..].iter().enumerate() {
                 if glyph_index >= glyphs_len {
                     break;
@@ -142,16 +146,31 @@ impl TextRenderer {
                     screen_position_calculator.screen_position(current.cast().unwrap()) - origin;
                 let current = coord! {x : current.x as f32, y: current.y as f32 };
                 if let Some(prev) = prev {
+                    // check if we need to render text backward to
+                    if index == 1 {
+                        if current.x < prev.x {
+                            backward = true;
+                        }
+                    }
                     let seg_vector = current - prev;
                     let seg_vector = Vector3::new(seg_vector.x, seg_vector.y, 0.0);
                     segments_len += seg_vector.magnitude();
 
                     let seg_rotation: Quaternion<f32> =
                         Rotation::between_vectors(seg_vector.normalize(), Vector3::unit_x());
+                    let half_height_translation =
+                        Matrix4::from_translation(Vector3::new(0.0, -height / 2.0, 0.0));
                     let rot_m: Matrix4<f32> = seg_rotation.into();
-                    let scale_rot_m = scale_m * rot_m;
+                    let scale_rot_height_m = scale_m * rot_m * half_height_translation;
+
                     while glyph_index < glyphs_len {
-                        let position = glyphs_positions[glyph_index];
+                        let real_glyph_index = if backward {
+                            glyphs_len - glyph_index - 1
+                        } else {
+                            glyph_index
+                        };
+
+                        let position = glyphs_positions[real_glyph_index];
                         if index < segments_count - 1 && segments_vector.magnitude() > segments_len
                         {
                             break;
@@ -159,18 +178,21 @@ impl TextRenderer {
 
                         let x_advance = position.x_advance as f32 * scale;
 
-                        let glyph_info = glyphs_infos[glyph_index];
+                        let x_advance_vector = Vector3::new(x_advance, 0.0, 0.0);
+                        let glyph_info = glyphs_infos[real_glyph_index];
 
-                        let rotated_glyph_vector =
-                            seg_rotation.rotate_vector(Vector3::new(x_advance, 0.0, 0.0));
+                        let rotated_glyph_vector = seg_rotation.rotate_vector(x_advance_vector);
 
-                        let height_offset = rotated_glyph_vector.normalize();
-                        let height_offset =
-                            -height / 2.0 * Vector3::new(-height_offset.y, height_offset.x, 0.0);
-
-                        let matrix = Matrix4::from_translation(height_offset)
-                            * Matrix4::from_translation(segments_vector)
-                            * scale_rot_m;
+                        let matrix = if backward {
+                            let x_advance_translation =
+                                Matrix4::from_translation(-x_advance_vector);
+                            Matrix4::from_translation(segments_vector)
+                                * flip_rot_m
+                                * scale_rot_height_m
+                                * x_advance_translation
+                        } else {
+                            Matrix4::from_translation(segments_vector) * scale_rot_height_m
+                        };
 
                         let glyph_rect = Rectangle::from_corners(
                             point! { x: origin.x as f32 + segments_vector.x - height, y: origin.y as f32 + segments_vector.y - height },
