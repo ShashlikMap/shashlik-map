@@ -67,6 +67,35 @@ impl<S: TileSource> OldTilesProvider<S> {
         }
     }
 
+    fn highway_width(kind: &HighwayKind, zoom: f32) -> f32 {
+        // Relative width for zoom 19, OSM:
+        // https://github.com/gravitystorm/openstreetmap-carto/blob/23b1cfa7284ac91bb78390fa4cb7f1c2c6350b92/style/roads.mss#L204
+        // TODO Figure out the better way to bound line width to zoom
+        let motorway_width = 0.80;
+
+        // shows big road better with high zooms
+        let zoom = if zoom > 6.0 { zoom * zoom } else { zoom };
+        match kind {
+            HighwayKind::Motorway
+            | HighwayKind::Primary => motorway_width * (zoom / 2.0).max(1.0),
+            | HighwayKind::Trunk => motorway_width * (zoom / 3.0).max(1.0),
+            HighwayKind::Tertiary
+            | HighwayKind::Secondary => motorway_width,
+
+            HighwayKind::MotorwayLink
+            | HighwayKind::PrimaryLink
+            | HighwayKind::TrunkLink
+            | HighwayKind::SecondaryLink
+            | HighwayKind::TertiaryLink => motorway_width / 1.687, // 16
+
+            HighwayKind::Residential => motorway_width / 1.588, // 17
+            HighwayKind::Unclassified => motorway_width / 1.588, // 17
+            HighwayKind::Footway => motorway_width / 15.0,
+
+            _ => motorway_width / 2.454, // 11
+        }
+    }
+
     fn get_tile_key_data(tile_store: Arc<TileStore<S>>, tile_key: &TileKey) -> TileData {
         let zoom_level = tile_key.zoom_level;
         let tile_rect = tile_key.calc_tile_boundary(1.0);
@@ -160,11 +189,12 @@ impl<S: TileSource> OldTilesProvider<S> {
                         MapGeomObjectKind::Way(info) => match info.line_kind {
                             LineKind::Highway { kind } => {
                                 if kind != HighwayKind::Footway {
+                                    let show_name =  tile_key.zoom_level <= 3;
                                     Some((
                                         Self::highway_style_id(&kind),
                                         info.layer,
-                                        0.7,
-                                        info.name_en.clone(),
+                                        Self::highway_width(&kind, tile_key.zoom_level as f32),
+                                        if show_name { info.name_en.clone() } else { None },
                                     ))
                                 } else {
                                     None
@@ -173,7 +203,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                             LineKind::Railway { .. } => {
                                 // TODO Ignore rails tunnels for a while
                                 if info.layer_kind != LayerKind::Tunnel {
-                                    Some((StyleId("rails"), info.layer, 0.3, None))
+                                    Some((StyleId("rails"), info.layer, 0.3 * tile_key.zoom_level.max(1) as f32, None))
                                 } else {
                                     None
                                 }
@@ -199,7 +229,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                             path_builder.end(false);
 
                             let options = PolylineOptions {
-                                width: width as f32,
+                                width,
                             };
 
                             geometry_data.push(GeometryData::Shape(ShapeData {
@@ -210,7 +240,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 is_screen: false,
                             }));
 
-                            if let Some(name) = name && tile_key.zoom_level <= 3 {
+                            if let Some(name) = name {
                                 // TODO When text render along the path is ready, it has to be decided how to reduce the repetitive data inside tile
                                 //  So far just accept every 30 item. There might be more then 500 lines with the same name!
                                 let name_count = line_text_map
@@ -279,8 +309,10 @@ impl<S: TileSource> OldTilesProvider<S> {
                             } else if obj_type.kind == MapGeomObjectKind::Nature(NatureKind::Ground)
                             {
                                 StyleId("ground")
+                            } else if obj_type.kind == MapGeomObjectKind::Nature(NatureKind::Park) {
+                                StyleId("park")
                             } else {
-                                StyleId("land")
+                                StyleId("forest")
                             };
 
                             geometry_data.push(GeometryData::Shape(ShapeData {

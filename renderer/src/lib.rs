@@ -153,7 +153,7 @@ impl ShashlikRenderer {
 
         let global_context = GlobalContext::new(
             camera_controller.clone(),
-            CollisionHandler::new(),
+            CollisionHandler::new(config.width as f32, config.height as f32),
             device,
         );
         let pipeline_provider = PipeLineProvider::new(

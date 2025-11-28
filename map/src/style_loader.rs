@@ -31,8 +31,12 @@ impl StyleLoader {
                     RenderStyle::border([0.5, 0.5, 0.5, 1.0], 0.0),
                 ),
                 (
-                    StyleId("land"),
+                    StyleId("park"),
                     RenderStyle::fill([0.447, 0.91, 0.651, 1.0]),
+                ),
+                (
+                    StyleId("forest"),
+                    RenderStyle::fill([0.0, 0.549, 0.239, 1.0]),
                 ),
                 (
                     StyleId("ground"),

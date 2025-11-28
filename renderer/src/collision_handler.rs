@@ -1,6 +1,6 @@
 use geo_types::Point;
 use rstar::primitives::Rectangle;
-use rstar::{AABB, Envelope, RTree, RTreeObject};
+use rstar::{Envelope, RTree, RTreeObject, AABB};
 
 pub struct CollisionHandler {
     objects: RTree<Rectangle<Point<f32>>>,
@@ -8,10 +8,10 @@ pub struct CollisionHandler {
 }
 
 impl CollisionHandler {
-    pub fn new() -> Self {
+    pub fn new(width: f32, height: f32) -> Self {
         CollisionHandler {
             objects: RTree::new(),
-            screen_rect: Rectangle::from_corners(Point::new(0.0, 0.0), Point::new(0.0, 0.0)),
+            screen_rect: Rectangle::from_corners(Point::new(0.0, 0.0), Point::new(width, height)),
         }
     }
 
