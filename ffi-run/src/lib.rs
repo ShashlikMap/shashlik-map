@@ -1,9 +1,12 @@
+uniffi::setup_scaffolding!();
+
 mod platform;
 
 use map::ShashlikMap;
 use std::sync::RwLock;
 use osm::source::reqwest_source::ReqwestSource;
 use map::tiles::old_tiles_provider::OldTilesProvider;
+
 
 #[derive(uniffi::Object)]
 pub struct ShashlikMapApi {
@@ -42,5 +45,3 @@ impl ShashlikMapApi {
         shashlik_map.cam_follow_mode = enabled;
     }
 }
-
-uniffi::setup_scaffolding!();

@@ -10,29 +10,6 @@
 		1A1A1A1B2A00000100000001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A1A1A1A2A00000100000001 /* ContentView.swift */; };
 		1A1A1A1D2A00000100000001 /* iOSDemoAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A1A1A1C2A00000100000001 /* iOSDemoAppApp.swift */; };
 		AA1000010000000000000001 /* MetalMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1000010000000000000000 /* MetalMapView.swift */; };
-		AA1000030000000000000001 /* ffi_run.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1000030000000000000000 /* ffi_run.swift */; };
-		AA1000050000000000000001 /* ffi_run.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = AA1000050000000000000000 /* ffi_run.xcframework */; };
-/* End PBXBuildFile section */
-/* Begin PBXShellScriptBuildPhase section */
-		AA2000010000000000000000 /* UniFFI Generate */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/../temp_ios_ffi.sh",
-			);
-			name = "UniFFI Generate";
-			outputFileListPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "set -e\necho '[UniFFI] Generation phase start'\n\n# Allow manual skip\nif [ -n \"$SKIP_UNIFFI_GEN\" ]; then\n  echo '[UniFFI] Skip (SKIP_UNIFFI_GEN set)'\n  exit 0\nfi\n\n# Work inside app folder (SRCROOT points to iOSDemoApp)\ncd \"${SRCROOT}\"\n\n# Run the main build script\nbash ../temp_ios_ffi.sh\n\necho '[UniFFI] Generation phase done'";
-		};
-/* End PBXShellScriptBuildPhase section */
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,10 +18,6 @@
 		1A1A1A1E2A00000100000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1A1A1A401A00000100000001 /* iOSDemoApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOSDemoApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA1000010000000000000000 /* MetalMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalMapView.swift; sourceTree = "<group>"; };
-		AA1000030000000000000000 /* ffi_run.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ffi_run.swift; path = swift/ffi_run.swift; sourceTree = "<group>"; };
-		AA1000050000000000000000 /* ffi_run.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = ffi_run.xcframework; path = lib/ffi_run.xcframework; sourceTree = "<group>"; };
-		AA1000060000000000000000 /* ffi_runFFI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ffi_runFFI.h; path = swift/ffi_runFFI.h; sourceTree = "<group>"; };
-		AA1000070000000000000000 /* ffi_runFFI.modulemap */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.module-map; name = ffi_runFFI.modulemap; path = swift/ffi_runFFI.modulemap; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,7 +25,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA1000050000000000000001 /* ffi_run.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -68,29 +40,16 @@
 			sourceTree = "<group>";
 		};
 		1A1A1A0A2A00000100000001 /* iOSDemoApp */ = {
-		isa = PBXGroup;
-		children = (
-			1A1A1A1A2A00000100000001 /* ContentView.swift */,
-			1A1A1A1C2A00000100000001 /* iOSDemoAppApp.swift */,
-			AA1000010000000000000000 /* MetalMapView.swift */,
-			AA1000020000000000000000 /* Generated */,
-			1A1A1A1E2A00000100000001 /* Info.plist */,
-		);
-		path = iOSDemoApp;
-		sourceTree = "<group>";
-	};
-		AA1000020000000000000000 /* Generated */ = {
-		isa = PBXGroup;
-		children = (
-			AA1000030000000000000000 /* ffi_run.swift */,
-			AA1000050000000000000000 /* ffi_run.xcframework */,
-			AA1000060000000000000000 /* ffi_runFFI.h */,
-			AA1000070000000000000000 /* ffi_runFFI.modulemap */,
-		);
-		name = Generated;
-		path = ../generated;
-		sourceTree = "<group>";
-	};
+			isa = PBXGroup;
+			children = (
+				1A1A1A1A2A00000100000001 /* ContentView.swift */,
+				1A1A1A1C2A00000100000001 /* iOSDemoAppApp.swift */,
+				AA1000010000000000000000 /* MetalMapView.swift */,
+				1A1A1A1E2A00000100000001 /* Info.plist */,
+			);
+			path = iOSDemoApp;
+			sourceTree = "<group>";
+		};
 		1A1A1A402A00000100000001 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -106,7 +65,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1A1A1A192A00000100000001 /* Build configuration list for PBXNativeTarget "iOSDemoApp" */;
 			buildPhases = (
-				AA2000010000000000000000 /* UniFFI Generate */,
+				EDDD73752EDDB581002FDB4A /* KIOL */,
 				1A1A1A042A00000100000001 /* Sources */,
 				1A1A1A403A00000100000001 /* Resources */,
 				1A1A1A052A00000100000001 /* Frameworks */,
@@ -117,8 +76,8 @@
 			);
 			name = iOSDemoApp;
 			productName = iOSDemoApp;
-			productType = "com.apple.product-type.application";
 			productReference = 1A1A1A401A00000100000001 /* iOSDemoApp.app */;
+			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
@@ -147,6 +106,7 @@
 			);
 		};
 /* End PBXProject section */
+
 /* Begin PBXResourcesBuildPhase section */
 		1A1A1A403A00000100000001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
@@ -157,6 +117,28 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		EDDD73752EDDB581002FDB4A /* KIOL */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = KIOL;
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cd \"$SRCROOT/../kmp\"\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		1A1A1A042A00000100000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -165,7 +147,6 @@
 				1A1A1A1B2A00000100000001 /* ContentView.swift in Sources */,
 				1A1A1A1D2A00000100000001 /* iOSDemoAppApp.swift in Sources */,
 				AA1000010000000000000001 /* MetalMapView.swift in Sources */,
-				AA1000030000000000000001 /* ffi_run.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -175,15 +156,13 @@
 		1A1A1A172A00000100000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_WEAK = YES;
-				HEADER_SEARCH_PATHS = (
-					"$(SRCROOT)/generated/swift",
-				);
-				SWIFT_OBJC_BRIDGING_HEADER = iOSDemoApp/iOSDemoApp-Bridging-Header.h;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/generated/swift";
 				INFOPLIST_FILE = iOSDemoApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -195,24 +174,22 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
-				ALWAYS_SEARCH_USER_PATHS = NO;
 			};
 			name = Debug;
 		};
 		1A1A1A182A00000100000001 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_OBJC_WEAK = YES;
-				HEADER_SEARCH_PATHS = (
-					"$(SRCROOT)/generated/swift",
-				);
-				SWIFT_OBJC_BRIDGING_HEADER = iOSDemoApp/iOSDemoApp-Bridging-Header.h;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/generated/swift";
 				INFOPLIST_FILE = iOSDemoApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -224,9 +201,9 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
-				ALWAYS_SEARCH_USER_PATHS = NO;
 			};
 			name = Release;
 		};

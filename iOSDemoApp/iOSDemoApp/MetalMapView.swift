@@ -1,10 +1,7 @@
 import SwiftUI
 import UIKit
 import Metal
-
-#if canImport(ffi_runFFI)
-import ffi_runFFI
-#endif
+import Shared
 
 // SwiftUI wrapper hosting the Metal-backed UIView and driving the render loop.
 struct MetalMapContainer: UIViewRepresentable {
@@ -57,13 +54,9 @@ final class MetalMapUIView: UIView {
         guard api == nil else { return }
         let viewPtr = Unmanaged.passUnretained(self).toOpaque()
         let layerPtr = Unmanaged.passUnretained(self.layer).toOpaque()
-        let record = IosViewObjRecord(
-            view: UInt64(UInt(bitPattern: viewPtr)),
-            metalLayer: UInt64(UInt(bitPattern: layerPtr)),
-            maximumFrames: 60
-        )
-        let tilesDbPath = Self.defaultTilesDbPath()
-        api = createShashlikMapApi(viewObj: record, tilesDb: tilesDbPath)
+
+        api = Ffi_run_nativeKt.createShashlikMapApiForIos(view: UInt64(UInt(bitPattern: viewPtr)), metalLayer: UInt64(UInt(bitPattern: layerPtr)), maximumFrames: 90, tilesDb: "")
+        
         startRendering()
     }
 
@@ -85,10 +78,9 @@ final class MetalMapUIView: UIView {
         api?.render()
     }
 
-    // Temporary external input hook matching Android demo method.
     func toggleExternalInput() {
         pressed.toggle()
-        api?.tempExternalInput(pressed: pressed)
+        api?.setCamFollowMode(enabled: pressed)
     }
 }
 

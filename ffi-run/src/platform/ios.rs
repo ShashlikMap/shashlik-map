@@ -8,23 +8,15 @@ use map::ShashlikMap;
 use std::sync::RwLock;
 use std::ffi::c_void;
 use objc::runtime::Object;
-use uniffi::Record;
-
-#[derive(Record)]
-pub struct IOSViewObjRecord {
-	pub view: u64,
-	pub metal_layer: u64,
-	pub maximum_frames: i32,
-}
 
 extern "C" fn ios_callback_stub(_arg: i32) {}
 
 #[uniffi::export]
-pub fn create_shashlik_map_api(view_obj: IOSViewObjRecord, _tiles_db: String) -> ShashlikMapApi {
+pub fn create_shashlik_map_api_for_ios(view: u64, metal_layer: u64, maximum_frames: i32, _tiles_db: String) -> ShashlikMapApi {
 	let ios_view_obj = IOSViewObj {
-		view: view_obj.view as *mut Object,
-		metal_layer: view_obj.metal_layer as *mut c_void,
-		maximum_frames: view_obj.maximum_frames,
+		view: view as *mut Object,
+		metal_layer: metal_layer as *mut c_void,
+		maximum_frames,
 		callback_to_swift: ios_callback_stub,
 	};
 	let app_surface = AppSurface::new(ios_view_obj);

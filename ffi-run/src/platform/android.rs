@@ -1,3 +1,4 @@
+use std::ffi::c_void;
 use crate::ShashlikMapApi;
 use app_surface::AppSurface;
 use jni::objects::JClass;
@@ -11,6 +12,12 @@ use map::tiles::old_tiles_provider::OldTilesProvider;
 use osm::source::reqwest_source::ReqwestSource;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use jni::objects::JString;
+
+//FIXME https://github.com/gobley/gobley/issues/20
+#[uniffi::export]
+pub fn create_shashlik_map_api_for_ios(view: u64, metal_layer: u64, maximum_frames: i32, _tiles_db: String) -> ShashlikMapApi {
+    panic!("Android not supported")
+}
 
 struct AndroidSurfaceAppSurface {
     app_surface: AppSurface,

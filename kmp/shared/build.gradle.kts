@@ -1,3 +1,4 @@
+import gobley.gradle.rust.targets.RustAndroidTarget
 import org.gradle.kotlin.dsl.implementation
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -8,6 +9,7 @@ plugins {
     alias(libs.plugins.gobleyUniffi)
     kotlin("plugin.atomicfu") version libs.versions.kotlin
 
+    alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
 
@@ -47,6 +49,9 @@ kotlin {
             implementation(libs.androidx.ui.graphics)
             implementation(libs.androidx.material3)
             implementation("net.java.dev.jna:jna:5.17.0@aar")
+        }
+        commonMain.dependencies {
+            implementation(compose.runtime)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
