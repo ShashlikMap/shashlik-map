@@ -1,20 +1,19 @@
-package com.shashlik.demo
+package com.shashlik.kmp
 
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.Parcelable
 import android.util.AttributeSet
-import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import com.sun.jna.Pointer
 import uniffi.ffi_run.ShashlikMapApi
-import uniffi.ffi_run.UniffiWithHandle
+import uniffi.ffi_run.toPointer
 
 @SuppressLint("ClickableViewAccessibility")
 class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
@@ -85,7 +84,7 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
                         Build.FINGERPRINT.contains("sdk_gphone"),
                 context.filesDir.absolutePath + "/tiles.db"
             )
-            shashlikMapApi = ShashlikMapApi(UniffiWithHandle, ptr)
+            shashlikMapApi = ShashlikMapApi(ptr.toPointer())
             setWillNotDraw(false)
         }
     }
@@ -98,6 +97,11 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
     }
 
     override fun surfaceRedrawNeeded(holder: SurfaceHolder) {
+    }
+
+
+    override fun onSaveInstanceState(): Parcelable? {
+        return super.onSaveInstanceState()
     }
 
     override fun onDraw(canvas: Canvas) {

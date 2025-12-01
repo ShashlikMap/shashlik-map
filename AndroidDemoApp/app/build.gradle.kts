@@ -1,7 +1,11 @@
+import org.gradle.kotlin.dsl.implementation
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+
+    kotlin("plugin.atomicfu") version libs.versions.kotlin
 }
 
 android {
@@ -40,7 +44,7 @@ android {
 }
 
 dependencies {
-
+    implementation(files("../../kmp/shared/build/outputs/aar/shared-release.aar"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -49,6 +53,8 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation("net.java.dev.jna:jna:5.17.0@aar")
+    implementation("org.jetbrains.kotlinx:atomicfu:0.29.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -56,21 +62,4 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation("net.java.dev.jna:jna:5.17.0@aar")
 }
-
-tasks.register("runUniffi", Exec::class) {
-    group = "Build UniFFI"
-    description = "Runs a UniFFI shell script before the Android build."
-
-    // Specify the command to execute the shell script
-    commandLine("sh", "${project.rootDir}/../temp_android_ffi.sh")
-
-    // Optional: Set working directory if your script needs it
-    // workingDir = project.rootDir
-
-    // Optional: Configure standard input, output, and error streams
-    standardOutput = System.out
-    errorOutput = System.err
-}
-tasks.getByName("preBuild").dependsOn("runUniffi")

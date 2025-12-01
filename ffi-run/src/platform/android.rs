@@ -47,7 +47,7 @@ impl WgpuCanvas for AndroidSurfaceAppSurface {
 }
 
 #[unsafe(no_mangle)]
-#[jni_fn("com.shashlik.demo.RB")]
+#[jni_fn("com.shashlik.kmp.RB")] // TODO How to pass as a build param?
 pub fn createShashlikMapApi(
     env: *mut JNIEnv,
     _: JClass,
