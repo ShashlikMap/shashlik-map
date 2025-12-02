@@ -48,7 +48,7 @@ kotlin {
             implementation(libs.androidx.ui)
             implementation(libs.androidx.ui.graphics)
             implementation(libs.androidx.material3)
-            implementation("net.java.dev.jna:jna:5.17.0@aar")
+            implementation("net.java.dev.jna:jna:5.18.1@aar")
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -72,5 +72,8 @@ android {
             //noinspection ChromeOsAbiSupport
             abiFilters += listOf("arm64-v8a")
         }
+    }
+    buildFeatures {
+        compose = true
     }
 }
