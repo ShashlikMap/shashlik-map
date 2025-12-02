@@ -130,6 +130,7 @@ impl CanvasApi {
             layers_indices,
             screen_paths,
             is_screen,
+            outlined: !is_screen,
         }));
     }
 

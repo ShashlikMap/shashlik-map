@@ -15,7 +15,6 @@ use crate::nodes::world::World;
 use crate::nodes::SceneNode;
 use crate::pipeline_provider::PipeLineProvider;
 use crate::styles::style_store::StyleStore;
-use crate::text::create_default_text_brush;
 use crate::text::text_renderer::TextRenderer;
 use crate::vertex_attrs::{InstancePos, ShapeVertex, VertexAttrib, VertexNormal};
 use camera::CameraController;
@@ -60,10 +59,7 @@ pub const SHADER_STYLE_GROUP_INDEX: u32 = 1;
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
-    fn update_and_render(&mut self) -> Result<(), SurfaceError>;
-
     fn update(&mut self);
-
     fn render(&mut self) -> Result<(), SurfaceError>;
 }
 
@@ -144,12 +140,10 @@ impl ShashlikRenderer {
             alpha_to_coverage_enabled: false,
         };
 
-        let fps_node = FpsNode::new(create_default_text_brush(
-            device,
-            config,
-            depth_state.clone(),
-            multisample_state.clone(),
-        ));
+        let fps_node = FpsNode::new(device,
+                                    config,
+                                    depth_state.clone(),
+                                    multisample_state.clone());
 
         let global_context = GlobalContext::new(
             camera_controller.clone(),
@@ -412,10 +406,6 @@ impl ShashlikRenderer {
 impl Renderer for ShashlikRenderer {
     fn resize(&mut self, width: u32, height: u32) {
         self.resize(width, height);
-    }
-
-    fn update_and_render(&mut self) -> Result<(), SurfaceError> {
-        self.update_and_render()
     }
 
     fn update(&mut self) {
