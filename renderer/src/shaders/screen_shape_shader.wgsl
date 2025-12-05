@@ -4,7 +4,6 @@ const PARAMS_COUNT : i32 = 12;
 struct CameraUniform {
     view_proj: mat4x4<f32>,
     inv_screen_size: vec2<f32>,
-    ratio: f32,
 };
 
 struct StyleUniform {
@@ -61,7 +60,7 @@ fn vs_main(
      );
 
     let model_position = model_matrix * vec4(model.position.xyz, 1.0);
-    let ratio_fixed_modelpos = vec4(model_position.x, model_position.y * camera.ratio, model_position.z, 1.0);
+    let ratio_fixed_modelpos = vec4(model_position.xy * vec2(2.0*camera.inv_screen_size.x, 2.0*camera.inv_screen_size.y), model_position.z, 1.0);
 
     out.style_index = model.style_index;
     out.outline_flag = model.instance_index % 2;
@@ -75,7 +74,7 @@ fn vs_main(
 
     let coord = camera.view_proj * vec4<f32>(pos.position.xy, 0.0, 1.0);
 
-    out.clip_position = vec4(pointPos*0.025, 0.0) + vec4(coord.xyz/coord.w, 1.0);
+    out.clip_position = vec4(pointPos, 0.0) + vec4(coord.xyz/coord.w, 1.0);
 
     return out;
 }

@@ -175,7 +175,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     ))
                                     .cast()
                                     .unwrap(),
-                                    size: 2.0,
+                                    size: 40.0,
                                     style_id,
                                     with_collision: true,
                                 }));

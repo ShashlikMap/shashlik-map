@@ -4,7 +4,6 @@ const PARAMS_COUNT : i32 = 12;
 struct CameraUniform {
     view_proj: mat4x4<f32>,
     inv_screen_size: vec2<f32>,
-    ratio: f32,
 };
 
 struct StyleUniform {

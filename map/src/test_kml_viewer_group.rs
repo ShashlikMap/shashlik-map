@@ -36,7 +36,7 @@ impl RenderGroup for TestKmlGroup {
                 geometry_data.push(GeometryData::Svg(SvgData {
                     icon: ("kml", Self::CIRCLE_SVG),
                     position: Vector3::new(point.x(), point.y(), 0.0).cast().unwrap(),
-                    size: 1.0,
+                    size: 20.0,
                     style_id: StyleId("kml_dots"),
                     with_collision: false
                 }));

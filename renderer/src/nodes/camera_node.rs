@@ -2,7 +2,7 @@ use crate::camera::{Camera, CameraUniform};
 use crate::nodes::scene_tree::RenderContext;
 use crate::nodes::SceneNode;
 use crate::GlobalContext;
-use cgmath::{SquareMatrix, Vector2};
+use cgmath::{Matrix4, SquareMatrix, Vector2};
 use wgpu::{BindGroupLayout, Device, Queue, RenderPass};
 
 pub struct CameraNode {
@@ -27,8 +27,11 @@ impl CameraNode {
             fovy: 45.0,
             znear: 1.0,
             zfar: 2000000.0,
-            matrix: cgmath::Matrix4::identity().into(),
+            perspective_matrix: Matrix4::identity(),
+            matrix: Matrix4::identity(),
         };
+        // FIXME Android should call resize by itself!
+        camera.resize();
 
         let mut uniform = CameraUniform::new();
         uniform.update_view_proj(&mut camera);
@@ -108,6 +111,7 @@ impl SceneNode for CameraNode {
         if width > 0 && height > 0 {
             self.camera.aspect = width as f32 / height as f32;
             self.camera.inv_screen_size = Vector2::new(1.0/width as f32, 1.0/height as f32);
+            self.camera.resize();
         }
     }
 }

@@ -1,8 +1,8 @@
 use cgmath::{
-    Basis3, Deg, Matrix4, Point3, Rotation, Rotation3, SquareMatrix, Transform, Vector2,
-    Vector3, Vector4,
+    Basis3, Deg, Matrix4, Point3, Rotation, Rotation3, SquareMatrix, Transform, Vector2, Vector3,
+    Vector4,
 };
-use geo_types::{coord, Coord};
+use geo_types::{Coord, coord};
 
 #[rustfmt::skip]
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f64> = cgmath::Matrix4::from_cols(
@@ -29,15 +29,20 @@ pub struct Camera {
     pub fovy: f32,
     pub znear: f32,
     pub zfar: f32,
+    pub perspective_matrix: Matrix4<f32>,
     pub matrix: cgmath::Matrix4<f64>,
 }
 
 impl Camera {
     pub fn build_view_projection_matrix(&mut self) -> cgmath::Matrix4<f64> {
         let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
-        let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
-        self.matrix = (proj * view).cast().unwrap();
+        self.matrix = (self.perspective_matrix * view).cast().unwrap();
         self.matrix
+    }
+
+    pub fn resize(&mut self) {
+        self.perspective_matrix =
+            cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
     }
 }
 
@@ -68,7 +73,6 @@ impl<'a> ScreenPositionCalculator<'a> {
 pub struct CameraUniform {
     view_proj: [[f32; 4]; 4],
     inv_screen_size: [f32; 2],
-    ratio: f32,
 }
 
 impl CameraUniform {
@@ -76,7 +80,6 @@ impl CameraUniform {
         use cgmath::SquareMatrix;
         Self {
             view_proj: cgmath::Matrix4::identity().into(),
-            ratio: 1.0,
             inv_screen_size: [0.0, 0.0],
         }
     }
@@ -86,7 +89,6 @@ impl CameraUniform {
             .cast()
             .unwrap()
             .into();
-        self.ratio = camera.aspect;
         self.inv_screen_size = camera.inv_screen_size.into();
     }
 }
