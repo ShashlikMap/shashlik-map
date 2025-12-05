@@ -57,25 +57,9 @@ impl<T: TilesProvider> ShashlikMap<T> {
     const TEMP_ANIMATION_SPEED: f32 = 0.03;
     pub async fn new(
         canvas: Box<dyn WgpuCanvas>,
-        tiles_provider: T,
-    ) -> anyhow::Result<ShashlikMap<T>> {
-        let camera_controller = Rc::new(RefCell::new(CameraController::new(1.0)));
-        Self::new_with_camera_controller_internal(camera_controller, canvas, tiles_provider).await
-    }
-    #[cfg(all(target_os = "macos"))]
-    pub async fn new_with_camera_controller(
-        camera_controller: Rc<RefCell<CameraController>>,
-        canvas: Box<dyn WgpuCanvas>,
-        tiles_provider: T,
-    ) -> anyhow::Result<ShashlikMap<T>> {
-        Self::new_with_camera_controller_internal(camera_controller, canvas, tiles_provider).await
-    }
-
-    pub async fn new_with_camera_controller_internal(
-        camera_controller: Rc<RefCell<CameraController>>,
-        canvas: Box<dyn WgpuCanvas>,
         mut tiles_provider: T,
     ) -> anyhow::Result<ShashlikMap<T>> {
+        let camera_controller = Rc::new(RefCell::new(CameraController::new(1.0)));
         // TODO support resize
         let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
 

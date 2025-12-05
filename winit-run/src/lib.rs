@@ -2,22 +2,18 @@ use app_surface::{AppSurface, SurfaceFrame};
 use i_slint_backend_winit::{CustomApplicationHandler, EventResult};
 use map::tiles::tiles_provider::TilesProvider;
 use map::ShashlikMap;
-use renderer::camera::CameraController;
-use std::cell::RefCell;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture};
-use winit::dpi::PhysicalPosition;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use winit::dpi::PhysicalPosition;
 use winit::event::{KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
 
 pub struct App<T: TilesProvider> {
-    pub camera_controller: Rc<RefCell<CameraController>>,
     pub receiver: Receiver<CustomUIEvent>,
     pub get_tiles_provider: Box<dyn Fn() -> T>,
     pub shashlik_map: Option<ShashlikMap<T>>,
@@ -33,7 +29,6 @@ pub enum CustomUIEvent {
 impl<T: TilesProvider> App<T> {
     pub fn new(get_tiles_provider: Box<dyn Fn() -> T>, receiver: Receiver<CustomUIEvent>) -> Self {
         Self {
-            camera_controller: Rc::new(RefCell::new(CameraController::new(1.0))),
             receiver,
             get_tiles_provider,
             shashlik_map: None,
@@ -90,8 +85,7 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
         };
 
         let tiles_provider = (self.get_tiles_provider)();
-        let wgpu_state = pollster::block_on(ShashlikMap::new_with_camera_controller(
-            Rc::clone(&self.camera_controller),
+        let wgpu_state = pollster::block_on(ShashlikMap::new(
             Box::new(winit_surface),
             tiles_provider
         ))
