@@ -21,7 +21,11 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
     private val scaleListener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
 
         override fun onScale(detector: ScaleGestureDetector): Boolean {
-            shashlikMapApi?.zoomDelta((detector.scaleFactor - 1.0f) * 150.0f)
+            shashlikMapApi?.zoomDelta(
+                (detector.scaleFactor - 1.0f) * 150.0f,
+                detector.focusX,
+                detector.focusY
+            )
             return true
         }
     }

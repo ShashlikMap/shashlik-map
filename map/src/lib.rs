@@ -5,7 +5,7 @@ use crate::test_kml_viewer_group::TestKmlGroup;
 use crate::test_puck_group::TestSimplePuck;
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
-use cgmath::Vector3;
+use cgmath::{Vector2, Vector3};
 use futures::executor::block_on;
 use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
@@ -41,6 +41,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     style_loader: StyleLoader,
     pub temp_color: f32,
     pub cam_follow_mode: bool,
+    screen_size: (f32, f32),
 }
 
 impl RenderGroup for TileData {
@@ -75,6 +76,9 @@ impl<T: TilesProvider> ShashlikMap<T> {
         canvas: Box<dyn WgpuCanvas>,
         mut tiles_provider: T,
     ) -> anyhow::Result<ShashlikMap<T>> {
+        // TODO support resize
+        let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
+
         let renderer = ShashlikRenderer::new(camera_controller.clone(), canvas).await?;
         let tiles_stream = tiles_provider.tiles();
 
@@ -104,6 +108,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             style_loader: StyleLoader::new(),
             temp_color: 0.0,
             cam_follow_mode: true,
+            screen_size,
         };
         map.load_styles();
         Ok(map)
@@ -219,8 +224,15 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.camera_controller.borrow_mut().rotation = new_cam_rotation;
     }
 
-    pub fn zoom_delta(&self, delta: f32) {
+    pub fn zoom_delta(&self, delta: f32, point: (f32, f32)) {
         self.camera_controller.borrow_mut().zoom_delta = delta;
+
+        let ratio = self.screen_size.0 / self.screen_size.1;
+        let half_screen_size = Vector2::from(self.screen_size) * 0.5f32;
+        let diff = (Vector2::from(point) - half_screen_size) * 0.5f32;
+        let px = diff.x / half_screen_size.x;
+        let py = diff.y / half_screen_size.y;
+        self.pan_delta(delta * px * ratio, delta * py);
     }
 
     pub fn pan_delta(&self, delta_x: f32, delta_y: f32) {

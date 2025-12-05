@@ -153,7 +153,7 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                 match delta {
                     MouseScrollDelta::LineDelta(_, _) => {}
                     MouseScrollDelta::PixelDelta(delta_xy) => {
-                        self.shashlik_map.as_ref().unwrap().zoom_delta((delta_xy.y/10.0) as f32);
+                        self.shashlik_map.as_ref().unwrap().zoom_delta((delta_xy.y/10.0) as f32, self.last_cursor_position.cast::<f32>().into());
                     }
                 }
             }
