@@ -63,13 +63,14 @@ fn vs_main(
     let ratio_fixed_modelpos = vec4(model_position.xy * vec2(2.0*camera.inv_screen_size.x, 2.0*camera.inv_screen_size.y), model_position.z, 1.0);
 
     out.style_index = model.style_index;
-    out.outline_flag = model.instance_index % 2;
+    // FIXME Disable outlining for screen shapes for a while
+    out.outline_flag = 1; //model.instance_index % 2;
     out.color_alpha = pos.color_alpha;
 
     var pointPos = ratio_fixed_modelpos.xyz;
     if(model.instance_index % 2 == 0) {
         // only two components for normal
-        pointPos += vec3(model.normal.xy * inflate_factor, 0.0);
+//        pointPos += vec3(model.normal.xy * inflate_factor, 0.0);
     }
 
     let coord = camera.view_proj * vec4<f32>(pos.position.xy, 0.0, 1.0);

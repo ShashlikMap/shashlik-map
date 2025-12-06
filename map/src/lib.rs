@@ -185,6 +185,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.renderer
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
+                spatial_data.scale = 15.0;
                 spatial_data.transform += (puck_location.cast().unwrap() - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED as f64;
                 // TODO Puck should be aligned with the map plane too
                 if !cam_follow_mode {
