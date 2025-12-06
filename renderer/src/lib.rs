@@ -120,7 +120,7 @@ impl ShashlikRenderer {
 
         let mut world_tree_node = SceneTree::new(World::new(), "".to_string());
 
-        let camera_node = world_tree_node.add_child(CameraNode::new(&config, &device));
+        let camera_node = world_tree_node.add_child(CameraNode::new(&device));
 
         let depth_texture = DepthTexture::new(&device, config.width, config.height);
         let msaa_texture =

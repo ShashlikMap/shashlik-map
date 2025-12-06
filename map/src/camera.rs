@@ -1,5 +1,5 @@
 use cgmath::{
-    Basis3, Deg, Matrix4, Point3, Rotation, Rotation3, SquareMatrix, Transform, Vector2, Vector3,
+    Basis3, Deg, Matrix4, Point3, Rotation, Rotation3, Transform, Vector2, Vector3,
     Vector4,
 };
 use geo_types::Coord;
@@ -9,7 +9,6 @@ pub struct Camera {
     pub eye: cgmath::Point3<f32>,
     pub target: cgmath::Point3<f32>,
     pub up: cgmath::Vector3<f32>,
-    pub aspect: f32,
     pub fovy: f32,
     pub znear: f32,
     pub zfar: f32,
@@ -25,9 +24,10 @@ impl Camera {
         view_proj_matrix
     }
 
-    pub fn resize(&mut self) {
+    pub fn resize(&mut self, width: u32, height: u32) {
+        let aspect = width as f32 / height as f32;
         self.perspective_matrix =
-            cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
+            cgmath::perspective(cgmath::Deg(self.fovy), aspect, self.znear, self.zfar);
     }
 
     pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<Vector2<f64>> {

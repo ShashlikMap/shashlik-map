@@ -98,13 +98,14 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
         &mut self,
         event_loop: &ActiveEventLoop,
         _window_id: WindowId,
-        _winit_window: Option<&Window>,
+        winit_window: Option<&Window>,
         _slint_window: Option<&slint::Window>,
         event: &WindowEvent,
     ) -> EventResult {
         if self.shashlik_map.is_none() {
             return EventResult::Propagate;
         }
+
         let map = self.shashlik_map.as_mut().unwrap();
 
         if let Ok(event) = self.receiver.try_recv() {
@@ -121,7 +122,11 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                 event_loop.exit();
             }
             WindowEvent::Resized(size) => {
-                map.renderer().resize(size.width, size.height);
+                // FIXME Don't resize map if the window present(this is Slint window with incorrect size)
+                // Need to divide handlers?!
+                if winit_window.is_none() {
+                    map.resize(size.width, size.height);
+                }
             }
             WindowEvent::RedrawRequested => {
                 map.update_and_render();
@@ -139,7 +144,7 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                 if self.cursor_active {
                     let delta_x = -(position.x - self.last_cursor_position.x) / 10.0;
                     let delta_y = -(position.y - self.last_cursor_position.y) / 10.0;
-                    self.shashlik_map.as_ref().unwrap().pan_delta(delta_x as f32, delta_y as f32)
+                    self.shashlik_map.as_mut().unwrap().pan_delta(delta_x as f32, delta_y as f32)
                 }
                 self.last_cursor_position = position.clone();
             }
@@ -147,7 +152,7 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                 match delta {
                     MouseScrollDelta::LineDelta(_, _) => {}
                     MouseScrollDelta::PixelDelta(delta_xy) => {
-                        self.shashlik_map.as_ref().unwrap().zoom_delta((delta_xy.y/10.0) as f32, self.last_cursor_position.cast::<f32>().into());
+                        self.shashlik_map.as_mut().unwrap().zoom_delta((delta_xy.y/10.0) as f32, self.last_cursor_position.cast::<f32>().into());
                     }
                 }
             }

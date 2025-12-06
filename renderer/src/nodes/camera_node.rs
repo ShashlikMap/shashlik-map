@@ -11,7 +11,7 @@ pub struct CameraNode {
 }
 
 impl CameraNode {
-    pub fn new(config: &wgpu::SurfaceConfiguration, device: &wgpu::Device) -> Self {
+    pub fn new(device: &wgpu::Device) -> Self {
         // CameraUniform align is 16byte since vec4 is used
         let vec4size = size_of::<[f32; 4]>() as u64;
         let size = size_of::<ViewProjUniform>() as u64;
@@ -68,13 +68,6 @@ impl SceneNode for CameraNode {
         _config: &wgpu::SurfaceConfiguration,
         global_context: &mut GlobalContext,
     ) {
-        // let camera_controller = &global_context.camera_controller;
-        // camera_controller
-        //     .borrow_mut()
-        //     .update_camera(&mut self.camera);
-        // self.uniform.update_view_proj(&mut self.camera);
-        // camera_controller.borrow_mut().cached_matrix = self.camera.matrix;
-
         queue.write_buffer(
             &self.buffer,
             0,
@@ -85,12 +78,4 @@ impl SceneNode for CameraNode {
     fn render(&self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
         render_pass.set_bind_group(0, &self.bind_group, &[]);
     }
-
-    // fn resize(&mut self, width: u32, height: u32, _queue: &Queue) {
-    //     if width > 0 && height > 0 {
-    //         self.camera.aspect = width as f32 / height as f32;
-    //         self.camera.inv_screen_size = Vector2::new(1.0/width as f32, 1.0/height as f32);
-    //         self.camera.resize();
-    //     }
-    // }
 }

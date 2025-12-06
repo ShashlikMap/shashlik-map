@@ -26,12 +26,12 @@ impl ShashlikMapApi {
     }
 
     fn zoom_delta(&self, delta: f32, point_x: f32, point_y: f32) {
-        let shashlik_map = self.shashlik_map.read().unwrap();
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
         shashlik_map.zoom_delta(delta, (point_x, point_y));
     }
 
     fn pan_delta(&self, delta_x: f32, delta_y: f32) {
-        let shashlik_map = self.shashlik_map.read().unwrap();
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
         shashlik_map.pan_delta(delta_x, delta_y);
     }
 
