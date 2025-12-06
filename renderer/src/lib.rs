@@ -17,11 +17,11 @@ use crate::pipeline_provider::PipeLineProvider;
 use crate::styles::style_store::StyleStore;
 use crate::text::text_renderer::TextRenderer;
 use crate::vertex_attrs::{InstancePos, ShapeVertex, VertexAttrib, VertexNormal};
-use camera::CameraController;
+use crate::view_projection::ViewProjUniform;
 use canvas_api::CanvasApi;
+use cgmath::Matrix4;
 use messages::RendererApiMsg;
 use renderer_api::RendererApi;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::iter;
 use std::rc::Rc;
@@ -33,7 +33,6 @@ use tokio::sync::broadcast::error::TryRecvError;
 use wgpu::{include_wgsl, CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
-pub mod camera;
 pub mod canvas_api;
 mod collision_handler;
 mod consts;
@@ -54,12 +53,13 @@ mod svg;
 mod text;
 pub mod vertex_attrs;
 mod layers;
+mod view_projection;
 
 pub const SHADER_STYLE_GROUP_INDEX: u32 = 1;
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
-    fn update(&mut self);
+    fn update(&mut self, view_proj_matrix: Matrix4<f64>);
     fn render(&mut self) -> Result<(), SurfaceError>;
 }
 
@@ -81,19 +81,18 @@ impl<T: Clone> ReceiverExt<T> for tokio::sync::broadcast::Receiver<T> {
 }
 
 pub struct GlobalContext {
-    camera_controller: Rc<RefCell<CameraController>>,
+    view_proj_uniform: ViewProjUniform,
     collision_handler: CollisionHandler,
     text_renderer: TextRenderer,
 }
 
 impl GlobalContext {
     pub fn new(
-        camera_controller: Rc<RefCell<CameraController>>,
         collision_handler: CollisionHandler,
         device: &wgpu::Device,
     ) -> Self {
         GlobalContext {
-            camera_controller,
+            view_proj_uniform: ViewProjUniform::new(),
             collision_handler,
             text_renderer: TextRenderer::new(device),
         }
@@ -114,7 +113,6 @@ pub struct ShashlikRenderer {
 
 impl ShashlikRenderer {
     pub async fn new(
-        camera_controller: Rc<RefCell<CameraController>>,
         canvas: Box<dyn WgpuCanvas>,
     ) -> anyhow::Result<ShashlikRenderer> {
         let device = canvas.device();
@@ -122,7 +120,7 @@ impl ShashlikRenderer {
 
         let mut world_tree_node = SceneTree::new(World::new(), "".to_string());
 
-        let camera_node = world_tree_node.add_child(CameraNode::new(&config, &device));
+        let camera_node = world_tree_node.add_child(CameraNode::new(&device));
 
         let depth_texture = DepthTexture::new(&device, config.width, config.height);
         let msaa_texture =
@@ -145,11 +143,11 @@ impl ShashlikRenderer {
                                     depth_state.clone(),
                                     multisample_state.clone());
 
-        let global_context = GlobalContext::new(
-            camera_controller.clone(),
+        let mut global_context = GlobalContext::new(
             CollisionHandler::new(config.width as f32, config.height as f32),
             device,
         );
+        global_context.view_proj_uniform.resize(config.width, config.height);
         let pipeline_provider = PipeLineProvider::new(
             config.format,
             depth_state.clone(),
@@ -293,7 +291,10 @@ impl ShashlikRenderer {
             let config = self.canvas.config();
             let device = self.canvas.device();
             let queue = self.canvas.queue();
+
+            self.global_context.view_proj_uniform.resize(config.width, config.height);
             self.global_context.collision_handler.resize(config.width as f32, config.height as f32);
+
             self.world_tree_node
                 .resize(config.width, config.height, queue);
             self.depth_texture = DepthTexture::new(&device, config.width, config.height);
@@ -302,12 +303,8 @@ impl ShashlikRenderer {
         }
     }
 
-    pub fn update_and_render(&mut self) -> Result<(), SurfaceError> {
-        self.update();
-        self.render()
-    }
-
-    fn update(&mut self) {
+    fn update(&mut self, view_proj_matrix: Matrix4<f64>) {
+        self.global_context.view_proj_uniform.update(view_proj_matrix);
         let device = self.canvas.device();
         if let Ok(message) = self.renderer_rx.try_recv() {
             match message {
@@ -408,8 +405,8 @@ impl Renderer for ShashlikRenderer {
         self.resize(width, height);
     }
 
-    fn update(&mut self) {
-        self.update();
+    fn update(&mut self, view_proj_matrix: Matrix4<f64>) {
+        self.update(view_proj_matrix);
     }
 
     fn render(&mut self) -> Result<(), SurfaceError> {

@@ -2,22 +2,18 @@ use app_surface::{AppSurface, SurfaceFrame};
 use i_slint_backend_winit::{CustomApplicationHandler, EventResult};
 use map::tiles::tiles_provider::TilesProvider;
 use map::ShashlikMap;
-use renderer::camera::CameraController;
-use std::cell::RefCell;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture};
-use winit::dpi::PhysicalPosition;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use winit::dpi::PhysicalPosition;
 use winit::event::{KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
 
 pub struct App<T: TilesProvider> {
-    pub camera_controller: Rc<RefCell<CameraController>>,
     pub receiver: Receiver<CustomUIEvent>,
     pub get_tiles_provider: Box<dyn Fn() -> T>,
     pub shashlik_map: Option<ShashlikMap<T>>,
@@ -33,7 +29,6 @@ pub enum CustomUIEvent {
 impl<T: TilesProvider> App<T> {
     pub fn new(get_tiles_provider: Box<dyn Fn() -> T>, receiver: Receiver<CustomUIEvent>) -> Self {
         Self {
-            camera_controller: Rc::new(RefCell::new(CameraController::new(1.0))),
             receiver,
             get_tiles_provider,
             shashlik_map: None,
@@ -90,8 +85,7 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
         };
 
         let tiles_provider = (self.get_tiles_provider)();
-        let wgpu_state = pollster::block_on(ShashlikMap::new_with_camera_controller(
-            Rc::clone(&self.camera_controller),
+        let wgpu_state = pollster::block_on(ShashlikMap::new(
             Box::new(winit_surface),
             tiles_provider
         ))
@@ -104,13 +98,14 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
         &mut self,
         event_loop: &ActiveEventLoop,
         _window_id: WindowId,
-        _winit_window: Option<&Window>,
+        winit_window: Option<&Window>,
         _slint_window: Option<&slint::Window>,
         event: &WindowEvent,
     ) -> EventResult {
         if self.shashlik_map.is_none() {
             return EventResult::Propagate;
         }
+
         let map = self.shashlik_map.as_mut().unwrap();
 
         if let Ok(event) = self.receiver.try_recv() {
@@ -127,7 +122,11 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                 event_loop.exit();
             }
             WindowEvent::Resized(size) => {
-                map.renderer().resize(size.width, size.height);
+                // FIXME Don't resize map if the window present(this is Slint window with incorrect size)
+                // Need to divide handlers?!
+                if winit_window.is_none() {
+                    map.resize(size.width, size.height);
+                }
             }
             WindowEvent::RedrawRequested => {
                 map.update_and_render();
@@ -145,7 +144,7 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                 if self.cursor_active {
                     let delta_x = -(position.x - self.last_cursor_position.x) / 10.0;
                     let delta_y = -(position.y - self.last_cursor_position.y) / 10.0;
-                    self.shashlik_map.as_ref().unwrap().pan_delta(delta_x as f32, delta_y as f32)
+                    self.shashlik_map.as_mut().unwrap().pan_delta(delta_x as f32, delta_y as f32)
                 }
                 self.last_cursor_position = position.clone();
             }
@@ -153,7 +152,7 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                 match delta {
                     MouseScrollDelta::LineDelta(_, _) => {}
                     MouseScrollDelta::PixelDelta(delta_xy) => {
-                        self.shashlik_map.as_ref().unwrap().zoom_delta((delta_xy.y/10.0) as f32, self.last_cursor_position.cast::<f32>().into());
+                        self.shashlik_map.as_mut().unwrap().zoom_delta((delta_xy.y/10.0) as f32, self.last_cursor_position.cast::<f32>().into());
                     }
                 }
             }

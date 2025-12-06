@@ -1,26 +1,24 @@
 extern crate core;
 
+use crate::camera::{Camera, CameraController};
 use crate::style_loader::StyleLoader;
 use crate::test_kml_viewer_group::TestKmlGroup;
 use crate::test_puck_group::TestSimplePuck;
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
-use cgmath::{Vector2, Vector3};
+use cgmath::{Matrix4, SquareMatrix, Vector2, Vector3};
 use futures::executor::block_on;
 use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
 use geo_types::{coord, Coord, Point, Rect};
 use geo_types::{LineString, Polygon};
-use renderer::camera::CameraController;
 use renderer::canvas_api::CanvasApi;
 use renderer::modifier::render_modifier::SpatialData;
 use renderer::render_group::RenderGroup;
 use renderer::renderer_api::RendererApi;
 use renderer::{Renderer, ShashlikRenderer};
-use std::cell::RefCell;
 use std::mem;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::Arc;
 use std::thread::spawn;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
@@ -29,10 +27,12 @@ mod style_loader;
 mod test_puck_group;
 pub mod tiles;
 mod test_kml_viewer_group;
+mod camera;
 
 pub struct ShashlikMap<T: TilesProvider> {
     renderer: Box<ShashlikRenderer>,
-    camera_controller: Rc<RefCell<CameraController>>,
+    camera: Camera,
+    camera_controller: CameraController,
     tiles_provider: T,
     last_area_latlon: Rect,
     camera_offset: Vector3<f32>,
@@ -57,29 +57,25 @@ impl<T: TilesProvider> ShashlikMap<T> {
     const TEMP_ANIMATION_SPEED: f32 = 0.03;
     pub async fn new(
         canvas: Box<dyn WgpuCanvas>,
-        tiles_provider: T,
-    ) -> anyhow::Result<ShashlikMap<T>> {
-        let camera_controller = Rc::new(RefCell::new(CameraController::new(1.0)));
-        Self::new_with_camera_controller_internal(camera_controller, canvas, tiles_provider).await
-    }
-    #[cfg(all(target_os = "macos"))]
-    pub async fn new_with_camera_controller(
-        camera_controller: Rc<RefCell<CameraController>>,
-        canvas: Box<dyn WgpuCanvas>,
-        tiles_provider: T,
-    ) -> anyhow::Result<ShashlikMap<T>> {
-        Self::new_with_camera_controller_internal(camera_controller, canvas, tiles_provider).await
-    }
-
-    pub async fn new_with_camera_controller_internal(
-        camera_controller: Rc<RefCell<CameraController>>,
-        canvas: Box<dyn WgpuCanvas>,
         mut tiles_provider: T,
     ) -> anyhow::Result<ShashlikMap<T>> {
-        // TODO support resize
-        let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
+        let mut camera = Camera {
+            eye: (0.0, 0.0, 200.0).into(),
+            target: (0.0, 0.0, 0.0).into(),
+            up: cgmath::Vector3::unit_y(),
+            fovy: 45.0,
+            znear: 1.0,
+            zfar: 2000000.0,
+            perspective_matrix: Matrix4::identity(),
+            inv_view_proj_matrix: Matrix4::identity(),
+        };
 
-        let renderer = ShashlikRenderer::new(camera_controller.clone(), canvas).await?;
+        let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
+        // FIXME Android should call resize by itself!
+        camera.resize(screen_size.0 as u32, screen_size.1 as u32);
+
+
+        let renderer = ShashlikRenderer::new(canvas).await?;
         let tiles_stream = tiles_provider.tiles();
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
@@ -99,7 +95,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
         Self::run_tiles(renderer.api.clone(), tiles_stream, camera_offset);
         let map = ShashlikMap {
             renderer: Box::new(renderer),
-            camera_controller,
+            camera,
+            camera_controller: CameraController::new(1.0),
             tiles_provider,
             last_area_latlon: Rect::new((0.0, 0.0), (0.0, 0.0)),
             current_lat_lon: camera_offset.cast().unwrap(),
@@ -115,7 +112,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn clip_to_latlon(&self, coord: &Coord<f64>) -> Option<Coord<f64>> {
-        let world_on_ground = self.camera_controller.borrow().clip_to_world(coord)?;
+        let world_on_ground = self.camera.clip_to_world(coord)?;
         Some(T::world_to_lat_lon(
             &(
                 world_on_ground.x + self.camera_offset.x as f64,
@@ -162,10 +159,17 @@ impl<T: TilesProvider> ShashlikMap<T> {
         });
     }
 
+    pub fn resize(&mut self, width: u32, height: u32) {
+        self.camera.resize(width, height);
+        self.renderer.resize(width, height);
+    }
+
     pub fn update_and_render(&mut self) {
+        self.camera_controller.update_camera(&mut self.camera);
+
         self.update_entities();
 
-        self.renderer.update();
+        self.renderer.update(self.camera.build_view_projection_matrix());
 
         self.fetch_tiles();
 
@@ -173,7 +177,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     fn fetch_tiles(&mut self) {
-        let zoom_level = self.camera_controller.borrow().camera_z / 100.0;
+        let zoom_level = self.camera_controller.camera_z / 100.0;
         let zoom_level = (zoom_level.log2().round() as i32).max(0);
         let p1 = self.clip_to_latlon(&coord! {x: -1.0, y: -1.0}).unwrap();
         let p2 = self.clip_to_latlon(&coord! {x: 1.0, y: -1.0}).unwrap();
@@ -190,9 +194,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.last_area_latlon = area_latlon;
     }
 
-    pub fn renderer(&mut self) -> &mut dyn Renderer {
-        self.renderer.as_mut()
-    }
 
     fn update_entities(&mut self) {
         let puck_location = self.current_lat_lon - self.camera_offset.cast().unwrap();
@@ -201,6 +202,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.renderer
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
+                spatial_data.scale = 15.0;
                 spatial_data.transform += (puck_location.cast().unwrap() - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED as f64;
                 // TODO Puck should be aligned with the map plane too
                 if !cam_follow_mode {
@@ -210,22 +212,22 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 }
             });
 
-        let cam_rotation = self.camera_controller.borrow_mut().rotation;
+        let cam_rotation = self.camera_controller.rotation;
         let new_cam_rotation = if self.cam_follow_mode {
-            let cam_pos = self.camera_controller.borrow().position;
+            let cam_pos = self.camera_controller.position;
             let cam_pos = Vector3::new(cam_pos.x, cam_pos.y, cam_pos.z);
             let new_cam_pos = cam_pos + ((self.current_lat_lon - self.camera_offset) - cam_pos) * Self::TEMP_ANIMATION_SPEED;
-            self.camera_controller.borrow_mut().set_new_position(new_cam_pos);
+            self.camera_controller.set_new_position(new_cam_pos);
 
             cam_rotation + ((self.current_bearing - cam_rotation) % 360.0) * Self::TEMP_ANIMATION_SPEED
         } else {
             cam_rotation * (1.0f32 - Self::TEMP_ANIMATION_SPEED) % 360.0
         };
-        self.camera_controller.borrow_mut().rotation = new_cam_rotation;
+        self.camera_controller.rotation = new_cam_rotation;
     }
 
-    pub fn zoom_delta(&self, delta: f32, point: (f32, f32)) {
-        self.camera_controller.borrow_mut().zoom_delta = delta;
+    pub fn zoom_delta(&mut self, delta: f32, point: (f32, f32)) {
+        self.camera_controller.zoom_delta = delta;
 
         let ratio = self.screen_size.0 / self.screen_size.1;
         let half_screen_size = Vector2::from(self.screen_size) * 0.5f32;
@@ -235,10 +237,10 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.pan_delta(delta * px * ratio, delta * py);
     }
 
-    pub fn pan_delta(&self, delta_x: f32, delta_y: f32) {
+    pub fn pan_delta(&mut self, delta_x: f32, delta_y: f32) {
         // pan is disabled for now
         if !self.cam_follow_mode {
-            self.camera_controller.borrow_mut().pan_delta = (delta_x, delta_y);
+            self.camera_controller.pan_delta = (delta_x, delta_y);
         }
     }
 
