@@ -1,4 +1,3 @@
-use crate::camera::ScreenPositionCalculator;
 use crate::collision_handler::CollisionHandler;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::vertex_attrs::InstancePos;
@@ -12,6 +11,7 @@ use rustybuzz::GlyphBuffer;
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 use wgpu::{Buffer, Device, Queue, RenderPass};
+use crate::view_projection::ScreenPositionCalculator;
 
 #[derive(Clone)]
 pub struct GlyphData {

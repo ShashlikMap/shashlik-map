@@ -5,13 +5,12 @@ use crate::test_kml_viewer_group::TestKmlGroup;
 use crate::test_puck_group::TestSimplePuck;
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
-use cgmath::{Vector2, Vector3};
+use cgmath::{Matrix4, SquareMatrix, Vector2, Vector3};
 use futures::executor::block_on;
 use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
 use geo_types::{coord, Coord, Point, Rect};
 use geo_types::{LineString, Polygon};
-use renderer::camera::CameraController;
 use renderer::canvas_api::CanvasApi;
 use renderer::modifier::render_modifier::SpatialData;
 use renderer::render_group::RenderGroup;
@@ -24,14 +23,17 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::thread::spawn;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use crate::camera::{Camera, CameraController};
 
 mod style_loader;
 mod test_puck_group;
 pub mod tiles;
 mod test_kml_viewer_group;
+mod camera;
 
 pub struct ShashlikMap<T: TilesProvider> {
     renderer: Box<ShashlikRenderer>,
+    camera: Camera,
     camera_controller: Rc<RefCell<CameraController>>,
     tiles_provider: T,
     last_area_latlon: Rect,
@@ -63,7 +65,22 @@ impl<T: TilesProvider> ShashlikMap<T> {
         // TODO support resize
         let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
 
-        let renderer = ShashlikRenderer::new(camera_controller.clone(), canvas).await?;
+        let mut camera = Camera {
+            eye: (0.0, 0.0, 200.0).into(),
+            target: (0.0, 0.0, 0.0).into(),
+            up: cgmath::Vector3::unit_y(),
+            aspect: screen_size.0 / screen_size.1,
+            fovy: 45.0,
+            znear: 1.0,
+            zfar: 2000000.0,
+            perspective_matrix: Matrix4::identity(),
+            inv_view_proj_matrix: Matrix4::identity(),
+        };
+        // FIXME Android should call resize by itself!
+        camera.resize();
+
+
+        let renderer = ShashlikRenderer::new(canvas).await?;
         let tiles_stream = tiles_provider.tiles();
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
@@ -83,6 +100,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         Self::run_tiles(renderer.api.clone(), tiles_stream, camera_offset);
         let map = ShashlikMap {
             renderer: Box::new(renderer),
+            camera,
             camera_controller,
             tiles_provider,
             last_area_latlon: Rect::new((0.0, 0.0), (0.0, 0.0)),
@@ -99,7 +117,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn clip_to_latlon(&self, coord: &Coord<f64>) -> Option<Coord<f64>> {
-        let world_on_ground = self.camera_controller.borrow().clip_to_world(coord)?;
+        let world_on_ground = self.camera.clip_to_world(coord)?;
         Some(T::world_to_lat_lon(
             &(
                 world_on_ground.x + self.camera_offset.x as f64,
@@ -147,9 +165,11 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn update_and_render(&mut self) {
+        self.camera_controller.borrow_mut().update_camera(&mut self.camera);
+
         self.update_entities();
 
-        self.renderer.update();
+        self.renderer.update(self.camera.build_view_projection_matrix());
 
         self.fetch_tiles();
 
