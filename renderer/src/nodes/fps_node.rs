@@ -77,7 +77,6 @@ impl SceneNode for FpsNode {
     }
 
     fn resize(&mut self, width: u32, height: u32, queue: &Queue) {
-        println!("qweqweqw");
         self.text_brush.resize_view(width as f32, height as f32, queue);
     }
 }
