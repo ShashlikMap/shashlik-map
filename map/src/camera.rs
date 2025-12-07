@@ -1,6 +1,4 @@
-use cgmath::{
-    Basis3, Deg, Matrix4, Point3, Rotation, Rotation3, SquareMatrix, Vector3
-};
+use cgmath::{Basis3, Deg, InnerSpace, Matrix4, Point3, Rad, Rotation, Rotation3, SquareMatrix, Vector2, Vector3};
 
 pub struct Camera {
     eye: cgmath::Point3<f32>,
@@ -41,11 +39,11 @@ pub struct CameraController {
     #[allow(dead_code)]
     speed: f32,
     pub zoom_delta: f32,
-    pub pan_delta: (f32, f32),
+    pub pan_delta: Vector2<f32>,
     pub camera_z: f32,
     pub position: cgmath::Point3<f32>,
-    pub rotation: f32,
-    pub tilt: f32
+    pub yaw: f32,
+    pub pitch: f32
 }
 
 impl CameraController {
@@ -53,11 +51,11 @@ impl CameraController {
         Self {
             speed,
             zoom_delta: 0.0,
-            pan_delta: (0.0, 0.0),
+            pan_delta: Vector2::new(0.0, 0.0),
             camera_z: 200.0,
             position: cgmath::Point3::new(0.0, 0.0, 0.0),
-            rotation: 0.0,
-            tilt: 0.0
+            yaw: 0.0,
+            pitch: 90.0
         }
     }
 
@@ -66,31 +64,32 @@ impl CameraController {
     }
 
     pub(crate) fn update_camera(&mut self, camera: &mut Camera) {
-        use cgmath::InnerSpace;
-        let forward = camera.target - camera.eye;
-        let forward_norm = forward.normalize();
-
         let speed_koef = self.camera_z / 150.0;
 
-        camera.eye += forward_norm * self.zoom_delta * speed_koef;
+        let (sin_pitch, cos_pitch) = Rad::from(Deg(self.pitch)).0.sin_cos();
+        let (sin_yaw, cos_yaw) = Rad::from(Deg(-self.yaw)).0.sin_cos();
 
-        camera.eye.x = self.position.x;
-        camera.eye.y = self.position.y;
-        camera.target.x = self.position.x;
-        camera.target.y = self.position.y;
+        let dir = Vector3::new(
+            cos_pitch * sin_yaw,
+            cos_pitch * cos_yaw,
+            sin_pitch,
+        ).normalize();
 
-        camera.eye.x += self.pan_delta.0 * speed_koef;
-        camera.target.x += self.pan_delta.0 * speed_koef;
-        camera.eye.y += self.pan_delta.1 * speed_koef;
-        camera.target.y += self.pan_delta.1 * speed_koef;
+        camera.target = self.position;
+        camera.eye += (camera.target - camera.eye).normalize() * self.zoom_delta * speed_koef;
 
-        let rotation_matrix = Basis3::from_angle_z(Deg(self.rotation));
-        // temporary fast trick for top-down view
+        let len = (camera.target - camera.eye).magnitude();
+        camera.eye = camera.target + (dir * len);
+
+        camera.eye += self.pan_delta.extend(0.0) * speed_koef;
+        camera.target += self.pan_delta.extend(0.0) * speed_koef;
+
+        let rotation_matrix = Basis3::from_angle_z(Deg(self.yaw));
         camera.up = rotation_matrix.rotate_vector(cgmath::Vector3::unit_y());
 
         self.position = camera.target.clone();
 
-        self.pan_delta = (0.0, 0.0);
+        self.pan_delta = Vector2::new(0.0, 0.0);
         self.zoom_delta = 0.0;
 
         self.camera_z = camera.eye.z;

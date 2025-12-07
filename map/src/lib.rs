@@ -21,6 +21,7 @@ use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread::spawn;
+use cgmath::num_traits::clamp;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 mod style_loader;
@@ -199,18 +200,18 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 }
             });
 
-        let cam_rotation = self.camera_controller.rotation;
-        let new_cam_rotation = if self.cam_follow_mode {
+        let cam_yaw = self.camera_controller.yaw;
+        let new_cam_yaw = if self.cam_follow_mode {
             let cam_pos = self.camera_controller.position;
             let cam_pos = Vector3::new(cam_pos.x, cam_pos.y, cam_pos.z);
             let new_cam_pos = cam_pos + ((self.current_lat_lon - self.camera_offset) - cam_pos) * Self::TEMP_ANIMATION_SPEED;
             self.camera_controller.set_new_position(new_cam_pos);
 
-            cam_rotation + ((self.current_bearing - cam_rotation) % 360.0) * Self::TEMP_ANIMATION_SPEED
+            cam_yaw + ((self.current_bearing - cam_yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED
         } else {
-            cam_rotation * (1.0f32 - Self::TEMP_ANIMATION_SPEED) % 360.0
+            cam_yaw * (1.0f32 - Self::TEMP_ANIMATION_SPEED) % 360.0
         };
-        self.camera_controller.rotation = new_cam_rotation;
+        self.camera_controller.yaw = new_cam_yaw;
     }
 
     pub fn zoom_delta(&mut self, delta: f32, point: (f32, f32)) {
@@ -227,12 +228,13 @@ impl<T: TilesProvider> ShashlikMap<T> {
     pub fn pan_delta(&mut self, delta_x: f32, delta_y: f32) {
         // pan is disabled for now
         if !self.cam_follow_mode {
-            self.camera_controller.pan_delta = (delta_x, delta_y);
+            self.camera_controller.pan_delta = Vector2::new(delta_x, delta_y);
         }
     }
 
-    pub fn tilt_delta(&mut self, delta: f32) {
-        self.camera_controller.tilt += delta;
+    pub fn pitch_delta(&mut self, delta: f32) {
+        self.camera_controller.pitch += delta;
+        self.camera_controller.pitch = clamp(self.camera_controller.pitch, 45.0, 90.0);
     }
 
     pub fn set_lat_lon_bearing(&mut self, lat: f64, lon: f64, bearing: Option<f32>) {

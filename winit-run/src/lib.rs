@@ -172,12 +172,12 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                     match code {
                         KeyCode::KeyZ => {
                             if is_pressed {
-                                map.tilt_delta(0.5)
+                                map.pitch_delta(5.0)
                             }
                         }
                         KeyCode::KeyX => {
                             if is_pressed {
-                                map.tilt_delta(-0.5)
+                                map.pitch_delta(-5.0)
                             }
                         }
                         KeyCode::KeyN => {
