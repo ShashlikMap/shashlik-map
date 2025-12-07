@@ -29,7 +29,7 @@ impl FpsNode {
                 multi_sample_state,
             ),
             counter: FpsCounter::new(),
-            text_section: OwnedSection::default().with_screen_position((50f32, 50f32)),
+            text_section: OwnedSection::default().with_screen_position((100f32, 50f32)),
             current_fps: "0".to_string(),
         }
     }
@@ -74,5 +74,9 @@ impl SceneNode for FpsNode {
 
     fn render(&self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
         self.text_brush.draw(render_pass)
+    }
+
+    fn resize(&mut self, width: u32, height: u32, queue: &Queue) {
+        self.text_brush.resize_view(width as f32, height as f32, queue);
     }
 }

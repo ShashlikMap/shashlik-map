@@ -6,7 +6,7 @@ use crate::test_kml_viewer_group::TestKmlGroup;
 use crate::test_puck_group::TestSimplePuck;
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
-use cgmath::{Matrix4, SquareMatrix, Vector2, Vector3};
+use cgmath::{Vector2, Vector3};
 use futures::executor::block_on;
 use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
@@ -59,21 +59,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         canvas: Box<dyn WgpuCanvas>,
         mut tiles_provider: T,
     ) -> anyhow::Result<ShashlikMap<T>> {
-        let mut camera = Camera {
-            eye: (0.0, 0.0, 200.0).into(),
-            target: (0.0, 0.0, 0.0).into(),
-            up: cgmath::Vector3::unit_y(),
-            fovy: 45.0,
-            znear: 1.0,
-            zfar: 2000000.0,
-            perspective_matrix: Matrix4::identity(),
-            inv_view_proj_matrix: Matrix4::identity(),
-        };
-
         let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
-        // FIXME Android should call resize by itself!
-        camera.resize(screen_size.0 as u32, screen_size.1 as u32);
-
 
         let renderer = ShashlikRenderer::new(canvas).await?;
         let tiles_stream = tiles_provider.tiles();
@@ -95,7 +81,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         Self::run_tiles(renderer.api.clone(), tiles_stream, camera_offset);
         let map = ShashlikMap {
             renderer: Box::new(renderer),
-            camera,
+            camera: Camera::new(),
             camera_controller: CameraController::new(1.0),
             tiles_provider,
             last_area_latlon: Rect::new((0.0, 0.0), (0.0, 0.0)),
@@ -112,7 +98,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn clip_to_latlon(&self, coord: &Coord<f64>) -> Option<Coord<f64>> {
-        let world_on_ground = self.camera.clip_to_world(coord)?;
+        let world_on_ground =  self.renderer.clip_to_world(coord)?;
         Some(T::world_to_lat_lon(
             &(
                 world_on_ground.x + self.camera_offset.x as f64,
@@ -162,6 +148,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     pub fn resize(&mut self, width: u32, height: u32) {
         self.camera.resize(width, height);
         self.renderer.resize(width, height);
+        self.screen_size = (width as f32, height as f32);
     }
 
     pub fn update_and_render(&mut self) {

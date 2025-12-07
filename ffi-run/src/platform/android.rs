@@ -1,4 +1,3 @@
-use std::ffi::c_void;
 use crate::ShashlikMapApi;
 use app_surface::AppSurface;
 use jni::objects::JClass;
@@ -12,6 +11,7 @@ use map::tiles::old_tiles_provider::OldTilesProvider;
 use osm::source::reqwest_source::ReqwestSource;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use jni::objects::JString;
+use app_surface::SurfaceFrame;
 
 //FIXME https://github.com/gobley/gobley/issues/20
 #[uniffi::export]
@@ -40,8 +40,8 @@ impl WgpuCanvas for AndroidSurfaceAppSurface {
         self.app_surface.surface.get_current_texture()
     }
 
-    fn on_resize(&mut self, _width: u32, _height: u32) {
-        // not required
+    fn on_resize(&mut self) {
+        self.app_surface.resize_surface();
     }
 
     fn on_pre_render(&self) {

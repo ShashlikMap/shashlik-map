@@ -15,9 +15,9 @@ final class MetalMapUIView: UIView {
     override class var layerClass: AnyClass { CAMetalLayer.self }
 
     private var displayLink: CADisplayLink?
-    private(set) var api: ShashlikMapApi?
+    private(set) var shashlikMapApi: ShashlikMapApi?
     private var pressed: Bool = false
-
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
         commonInit()
@@ -47,15 +47,16 @@ final class MetalMapUIView: UIView {
         // Defer creation until we have a concrete (non-zero) size; ensures wgpu surface config correct.
         if bounds.width > 0, bounds.height > 0 {
             initializeApiIfNeeded()
+            shashlikMapApi?.resize(width: UInt32(bounds.width), height: UInt32(bounds.height))
         }
     }
 
     private func initializeApiIfNeeded() {
-        guard api == nil else { return }
+        guard shashlikMapApi == nil else { return }
         let viewPtr = Unmanaged.passUnretained(self).toOpaque()
         let layerPtr = Unmanaged.passUnretained(self.layer).toOpaque()
 
-        api = Ffi_run_nativeKt.createShashlikMapApiForIos(view: UInt64(UInt(bitPattern: viewPtr)), metalLayer: UInt64(UInt(bitPattern: layerPtr)), maximumFrames: 90, tilesDb: "")
+        shashlikMapApi = Ffi_run_nativeKt.createShashlikMapApiForIos(view: UInt64(UInt(bitPattern: viewPtr)), metalLayer: UInt64(UInt(bitPattern: layerPtr)), maximumFrames: 90, tilesDb: "")
         
         startRendering()
     }
@@ -75,12 +76,12 @@ final class MetalMapUIView: UIView {
     }
 
     @objc private func frameTick() {
-        api?.render()
+        shashlikMapApi?.render()
     }
 
     func toggleExternalInput() {
         pressed.toggle()
-        api?.setCamFollowMode(enabled: pressed)
+        shashlikMapApi?.setCamFollowMode(enabled: pressed)
     }
 }
 

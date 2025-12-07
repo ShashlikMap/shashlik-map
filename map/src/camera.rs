@@ -1,84 +1,39 @@
 use cgmath::{
-    Basis3, Deg, Matrix4, Point3, Rotation, Rotation3, Transform, Vector2, Vector3,
-    Vector4,
+    Basis3, Deg, Matrix4, Point3, Rotation, Rotation3, SquareMatrix, Vector3
 };
-use geo_types::Coord;
-
 
 pub struct Camera {
-    pub eye: cgmath::Point3<f32>,
-    pub target: cgmath::Point3<f32>,
-    pub up: cgmath::Vector3<f32>,
-    pub fovy: f32,
-    pub znear: f32,
-    pub zfar: f32,
-    pub perspective_matrix: Matrix4<f32>,
-    pub inv_view_proj_matrix: Matrix4<f64>,
+    eye: cgmath::Point3<f32>,
+    target: cgmath::Point3<f32>,
+    up: cgmath::Vector3<f32>,
+    fovy: f32,
+    znear: f32,
+    zfar: f32,
+    perspective_matrix: Matrix4<f32>,
 }
 
 impl Camera {
+    pub fn new() -> Self {
+        Camera {
+            eye: (0.0, 0.0, 200.0).into(),
+            target: (0.0, 0.0, 0.0).into(),
+            up: cgmath::Vector3::unit_y(),
+            fovy: 45.0,
+            znear: 1.0,
+            zfar: 2000000.0,
+            perspective_matrix: Matrix4::identity(),
+        }
+    }
+
     pub fn build_view_projection_matrix(&mut self) -> cgmath::Matrix4<f64> {
         let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
-        let view_proj_matrix = (self.perspective_matrix * view).cast().unwrap();
-        self.inv_view_proj_matrix = view_proj_matrix.inverse_transform().unwrap();
-        view_proj_matrix
+        (self.perspective_matrix * view).cast().unwrap()
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
         let aspect = width as f32 / height as f32;
         self.perspective_matrix =
             cgmath::perspective(cgmath::Deg(self.fovy), aspect, self.znear, self.zfar);
-    }
-
-    pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<Vector2<f64>> {
-        Self::clip_to_world_at_ground(&Vector2::new(coord.x, coord.y), &self.inv_view_proj_matrix.cast().unwrap())
-    }
-
-    fn clip_to_world_at_ground(
-        clip_coords: &Vector2<f64>,
-        inverted_view_proj: &Matrix4<f64>,
-    ) -> Option<Vector2<f64>> {
-        let near_world = Self::clip_to_world_internal(
-            &Vector3::new(clip_coords.x, clip_coords.y, 0.0),
-            inverted_view_proj,
-        );
-
-        let far_world = Self::clip_to_world_internal(
-            &Vector3::new(clip_coords.x, clip_coords.y, 1.0),
-            inverted_view_proj,
-        );
-
-        let mut u = -near_world.z / (far_world.z - near_world.z);
-
-        // let's use infinity now but in real world we have to limit it somehow
-        // if u < 0.0 { return None };
-        if u < 0.0 {
-            u = 1.0 - u;
-        }
-        let result = near_world + u * (far_world - near_world);
-        Some(Vector2::new(result.x, result.y))
-    }
-
-    fn clip_to_world_internal(
-        window: &Vector3<f64>,
-        inverted_view_proj: &Matrix4<f64>,
-    ) -> Vector3<f64> {
-        #[rustfmt::skip]
-            let fixed_window = Vector4::new(
-            window.x,
-            window.y,
-            window.z,
-            1.0
-        );
-
-        let ndc = fixed_window;
-        let unprojected = inverted_view_proj * ndc;
-
-        Vector3::new(
-            unprojected.x / unprojected.w,
-            unprojected.y / unprojected.w,
-            unprojected.z / unprojected.w,
-        )
     }
 }
 

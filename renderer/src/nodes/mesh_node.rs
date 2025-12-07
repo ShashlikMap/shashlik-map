@@ -173,7 +173,7 @@ impl SceneNode for PositionedMesh {
     ) {
         if self.with_collisions {
             let screen_position_calculator = global_context
-                .view_proj_uniform
+                .view_projection
                 .screen_position_calculator(config);
 
             for item in &mut self.original_positions_alpha {

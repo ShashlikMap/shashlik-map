@@ -1,4 +1,4 @@
-use cgmath::{Matrix4, SquareMatrix, Vector3, Vector4};
+use cgmath::{Matrix4, SquareMatrix, Transform, Vector2, Vector3, Vector4};
 use geo_types::{Coord, coord};
 
 #[rustfmt::skip]
@@ -46,29 +46,92 @@ pub(crate) struct ViewProjUniform {
     inv_screen_size: [f32; 2],
 }
 
-impl ViewProjUniform {
+pub(crate) struct ViewProjection {
+    pub uniform: ViewProjUniform,
+    inv_view_proj_matrix: Matrix4<f64>
+}
+
+impl ViewProjection {
     pub fn new() -> Self {
-        ViewProjUniform {
-            view_proj: Matrix4::identity().into(),
-            inv_screen_size: [0.0, 0.0],
+        ViewProjection {
+            uniform: ViewProjUniform {
+                view_proj: Matrix4::identity().into(),
+                inv_screen_size: [0.0, 0.0],
+            },
+            inv_view_proj_matrix: Matrix4::identity()
         }
     }
 
     pub fn update(&mut self, view_proj_matrix: Matrix4<f64>) {
-        self.view_proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * view_proj_matrix)
+        self.uniform.view_proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * view_proj_matrix)
             .cast()
             .unwrap()
             .into();
+        self.inv_view_proj_matrix = view_proj_matrix.inverse_transform().unwrap();
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
-        self.inv_screen_size = [1.0 / width as f32, 1.0 / height as f32];
+        self.uniform.inv_screen_size = [1.0 / width as f32, 1.0 / height as f32];
     }
 
     pub fn screen_position_calculator<'a>(
         &self,
         config: &'a wgpu::SurfaceConfiguration,
     ) -> ScreenPositionCalculator<'a> {
-        ScreenPositionCalculator::new(self.view_proj.into(), config)
+        ScreenPositionCalculator::new(self.uniform.view_proj.into(), config)
+    }
+
+    pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<Vector2<f64>> {
+        Self::clip_to_world_at_ground(
+            &Vector2::new(coord.x, coord.y),
+            &self.inv_view_proj_matrix.cast().unwrap(),
+        )
+    }
+
+    fn clip_to_world_at_ground(
+        clip_coords: &Vector2<f64>,
+        inverted_view_proj: &Matrix4<f64>,
+    ) -> Option<Vector2<f64>> {
+        let near_world = Self::clip_to_world_internal(
+            &Vector3::new(clip_coords.x, clip_coords.y, 0.0),
+            inverted_view_proj,
+        );
+
+        let far_world = Self::clip_to_world_internal(
+            &Vector3::new(clip_coords.x, clip_coords.y, 1.0),
+            inverted_view_proj,
+        );
+
+        let mut u = -near_world.z / (far_world.z - near_world.z);
+
+        // let's use infinity now but in real world we have to limit it somehow
+        // if u < 0.0 { return None };
+        if u < 0.0 {
+            u = 1.0 - u;
+        }
+        let result = near_world + u * (far_world - near_world);
+        Some(Vector2::new(result.x, result.y))
+    }
+
+    fn clip_to_world_internal(
+        window: &Vector3<f64>,
+        inverted_view_proj: &Matrix4<f64>,
+    ) -> Vector3<f64> {
+        #[rustfmt::skip]
+            let fixed_window = Vector4::new(
+            window.x,
+            window.y,
+            window.z,
+            1.0
+        );
+
+        let ndc = fixed_window;
+        let unprojected = inverted_view_proj * ndc;
+
+        Vector3::new(
+            unprojected.x / unprojected.w,
+            unprojected.y / unprojected.w,
+            unprojected.z / unprojected.w,
+        )
     }
 }

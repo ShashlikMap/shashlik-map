@@ -8,6 +8,7 @@ use map::ShashlikMap;
 use std::sync::RwLock;
 use std::ffi::c_void;
 use objc::runtime::Object;
+use app_surface::SurfaceFrame;
 
 extern "C" fn ios_callback_stub(_arg: i32) {}
 
@@ -41,7 +42,9 @@ impl WgpuCanvas for IOSPlatformAppSurface {
 	fn get_current_texture(&self) -> Result<SurfaceTexture, SurfaceError> {
 		self.app_surface.surface.get_current_texture()
 	}
-	fn on_resize(&mut self, _width: u32, _height: u32) {}
+	fn on_resize(&mut self) {
+		self.app_surface.resize_surface();
+	}
 	fn on_pre_render(&self) {}
 	fn on_post_render(&self) {}
 }
