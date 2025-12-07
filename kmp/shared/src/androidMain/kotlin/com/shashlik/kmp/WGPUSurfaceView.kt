@@ -7,6 +7,7 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Parcelable
 import android.util.AttributeSet
+import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -78,6 +79,7 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+        shashlikMapApi?.resize(width.toUInt(), height.toUInt())
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {

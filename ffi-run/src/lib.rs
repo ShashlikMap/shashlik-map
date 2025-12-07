@@ -2,10 +2,10 @@ uniffi::setup_scaffolding!();
 
 mod platform;
 
-use map::ShashlikMap;
-use std::sync::RwLock;
-use osm::source::reqwest_source::ReqwestSource;
 use map::tiles::old_tiles_provider::OldTilesProvider;
+use map::ShashlikMap;
+use osm::source::reqwest_source::ReqwestSource;
+use std::sync::RwLock;
 
 
 #[derive(uniffi::Object)]
@@ -23,6 +23,11 @@ impl ShashlikMapApi {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
         // TODO handle result
         shashlik_map.update_and_render();
+    }
+
+    fn resize(&self, width: u32, height: u32) {
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
+        shashlik_map.resize(width, height);
     }
 
     fn zoom_delta(&self, delta: f32, point_x: f32, point_y: f32) {

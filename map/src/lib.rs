@@ -71,9 +71,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
         };
 
         let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
-        // FIXME Android should call resize by itself!
-        camera.resize(screen_size.0 as u32, screen_size.1 as u32);
-
 
         let renderer = ShashlikRenderer::new(canvas).await?;
         let tiles_stream = tiles_provider.tiles();
