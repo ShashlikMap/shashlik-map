@@ -18,13 +18,6 @@ final class MetalMapUIView: UIView {
     private(set) var shashlikMapApi: ShashlikMapApi?
     private var pressed: Bool = false
     
-    override var bounds: CGRect {
-        didSet {
-            print("bound \(bounds)")
-            shashlikMapApi?.resize(width: UInt32(bounds.width), height: UInt32(bounds.height))
-        }
-    }
-
     override init(frame: CGRect) {
         super.init(frame: frame)
         commonInit()
@@ -54,6 +47,7 @@ final class MetalMapUIView: UIView {
         // Defer creation until we have a concrete (non-zero) size; ensures wgpu surface config correct.
         if bounds.width > 0, bounds.height > 0 {
             initializeApiIfNeeded()
+            shashlikMapApi?.resize(width: UInt32(bounds.width), height: UInt32(bounds.height))
         }
     }
 
