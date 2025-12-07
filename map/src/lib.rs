@@ -59,7 +59,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         canvas: Box<dyn WgpuCanvas>,
         mut tiles_provider: T,
     ) -> anyhow::Result<ShashlikMap<T>> {
-        let mut camera = Camera {
+        let camera = Camera {
             eye: (0.0, 0.0, 200.0).into(),
             target: (0.0, 0.0, 0.0).into(),
             up: cgmath::Vector3::unit_y(),
@@ -159,6 +159,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     pub fn resize(&mut self, width: u32, height: u32) {
         self.camera.resize(width, height);
         self.renderer.resize(width, height);
+        self.screen_size = (width as f32, height as f32);
     }
 
     pub fn update_and_render(&mut self) {

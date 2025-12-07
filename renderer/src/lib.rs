@@ -108,7 +108,7 @@ pub struct ShashlikRenderer {
     renderer_rx: Receiver<RendererMessage>,
     pub api: Arc<RendererApi>,
     global_context: GlobalContext,
-    fps_node: FpsNode,
+    fps_node: FpsNode, // FIXME FPS should part of text rendering or proper layer system
 }
 
 impl ShashlikRenderer {
@@ -297,6 +297,7 @@ impl ShashlikRenderer {
 
             self.world_tree_node
                 .resize(config.width, config.height, queue);
+            self.fps_node.resize(width, height, queue);
             self.depth_texture = DepthTexture::new(&device, config.width, config.height);
             self.msaa_texture =
                 MultisampledTexture::new(device, config.width, config.height, config.format);
