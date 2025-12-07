@@ -59,7 +59,7 @@ impl WgpuCanvas for WinitAppSurface {
         self.app_surface.surface.get_current_texture()
     }
 
-    fn on_resize(&mut self, _width: u32, _height: u32) {
+    fn on_resize(&mut self) {
         self.app_surface.resize_surface();
     }
 

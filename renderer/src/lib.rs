@@ -287,7 +287,7 @@ impl ShashlikRenderer {
 
     pub fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {
-            self.canvas.on_resize(width, height);
+            self.canvas.on_resize();
             let config = self.canvas.config();
             let device = self.canvas.device();
             let queue = self.canvas.queue();

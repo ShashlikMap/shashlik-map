@@ -6,7 +6,7 @@ pub trait WgpuCanvas: Send + Sync {
     fn device(&self) -> &wgpu::Device;
     fn get_current_texture(&self) -> Result<SurfaceTexture, SurfaceError>;
 
-    fn on_resize(&mut self, width: u32, height: u32);
+    fn on_resize(&mut self);
     fn on_pre_render(&self);
     fn on_post_render(&self);
 }

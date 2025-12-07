@@ -1,4 +1,3 @@
-use std::ffi::c_void;
 use crate::ShashlikMapApi;
 use app_surface::AppSurface;
 use jni::objects::JClass;
@@ -41,7 +40,7 @@ impl WgpuCanvas for AndroidSurfaceAppSurface {
         self.app_surface.surface.get_current_texture()
     }
 
-    fn on_resize(&mut self, width: u32, height: u32) {
+    fn on_resize(&mut self) {
         self.app_surface.resize_surface();
     }
 
