@@ -41,7 +41,12 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
             distanceX: Float,
             distanceY: Float
         ): Boolean {
-            shashlikMapApi?.panDelta(distanceX / 15.0f, distanceY / 15.0f)
+            if (e2.pointerCount == 2) {
+                shashlikMapApi?.pitchDelta(-distanceY / 10.0f)
+            } else {
+                shashlikMapApi?.panDelta(distanceX / 15.0f, distanceY / 15.0f)
+            }
+
             return super.onScroll(e1, e2, distanceX, distanceY)
         }
     }
