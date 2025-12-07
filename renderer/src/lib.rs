@@ -17,9 +17,9 @@ use crate::pipeline_provider::PipeLineProvider;
 use crate::styles::style_store::StyleStore;
 use crate::text::text_renderer::TextRenderer;
 use crate::vertex_attrs::{InstancePos, ShapeVertex, VertexAttrib, VertexNormal};
-use crate::view_projection::ViewProjUniform;
+use crate::view_projection::ViewProjection;
 use canvas_api::CanvasApi;
-use cgmath::Matrix4;
+use cgmath::{Matrix4, Vector2};
 use messages::RendererApiMsg;
 use renderer_api::RendererApi;
 use std::collections::HashMap;
@@ -28,6 +28,7 @@ use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread::spawn;
+use geo_types::Coord;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
 use wgpu::{include_wgsl, CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat};
@@ -81,7 +82,7 @@ impl<T: Clone> ReceiverExt<T> for tokio::sync::broadcast::Receiver<T> {
 }
 
 pub struct GlobalContext {
-    view_proj_uniform: ViewProjUniform,
+    view_projection: ViewProjection,
     collision_handler: CollisionHandler,
     text_renderer: TextRenderer,
 }
@@ -92,7 +93,7 @@ impl GlobalContext {
         device: &wgpu::Device,
     ) -> Self {
         GlobalContext {
-            view_proj_uniform: ViewProjUniform::new(),
+            view_projection: ViewProjection::new(),
             collision_handler,
             text_renderer: TextRenderer::new(device),
         }
@@ -147,7 +148,7 @@ impl ShashlikRenderer {
             CollisionHandler::new(config.width as f32, config.height as f32),
             device,
         );
-        global_context.view_proj_uniform.resize(config.width, config.height);
+        global_context.view_projection.resize(config.width, config.height);
         let pipeline_provider = PipeLineProvider::new(
             config.format,
             depth_state.clone(),
@@ -285,6 +286,10 @@ impl ShashlikRenderer {
         });
     }
 
+    pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<Vector2<f64>> {
+        self.global_context.view_projection.clip_to_world(coord)
+    }
+
     pub fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {
             self.canvas.on_resize();
@@ -292,7 +297,7 @@ impl ShashlikRenderer {
             let device = self.canvas.device();
             let queue = self.canvas.queue();
 
-            self.global_context.view_proj_uniform.resize(config.width, config.height);
+            self.global_context.view_projection.resize(config.width, config.height);
             self.global_context.collision_handler.resize(config.width as f32, config.height as f32);
 
             self.world_tree_node
@@ -305,7 +310,7 @@ impl ShashlikRenderer {
     }
 
     fn update(&mut self, view_proj_matrix: Matrix4<f64>) {
-        self.global_context.view_proj_uniform.update(view_proj_matrix);
+        self.global_context.view_projection.update(view_proj_matrix);
         let device = self.canvas.device();
         if let Ok(message) = self.renderer_rx.try_recv() {
             match message {

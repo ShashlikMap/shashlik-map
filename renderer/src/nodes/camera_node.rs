@@ -71,7 +71,7 @@ impl SceneNode for CameraNode {
         queue.write_buffer(
             &self.buffer,
             0,
-            bytemuck::cast_slice(&[global_context.view_proj_uniform]),
+            bytemuck::cast_slice(&[global_context.view_projection.uniform]),
         );
     }
 
