@@ -170,6 +170,16 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                     event_loop.exit();
                 } else {
                     match code {
+                        KeyCode::KeyZ => {
+                            if is_pressed {
+                                map.tilt_delta(0.5)
+                            }
+                        }
+                        KeyCode::KeyX => {
+                            if is_pressed {
+                                map.tilt_delta(-0.5)
+                            }
+                        }
                         KeyCode::KeyN => {
                             if is_pressed {
                                 map.cam_follow_mode = !map.cam_follow_mode;

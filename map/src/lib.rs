@@ -231,6 +231,10 @@ impl<T: TilesProvider> ShashlikMap<T> {
         }
     }
 
+    pub fn tilt_delta(&mut self, delta: f32) {
+        self.camera_controller.tilt += delta;
+    }
+
     pub fn set_lat_lon_bearing(&mut self, lat: f64, lon: f64, bearing: Option<f32>) {
         let position = T::lat_lon_to_world(&coord! {x: lon, y: lat});
         self.current_lat_lon = Vector3::new(position.x as f32, position.y as f32, 0.0);

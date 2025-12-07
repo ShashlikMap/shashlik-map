@@ -45,6 +45,7 @@ pub struct CameraController {
     pub camera_z: f32,
     pub position: cgmath::Point3<f32>,
     pub rotation: f32,
+    pub tilt: f32
 }
 
 impl CameraController {
@@ -56,6 +57,7 @@ impl CameraController {
             camera_z: 200.0,
             position: cgmath::Point3::new(0.0, 0.0, 0.0),
             rotation: 0.0,
+            tilt: 0.0
         }
     }
 
