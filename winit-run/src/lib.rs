@@ -147,12 +147,15 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                     self.shashlik_map.as_mut().unwrap().pan_delta(delta_x as f32, delta_y as f32)
                 }
                 self.last_cursor_position = position.clone();
-            }
+            },
+            WindowEvent::PinchGesture { delta, .. } => {
+                self.shashlik_map.as_mut().unwrap().zoom_delta((delta * 100.0) as f32, self.last_cursor_position.cast::<f32>().into());
+            },
             WindowEvent::MouseWheel { delta, .. } => {
                 match delta {
                     MouseScrollDelta::LineDelta(_, _) => {}
                     MouseScrollDelta::PixelDelta(delta_xy) => {
-                        self.shashlik_map.as_mut().unwrap().zoom_delta((delta_xy.y/10.0) as f32, self.last_cursor_position.cast::<f32>().into());
+                        map.pitch_delta((delta_xy.y / 5.0) as f32)
                     }
                 }
             }
