@@ -41,6 +41,7 @@ pub struct CameraController {
     pub zoom_delta: f32,
     pub pan_delta: Vector2<f32>,
     pub camera_z: f32,
+    pub forward_len: f32,
     pub position: cgmath::Point3<f32>,
     pub yaw: f32,
     pub pitch: f32
@@ -53,6 +54,7 @@ impl CameraController {
             zoom_delta: 0.0,
             pan_delta: Vector2::new(0.0, 0.0),
             camera_z: 200.0,
+            forward_len: 200.0,
             position: cgmath::Point3::new(0.0, 0.0, 0.0),
             yaw: 0.0,
             pitch: 90.0
@@ -79,6 +81,7 @@ impl CameraController {
         camera.eye += (camera.target - camera.eye).normalize() * self.zoom_delta * speed_koef;
 
         let len = (camera.target - camera.eye).magnitude();
+
         camera.eye = camera.target + (dir * len);
 
         camera.eye += self.pan_delta.extend(0.0) * speed_koef;
@@ -92,6 +95,7 @@ impl CameraController {
         self.pan_delta = Vector2::new(0.0, 0.0);
         self.zoom_delta = 0.0;
 
+        self.forward_len = len;
         self.camera_z = camera.eye.z;
     }
 }

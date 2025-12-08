@@ -11,9 +11,9 @@ pub struct MeshLoader {}
 impl MeshLoader {
     pub fn load_simple_puck() -> Path {
         let mut builder = Path::builder();
-        builder.begin(point(0.0, 3.0));
-        builder.line_to(point(2.0, -2.0));
-        builder.line_to(point(-2.0, -2.0));
+        builder.begin(point(0.0, -3.0));
+        builder.line_to(point(2.0, 2.0));
+        builder.line_to(point(-2.0, 2.0));
         builder.end(true);
         let path = builder.build();
         path
