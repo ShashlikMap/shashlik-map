@@ -9,13 +9,14 @@ pub struct TestSimplePuck {}
 
 impl RenderGroup for TestSimplePuck {
     fn content(&mut self, canvas: &mut CanvasApi) {
+        canvas.set_feature_layer_tag(Some("puck_layer".to_string()));
         canvas.path(
             ShapeData {
                 path: MeshLoader::load_simple_puck(),
                 geometry_type: GeometryType::Polygon,
                 style_id: StyleId("puck_style"),
                 index_layer_level: 0,
-                is_screen: true,
+                is_screen: false,
             },
         );
     }

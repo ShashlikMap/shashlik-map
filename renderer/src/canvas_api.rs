@@ -35,6 +35,7 @@ pub struct CanvasApi {
     geometry3d: VertexBuffers<MeshVertex, u32>,
     text_vec: Vec<TextData>,
     screen_path_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, ScreenPaths)>,
+    feature_layer_tag: Option<String>
 }
 
 impl CanvasApi {
@@ -49,10 +50,12 @@ impl CanvasApi {
             geometry3d: VertexBuffers::new(),
             text_vec: Vec::new(),
             screen_path_cache: HashMap::new(),
+            feature_layer_tag: None
         }
     }
     pub(crate) fn begin_shape(&mut self, real_layer: usize) {
         self.flushed = false;
+        self.feature_layer_tag = None;
         self.indices_by_layers.clear();
         self.geometry.clear();
         self.geometry3d.clear();
@@ -68,6 +71,11 @@ impl CanvasApi {
                 screen_paths.with_collision = false
             })
     }
+
+    pub fn set_feature_layer_tag(&mut self, tag: Option<String>) {
+        self.feature_layer_tag = tag;
+    }
+
     pub fn update_style<F: FnOnce(&mut RenderStyle)>(&mut self, style_id: &StyleId, updater: F) {
         self.style_store.update_style(style_id, updater);
     }
@@ -131,6 +139,7 @@ impl CanvasApi {
             screen_paths,
             is_screen,
             outlined: !is_screen,
+            feature_layer_tag: self.feature_layer_tag.clone()
         }));
     }
 

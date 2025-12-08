@@ -63,7 +63,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     ) -> anyhow::Result<ShashlikMap<T>> {
         let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
 
-        let renderer = ShashlikRenderer::new(canvas).await?;
+        let renderer = ShashlikRenderer::new(&["puck_layer".to_string()], canvas).await?;
         let tiles_stream = tiles_provider.tiles();
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
@@ -188,22 +188,17 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.last_area_latlon = area_latlon;
     }
 
-
     fn update_entities(&mut self) {
         let puck_location = self.current_lat_lon - self.camera_offset.cast().unwrap();
         let bearing = self.current_bearing;
-        let cam_follow_mode =  self.cam_follow_mode;
+
+        let cam_zoom = self.camera_controller.forward_len / 100.0;
         self.renderer
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
-                spatial_data.scale = 15.0;
+                spatial_data.scale = cam_zoom as f64;
                 spatial_data.transform += (puck_location.cast().unwrap() - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED as f64;
-                // TODO Puck should be aligned with the map plane too
-                if !cam_follow_mode {
-                    spatial_data.rotation += ((-bearing - spatial_data.rotation) % 360.0) * Self::TEMP_ANIMATION_SPEED;
-                } else {
-                    spatial_data.rotation = (spatial_data.rotation % 360.0) * (1.0f32 - Self::TEMP_ANIMATION_SPEED) % 360.0;
-                }
+                spatial_data.rotation += ((bearing - spatial_data.rotation) % 360.0) * Self::TEMP_ANIMATION_SPEED;
             });
 
         let cam_yaw = self.camera_controller.yaw;
