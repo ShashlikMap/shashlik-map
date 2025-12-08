@@ -37,9 +37,7 @@ impl DrawCommand for Mesh2dDrawCommand {
             self.screen_paths.with_collision,
         );
         if let Some(tag) = self.feature_layer_tag.as_ref() {
-            println!("Mesh2d draw feature layer1: {}", tag);
             if let Some(feature_layer) = layers.feature_layers(tag) {
-                println!("Mesh2d draw feature layer2: {}", tag);
                 feature_layer.borrow_mut().add_child_with_key(mesh, key);
             }
         } else {
