@@ -36,10 +36,10 @@ impl DrawCommand for Mesh2dDrawCommand {
             spatial_rx, self.outlined,
             self.screen_paths.with_collision,
         );
-        if let Some(tag) = self.feature_layer_tag.as_ref() {
-            if let Some(feature_layer) = layers.feature_layers(tag) {
-                feature_layer.borrow_mut().add_child_with_key(mesh, key);
-            }
+
+        if let Some(feature_layer) = self.feature_layer_tag.as_ref()
+            .and_then(|tag| layers.feature_layers(tag)) {
+            feature_layer.borrow_mut().add_child_with_key(mesh, key);
         } else {
             if self.is_screen {
                 layers.screen_shape_layer.borrow_mut().add_child_with_key(mesh, key);

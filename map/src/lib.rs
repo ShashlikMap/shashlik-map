@@ -198,7 +198,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             .update_spatial_data("puck".to_string(), move |spatial_data| {
                 spatial_data.scale = cam_zoom as f64;
                 spatial_data.transform += (puck_location.cast().unwrap() - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED as f64;
-                spatial_data.rotation += ((bearing - spatial_data.rotation) % 360.0) * Self::TEMP_ANIMATION_SPEED;
+                spatial_data.yaw += ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
             });
 
         let cam_yaw = self.camera_controller.yaw;
