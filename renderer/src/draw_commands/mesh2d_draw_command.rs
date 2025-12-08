@@ -15,6 +15,7 @@ pub(crate) struct Mesh2dDrawCommand {
     pub screen_paths: ScreenPaths,
     pub is_screen: bool,
     pub outlined: bool,
+    pub feature_layer_tag: Option<String>,
 }
 
 impl DrawCommand for Mesh2dDrawCommand {
@@ -35,12 +36,20 @@ impl DrawCommand for Mesh2dDrawCommand {
             spatial_rx, self.outlined,
             self.screen_paths.with_collision,
         );
-        if self.is_screen {
-            layers.screen_shape_layer.borrow_mut().add_child_with_key(mesh, key);
+        if let Some(tag) = self.feature_layer_tag.as_ref() {
+            println!("Mesh2d draw feature layer1: {}", tag);
+            if let Some(feature_layer) = layers.feature_layers(tag) {
+                println!("Mesh2d draw feature layer2: {}", tag);
+                feature_layer.borrow_mut().add_child_with_key(mesh, key);
+            }
         } else {
-            layers.shape_layers(self.real_layer)
-                .borrow_mut()
-                .add_child_with_key(mesh, key);
+            if self.is_screen {
+                layers.screen_shape_layer.borrow_mut().add_child_with_key(mesh, key);
+            } else {
+                layers.shape_layers(self.real_layer)
+                    .borrow_mut()
+                    .add_child_with_key(mesh, key);
+            }
         }
     }
 }

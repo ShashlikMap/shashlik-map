@@ -63,7 +63,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     ) -> anyhow::Result<ShashlikMap<T>> {
         let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
 
-        let renderer = ShashlikRenderer::new(canvas).await?;
+        let renderer = ShashlikRenderer::new(&["puck_layer".to_string()], canvas).await?;
         let tiles_stream = tiles_provider.tiles();
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
@@ -196,7 +196,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.renderer
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
-                spatial_data.scale = 15.0;
+                spatial_data.scale = 5.0;
                 spatial_data.transform += (puck_location.cast().unwrap() - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED as f64;
                 // TODO Puck should be aligned with the map plane too
                 if !cam_follow_mode {

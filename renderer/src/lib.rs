@@ -5,14 +5,15 @@ use crate::depth_texture::DepthTexture;
 use crate::layers::Layers;
 use crate::messages::RendererMessage;
 use crate::msaa_texture::MultisampledTexture;
+use crate::nodes::SceneNode;
 use crate::nodes::camera_node::CameraNode;
+use crate::nodes::feature_layers::FeatureLayers;
 use crate::nodes::fps_node::FpsNode;
 use crate::nodes::mesh_layer::MeshLayer;
 use crate::nodes::scene_tree::{RenderContext, SceneTree};
 use crate::nodes::shape_layers::ShapeLayers;
 use crate::nodes::style_adapter_node::StyleAdapterNode;
 use crate::nodes::world::World;
-use crate::nodes::SceneNode;
 use crate::pipeline_provider::PipeLineProvider;
 use crate::styles::style_store::StyleStore;
 use crate::text::text_renderer::TextRenderer;
@@ -20,18 +21,18 @@ use crate::vertex_attrs::{InstancePos, ShapeVertex, VertexAttrib, VertexNormal};
 use crate::view_projection::ViewProjection;
 use canvas_api::CanvasApi;
 use cgmath::{Matrix4, Vector2};
+use geo_types::Coord;
 use messages::RendererApiMsg;
 use renderer_api::RendererApi;
 use std::collections::HashMap;
 use std::iter;
 use std::rc::Rc;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
-use geo_types::Coord;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
-use wgpu::{include_wgsl, CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat};
+use wgpu::{CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat, include_wgsl};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 pub mod canvas_api;
@@ -41,6 +42,7 @@ mod depth_texture;
 pub mod draw_commands;
 mod fps;
 pub mod geometry_data;
+mod layers;
 mod mesh;
 pub mod messages;
 pub mod modifier;
@@ -53,7 +55,6 @@ pub mod styles;
 mod svg;
 mod text;
 pub mod vertex_attrs;
-mod layers;
 mod view_projection;
 
 pub const SHADER_STYLE_GROUP_INDEX: u32 = 1;
@@ -88,10 +89,7 @@ pub struct GlobalContext {
 }
 
 impl GlobalContext {
-    pub fn new(
-        collision_handler: CollisionHandler,
-        device: &wgpu::Device,
-    ) -> Self {
+    pub fn new(collision_handler: CollisionHandler, device: &wgpu::Device) -> Self {
         GlobalContext {
             view_projection: ViewProjection::new(),
             collision_handler,
@@ -114,6 +112,7 @@ pub struct ShashlikRenderer {
 
 impl ShashlikRenderer {
     pub async fn new(
+        feature_tags: &[String],
         canvas: Box<dyn WgpuCanvas>,
     ) -> anyhow::Result<ShashlikRenderer> {
         let device = canvas.device();
@@ -139,16 +138,20 @@ impl ShashlikRenderer {
             alpha_to_coverage_enabled: false,
         };
 
-        let fps_node = FpsNode::new(device,
-                                    config,
-                                    depth_state.clone(),
-                                    multisample_state.clone());
+        let fps_node = FpsNode::new(
+            device,
+            config,
+            depth_state.clone(),
+            multisample_state.clone(),
+        );
 
         let mut global_context = GlobalContext::new(
             CollisionHandler::new(config.width as f32, config.height as f32),
             device,
         );
-        global_context.view_projection.resize(config.width, config.height);
+        global_context
+            .view_projection
+            .resize(config.width, config.height);
         let pipeline_provider = PipeLineProvider::new(
             config.format,
             depth_state.clone(),
@@ -171,7 +174,7 @@ impl ShashlikRenderer {
                 Rc::new([VertexNormal::desc(), InstancePos::desc()]),
                 pipeline_provider.clone(),
                 Some(Face::Front),
-                CompareFunction::Less
+                CompareFunction::Less,
             ),
             "mesh layer".to_string(),
         );
@@ -182,7 +185,7 @@ impl ShashlikRenderer {
             Rc::new([ShapeVertex::desc(), InstancePos::desc()]),
             pipeline_provider.clone(),
             None,
-            CompareFunction::Always
+            CompareFunction::Always,
         );
 
         // TODO Why does it need a specific CompareFunction while e.g. FpsNode doesn't need it to be on top of screen?
@@ -198,19 +201,25 @@ impl ShashlikRenderer {
             .borrow_mut()
             .add_child_with_key(screen_shape_layer, "screen shape".to_string());
 
-
         let text_layer = MeshLayer::new(
             &device,
             include_wgsl!("shaders/text_shader.wgsl"),
             Rc::new([VertexNormal::desc(), InstancePos::desc()]),
             pipeline_provider.clone(),
             None,
-            CompareFunction::Always
+            CompareFunction::Always,
         );
-        let text_layer = camera_node.borrow_mut().add_child_with_key(
-            text_layer,
-            "text_layer".to_string(),
+        let feature_layers = FeatureLayers::new(
+            feature_tags,
+            &device,
+            &camera_node,
+            &pipeline_provider,
+            &style_store,
         );
+
+        let text_layer = camera_node
+            .borrow_mut()
+            .add_child_with_key(text_layer, "text_layer".to_string());
 
         let mut render_context = RenderContext::default();
         world_tree_node.setup(&mut render_context, &device);
@@ -226,16 +235,18 @@ impl ShashlikRenderer {
             world_tree_node,
             layers: Layers::new(
                 shape_layers,
+                feature_layers,
                 mesh_layer,
                 screen_shape_layer,
-                text_layer),
+                text_layer,
+            ),
             depth_texture,
             msaa_texture,
             canvas,
             renderer_rx,
             api,
             global_context,
-            fps_node
+            fps_node,
         })
     }
 
@@ -297,8 +308,12 @@ impl ShashlikRenderer {
             let device = self.canvas.device();
             let queue = self.canvas.queue();
 
-            self.global_context.view_projection.resize(config.width, config.height);
-            self.global_context.collision_handler.resize(config.width as f32, config.height as f32);
+            self.global_context
+                .view_projection
+                .resize(config.width, config.height);
+            self.global_context
+                .collision_handler
+                .resize(config.width as f32, config.height as f32);
 
             self.world_tree_node
                 .resize(config.width, config.height, queue);
@@ -315,10 +330,7 @@ impl ShashlikRenderer {
         if let Ok(message) = self.renderer_rx.try_recv() {
             match message {
                 RendererMessage::Draw(mut draw_commands) => {
-                    draw_commands.execute(
-                        &device,
-                        &mut self.layers
-                    );
+                    draw_commands.execute(&device, &mut self.layers);
                 }
                 RendererMessage::ClearGroups(keys) => {
                     keys.into_iter().for_each(|key| {
@@ -336,8 +348,8 @@ impl ShashlikRenderer {
 
         self.global_context.collision_handler.clear();
 
-
-        self.fps_node.update(device, queue, config, &mut self.global_context);
+        self.fps_node
+            .update(device, queue, config, &mut self.global_context);
     }
 
     fn render(&mut self) -> Result<(), SurfaceError> {
@@ -394,7 +406,8 @@ impl ShashlikRenderer {
                 .text_renderer
                 .render(queue, device, &mut render_pass);
 
-            self.fps_node.render(&mut render_pass, &mut self.global_context);
+            self.fps_node
+                .render(&mut render_pass, &mut self.global_context);
         }
 
         queue.submit(iter::once(encoder.finish()));
