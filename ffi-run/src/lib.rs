@@ -52,6 +52,6 @@ impl ShashlikMapApi {
 
     fn set_cam_follow_mode(&self, enabled: bool) {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
-        shashlik_map.cam_follow_mode = enabled;
+        shashlik_map.set_camera_follow_mode(enabled);
     }
 }

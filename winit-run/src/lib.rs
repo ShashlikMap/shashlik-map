@@ -175,7 +175,7 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                     match code {
                         KeyCode::KeyN => {
                             if is_pressed {
-                                map.cam_follow_mode = !map.cam_follow_mode;
+                                map.set_camera_follow_mode(!map.get_camera_follow_mode());
                             }
                         }
                         KeyCode::KeyM => {

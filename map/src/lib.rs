@@ -39,9 +39,10 @@ pub struct ShashlikMap<T: TilesProvider> {
     camera_offset: Vector3<f32>,
     current_lat_lon: Vector3<f32>,
     current_bearing: f32,
+    current_pitch: f32,
     style_loader: StyleLoader,
     pub temp_color: f32,
-    pub cam_follow_mode: bool,
+    cam_follow_mode: bool,
     screen_size: (f32, f32),
 }
 
@@ -80,14 +81,19 @@ impl<T: TilesProvider> ShashlikMap<T> {
         );
 
         Self::run_tiles(renderer.api.clone(), tiles_stream, camera_offset);
+
+        let mut camera_controller = CameraController::new(1.0);
+        camera_controller.pitch = 45.0;
+
         let map = ShashlikMap {
             renderer: Box::new(renderer),
             camera: Camera::new(),
-            camera_controller: CameraController::new(1.0),
+            camera_controller,
             tiles_provider,
             last_area_latlon: Rect::new((0.0, 0.0), (0.0, 0.0)),
             current_lat_lon: camera_offset.cast().unwrap(),
             current_bearing: 0.0,
+            current_pitch: 45.0,
             camera_offset: camera_offset.cast().unwrap(),
             style_loader: StyleLoader::new(),
             temp_color: 0.0,
@@ -212,6 +218,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
             cam_yaw * (1.0f32 - Self::TEMP_ANIMATION_SPEED) % 360.0
         };
         self.camera_controller.yaw = new_cam_yaw;
+
+        self.camera_controller.pitch += (self.current_pitch - self.camera_controller.pitch) * Self::TEMP_ANIMATION_SPEED
     }
 
     pub fn zoom_delta(&mut self, delta: f32, point: (f32, f32)) {
@@ -233,8 +241,24 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn pitch_delta(&mut self, delta: f32) {
-        self.camera_controller.pitch += delta;
-        self.camera_controller.pitch = clamp(self.camera_controller.pitch, 45.0, 90.0);
+        if !self.cam_follow_mode {
+            self.camera_controller.pitch += delta;
+            self.camera_controller.pitch = clamp(self.camera_controller.pitch, 45.0, 90.0);
+        }
+        self.current_pitch = self.camera_controller.pitch;
+    }
+    
+    pub fn get_camera_follow_mode(&self) -> bool {
+        self.cam_follow_mode
+    }
+
+    pub fn set_camera_follow_mode(&mut self, follow_mode: bool) {
+        self.cam_follow_mode = follow_mode;
+        if self.cam_follow_mode {
+            self.current_pitch = 45.0;
+        } else {
+            self.current_pitch = 90.0;
+        }
     }
 
     pub fn set_lat_lon_bearing(&mut self, lat: f64, lon: f64, bearing: Option<f32>) {
