@@ -23,6 +23,6 @@ pub trait SceneNode {
         _global_context: &mut GlobalContext,
     ) {
     }
-    fn render(&self, _render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {}
+    fn render(&mut self, _render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {}
     fn resize(&mut self, _width: u32, _height: u32, _queue: &Queue) {}
 }

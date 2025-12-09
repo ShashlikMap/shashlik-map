@@ -88,7 +88,7 @@ impl<T: SceneNode> SceneNode for StyleAdapterNode<T> {
         }
     }
 
-    fn render(&self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
+    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         if let Some(bind_group) = self.style_bind_group.as_ref() {
             render_pass.set_bind_group(self.shader_group_index, bind_group, &[]);
         }

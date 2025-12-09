@@ -33,7 +33,7 @@ impl FeatureLayers {
                 Rc::new([ShapeVertex::desc(), InstancePos::desc()]),
                 pipeline_provider.clone(),
                 None,
-                CompareFunction::Less,
+                CompareFunction::Always,
             );
 
             let shape_layer: StyleAdapterNode<MeshLayer> = StyleAdapterNode::new(

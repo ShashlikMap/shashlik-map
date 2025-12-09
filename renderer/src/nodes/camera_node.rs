@@ -75,7 +75,7 @@ impl SceneNode for CameraNode {
         );
     }
 
-    fn render(&self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
+    fn render(&mut self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
         render_pass.set_bind_group(0, &self.bind_group, &[]);
     }
 }

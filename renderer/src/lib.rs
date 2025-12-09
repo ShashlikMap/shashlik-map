@@ -16,7 +16,7 @@ use crate::nodes::style_adapter_node::StyleAdapterNode;
 use crate::nodes::world::World;
 use crate::pipeline_provider::PipeLineProvider;
 use crate::styles::style_store::StyleStore;
-use crate::text::text_renderer::TextRenderer;
+use crate::text::text_renderer::{TextRenderer, TextRendererLayer};
 use crate::vertex_attrs::{InstancePos, ShapeVertex, VertexAttrib, VertexNormal};
 use crate::view_projection::ViewProjection;
 use canvas_api::CanvasApi;
@@ -209,6 +209,13 @@ impl ShashlikRenderer {
             None,
             CompareFunction::Always,
         );
+
+        let text_layer = camera_node
+            .borrow_mut()
+            .add_child_with_key(text_layer, "text_layer".to_string());
+
+        camera_node.borrow_mut().add_child_with_key(TextRendererLayer {}, "text_renderer_layer".to_string());
+
         let feature_layers = FeatureLayers::new(
             feature_tags,
             &device,
@@ -216,10 +223,6 @@ impl ShashlikRenderer {
             &pipeline_provider,
             &style_store,
         );
-
-        let text_layer = camera_node
-            .borrow_mut()
-            .add_child_with_key(text_layer, "text_layer".to_string());
 
         let mut render_context = RenderContext::default();
         world_tree_node.setup(&mut render_context, &device);
@@ -401,10 +404,6 @@ impl ShashlikRenderer {
 
             self.world_tree_node
                 .render(&mut render_pass, &mut self.global_context);
-
-            self.global_context
-                .text_renderer
-                .render(queue, device, &mut render_pass);
 
             self.fps_node
                 .render(&mut render_pass, &mut self.global_context);

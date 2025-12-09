@@ -1,17 +1,19 @@
 use crate::collision_handler::CollisionHandler;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::vertex_attrs::InstancePos;
+use crate::view_projection::ScreenPositionCalculator;
 use cgmath::num_traits::clamp;
 use cgmath::{Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector2, Vector3};
 use geo_types::{coord, point};
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
-use rustybuzz::ttf_parser::GlyphId;
 use rustybuzz::GlyphBuffer;
+use rustybuzz::ttf_parser::GlyphId;
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
-use wgpu::{Buffer, Device, Queue, RenderPass};
-use crate::view_projection::ScreenPositionCalculator;
+use wgpu::{Buffer, Device, Queue, RenderPass, SurfaceConfiguration};
+use crate::GlobalContext;
+use crate::nodes::SceneNode;
 
 #[derive(Clone)]
 pub struct GlyphData {
@@ -29,6 +31,18 @@ pub struct TextNodeData {
     pub positions: Vec<Vector3<f32>>,
     pub screen_offset: Vector2<f32>,
     pub glyph_buffer: Option<GlyphBuffer>,
+}
+
+pub struct TextRendererLayer {}
+
+impl SceneNode for TextRendererLayer {
+    fn update(&mut self, device: &Device, queue: &Queue, _config: &SurfaceConfiguration, global_context: &mut GlobalContext) {
+        global_context.text_renderer.update(queue, device);
+    }
+
+    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
+       global_context.text_renderer.render(render_pass);
+    }
 }
 
 pub struct TextRenderer {
@@ -228,7 +242,8 @@ impl TextRenderer {
                 data.alpha = alpha;
 
                 if data.alpha > 0.0 {
-                    let stub_rect = Rectangle::from_corners(point!(x: 0.0, y: 0.0), point!(x: 0.0, y: 0.0));
+                    let stub_rect =
+                        Rectangle::from_corners(point!(x: 0.0, y: 0.0), point!(x: 0.0, y: 0.0));
                     for index in 0..glyph_buffer.len() {
                         let position = glyphs_positions[index];
                         let glyph_info = glyphs_infos[index];
@@ -247,10 +262,7 @@ impl TextRenderer {
                             position: (initial_position.x as f32, initial_position.y as f32),
                             matrix,
                         };
-                        glyphs_to_draw.push((
-                            stub_rect,
-                            item,
-                        ));
+                        glyphs_to_draw.push((stub_rect, item));
                     }
                 }
             }
@@ -309,11 +321,12 @@ impl TextRenderer {
         })
     }
 
-    pub fn render(&mut self, queue: &Queue, device: &wgpu::Device, render_pass: &mut RenderPass) {
+    pub fn update(&mut self, queue: &Queue, device: &wgpu::Device) {
         self.id_to_alpha_map.clear();
-
         self.update_attrs(queue, device);
+    }
 
+    pub fn render(&mut self, render_pass: &mut RenderPass) {
         if !self.instance_buffer_map.is_empty() && !self.glyph_data.is_empty() {
             self.glyph_data.iter().for_each(|(glyph_id, list)| {
                 if let Some(mesh) = self.default_face.glyph_mesh_map.get(glyph_id) {

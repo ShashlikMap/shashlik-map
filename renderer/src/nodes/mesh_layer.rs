@@ -47,7 +47,7 @@ impl<'a> SceneNode for MeshLayer<'a> {
         ));
     }
 
-    fn render(&self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
+    fn render(&mut self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
         render_pass.set_pipeline(self.render_pipeline.as_ref().unwrap());
     }
 }

@@ -5,7 +5,7 @@ use cgmath::Vector3;
 pub struct SpatialData {
     pub transform: Vector3<f64>,
     pub scale: f64,
-    pub rotation: f32,
+    pub yaw: f32,
     pub size: (f64, f64),
 }
 
@@ -14,13 +14,13 @@ impl SpatialData {
         SpatialData {
             transform: Vector3::new(0.0, 0.0, 0.0),
             scale: 1.0,
-            rotation: 0.0,
+            yaw: 0.0,
             size: (0.0, 0.0),
         }
     }
 
     pub fn transform(transform: Vector3<f64>) -> SpatialData {
-        SpatialData { transform, scale: 1.0, rotation: 0.0, size: (0.0, 0.0) }
+        SpatialData { transform, scale: 1.0, yaw: 0.0, size: (0.0, 0.0) }
     }
 
     pub fn size(mut self, size: (f64, f64)) -> SpatialData {
@@ -31,7 +31,7 @@ impl SpatialData {
     pub fn scale(&mut self, scale: f64) {
         self.scale = scale;
     }
-    pub fn rotation(&mut self, rotation: f32) {
-        self.rotation = rotation;
+    pub fn yaw(&mut self, yaw: f32) {
+        self.yaw = yaw;
     }
 }
