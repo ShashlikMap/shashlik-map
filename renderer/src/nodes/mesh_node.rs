@@ -62,7 +62,7 @@ impl Mesh {
         )
     }
 
-    fn render(&self, render_pass: &mut RenderPass, instances: &Range<u32>) {
+    fn render_internal(&self, render_pass: &mut RenderPass, instances: &Range<u32>) {
         self.vertex_buf.iter().enumerate().for_each(|(i, v_buf)| {
             let (i_buf, _) = self.index_buf.get(i).unwrap();
             if v_buf.size() > 0 && i_buf.size() > 0 {
@@ -158,8 +158,8 @@ impl PositionedMesh {
 }
 
 impl SceneNode for Mesh {
-    fn render(&self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
-        self.render(render_pass, &(0..1));
+    fn render(&mut self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
+        self.render_internal(render_pass, &(0..1));
     }
 }
 
@@ -230,9 +230,9 @@ impl SceneNode for PositionedMesh {
         }
     }
 
-    fn render(&self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
+    fn render(&mut self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
         render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
         let range = 0u32..self.attrs.len() as u32;
-        self.mesh.render(render_pass, &range);
+        self.mesh.render_internal(render_pass, &range);
     }
 }

@@ -96,7 +96,7 @@ impl SceneNode for SceneTree {
         });
     }
 
-    fn render(&self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
+    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         self.children.iter().for_each(|scene_node| {
             scene_node
                 .borrow_mut()

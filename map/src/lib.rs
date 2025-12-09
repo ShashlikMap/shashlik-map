@@ -236,10 +236,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn pitch_delta(&mut self, delta: f32) {
-        if !self.cam_follow_mode {
-            self.camera_controller.pitch += delta;
-            self.camera_controller.pitch = clamp(self.camera_controller.pitch, 45.0, 90.0);
-        }
+        self.camera_controller.pitch += delta;
+        self.camera_controller.pitch = clamp(self.camera_controller.pitch, 45.0, 90.0);
         self.current_pitch = self.camera_controller.pitch;
     }
     
