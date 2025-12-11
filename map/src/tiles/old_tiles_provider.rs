@@ -14,7 +14,6 @@ use osm::map::{
 };
 use osm::source::TileSource;
 use osm::tiles::{calc_tile_ranges, TileKey, TileStore, TILES_COUNT};
-use rand::Rng;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use renderer::draw_commands::{GeometryType, PolylineOptions};
@@ -25,6 +24,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
+use rand::Rng;
 
 pub struct OldTilesProvider<S: TileSource> {
     sender: Option<UnboundedSender<TilesMessage>>,
@@ -108,7 +108,6 @@ impl<S: TileSource> OldTilesProvider<S> {
 
         let tile_position = [tile_rect_origin.x, tile_rect_origin.y, 0.0].into();
 
-        let mut rng = rand::rng();
         let mut geometry_data: Vec<GeometryData> = vec![];
         let mut line_text_map = HashMap::new();
         geom.into_iter().for_each(|(obj_type, geometry)| {
@@ -274,7 +273,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                 }
                 MapGeometry::Poly(poly) => {
                     let mut line_string = poly.into_inner().0;
-                    if obj_type.kind == MapGeomObjectKind::Building {
+                    if let MapGeomObjectKind::Building(_) = obj_type.kind {
                         line_string.make_cw_winding();
                     }
                     let line: Vec<(f64, f64)> = line_string
@@ -291,12 +290,16 @@ impl<S: TileSource> OldTilesProvider<S> {
                         }
                         path_builder.end(true);
 
-                        if obj_type.kind == MapGeomObjectKind::Building && zoom_level == 0 {
-                            let random_height: f32 = rng.random_range(1.0..=10.0);
+                        if let MapGeomObjectKind::Building(level) = obj_type.kind && zoom_level == 0 {
+                            let level = if level == 0 {
+                                rand::rng().random_range(2..=3)
+                            } else {
+                                level
+                            };
                             geometry_data.push(GeometryData::ExtrudedPolygon(
                                 ExtrudedPolygonData {
                                     path: path_builder.build(),
-                                    height: random_height,
+                                    height: level as f32 / 2.0,
                                 },
                             ));
                         } else {
@@ -304,7 +307,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 == MapGeomObjectKind::Nature(NatureKind::Water)
                             {
                                 StyleId("water")
-                            } else if obj_type.kind == MapGeomObjectKind::Building {
+                            } else if let MapGeomObjectKind::Building(_) = obj_type.kind {
                                 StyleId("building")
                             } else if obj_type.kind == MapGeomObjectKind::Nature(NatureKind::Ground)
                             {
