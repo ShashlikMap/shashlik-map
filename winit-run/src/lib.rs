@@ -181,7 +181,12 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                         KeyCode::KeyM => {
                             if is_pressed {
                                 self.fake_bearing += 30.0;
-                                map.set_lat_lon_bearing(35.7248164, 139.7769298, Some(self.fake_bearing));
+                                //DM office 139.74777078320227 35.62298925839326
+                                //Ugusuidani office 139.7769298 35.7248164
+
+                                // map.set_lat_lon_bearing(35.7248164, 139.7769298, Some(self.fake_bearing));
+                                map.set_lat_lon_bearing(35.62298925839326, 139.74777078320227, Some(self.fake_bearing));
+
                             }
                         }
                         _ => {}

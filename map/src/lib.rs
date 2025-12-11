@@ -6,11 +6,12 @@ use crate::test_kml_viewer_group::TestKmlGroup;
 use crate::test_puck_group::TestSimplePuck;
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
-use cgmath::{Vector2, Vector3};
+use cgmath::num_traits::clamp;
+use cgmath::{InnerSpace, Vector2, Vector3};
 use futures::executor::block_on;
-use futures::{pin_mut, Stream, StreamExt};
+use futures::{Stream, StreamExt, pin_mut};
 use geo_types::private_utils::get_bounding_rect;
-use geo_types::{coord, Coord, Point, Rect};
+use geo_types::{Coord, Point, Rect, coord};
 use geo_types::{LineString, Polygon};
 use renderer::canvas_api::CanvasApi;
 use renderer::modifier::render_modifier::SpatialData;
@@ -21,14 +22,13 @@ use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread::spawn;
-use cgmath::num_traits::clamp;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
+mod camera;
 mod style_loader;
+mod test_kml_viewer_group;
 mod test_puck_group;
 pub mod tiles;
-mod test_kml_viewer_group;
-mod camera;
 
 pub struct ShashlikMap<T: TilesProvider> {
     renderer: Box<ShashlikRenderer>,
@@ -37,7 +37,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     tiles_provider: T,
     last_area_latlon: Rect,
     camera_offset: Vector3<f32>,
-    current_lat_lon: Vector3<f32>,
+    current_world_position: Vector3<f32>,
     current_bearing: f32,
     current_pitch: f32,
     style_loader: StyleLoader,
@@ -48,14 +48,15 @@ pub struct ShashlikMap<T: TilesProvider> {
 
 impl RenderGroup for TileData {
     fn content(&mut self, canvas: &mut CanvasApi) {
-        mem::take(&mut self.geometry_data).into_iter().for_each(|data| {
-            canvas.geometry_data(data);
-        });
+        mem::take(&mut self.geometry_data)
+            .into_iter()
+            .for_each(|data| {
+                canvas.geometry_data(data);
+            });
     }
 }
 
 impl<T: TilesProvider> ShashlikMap<T> {
-
     const TEMP_ANIMATION_SPEED: f32 = 0.03;
     pub async fn new(
         canvas: Box<dyn WgpuCanvas>,
@@ -91,7 +92,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             camera_controller,
             tiles_provider,
             last_area_latlon: Rect::new((0.0, 0.0), (0.0, 0.0)),
-            current_lat_lon: camera_offset.cast().unwrap(),
+            current_world_position: camera_offset.cast().unwrap(),
             current_bearing: 0.0,
             current_pitch: 45.0,
             camera_offset: camera_offset.cast().unwrap(),
@@ -105,7 +106,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn clip_to_latlon(&self, coord: &Coord<f64>) -> Option<Coord<f64>> {
-        let world_on_ground =  self.renderer.clip_to_world(coord)?;
+        let world_on_ground = self.renderer.clip_to_world(coord)?;
         Some(T::world_to_lat_lon(
             &(
                 world_on_ground.x + self.camera_offset.x as f64,
@@ -127,25 +128,24 @@ impl<T: TilesProvider> ShashlikMap<T> {
                     let item = tiles_stream.next().await;
                     match item {
                         None => break,
-                        Some(msg) => {
-                            match msg {
-                                TilesMessage::TilesData(data) => {
-                                    data.into_iter().for_each(|item| {
-                                        renderer_api.add_render_group(
-                                            item.key.to_string(),
-                                            0,
-                                            SpatialData::transform(
-                                                item.position - camera_offset.cast().unwrap(),
-                                            ).size(item.size),
-                                            Box::new(item),
-                                        );
-                                    });
-                                }
-                                TilesMessage::ToRemove(set) => {
-                                    renderer_api.clear_render_groups(set);
-                                }
+                        Some(msg) => match msg {
+                            TilesMessage::TilesData(data) => {
+                                data.into_iter().for_each(|item| {
+                                    renderer_api.add_render_group(
+                                        item.key.to_string(),
+                                        0,
+                                        SpatialData::transform(
+                                            item.position - camera_offset.cast().unwrap(),
+                                        )
+                                        .size(item.size),
+                                        Box::new(item),
+                                    );
+                                });
                             }
-                        }
+                            TilesMessage::ToRemove(set) => {
+                                renderer_api.clear_render_groups(set);
+                            }
+                        },
                     }
                 }
             })
@@ -163,7 +163,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         self.update_entities();
 
-        self.renderer.update(self.camera.build_view_projection_matrix());
+        self.renderer
+            .update(self.camera.build_view_projection_matrix());
 
         self.fetch_tiles();
 
@@ -182,14 +183,14 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let area_latlon = get_bounding_rect(poly.exterior()).unwrap();
 
         // if area_latlon != self.last_area_latlon {
-            self.tiles_provider.load(area_latlon, zoom_level);
+        self.tiles_provider.load(area_latlon, zoom_level);
         // }
 
         self.last_area_latlon = area_latlon;
     }
 
     fn update_entities(&mut self) {
-        let puck_location = self.current_lat_lon - self.camera_offset.cast().unwrap();
+        let puck_location = self.current_world_position - self.camera_offset.cast().unwrap();
         let bearing = self.current_bearing;
 
         let cam_zoom = self.camera_controller.forward_len / 100.0;
@@ -197,15 +198,26 @@ impl<T: TilesProvider> ShashlikMap<T> {
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
                 spatial_data.scale = cam_zoom as f64;
-                spatial_data.transform += (puck_location.cast().unwrap() - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED as f64;
-                spatial_data.yaw += ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
+                spatial_data.transform += (puck_location.cast().unwrap() - spatial_data.transform)
+                    * Self::TEMP_ANIMATION_SPEED as f64;
+                spatial_data.yaw +=
+                    ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
             });
 
         let cam_yaw = self.camera_controller.yaw;
         let new_cam_yaw = if self.cam_follow_mode {
             let cam_pos = self.camera_controller.position;
             let cam_pos = Vector3::new(cam_pos.x, cam_pos.y, cam_pos.z);
-            let new_cam_pos = cam_pos + ((self.current_lat_lon - self.camera_offset) - cam_pos) * Self::TEMP_ANIMATION_SPEED;
+
+            let transform_cam_offset = (self.current_world_position - self.camera_offset) - cam_pos;
+            let transform_cam_offset_anim = transform_cam_offset * Self::TEMP_ANIMATION_SPEED;
+            // TODO Animation framework. Now it just fixes teleport bug
+            let new_cam_pos = if transform_cam_offset_anim.magnitude2() >= 300.0 {
+                cam_pos + transform_cam_offset
+            } else {
+                cam_pos + transform_cam_offset_anim
+            };
+
             self.camera_controller.set_new_position(new_cam_pos);
 
             cam_yaw + ((self.current_bearing - cam_yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED
@@ -214,7 +226,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
         };
         self.camera_controller.yaw = new_cam_yaw;
 
-        self.camera_controller.pitch += (self.current_pitch - self.camera_controller.pitch) * Self::TEMP_ANIMATION_SPEED
+        self.camera_controller.pitch +=
+            (self.current_pitch - self.camera_controller.pitch) * Self::TEMP_ANIMATION_SPEED
     }
 
     pub fn zoom_delta(&mut self, delta: f32, point: (f32, f32)) {
@@ -240,7 +253,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.camera_controller.pitch = clamp(self.camera_controller.pitch, 45.0, 90.0);
         self.current_pitch = self.camera_controller.pitch;
     }
-    
+
     pub fn get_camera_follow_mode(&self) -> bool {
         self.cam_follow_mode
     }
@@ -256,7 +269,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     pub fn set_lat_lon_bearing(&mut self, lat: f64, lon: f64, bearing: Option<f32>) {
         let position = T::lat_lon_to_world(&coord! {x: lon, y: lat});
-        self.current_lat_lon = Vector3::new(position.x as f32, position.y as f32, 0.0);
+        self.current_world_position = Vector3::new(position.x as f32, position.y as f32, 0.0);
         if let Some(bearing) = bearing {
             let mut rot_diff = (bearing % 360.0) - (self.current_bearing % 360.0);
             if rot_diff.abs() > 180.0 {
@@ -277,11 +290,17 @@ impl<T: TilesProvider> ShashlikMap<T> {
             "kml_data".to_string(),
             0,
             SpatialData::transform(Vector3::new(0.0, 0.0, 0.0)),
-            Box::new(TestKmlGroup::new(path_buf, Box::new(move |p| {
-                let coord: Coord<f64> = (p.x(), p.y()).into();
-                let coord = T::lat_lon_to_world(&coord);
-                Point::new(coord.x - camera_offset.x as f64, coord.y - camera_offset.y as f64)
-            }))),
+            Box::new(TestKmlGroup::new(
+                path_buf,
+                Box::new(move |p| {
+                    let coord: Coord<f64> = (p.x(), p.y()).into();
+                    let coord = T::lat_lon_to_world(&coord);
+                    Point::new(
+                        coord.x - camera_offset.x as f64,
+                        coord.y - camera_offset.y as f64,
+                    )
+                }),
+            )),
         );
     }
 }
