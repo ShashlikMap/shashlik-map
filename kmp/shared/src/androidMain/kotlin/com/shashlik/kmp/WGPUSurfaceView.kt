@@ -49,6 +49,11 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
 
             return super.onScroll(e1, e2, distanceX, distanceY)
         }
+
+        override fun onLongPress(e: MotionEvent) {
+            super.onLongPress(e)
+            shashlikMapApi?.calculateRoute(e.x, e.y)
+        }
     }
 
     private val gestureDetector = GestureDetector(context, gestureListener)

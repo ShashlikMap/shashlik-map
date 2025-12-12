@@ -20,6 +20,7 @@ seahash = "4.1.0"
 rayon = "1.11.0"
 kml = "0.12.0"
 rand = "0.9.2"
+valhalla-client = { git = "https://github.com/ShashlikMap/valhalla-client-rs" }
 
 
 [build-dependencies]

@@ -1,6 +1,7 @@
 extern crate core;
 
 use crate::camera::{Camera, CameraController};
+use crate::route_controller::RouteController;
 use crate::style_loader::StyleLoader;
 use crate::test_kml_viewer_group::TestKmlGroup;
 use crate::test_puck_group::TestSimplePuck;
@@ -13,6 +14,7 @@ use futures::{Stream, StreamExt, pin_mut};
 use geo_types::private_utils::get_bounding_rect;
 use geo_types::{Coord, Point, Rect, coord};
 use geo_types::{LineString, Polygon};
+use log::error;
 use renderer::canvas_api::CanvasApi;
 use renderer::modifier::render_modifier::SpatialData;
 use renderer::render_group::RenderGroup;
@@ -25,6 +27,8 @@ use std::thread::spawn;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 mod camera;
+mod route_controller;
+pub mod route_group;
 mod style_loader;
 mod test_kml_viewer_group;
 mod test_puck_group;
@@ -35,6 +39,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     camera: Camera,
     camera_controller: CameraController,
     tiles_provider: T,
+    route_controller: RouteController,
     last_area_latlon: Rect,
     camera_offset: Vector3<f32>,
     current_world_position: Vector3<f32>,
@@ -86,11 +91,12 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let mut camera_controller = CameraController::new(1.0);
         camera_controller.pitch = 45.0;
 
-        let map = ShashlikMap {
+        let mut map = ShashlikMap {
             renderer: Box::new(renderer),
             camera: Camera::new(),
             camera_controller,
             tiles_provider,
+            route_controller: RouteController::new(),
             last_area_latlon: Rect::new((0.0, 0.0), (0.0, 0.0)),
             current_world_position: camera_offset.cast().unwrap(),
             current_bearing: 0.0,
@@ -101,6 +107,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             cam_follow_mode: true,
             screen_size,
         };
+        map.set_lat_lon_bearing(initial_coord.y, initial_coord.x, Some(0f32));
         map.load_styles();
         Ok(map)
     }
@@ -269,6 +276,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn set_lat_lon_bearing(&mut self, lat: f64, lon: f64, bearing: Option<f32>) {
+        self.route_controller.set_current_lat_lon((lat, lon));
         let position = T::lat_lon_to_world(&coord! {x: lon, y: lat});
         self.current_world_position = Vector3::new(position.x as f32, position.y as f32, 0.0);
         if let Some(bearing) = bearing {
@@ -280,27 +288,52 @@ impl<T: TilesProvider> ShashlikMap<T> {
         }
     }
 
+    pub fn create_route_to_from_screen_center(&self) {
+        let center = self.clip_to_latlon(&coord! {x: 0.0, y: 0.0}).unwrap();
+        self.create_route_to(center.into());
+    }
+
+    pub fn create_route_to_screen_point(&self, point_x: f32, point_y: f32) {
+        let clip = coord! {x: (point_x / self.screen_size.0) as f64,
+        y: (point_y / self.screen_size.1) as f64};
+        let clip = coord! { x: 2.0*(clip.x - 0.5), y: 2.0*(clip.y - 0.5) };
+        let center = self.clip_to_latlon(&clip).unwrap();
+        self.create_route_to(center.into());
+    }
+
+    fn create_route_to(&self, to_lat_lon: (f64, f64)) {
+        self.route_controller.calc_route(
+            to_lat_lon,
+            self.create_location_coord_converter(),
+            self.renderer.api.clone(),
+        );
+    }
+
+    fn create_location_coord_converter(&self) -> Box<dyn (Fn(&Point) -> Point) + Send> {
+        let camera_offset = self.camera_offset;
+        Box::new(move |p| {
+            let coord: Coord<f64> = (p.x(), p.y()).into();
+            let coord = T::lat_lon_to_world(&coord);
+            Point::new(
+                coord.x - camera_offset.x as f64,
+                coord.y - camera_offset.y as f64,
+            )
+        })
+    }
+
     fn load_styles(&self) {
         self.style_loader.load(self.renderer.api.clone());
     }
 
     pub fn load_kml_path(&self, path_buf: PathBuf) {
         println!("Loading KML from {:?}", path_buf);
-        let camera_offset = self.camera_offset;
         self.renderer.api.add_render_group(
             "kml_data".to_string(),
             0,
             SpatialData::transform(Vector3::new(0.0, 0.0, 0.0)),
             Box::new(TestKmlGroup::new(
                 path_buf,
-                Box::new(move |p| {
-                    let coord: Coord<f64> = (p.x(), p.y()).into();
-                    let coord = T::lat_lon_to_world(&coord);
-                    Point::new(
-                        coord.x - camera_offset.x as f64,
-                        coord.y - camera_offset.y as f64,
-                    )
-                }),
+                self.create_location_coord_converter(),
             )),
         );
     }
