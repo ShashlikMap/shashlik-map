@@ -179,11 +179,12 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let p3 = self.clip_to_latlon(&coord! {x: 1.0, y: 1.0}).unwrap();
         let p4 = self.clip_to_latlon(&coord! {x: -1.0, y: 1.0}).unwrap();
 
-        let poly: Polygon<f64> = Polygon::new(LineString(vec![p1, p2, p4, p3]), Vec::new());
+        // this will be compared for intersection later, it should have a correct winding
+        let poly: Polygon<f64> = Polygon::new(LineString(vec![p1, p2, p3, p4]), Vec::new());
         let area_latlon = get_bounding_rect(poly.exterior()).unwrap();
 
         // if area_latlon != self.last_area_latlon {
-        self.tiles_provider.load(area_latlon, zoom_level);
+        self.tiles_provider.load(area_latlon, poly, zoom_level);
         // }
 
         self.last_area_latlon = area_latlon;

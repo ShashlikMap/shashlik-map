@@ -3,6 +3,7 @@ use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use cgmath::{Vector2, Vector3};
 use futures::channel::mpsc::{unbounded, UnboundedSender};
 use futures::Stream;
+use geo::Intersects;
 use geo::Winding;
 use geo_types::Rect;
 use googleprojection::{Coord, Mercator};
@@ -14,6 +15,7 @@ use osm::map::{
 };
 use osm::source::TileSource;
 use osm::tiles::{calc_tile_ranges, TileKey, TileStore, TILES_COUNT};
+use rand::Rng;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use renderer::draw_commands::{GeometryType, PolylineOptions};
@@ -24,7 +26,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
-use rand::Rng;
 
 pub struct OldTilesProvider<S: TileSource> {
     sender: Option<UnboundedSender<TilesMessage>>,
@@ -343,7 +344,7 @@ impl<S: TileSource> OldTilesProvider<S> {
     }
 }
 impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
-    fn load(&mut self, area_latlon: Rect, zoom_level: i32) {
+    fn load(&mut self, area_latlon: Rect, area_poly: geo_types::Polygon<f64>, zoom_level: i32) {
         let ranges = calc_tile_ranges(TILES_COUNT, zoom_level, &area_latlon);
         let mut current_visible_tiles: HashSet<TileKey> = HashSet::new();
         let mut to_load: HashSet<TileKey> = HashSet::new();
@@ -357,9 +358,14 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
                     tile_y: ty as i32,
                     zoom_level,
                 };
-                current_visible_tiles.insert(tile_key);
-                if self.per_frame_cache.insert(tile_key) {
-                    to_load.insert(tile_key);
+
+                // FIXME Maybe move "calc_tile_boundary" to tile generator? since we need to calculate all the time and twice(+ before loading)
+                let tile_rect = tile_key.calc_tile_boundary(1.0);
+                if area_poly.intersects(&tile_rect) {
+                    current_visible_tiles.insert(tile_key);
+                    if self.per_frame_cache.insert(tile_key) {
+                        to_load.insert(tile_key);
+                    }
                 }
             }
         }
