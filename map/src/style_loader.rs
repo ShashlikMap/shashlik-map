@@ -1,15 +1,58 @@
+use crate::route_group::RouteGroup;
+use cgmath::Vector3;
+use geo_types::{Point, point};
+use renderer::modifier::render_modifier::SpatialData;
 use renderer::renderer_api::RendererApi;
 use renderer::styles::render_style::RenderStyle;
 use renderer::styles::style_id::StyleId;
 use std::sync::Arc;
 use std::thread::{sleep, spawn};
 use std::time::Duration;
+use valhalla_client::blocking::Valhalla;
+use valhalla_client::costing::Costing;
+use valhalla_client::route::{DirectionsType, Location, Manifest};
 
 pub struct StyleLoader {}
 
 impl StyleLoader {
     pub fn new() -> StyleLoader {
         StyleLoader {}
+    }
+
+    pub fn load_route(
+        &self,
+        converter: Box<dyn (Fn(&Point) -> Point) + Send>,
+        api: Arc<RendererApi>,
+    ) {
+        spawn(move || {
+            let valhalla = Valhalla::default();
+
+            let loc1 = Location::new(139.7769298, 35.7248164);
+            let loc2 = Location::new(139.74777078320227, 35.62298925839326);
+            let manifest = Manifest::builder()
+                .locations([loc1, loc2])
+                .directions_type(DirectionsType::None)
+                .costing(Costing::Motorcycle(Default::default()));
+
+            let response = valhalla.route(manifest).unwrap();
+
+            println!("VALHALLA: {:#?}", response);
+
+            if let Some(leg) = response.legs.first() {
+                let route: Vec<Point> = leg
+                    .shape
+                    .iter()
+                    .map(|p| {
+                        point! { x: p.lon, y: p.lat }
+                    })
+                    .collect();
+
+                let route = Box::new(RouteGroup::new(route, converter));
+
+                let spatial_data = SpatialData::transform(Vector3::new(0.0, 0.0, 0.0));
+                api.add_render_group("route".to_string(), 1, spatial_data, route);
+            }
+        });
     }
 
     pub fn load(&self, api: Arc<RendererApi>) {
@@ -19,8 +62,14 @@ impl StyleLoader {
 
             let new_styles = vec![
                 (StyleId("poi"), RenderStyle::fill([0.0, 0.0, 1.0, 1.0])),
-                (StyleId("poi_traffic_light"), RenderStyle::fill([0.0, 0.0, 0.0, 1.0])),
-                (StyleId("poi_toilet"), RenderStyle::fill([0.6, 0.0, 0.6, 1.0])),
+                (
+                    StyleId("poi_traffic_light"),
+                    RenderStyle::fill([0.0, 0.0, 0.0, 1.0]),
+                ),
+                (
+                    StyleId("poi_toilet"),
+                    RenderStyle::fill([0.6, 0.0, 0.6, 1.0]),
+                ),
                 (StyleId("kml_dots"), RenderStyle::fill([1.0, 0.0, 0.0, 1.0])),
                 (
                     StyleId("water"),

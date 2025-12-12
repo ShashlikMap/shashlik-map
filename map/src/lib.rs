@@ -25,6 +25,7 @@ use std::thread::spawn;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 mod camera;
+pub mod route_group;
 mod style_loader;
 mod test_kml_viewer_group;
 mod test_puck_group;
@@ -282,6 +283,19 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     fn load_styles(&self) {
         self.style_loader.load(self.renderer.api.clone());
+        let camera_offset = self.camera_offset;
+
+        self.style_loader.load_route(
+            Box::new(move |p| {
+                let coord: Coord<f64> = (p.x(), p.y()).into();
+                let coord = T::lat_lon_to_world(&coord);
+                Point::new(
+                    coord.x - camera_offset.x as f64,
+                    coord.y - camera_offset.y as f64,
+                )
+            }),
+            self.renderer.api.clone(),
+        );
     }
 
     pub fn load_kml_path(&self, path_buf: PathBuf) {
