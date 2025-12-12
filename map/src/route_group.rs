@@ -33,7 +33,7 @@ impl RenderGroup for RouteGroup {
         canvas.path(ShapeData {
             path: path_builder.build(),
             geometry_type: GeometryType::Polyline(options),
-            style_id: StyleId("puck_style"),
+            style_id: StyleId("route"),
             index_layer_level: 0,
             is_screen: false,
         });

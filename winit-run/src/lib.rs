@@ -178,6 +178,11 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                                 map.set_camera_follow_mode(!map.get_camera_follow_mode());
                             }
                         }
+                        KeyCode::KeyB => {
+                            if is_pressed {
+                                map.create_route_to_from_screen_center();
+                            }
+                        }
                         KeyCode::KeyM => {
                             if is_pressed {
                                 self.fake_bearing += 30.0;

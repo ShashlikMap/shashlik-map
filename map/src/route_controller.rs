@@ -1,0 +1,64 @@
+use crate::route_group::RouteGroup;
+use cgmath::Vector3;
+use geo_types::{Point, point};
+use renderer::modifier::render_modifier::SpatialData;
+use renderer::renderer_api::RendererApi;
+use std::sync::Arc;
+use std::thread::spawn;
+use valhalla_client::blocking::Valhalla;
+use valhalla_client::costing::Costing;
+use valhalla_client::route::{DirectionsType, Location, Manifest};
+
+pub struct RouteController {
+    current_lat_lon: Option<(f64, f64)>,
+}
+
+impl RouteController {
+    pub fn new() -> RouteController {
+        RouteController {
+            current_lat_lon: None,
+        }
+    }
+    pub fn set_current_lat_lon(&mut self, lat_lon: (f64, f64)) {
+        self.current_lat_lon = Some(lat_lon);
+    }
+
+    pub fn calc_route(
+        &self,
+        to_lat_lon: (f64, f64),
+        converter: Box<dyn (Fn(&Point) -> Point) + Send>,
+        api: Arc<RendererApi>,
+    ) {
+        if let Some((lat, lon)) = self.current_lat_lon {
+            spawn(move || {
+                let valhalla = Valhalla::default();
+
+                let source_loc = Location::new(lon as f32, lat as f32);
+                let destination_loc = Location::new(to_lat_lon.0 as f32, to_lat_lon.1 as f32);
+                let manifest = Manifest::builder()
+                    .locations([source_loc, destination_loc])
+                    .directions_type(DirectionsType::None)
+                    .costing(Costing::Motorcycle(Default::default()));
+
+                let response = valhalla.route(manifest).unwrap();
+
+                println!("VALHALLA: {:#?}", response);
+
+                if let Some(leg) = response.legs.first() {
+                    let route: Vec<Point> = leg
+                        .shape
+                        .iter()
+                        .map(|p| {
+                            point! { x: p.lon, y: p.lat }
+                        })
+                        .collect();
+
+                    let route = Box::new(RouteGroup::new(route, converter));
+
+                    let spatial_data = SpatialData::transform(Vector3::new(0.0, 0.0, 0.0));
+                    api.add_render_group("route".to_string(), 1, spatial_data, route);
+                }
+            });
+        }
+    }
+}
