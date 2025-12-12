@@ -54,4 +54,9 @@ impl ShashlikMapApi {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
         shashlik_map.set_camera_follow_mode(enabled);
     }
+
+    fn calculate_route(&self, point_x: f32, point_y: f32) {
+        let shashlik_map = self.shashlik_map.read().unwrap();
+        shashlik_map.create_route_to_screen_point(point_x, point_y);
+    }
 }

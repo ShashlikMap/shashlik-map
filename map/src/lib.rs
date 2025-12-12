@@ -14,6 +14,7 @@ use futures::{Stream, StreamExt, pin_mut};
 use geo_types::private_utils::get_bounding_rect;
 use geo_types::{Coord, Point, Rect, coord};
 use geo_types::{LineString, Polygon};
+use log::error;
 use renderer::canvas_api::CanvasApi;
 use renderer::modifier::render_modifier::SpatialData;
 use renderer::render_group::RenderGroup;
@@ -292,7 +293,15 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.create_route_to(center.into());
     }
 
-    pub fn create_route_to(&self, to_lat_lon: (f64, f64)) {
+    pub fn create_route_to_screen_point(&self, point_x: f32, point_y: f32) {
+        let clip = coord! {x: (point_x / self.screen_size.0) as f64,
+        y: (point_y / self.screen_size.1) as f64};
+        let clip = coord! { x: 2.0*(clip.x - 0.5), y: 2.0*(clip.y - 0.5) };
+        let center = self.clip_to_latlon(&clip).unwrap();
+        self.create_route_to(center.into());
+    }
+
+    fn create_route_to(&self, to_lat_lon: (f64, f64)) {
         self.route_controller.calc_route(
             to_lat_lon,
             self.create_location_coord_converter(),
