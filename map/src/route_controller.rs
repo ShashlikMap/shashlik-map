@@ -1,6 +1,8 @@
+use std::collections::HashSet;
 use crate::route_group::RouteGroup;
 use cgmath::Vector3;
 use geo_types::{Point, point};
+use log::{error};
 use renderer::modifier::render_modifier::SpatialData;
 use renderer::renderer_api::RendererApi;
 use std::sync::Arc;
@@ -40,23 +42,31 @@ impl RouteController {
                     .directions_type(DirectionsType::None)
                     .costing(Costing::Motorcycle(Default::default()));
 
-                let response = valhalla.route(manifest).unwrap();
 
-                println!("VALHALLA: {:#?}", response);
+                api.clear_render_groups(HashSet::from_iter(vec!["route".to_string()]));
+                match valhalla.route(manifest) {
+                    Ok(trip) => {
+                        println!("Route calculated: {:?}", trip);
+                        if let Some(leg) = trip.legs.first() {
+                            let route: Vec<Point> = leg
+                                .shape
+                                .iter()
+                                .map(|p| {
+                                    point! { x: p.lon, y: p.lat }
+                                })
+                                .collect();
 
-                if let Some(leg) = response.legs.first() {
-                    let route: Vec<Point> = leg
-                        .shape
-                        .iter()
-                        .map(|p| {
-                            point! { x: p.lon, y: p.lat }
-                        })
-                        .collect();
+                            let route = Box::new(RouteGroup::new(route, converter));
 
-                    let route = Box::new(RouteGroup::new(route, converter));
-
-                    let spatial_data = SpatialData::transform(Vector3::new(0.0, 0.0, 0.0));
-                    api.add_render_group("route".to_string(), 1, spatial_data, route);
+                            let spatial_data = SpatialData::transform(Vector3::new(0.0, 0.0, 0.0));
+                            api.add_render_group("route".to_string(), 1, spatial_data, route);
+                        } else {
+                            error!("No legs found in route!");
+                        }
+                    }
+                    Err(err) => {
+                        error!("Error calculating route: {:?}", err);
+                    }
                 }
             });
         }
