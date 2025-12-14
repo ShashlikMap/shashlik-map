@@ -53,8 +53,12 @@ impl StyleLoader {
                     RenderStyle::fill([0.0, 0.09, 1.0, 1.0]),
                 ),
                 (
-                    StyleId("route"),
+                    StyleId("route_motorbike"),
                     RenderStyle::border([0.2, 0.2, 1.0, 1.0], 0.3),
+                ),
+                (
+                    StyleId("route_pedestrian"),
+                    RenderStyle::border([0.2, 0.5, 0.7, 1.0], 0.3),
                 ),
                 (
                     StyleId("highway_motorway"),

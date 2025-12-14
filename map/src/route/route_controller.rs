@@ -1,10 +1,11 @@
-use std::collections::HashSet;
+use crate::route::RouteCosting;
 use crate::route::route_group::RouteGroup;
 use cgmath::Vector3;
 use geo_types::{Point, point};
-use log::{error};
+use log::error;
 use renderer::modifier::render_modifier::SpatialData;
 use renderer::renderer_api::RendererApi;
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::thread::spawn;
 use valhalla_client::blocking::Valhalla;
@@ -28,6 +29,7 @@ impl RouteController {
     pub fn calc_route(
         &self,
         to_lat_lon: (f64, f64),
+        route_costing: RouteCosting,
         converter: Box<dyn (Fn(&Point) -> Point) + Send>,
         api: Arc<RendererApi>,
     ) {
@@ -37,11 +39,14 @@ impl RouteController {
 
                 let source_loc = Location::new(lon as f32, lat as f32);
                 let destination_loc = Location::new(to_lat_lon.0 as f32, to_lat_lon.1 as f32);
+                let costing = match route_costing {
+                    RouteCosting::Pedestrian => Costing::Pedestrian(Default::default()),
+                    RouteCosting::Motorbike => Costing::Motorcycle(Default::default()),
+                };
                 let manifest = Manifest::builder()
                     .locations([source_loc, destination_loc])
                     .directions_type(DirectionsType::None)
-                    .costing(Costing::Motorcycle(Default::default()));
-
+                    .costing(costing);
 
                 api.clear_render_groups(HashSet::from_iter(vec!["route".to_string()]));
                 match valhalla.route(manifest) {
@@ -56,7 +61,7 @@ impl RouteController {
                                 })
                                 .collect();
 
-                            let route = Box::new(RouteGroup::new(route, converter));
+                            let route = Box::new(RouteGroup::new(route, route_costing, converter));
 
                             let spatial_data = SpatialData::transform(Vector3::new(0.0, 0.0, 0.0));
                             api.add_render_group("route".to_string(), 1, spatial_data, route);

@@ -24,13 +24,14 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread::spawn;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use crate::route::RouteCosting;
 
 mod camera;
 mod style_loader;
 mod test_kml_viewer_group;
 mod test_puck_group;
 pub mod tiles;
-mod route;
+pub mod route;
 
 pub struct ShashlikMap<T: TilesProvider> {
     renderer: Box<ShashlikRenderer>,
@@ -293,22 +294,23 @@ impl<T: TilesProvider> ShashlikMap<T> {
         }
     }
 
-    pub fn create_route_to_from_screen_center(&self) {
+    pub fn create_route_to_from_screen_center(&self, route_costing: RouteCosting) {
         let center = self.clip_to_latlon(&coord! {x: 0.0, y: 0.0}).unwrap();
-        self.create_route_to(center.into());
+        self.create_route_to(center.into(), route_costing);
     }
 
-    pub fn create_route_to_screen_point(&self, point_x: f32, point_y: f32) {
+    pub fn create_route_to_screen_point(&self, point_x: f32, point_y: f32, route_costing: RouteCosting) {
         let clip = coord! {x: (point_x / self.screen_size.0) as f64,
         y: (point_y / self.screen_size.1) as f64};
         let clip = coord! { x: 2.0*(clip.x - 0.5), y: 2.0*(clip.y - 0.5) };
         let center = self.clip_to_latlon(&clip).unwrap();
-        self.create_route_to(center.into());
+        self.create_route_to(center.into(), route_costing);
     }
 
-    fn create_route_to(&self, to_lat_lon: (f64, f64)) {
+    fn create_route_to(&self, to_lat_lon: (f64, f64), route_costing: RouteCosting) {
         self.route_controller.calc_route(
             to_lat_lon,
+            route_costing,
             self.create_location_coord_converter(),
             self.renderer.api.clone(),
         );

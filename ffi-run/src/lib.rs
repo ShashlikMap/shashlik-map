@@ -17,6 +17,11 @@ pub struct ShashlikMapApi {
 unsafe impl Sync for ShashlikMapApi {}
 unsafe impl Send for ShashlikMapApi {}
 
+#[derive(uniffi::Enum)]
+pub enum RouteCosting {
+    Pedestrian, Motorbike
+}
+
 #[uniffi::export]
 impl ShashlikMapApi {
     fn render(&self) {
@@ -55,8 +60,12 @@ impl ShashlikMapApi {
         shashlik_map.set_camera_follow_mode(enabled);
     }
 
-    fn calculate_route(&self, point_x: f32, point_y: f32) {
+    fn calculate_route(&self, point_x: f32, point_y: f32, route_costing: RouteCosting) {
         let shashlik_map = self.shashlik_map.read().unwrap();
-        shashlik_map.create_route_to_screen_point(point_x, point_y);
+        let costing = match route_costing {
+            RouteCosting::Pedestrian => map::route::RouteCosting::Pedestrian,
+            RouteCosting::Motorbike => map::route::RouteCosting::Motorbike
+        };
+        shashlik_map.create_route_to_screen_point(point_x, point_y, costing);
     }
 }

@@ -6,15 +6,17 @@ use renderer::draw_commands::{GeometryType, PolylineOptions};
 use renderer::geometry_data::ShapeData;
 use renderer::render_group::RenderGroup;
 use renderer::styles::style_id::StyleId;
+use crate::route::RouteCosting;
 
 pub struct RouteGroup {
     route: Vec<Point>,
+    route_costing: RouteCosting
 }
 
 impl RouteGroup {
-    pub fn new(route: Vec<Point>, converter: Box<dyn Fn(&Point) -> Point>) -> RouteGroup {
+    pub fn new(route: Vec<Point>, route_costing: RouteCosting, converter: Box<dyn Fn(&Point) -> Point>) -> RouteGroup {
         let route: Vec<Point> = route.iter().map(|p| converter(p)).collect();
-        RouteGroup { route }
+        RouteGroup { route, route_costing }
     }
 }
 
@@ -29,11 +31,16 @@ impl RenderGroup for RouteGroup {
         path_builder.end(false);
 
         let options = PolylineOptions { width: 1f32 };
-
+        
+        let style_id = match self.route_costing {
+            RouteCosting::Pedestrian =>  StyleId("route_pedestrian"),
+            RouteCosting::Motorbike =>  StyleId("route_motorbike")
+        };
+        
         canvas.path(ShapeData {
             path: path_builder.build(),
             geometry_type: GeometryType::Polyline(options),
-            style_id: StyleId("route"),
+            style_id,
             index_layer_level: 0,
             is_screen: false,
         });

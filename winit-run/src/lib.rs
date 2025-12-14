@@ -12,6 +12,7 @@ use winit::event::{KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
+use map::route::RouteCosting;
 
 pub struct App<T: TilesProvider> {
     pub receiver: Receiver<CustomUIEvent>,
@@ -180,7 +181,8 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                         }
                         KeyCode::KeyB => {
                             if is_pressed {
-                                map.create_route_to_from_screen_center();
+                                // RouteCosting::Motorbike for winit by default
+                                map.create_route_to_from_screen_center(RouteCosting::Motorbike);
                             }
                         }
                         KeyCode::KeyM => {

@@ -7,14 +7,17 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Parcelable
 import android.util.AttributeSet
-import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import androidx.compose.runtime.mutableStateOf
+import uniffi.ffi_run.RouteCosting
 import uniffi.ffi_run.ShashlikMapApi
 import uniffi.ffi_run.toPointer
+
+var routeCosting = mutableStateOf(RouteCosting.MOTORBIKE)
 
 @SuppressLint("ClickableViewAccessibility")
 class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
@@ -52,7 +55,7 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
 
         override fun onLongPress(e: MotionEvent) {
             super.onLongPress(e)
-            shashlikMapApi?.calculateRoute(e.x, e.y)
+            shashlikMapApi?.calculateRoute(e.x, e.y, routeCosting.value)
         }
     }
 
