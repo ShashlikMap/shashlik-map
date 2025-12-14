@@ -1,5 +1,6 @@
 use geo_types::Point;
 use lyon::geom::point;
+use lyon::lyon_tessellation::{LineCap, LineJoin};
 use lyon::path::Path;
 use renderer::canvas_api::CanvasApi;
 use renderer::draw_commands::{GeometryType, PolylineOptions};
@@ -30,7 +31,7 @@ impl RenderGroup for RouteGroup {
         }
         path_builder.end(false);
 
-        let options = PolylineOptions { width: 1f32 };
+        let options = PolylineOptions { width: 1f32, line_join: LineJoin::Round, line_cap: LineCap::Round };
         
         let style_id = match self.route_costing {
             RouteCosting::Pedestrian =>  StyleId("route_pedestrian"),

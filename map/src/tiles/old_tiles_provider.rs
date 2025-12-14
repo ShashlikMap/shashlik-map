@@ -238,6 +238,7 @@ impl<S: TileSource> OldTilesProvider<S> {
 
                             let options = PolylineOptions {
                                 width,
+                                ..Default::default()
                             };
 
                             geometry_data.push(GeometryData::Shape(ShapeData {

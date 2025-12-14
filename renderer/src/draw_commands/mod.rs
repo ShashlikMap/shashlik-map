@@ -6,8 +6,9 @@ use crate::layers::Layers;
 use crate::mesh::mesh::Mesh;
 use crate::modifier::render_modifier::SpatialData;
 use bytemuck::NoUninit;
-use lyon::lyon_tessellation::VertexBuffers;
+use lyon::lyon_tessellation::{LineJoin, VertexBuffers};
 use std::ops::Range;
+use lyon::path::LineCap;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::Device;
 
@@ -27,6 +28,18 @@ pub enum GeometryType {
 #[derive(Clone, Copy)]
 pub struct PolylineOptions {
     pub width: f32,
+    pub line_cap: LineCap,
+    pub line_join: LineJoin,
+}
+
+impl Default for PolylineOptions {
+    fn default() -> Self {
+        PolylineOptions {
+            width: 1f32,
+            line_cap: LineCap::Butt,
+            line_join: LineJoin::Miter,
+        }
+    }
 }
 
 pub(crate) struct DrawCommands {

@@ -1,7 +1,7 @@
 use crate::draw_commands::mesh2d_draw_command::Mesh2dDrawCommand;
 use crate::draw_commands::mesh3d_draw_command::Mesh3dDrawCommand;
 use crate::draw_commands::text_draw_command::TextDrawCommand;
-use crate::draw_commands::{DrawCommand, DrawCommands, GeometryType, MeshVertex};
+use crate::draw_commands::{DrawCommand, DrawCommands, GeometryType, MeshVertex, PolylineOptions};
 use crate::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData, TextData};
 use crate::modifier::render_modifier::SpatialData;
 use crate::styles::render_style::RenderStyle;
@@ -11,8 +11,8 @@ use crate::svg::svg_parser::svg_parse;
 use crate::vertex_attrs::ShapeVertex;
 use cgmath::Vector3;
 use lyon::lyon_tessellation::{
-    BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator,
-    StrokeVertex, VertexBuffers,
+    BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions,
+    StrokeTessellator, StrokeVertex, VertexBuffers,
 };
 use lyon::path::Path;
 use std::collections::{BTreeMap, HashMap};
@@ -35,7 +35,7 @@ pub struct CanvasApi {
     geometry3d: VertexBuffers<MeshVertex, u32>,
     text_vec: Vec<TextData>,
     screen_path_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, ScreenPaths)>,
-    feature_layer_tag: Option<String>
+    feature_layer_tag: Option<String>,
 }
 
 impl CanvasApi {
@@ -50,7 +50,7 @@ impl CanvasApi {
             geometry3d: VertexBuffers::new(),
             text_vec: Vec::new(),
             screen_path_cache: HashMap::new(),
-            feature_layer_tag: None
+            feature_layer_tag: None,
         }
     }
     pub(crate) fn begin_shape(&mut self, real_layer: usize) {
@@ -116,7 +116,10 @@ impl CanvasApi {
     fn mesh2d(&mut self, is_screen: bool) {
         let mesh = mem::replace(&mut self.geometry, VertexBuffers::new());
         if !mesh.vertices.is_empty() {
-            let flatten_ranges = mem::take(&mut self.indices_by_layers).into_values().flatten().collect();
+            let flatten_ranges = mem::take(&mut self.indices_by_layers)
+                .into_values()
+                .flatten()
+                .collect();
             let screen_paths = ScreenPaths {
                 positions: vec![Vector3::new(0.0, 0.0, 0.0)],
                 with_collision: false,
@@ -139,7 +142,7 @@ impl CanvasApi {
             screen_paths,
             is_screen,
             outlined: !is_screen,
-            feature_layer_tag: self.feature_layer_tag.clone()
+            feature_layer_tag: self.feature_layer_tag.clone(),
         }));
     }
 
@@ -213,12 +216,16 @@ impl CanvasApi {
         let initial_index = self.geometry.indices.len();
         match geom_type {
             GeometryType::Polyline(options) => {
-                self.tessellate_stroke_path(&data.path, options.width, |vertex| ShapeVertex {
-                    position: [vertex.position().x, vertex.position().y, 0.0f32],
-                    normals: [vertex.normal().x, vertex.normal().y, 0.0],
-                    dist: vertex.advancement(),
-                    style_index: style_index as u32,
-                });
+                self.tessellate_stroke_path(
+                    &data.path,
+                    options,
+                    |vertex| ShapeVertex {
+                        position: [vertex.position().x, vertex.position().y, 0.0f32],
+                        normals: [vertex.normal().x, vertex.normal().y, 0.0],
+                        dist: vertex.advancement(),
+                        style_index: style_index as u32,
+                    },
+                );
             }
             GeometryType::Polygon => {
                 Self::tessellate_fill_path(&data.path, &mut self.geometry, |vertex| ShapeVertex {
@@ -270,7 +277,7 @@ impl CanvasApi {
                 )
             });
     }
-    
+
     pub fn text(&mut self, data: TextData) {
         self.text_vec.push(data);
     }
@@ -323,7 +330,7 @@ impl CanvasApi {
         }
     }
 
-    fn tessellate_stroke_path<F>(&mut self, path: &Path, width: f32, ctor: F)
+    fn tessellate_stroke_path<F>(&mut self, path: &Path, polyline_options: PolylineOptions, ctor: F)
     where
         F: Fn(StrokeVertex) -> ShapeVertex,
     {
@@ -332,7 +339,10 @@ impl CanvasApi {
             tessellator
                 .tessellate_path(
                     path,
-                    &StrokeOptions::default().with_line_width(width),
+                    &StrokeOptions::default()
+                        .with_line_width(polyline_options.width)
+                        .with_line_cap(polyline_options.line_cap)
+                        .with_line_join(polyline_options.line_join),
                     &mut BuffersBuilder::new(&mut self.geometry, ctor),
                 )
                 .unwrap();
