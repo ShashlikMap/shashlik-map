@@ -1,7 +1,7 @@
 extern crate core;
 
 use crate::camera::{Camera, CameraController};
-use crate::route_controller::RouteController;
+use route::route_controller::RouteController;
 use crate::style_loader::StyleLoader;
 use crate::test_kml_viewer_group::TestKmlGroup;
 use crate::test_puck_group::TestSimplePuck;
@@ -26,12 +26,11 @@ use std::thread::spawn;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 mod camera;
-mod route_controller;
-pub mod route_group;
 mod style_loader;
 mod test_kml_viewer_group;
 mod test_puck_group;
 pub mod tiles;
+mod route;
 
 pub struct ShashlikMap<T: TilesProvider> {
     renderer: Box<ShashlikRenderer>,

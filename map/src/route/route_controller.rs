@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use crate::route_group::RouteGroup;
+use crate::route::route_group::RouteGroup;
 use cgmath::Vector3;
 use geo_types::{Point, point};
 use log::{error};
