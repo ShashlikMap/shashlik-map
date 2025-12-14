@@ -148,6 +148,7 @@ impl PositionedMesh {
                     spatial_data.transform.y.round() as f32,
                     spatial_data.size.0.round() as f32,
                     spatial_data.size.1.round() as f32],
+                normal_scale: spatial_data.normal_scale,
             };
             attrs.push(instance_pos);
             if is_two_instances {

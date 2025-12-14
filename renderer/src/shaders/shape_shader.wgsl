@@ -33,6 +33,7 @@ struct InstanceInput {
     @location(8) model_matrix_2: vec4<f32>,
     @location(9) model_matrix_3: vec4<f32>,
     @location(10) bbox: vec4<f32>,
+    @location(11) normal_scale: f32,
 }
 
 struct VertexOutput {
@@ -67,11 +68,13 @@ fn vs_main(
     out.outline_flag = model.instance_index % 2;
     out.color_alpha = pos.color_alpha;
 
-    var pointPos = modelpos.xyz;
+    // only two components for normal
+    var normal_scale =  vec3((model.normal.xy * pos.normal_scale) - model.normal.xy, 0.0);
     if(model.instance_index % 2 == 0) {
-        // only two components for normal
-        pointPos += vec3(model.normal.xy * inflate_factor, 0.0);
+        normal_scale += vec3(model.normal.xy * inflate_factor, 0.0);
     }
+
+    let pointPos = modelpos.xyz + normal_scale.xyz;
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;

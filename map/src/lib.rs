@@ -10,11 +10,10 @@ use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use cgmath::num_traits::clamp;
 use cgmath::{InnerSpace, Vector2, Vector3};
 use futures::executor::block_on;
-use futures::{Stream, StreamExt, pin_mut};
+use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
-use geo_types::{Coord, Point, Rect, coord};
+use geo_types::{coord, Coord, Point, Rect};
 use geo_types::{LineString, Polygon};
-use log::error;
 use renderer::canvas_api::CanvasApi;
 use renderer::modifier::render_modifier::SpatialData;
 use renderer::render_group::RenderGroup;
@@ -202,6 +201,13 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let bearing = self.current_bearing;
 
         let cam_zoom = self.camera_controller.forward_len / 100.0;
+
+        self.renderer
+            .api
+            .update_spatial_data("route".to_string(), move |spatial_data| {
+                spatial_data.normal_scale = (cam_zoom / 2.5f32).max(1.0);
+            });
+
         self.renderer
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {

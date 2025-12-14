@@ -291,6 +291,7 @@ impl TextRenderer {
                     color_alpha: glyph_data.alpha,
                     matrix: glyph_data.matrix.cast().unwrap().into(),
                     bbox: [0.0, 0.0, 0.0, 0.0],
+                    normal_scale: 1f32
                 };
                 attrs.push(instance_pos);
             });

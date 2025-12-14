@@ -53,18 +53,20 @@ pub struct InstancePos {
     pub(crate) color_alpha: f32,
     pub(crate) matrix: [[f32; 4]; 4],
     pub(crate) bbox: [f32; 4],
+    pub(crate) normal_scale: f32,
 }
 
 impl VertexAttrib for InstancePos {
     fn desc() -> VertexBufferLayout<'static> {
-        const ATTRIBUTES: &[VertexAttribute; 7] = &wgpu::vertex_attr_array![
+        const ATTRIBUTES: &[VertexAttribute; 8] = &wgpu::vertex_attr_array![
             4 => Float32x3,
             5 => Float32,
             6 => Float32x4,
             7 => Float32x4,
             8 => Float32x4,
             9 => Float32x4,
-            10 => Float32x4
+            10 => Float32x4,
+            11 => Float32,
         ];
 
         wgpu::VertexBufferLayout {

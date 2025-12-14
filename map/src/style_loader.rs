@@ -54,7 +54,7 @@ impl StyleLoader {
                 ),
                 (
                     StyleId("route"),
-                    RenderStyle::fill([0.2, 0.2, 1.0, 1.0]),
+                    RenderStyle::border([0.2, 0.2, 1.0, 1.0], 0.3),
                 ),
                 (
                     StyleId("highway_motorway"),
