@@ -26,6 +26,8 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
+use std::time::SystemTime;
+use log::error;
 
 pub struct OldTilesProvider<S: TileSource> {
     sender: Option<UnboundedSender<TilesMessage>>,
@@ -116,8 +118,8 @@ impl<S: TileSource> OldTilesProvider<S> {
                     let local_position = Self::lat_lon_to_world(&coord) - tile_rect_origin;
                     match &obj_type.kind {
                         MapGeomObjectKind::Poi(poi) => {
-                            let icon: Option<(&str, &[u8])> = match &poi.kind {
-                                MapPointObjectKind::TrainStation => {
+                            let icon: Option<(&str, &[u8])> = match poi.kind {
+                                MapPointObjectKind::TrainStation(is_train) => {
                                     let id = seahash::hash(
                                         format!(
                                             "{:?}{}{}",
@@ -136,7 +138,11 @@ impl<S: TileSource> OldTilesProvider<S> {
                                             0.0,
                                         )).cast().unwrap()],
                                     }));
-                                    Some(("train_station", Self::TRAIN_STATION_SVG))
+                                    if is_train {
+                                        Some(("train_station", Self::TRAIN_STATION_SVG))
+                                    } else {
+                                        Some(("railway_station", Self::TRAIN_STATION_SVG))
+                                    }
                                 }
                                 MapPointObjectKind::TrafficLight => {
                                     Some(("traffic_light", Self::TRAFFIC_LIGHT_SVG))
@@ -159,7 +165,10 @@ impl<S: TileSource> OldTilesProvider<S> {
                                 }
                                 _ => None,
                             };
-                            let style_id = match &poi.kind {
+                            let style_id = match poi.kind {
+                                MapPointObjectKind::TrainStation(is_train) => {
+                                    if is_train { StyleId("train_station") } else { StyleId("railway_station") }
+                                },
                                 MapPointObjectKind::TrafficLight => StyleId("poi_traffic_light"),
                                 MapPointObjectKind::Toilet => StyleId("poi_toilet"),
                                 _ => StyleId("poi"),
@@ -378,7 +387,7 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
                 .extract_if(|key| {
                     (key.zoom_level == zoom_level && !current_visible_tiles.contains(&key))
                         || (key.zoom_level != last_loaded_zoom_level
-                            && last_loaded_zoom_level == zoom_level)
+                        && last_loaded_zoom_level == zoom_level)
                 })
                 .collect();
 
@@ -397,6 +406,7 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
             .collect();
 
         if !removed.is_empty() || !to_load.is_empty() {
+            let ts = SystemTime::now();
             let tile_store = self.tile_store.clone();
             let current_zoom_level = self.current_zoom_level.clone();
             let actual_cache = self.actual_cache.clone();
@@ -404,9 +414,7 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
             let loading_map = self.loading_map.clone();
             let sender = self.sender.clone().unwrap();
             spawn(move || {
-                let mut loading_map = loading_map.write().unwrap();
-                let loading_count = loading_map
-                    .entry(zoom_level)
+                let loading_count = *loading_map.write().unwrap().entry(zoom_level)
                     .and_modify(|v| *v = *v + 1)
                     .or_insert(1);
                 let data: Vec<(TileKey, TileData)> = to_load
@@ -421,7 +429,7 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
                     })
                     .collect();
                 if !data.is_empty() && zoom_level == current_zoom_level.load(Ordering::Relaxed) {
-                    if *loading_count == 1 {
+                    if loading_count == 1 {
                         last_loaded_zoom_level.store(zoom_level, Ordering::Relaxed);
                     }
 
@@ -430,6 +438,7 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
                         .unwrap()
                         .extend(data.iter().map(|item| item.0.clone()));
 
+                    error!("Tiles batch is ready: {:?}", SystemTime::now().duration_since(ts));
                     sender
                         .unbounded_send(TilesMessage::TilesData(
                             data.into_iter().map(|(_, data)| data).collect(),
@@ -437,7 +446,7 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
                         .unwrap();
                 }
 
-                loading_map
+                loading_map.write().unwrap()
                     .entry(zoom_level)
                     .and_modify(|v| *v = (*v - 1).max(0))
                     .or_insert(0);

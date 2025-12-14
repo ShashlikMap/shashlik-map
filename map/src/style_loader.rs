@@ -15,10 +15,12 @@ impl StyleLoader {
     pub fn load(&self, api: Arc<RendererApi>) {
         spawn(move || {
             // simulate loading
-            sleep(Duration::from_millis(1500));
+            sleep(Duration::from_millis(500));
 
             let new_styles = vec![
                 (StyleId("poi"), RenderStyle::fill([0.0, 0.0, 1.0, 1.0])),
+                (StyleId("railway_station"), RenderStyle::fill([0.0, 0.0, 1.0, 1.0])),
+                (StyleId("train_station"), RenderStyle::fill([0.0, 0.2, 0.0, 1.0])),
                 (
                     StyleId("poi_traffic_light"),
                     RenderStyle::fill([0.0, 0.0, 0.0, 1.0]),
