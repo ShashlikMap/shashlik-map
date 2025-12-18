@@ -100,10 +100,10 @@ impl<T: TilesProvider> ShashlikMap<T> {
             last_area_latlon: Rect::new((0.0, 0.0), (0.0, 0.0)),
             current_world_position: camera_offset.cast().unwrap(),
             current_bearing: 0.0,
-            current_pitch: 90.0,
+            current_pitch: 45.0,
             style_loader: StyleLoader::new(),
             temp_color: 0.0,
-            cam_follow_mode: false,
+            cam_follow_mode: true,
             screen_size,
         };
         map.set_lat_lon_bearing(initial_coord.y, initial_coord.x, Some(0f32));
