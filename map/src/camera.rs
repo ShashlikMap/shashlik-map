@@ -47,8 +47,6 @@ impl Camera {
 }
 
 pub struct CameraController {
-    #[allow(dead_code)]
-    speed: f32,
     pub zoom_delta: f64,
     pub pan_delta: Vector2<f64>,
     pub camera_z: f64,
@@ -61,9 +59,8 @@ pub struct CameraController {
 impl CameraController {
     const ORIGIN_REBASE_THRESHOLD: f64 = 2619254.0; // random now, big enough between US/JAPAN
 
-    pub fn new(speed: f32) -> Self {
+    pub fn new() -> Self {
         Self {
-            speed,
             zoom_delta: 0.0,
             pan_delta: Vector2::new(0.0, 0.0),
             camera_z: 200.0,
@@ -99,6 +96,7 @@ impl CameraController {
             - Vector3::new(camera.target.x, camera.target.y, camera.target.z))
         .magnitude();
         if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {
+            println!("REBASE!!!!!");
             camera.offset = Vector3::new(camera.target.x, camera.target.y, camera.target.z);
         }
 

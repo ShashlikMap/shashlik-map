@@ -86,7 +86,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         Self::run_tiles(renderer.api.clone(), tiles_stream);
 
-        let mut camera_controller = CameraController::new(1.0);
+        let mut camera_controller = CameraController::new();
         camera_controller.pitch = 45.0;
         camera_controller.position = camera_offset;
 
