@@ -90,6 +90,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         let mut camera_controller = CameraController::new(1.0);
         camera_controller.pitch = 45.0;
+        camera_controller.position = point3(camera_offset.x, camera_offset.y, 0.0);
 
         let mut map = ShashlikMap {
             renderer: Box::new(renderer),

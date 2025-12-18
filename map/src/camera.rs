@@ -83,9 +83,9 @@ impl CameraController {
         ).normalize();
 
         camera.eye += (camera.target - camera.eye).normalize() * self.zoom_delta * speed_koef;
-
         let len = (camera.target - camera.eye).magnitude();
 
+        camera.target = self.position;
         camera.eye = camera.target + (dir * len);
 
         camera.eye += self.pan_delta.extend(0.0) * speed_koef;
@@ -104,5 +104,6 @@ impl CameraController {
 
         self.forward_len = len;
         self.camera_z = camera.eye.z;
+        self.position = camera.target;
     }
 }

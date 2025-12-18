@@ -19,14 +19,16 @@ const FLIP_Y: Matrix4<f64> = Matrix4::new(
 
 pub(crate) struct ScreenPositionCalculator<'a> {
     matrix: Matrix4<f32>,
+    cs_offset: &'a Vector3<f64>,
     config: &'a wgpu::SurfaceConfiguration,
 }
 
 impl<'a> ScreenPositionCalculator<'a> {
-    pub fn new(matrix: Matrix4<f32>, config: &'a wgpu::SurfaceConfiguration) -> Self {
-        Self { matrix, config }
+    pub fn new(matrix: Matrix4<f32>, cs_offset: &'a Vector3<f64>, config: &'a wgpu::SurfaceConfiguration) -> Self {
+        Self { matrix, cs_offset, config }
     }
     pub fn screen_position(&self, world_position: Vector3<f64>) -> Coord<f64> {
+        let world_position = world_position - self.cs_offset;
         let pos = self.matrix.cast().unwrap() * Vector4::new(world_position.x, world_position.y, 0.0, 1.0);
         let clip_pos_x = pos.x / pos.w;
         let clip_pos_y = pos.y / pos.w;
@@ -79,9 +81,10 @@ impl ViewProjection {
 
     pub fn screen_position_calculator<'a>(
         &self,
+        cs_offset: &'a Vector3<f64>,
         config: &'a wgpu::SurfaceConfiguration,
     ) -> ScreenPositionCalculator<'a> {
-        ScreenPositionCalculator::new(self.uniform.view_proj.into(), config)
+        ScreenPositionCalculator::new(self.uniform.view_proj.into(), cs_offset, config)
     }
 
     pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<Vector2<f64>> {
