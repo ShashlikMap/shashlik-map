@@ -174,6 +174,11 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                     event_loop.exit();
                 } else {
                     match code {
+                        KeyCode::KeyR => {
+                            if is_pressed {
+                                map.rebase();
+                            }
+                        }
                         KeyCode::KeyN => {
                             if is_pressed {
                                 map.set_camera_follow_mode(!map.get_camera_follow_mode());

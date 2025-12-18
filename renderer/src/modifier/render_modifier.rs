@@ -5,9 +5,9 @@ use cgmath::Vector3;
 pub struct SpatialData {
     pub transform: Vector3<f64>,
     pub scale: f64,
-    pub yaw: f32,
+    pub yaw: f64,
     pub size: (f64, f64),
-    pub normal_scale: f32,
+    pub normal_scale: f64,
 }
 
 impl SpatialData {
@@ -33,11 +33,11 @@ impl SpatialData {
     pub fn scale(&mut self, scale: f64) {
         self.scale = scale;
     }
-    pub fn yaw(&mut self, yaw: f32) {
+    pub fn yaw(&mut self, yaw: f64) {
         self.yaw = yaw;
     }
 
-    pub fn normal_scale(&mut self, normal_scale: f32) {
+    pub fn normal_scale(&mut self, normal_scale: f64) {
         self.normal_scale = normal_scale;
     }
 }
