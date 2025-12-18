@@ -12,16 +12,16 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new() -> Self {
+    pub fn new(initial_world: Point3<f64>) -> Self {
         Camera {
-            eye: (0.0, 0.0, 200.0).into(),
-            target: (0.0, 0.0, 0.0).into(),
+            eye: (initial_world.x, initial_world.y, 200.0).into(),
+            target: (initial_world.x, initial_world.y, 0.0).into(),
             up: cgmath::Vector3::unit_y(),
             fovy: 45.0,
             znear: 1.0,
             zfar: 2000000.0,
             perspective_matrix: Matrix4::identity(),
-            offset: Vector3::new(0.0, 0.0, 0.0),
+            offset: Vector3::new(initial_world.x, initial_world.y, 0.0),
         }
     }
 
