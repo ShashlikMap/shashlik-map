@@ -21,7 +21,7 @@ impl DefaultFaceWrapper {
         let face = rustybuzz::Face::from_face(face);
 
         let mut buffer = UnicodeBuffer::new();
-        buffer.push_str("ABCDEFGHIJKLMNOPQRSTUVWXYZ-");
+        buffer.push_str("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-");
         buffer.guess_segment_properties();
 
         let face_shape_plan = ShapePlan::new(
