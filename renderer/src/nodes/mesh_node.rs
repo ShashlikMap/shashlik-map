@@ -18,6 +18,7 @@ pub struct PositionedMesh {
     instance_buffer: Buffer,
     attrs: Vec<InstancePos>,
     original_positions_alpha: Vec<(Vector3<f64>, f32)>, // TODO Proper structure with bound
+    cs_offset: Vector3<f64>,
     original_yaw: f32,
     is_two_instances: bool,
     spatial_rx: Receiver<SpatialData>,
@@ -97,6 +98,7 @@ impl PositionedMesh {
 
         Self::update_attrs(
             &mut attrs,
+            &Vector3::new(0.0, 0.0, 0.0),
             &original_positions_alpha,
             yaw,
             &spatial_data,
@@ -114,6 +116,7 @@ impl PositionedMesh {
             instance_buffer,
             attrs,
             original_positions_alpha,
+            cs_offset: Vector3::new(0.0, 0.0, 0.0),
             original_yaw: yaw,
             is_two_instances,
             spatial_rx,
@@ -127,6 +130,7 @@ impl PositionedMesh {
 impl PositionedMesh {
     fn update_attrs(
         attrs: &mut Vec<InstancePos>,
+        cs_offset: &Vector3<f64>,
         original_positions_alpha: &Vec<(Vector3<f64>, f32)>,
         original_yaw: f32,
         spatial_data: &SpatialData,
@@ -135,20 +139,21 @@ impl PositionedMesh {
         attrs.clear();
 
         let scale_matrix = Matrix4::<f64>::from_scale(spatial_data.scale);
-        let rotation_matrix = Matrix4::<f64>::from_angle_z(Deg(original_yaw as f64 + spatial_data.yaw as f64));
+        let rotation_matrix = Matrix4::<f64>::from_angle_z(Deg(original_yaw as f64 + spatial_data.yaw));
         let matrix = scale_matrix * rotation_matrix;
         for i in 0..original_positions_alpha.len() {
             let item = original_positions_alpha[i];
 
+            let transform_with_cs_offset = spatial_data.transform - cs_offset;
             let instance_pos = InstancePos {
-                position: (item.0 + spatial_data.transform).cast().unwrap().into(),
+                position: (item.0 + transform_with_cs_offset).cast().unwrap().into(),
                 color_alpha: item.1,
                 matrix: matrix.cast().unwrap().into(),
-                bbox: [spatial_data.transform.x.round() as f32,
-                    spatial_data.transform.y.round() as f32,
+                bbox: [transform_with_cs_offset.x as f32,
+                    transform_with_cs_offset.y as f32,
                     spatial_data.size.0.round() as f32,
                     spatial_data.size.1.round() as f32],
-                normal_scale: spatial_data.normal_scale,
+                normal_scale: spatial_data.normal_scale as f32,
             };
             attrs.push(instance_pos);
             if is_two_instances {
@@ -175,7 +180,7 @@ impl SceneNode for PositionedMesh {
         if self.with_collisions {
             let screen_position_calculator = global_context
                 .view_projection
-                .screen_position_calculator(config);
+                .screen_position_calculator(&global_context.view_projection.cs_offset, config);
 
             for item in &mut self.original_positions_alpha {
                 let screen_pos = screen_position_calculator.screen_position(Vector3::new(
@@ -207,7 +212,9 @@ impl SceneNode for PositionedMesh {
 
         self.first_render = false;
 
-        let mut update_attrs = self.with_collisions;
+        let cs_offset_updated = global_context.view_projection.cs_offset != self.cs_offset;
+        self.cs_offset = global_context.view_projection.cs_offset;
+        let mut update_attrs = self.with_collisions || cs_offset_updated;
 
         if let Ok(spatial_data) = self.spatial_rx.no_lagged() {
             self.original_spatial_data = spatial_data;
@@ -217,6 +224,7 @@ impl SceneNode for PositionedMesh {
         if update_attrs {
             Self::update_attrs(
                 &mut self.attrs,
+                &self.cs_offset,
                 &self.original_positions_alpha,
                 self.original_yaw,
                 &self.original_spatial_data,

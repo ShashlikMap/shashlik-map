@@ -11,6 +11,7 @@ pub enum TilesMessage {
 pub trait TilesProvider {
     
     fn load(&mut self, area_latlon: Rect, area_poly: Polygon<f64>, zoom_level: i32);
+    
     fn tiles(&mut self) -> impl Stream<Item = TilesMessage> + Send + 'static;
     
     fn lat_lon_to_world(_lat_lon: &Coord<f64>) -> Coord<f64> {

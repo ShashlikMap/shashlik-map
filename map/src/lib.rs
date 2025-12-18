@@ -1,7 +1,7 @@
 extern crate core;
 
 use crate::camera::{Camera, CameraController};
-use route::route_controller::RouteController;
+use crate::route::RouteCosting;
 use crate::style_loader::StyleLoader;
 use crate::test_kml_viewer_group::TestKmlGroup;
 use crate::test_puck_group::TestSimplePuck;
@@ -19,12 +19,12 @@ use renderer::modifier::render_modifier::SpatialData;
 use renderer::render_group::RenderGroup;
 use renderer::renderer_api::RendererApi;
 use renderer::{Renderer, ShashlikRenderer};
+use route::route_controller::RouteController;
 use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread::spawn;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use crate::route::RouteCosting;
 
 mod camera;
 mod style_loader;
@@ -40,10 +40,9 @@ pub struct ShashlikMap<T: TilesProvider> {
     tiles_provider: T,
     route_controller: RouteController,
     last_area_latlon: Rect,
-    camera_offset: Vector3<f32>,
-    current_world_position: Vector3<f32>,
-    current_bearing: f32,
-    current_pitch: f32,
+    current_world_position: Vector3<f64>,
+    current_bearing: f64,
+    current_pitch: f64,
     style_loader: StyleLoader,
     pub temp_color: f32,
     cam_follow_mode: bool,
@@ -61,7 +60,7 @@ impl RenderGroup for TileData {
 }
 
 impl<T: TilesProvider> ShashlikMap<T> {
-    const TEMP_ANIMATION_SPEED: f32 = 0.03;
+    const TEMP_ANIMATION_SPEED: f64 = 0.03;
     pub async fn new(
         canvas: Box<dyn WgpuCanvas>,
         mut tiles_provider: T,
@@ -73,8 +72,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
         let camera_offset = T::lat_lon_to_world(&initial_coord);
-
         let camera_offset: Vector3<f64> = (camera_offset.x, camera_offset.y, 0.0).into();
+        let cam = Camera::new(camera_offset);
 
         let mut puck_spatial_data = SpatialData::transform(Vector3::new(0.0, 0.0, 0.0));
         puck_spatial_data.scale(1.0);
@@ -85,14 +84,15 @@ impl<T: TilesProvider> ShashlikMap<T> {
             Box::new(TestSimplePuck {}),
         );
 
-        Self::run_tiles(renderer.api.clone(), tiles_stream, camera_offset);
+        Self::run_tiles(renderer.api.clone(), tiles_stream);
 
-        let mut camera_controller = CameraController::new(1.0);
+        let mut camera_controller = CameraController::new();
         camera_controller.pitch = 45.0;
+        camera_controller.position = camera_offset;
 
         let mut map = ShashlikMap {
             renderer: Box::new(renderer),
-            camera: Camera::new(),
+            camera: cam,
             camera_controller,
             tiles_provider,
             route_controller: RouteController::new(),
@@ -100,7 +100,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
             current_world_position: camera_offset.cast().unwrap(),
             current_bearing: 0.0,
             current_pitch: 45.0,
-            camera_offset: camera_offset.cast().unwrap(),
             style_loader: StyleLoader::new(),
             temp_color: 0.0,
             cam_follow_mode: true,
@@ -114,10 +113,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     pub fn clip_to_latlon(&self, coord: &Coord<f64>) -> Option<Coord<f64>> {
         let world_on_ground = self.renderer.clip_to_world(coord)?;
         Some(T::world_to_lat_lon(
-            &(
-                world_on_ground.x + self.camera_offset.x as f64,
-                world_on_ground.y + self.camera_offset.y as f64,
-            )
+            &(world_on_ground.x, world_on_ground.y)
                 .into(),
         ))
     }
@@ -125,7 +121,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
     fn run_tiles(
         renderer_api: Arc<RendererApi>,
         tiles_stream: impl Stream<Item = TilesMessage> + Send + 'static,
-        camera_offset: Vector3<f64>,
     ) {
         spawn(move || {
             block_on(async {
@@ -141,7 +136,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
                                         item.key.to_string(),
                                         0,
                                         SpatialData::transform(
-                                            item.position - camera_offset.cast().unwrap(),
+                                            item.position,
                                         )
                                         .size(item.size),
                                         Box::new(item),
@@ -170,7 +165,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.update_entities();
 
         self.renderer
-            .update(self.camera.build_view_projection_matrix());
+            .update(self.camera.build_view_projection_matrix(), self.camera.offset);
 
         self.fetch_tiles();
 
@@ -197,7 +192,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     fn update_entities(&mut self) {
-        let puck_location = self.current_world_position - self.camera_offset.cast().unwrap();
+        let puck_location = self.current_world_position;
         let bearing = self.current_bearing;
 
         let cam_zoom = self.camera_controller.forward_len / 100.0;
@@ -205,15 +200,15 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.renderer
             .api
             .update_spatial_data("route".to_string(), move |spatial_data| {
-                spatial_data.normal_scale = (cam_zoom / 2.5f32).max(1.0);
+                spatial_data.normal_scale = (cam_zoom / 2.5).max(1.0);
             });
 
         self.renderer
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
-                spatial_data.scale = cam_zoom as f64;
+                spatial_data.scale = cam_zoom;
                 spatial_data.transform += (puck_location.cast().unwrap() - spatial_data.transform)
-                    * Self::TEMP_ANIMATION_SPEED as f64;
+                    * Self::TEMP_ANIMATION_SPEED;
                 spatial_data.yaw +=
                     ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
             });
@@ -223,7 +218,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             let cam_pos = self.camera_controller.position;
             let cam_pos = Vector3::new(cam_pos.x, cam_pos.y, cam_pos.z);
 
-            let transform_cam_offset = (self.current_world_position - self.camera_offset) - cam_pos;
+            let transform_cam_offset = (self.current_world_position) - cam_pos;
             let transform_cam_offset_anim = transform_cam_offset * Self::TEMP_ANIMATION_SPEED;
             // TODO Animation framework. Now it just fixes teleport bug
             let new_cam_pos = if transform_cam_offset_anim.magnitude2() >= 300.0 {
@@ -236,7 +231,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
             cam_yaw + ((self.current_bearing - cam_yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED
         } else {
-            cam_yaw * (1.0f32 - Self::TEMP_ANIMATION_SPEED) % 360.0
+            cam_yaw * (1.0 - Self::TEMP_ANIMATION_SPEED) % 360.0
         };
         self.camera_controller.yaw = new_cam_yaw;
 
@@ -245,7 +240,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn zoom_delta(&mut self, delta: f32, point: (f32, f32)) {
-        self.camera_controller.zoom_delta = delta;
+        self.camera_controller.zoom_delta = delta as f64;
 
         let ratio = self.screen_size.0 / self.screen_size.1;
         let half_screen_size = Vector2::from(self.screen_size) * 0.5f32;
@@ -258,12 +253,12 @@ impl<T: TilesProvider> ShashlikMap<T> {
     pub fn pan_delta(&mut self, delta_x: f32, delta_y: f32) {
         // pan is disabled for now
         if !self.cam_follow_mode {
-            self.camera_controller.pan_delta = Vector2::new(delta_x, delta_y);
+            self.camera_controller.pan_delta = Vector2::new(delta_x as f64, delta_y as f64);
         }
     }
 
     pub fn pitch_delta(&mut self, delta: f32) {
-        self.camera_controller.pitch += delta;
+        self.camera_controller.pitch += delta as f64;
         self.camera_controller.pitch = clamp(self.camera_controller.pitch, 45.0, 90.0);
         self.current_pitch = self.camera_controller.pitch;
     }
@@ -284,8 +279,9 @@ impl<T: TilesProvider> ShashlikMap<T> {
     pub fn set_lat_lon_bearing(&mut self, lat: f64, lon: f64, bearing: Option<f32>) {
         self.route_controller.set_current_lat_lon((lat, lon));
         let position = T::lat_lon_to_world(&coord! {x: lon, y: lat});
-        self.current_world_position = Vector3::new(position.x as f32, position.y as f32, 0.0);
+        self.current_world_position = Vector3::new(position.x, position.y, 0.0);
         if let Some(bearing) = bearing {
+            let bearing = bearing as f64;
             let mut rot_diff = (bearing % 360.0) - (self.current_bearing % 360.0);
             if rot_diff.abs() > 180.0 {
                 rot_diff -= rot_diff.signum() * 360.0;
@@ -317,13 +313,12 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     fn create_location_coord_converter(&self) -> Box<dyn (Fn(&Point) -> Point) + Send> {
-        let camera_offset = self.camera_offset;
         Box::new(move |p| {
             let coord: Coord<f64> = (p.x(), p.y()).into();
             let coord = T::lat_lon_to_world(&coord);
             Point::new(
-                coord.x - camera_offset.x as f64,
-                coord.y - camera_offset.y as f64,
+                coord.x,
+                coord.y,
             )
         })
     }

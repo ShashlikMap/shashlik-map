@@ -45,7 +45,7 @@ impl SceneNode for TextNode {
     ) {
         let screen_position_calculator = global_context
             .view_projection
-            .screen_position_calculator(config);
+            .screen_position_calculator(&global_context.view_projection.cs_offset, config);
         self.data.iter_mut().for_each(|item| {
             global_context.text_renderer.insert(
                 item,
