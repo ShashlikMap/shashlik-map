@@ -155,7 +155,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
                                         item.key.to_string(),
                                         0,
                                         SpatialData::transform(
-                                            item.position - camera_offset,
+                                            item.position,
                                         )
                                         .size(item.size),
                                         Box::new(item),
@@ -185,7 +185,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.update_entities();
 
         self.renderer
-            .update(self.camera.build_view_projection_matrix());
+            .update(self.camera.build_view_projection_matrix(), self.camera.offset);
 
         self.fetch_tiles();
 
@@ -232,19 +232,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn rebase(&mut self) {
-        let q1 = self.clip_to_latlon(&coord! {x: 0.0, y: 0.0}).unwrap();
-        let q2 = T::lat_lon_to_world(&q1);
-        let q3: Vector3<f64> = (q2.x, q2.y, 0.0).into();
-
         let qq = Vector3::new(self.camera.target.x, self.camera.target.y, self.camera.target.z);
-        // self.camera_offset = q3.cast().unwrap();
         self.camera_offset = qq.cast().unwrap();
-        // self.camera.target = point3(self.camera_offset.x, self.camera_offset.y + diff.y, 0.0);
-        // self.camera.eye = point3(self.camera_offset.x + diff.x, self.camera_offset.y + diff.y, 200.0);
-        self.camera_offset_sender.send(self.camera_offset.cast().unwrap()).unwrap();
-        // self.camera_controller.position = point3(0.0, 0.0, 0.0);
-        self.tiles_provider.reload();
-
     }
 
     fn update_entities(&mut self) {
@@ -253,21 +242,21 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         let cam_zoom = self.camera_controller.forward_len / 100.0;
 
-        self.renderer
-            .api
-            .update_spatial_data("route".to_string(), move |spatial_data| {
-                spatial_data.normal_scale = (cam_zoom / 2.5).max(1.0);
-            });
-
-        self.renderer
-            .api
-            .update_spatial_data("puck".to_string(), move |spatial_data| {
-                spatial_data.scale = cam_zoom as f64;
-                spatial_data.transform += (puck_location.cast().unwrap() - spatial_data.transform)
-                    * Self::TEMP_ANIMATION_SPEED as f64;
-                spatial_data.yaw +=
-                    ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
-            });
+        // self.renderer
+        //     .api
+        //     .update_spatial_data("route".to_string(), move |spatial_data| {
+        //         spatial_data.normal_scale = (cam_zoom / 2.5).max(1.0);
+        //     });
+        //
+        // self.renderer
+        //     .api
+        //     .update_spatial_data("puck".to_string(), move |spatial_data| {
+        //         spatial_data.scale = cam_zoom as f64;
+        //         spatial_data.transform += (puck_location.cast().unwrap() - spatial_data.transform)
+        //             * Self::TEMP_ANIMATION_SPEED as f64;
+        //         spatial_data.yaw +=
+        //             ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
+        //     });
 
         let cam_yaw = self.camera_controller.yaw;
         let new_cam_yaw = if self.cam_follow_mode {

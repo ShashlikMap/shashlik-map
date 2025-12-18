@@ -20,7 +20,7 @@ use crate::text::text_renderer::{TextRenderer, TextRendererLayer};
 use crate::vertex_attrs::{InstancePos, ShapeVertex, VertexAttrib, VertexNormal};
 use crate::view_projection::ViewProjection;
 use canvas_api::CanvasApi;
-use cgmath::{Matrix4, Vector2};
+use cgmath::{Matrix4, Vector2, Vector3};
 use geo_types::Coord;
 use messages::RendererApiMsg;
 use renderer_api::RendererApi;
@@ -61,7 +61,7 @@ pub const SHADER_STYLE_GROUP_INDEX: u32 = 1;
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
-    fn update(&mut self, view_proj_matrix: Matrix4<f64>);
+    fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>);
     fn render(&mut self) -> Result<(), SurfaceError>;
 }
 
@@ -327,8 +327,8 @@ impl ShashlikRenderer {
         }
     }
 
-    fn update(&mut self, view_proj_matrix: Matrix4<f64>) {
-        self.global_context.view_projection.update(view_proj_matrix);
+    fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
+        self.global_context.view_projection.update(view_proj_matrix, cs_offset);
         let device = self.canvas.device();
         if let Ok(message) = self.renderer_rx.try_recv() {
             match message {
@@ -423,8 +423,8 @@ impl Renderer for ShashlikRenderer {
         self.resize(width, height);
     }
 
-    fn update(&mut self, view_proj_matrix: Matrix4<f64>) {
-        self.update(view_proj_matrix);
+    fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
+        self.update(view_proj_matrix, cs_offset);
     }
 
     fn render(&mut self) -> Result<(), SurfaceError> {

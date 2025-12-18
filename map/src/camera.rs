@@ -8,7 +8,7 @@ pub struct Camera {
     znear: f64,
     zfar: f64,
     perspective_matrix: Matrix4<f64>,
-    offset: cgmath::Vector3<f64>
+    pub offset: cgmath::Vector3<f64>
 }
 
 impl Camera {
@@ -27,7 +27,7 @@ impl Camera {
 
     pub fn build_view_projection_matrix(&mut self) -> cgmath::Matrix4<f64> {
         let view = cgmath::Matrix4::look_at_rh(self.eye - self.offset, self.target - self.offset, self.up);
-        (self.perspective_matrix * view)
+        self.perspective_matrix * view
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {

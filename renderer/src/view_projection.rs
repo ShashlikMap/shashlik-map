@@ -48,6 +48,7 @@ pub(crate) struct ViewProjUniform {
 
 pub(crate) struct ViewProjection {
     pub uniform: ViewProjUniform,
+    pub cs_offset: Vector3<f64>,
     inv_view_proj_matrix: Matrix4<f64>
 }
 
@@ -58,15 +59,17 @@ impl ViewProjection {
                 view_proj: Matrix4::identity().into(),
                 inv_screen_size: [0.0, 0.0],
             },
+            cs_offset: Vector3::new(0.0, 0.0, 0.0),
             inv_view_proj_matrix: Matrix4::identity()
         }
     }
 
-    pub fn update(&mut self, view_proj_matrix: Matrix4<f64>) {
+    pub fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
         self.uniform.view_proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * view_proj_matrix)
             .cast()
             .unwrap()
             .into();
+        self.cs_offset = cs_offset;
         self.inv_view_proj_matrix = view_proj_matrix.inverse_transform().unwrap();
     }
 

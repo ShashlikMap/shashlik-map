@@ -37,7 +37,7 @@ pub struct TextRendererLayer {}
 
 impl SceneNode for TextRendererLayer {
     fn update(&mut self, device: &Device, queue: &Queue, _config: &SurfaceConfiguration, global_context: &mut GlobalContext) {
-        global_context.text_renderer.update(queue, device);
+        global_context.text_renderer.update(queue, device, &global_context.view_projection.cs_offset);
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
@@ -281,12 +281,13 @@ impl TextRenderer {
         }
     }
 
-    fn update_attrs(&mut self, queue: &Queue, device: &Device) {
+    fn update_attrs(&mut self, queue: &Queue, device: &Device, cs_offset: &Vector3<f64>) {
         self.glyph_data.iter().for_each(|(key, list)| {
             let mut attrs = vec![];
             list.iter().for_each(|glyph_data| {
                 let instance_pos = InstancePos {
-                    position: Vector3::new(glyph_data.position.0, glyph_data.position.1, 0.0)
+                    position: Vector3::new(glyph_data.position.0 - cs_offset.x as f32,
+                                           glyph_data.position.1 - cs_offset.y as f32, 0.0)
                         .into(),
                     color_alpha: glyph_data.alpha,
                     matrix: glyph_data.matrix.cast().unwrap().into(),
@@ -322,9 +323,9 @@ impl TextRenderer {
         })
     }
 
-    pub fn update(&mut self, queue: &Queue, device: &wgpu::Device) {
+    pub fn update(&mut self, queue: &Queue, device: &wgpu::Device, cs_offset: &Vector3<f64>) {
         self.id_to_alpha_map.clear();
-        self.update_attrs(queue, device);
+        self.update_attrs(queue, device, cs_offset);
     }
 
     pub fn render(&mut self, render_pass: &mut RenderPass) {
