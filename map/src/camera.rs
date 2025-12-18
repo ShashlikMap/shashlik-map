@@ -49,7 +49,10 @@ pub struct CameraController {
     pub pitch: f64
 }
 
+
 impl CameraController {
+    const ORIGIN_REBASE_THRESHOLD: f64 = 2619254.0; // random now, big enough between US/JAPAN
+
     pub fn new(speed: f32) -> Self {
         Self {
             speed,
@@ -79,7 +82,6 @@ impl CameraController {
             sin_pitch,
         ).normalize();
 
-        // camera.target = self.position;
         camera.eye += (camera.target - camera.eye).normalize() * self.zoom_delta * speed_koef;
 
         let len = (camera.target - camera.eye).magnitude();
@@ -89,17 +91,13 @@ impl CameraController {
         camera.eye += self.pan_delta.extend(0.0) * speed_koef;
         camera.target += self.pan_delta.extend(0.0) * speed_koef;
 
-        let mmm = (camera.offset - Vector3::new(camera.target.x, camera.target.y, camera.target.z)).magnitude();
-        // println!("mmm: {}", mmm);
-        if mmm >= 2619254.0 {
-            println!("REBASE!!");
+        let distance_from_origin = (camera.offset - Vector3::new(camera.target.x, camera.target.y, camera.target.z)).magnitude();
+        if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {
             camera.offset = Vector3::new(camera.target.x, camera.target.y, camera.target.z);
         }
 
         let rotation_matrix = Basis3::from_angle_z(Deg(self.yaw));
         camera.up = rotation_matrix.rotate_vector(cgmath::Vector3::unit_y());
-
-        // self.position = camera.target.clone();
 
         self.pan_delta = Vector2::new(0.0, 0.0);
         self.zoom_delta = 0.0;
