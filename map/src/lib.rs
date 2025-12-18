@@ -192,9 +192,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.last_area_latlon = area_latlon;
     }
 
-    pub fn rebase(&mut self) {
-    }
-
     fn update_entities(&mut self) {
         let puck_location = self.current_world_position;
         let bearing = self.current_bearing;

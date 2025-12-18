@@ -455,29 +455,6 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
         }
     }
 
-    fn reload(&mut self) {
-        let actual_cache = self.actual_cache.clone();
-        let sender = self.sender.clone().unwrap();
-        // let tile_store = self.tile_store.clone();
-        // spawn(move || {
-        let cache = actual_cache.read().unwrap();
-        self.per_frame_cache.clear();
-        sender
-            .unbounded_send(TilesMessage::ToRemove(
-                cache.iter().map(|item| item.as_string_key()).collect(),
-            ))
-            .unwrap();
-        //
-        //
-        //     let data = cache.iter().map(|key| Self::get_tile_key_data(tile_store.clone(), key)).collect();
-        //     sender
-        //         .unbounded_send(TilesMessage::TilesData(data))
-        //         .unwrap();
-        // cache.clear();
-
-        // });
-    }
-
     fn tiles(&mut self) -> impl Stream<Item = TilesMessage> + Send + 'static {
         let (sender, receiver) = unbounded();
         self.sender = Some(sender);

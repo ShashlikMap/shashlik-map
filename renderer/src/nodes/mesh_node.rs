@@ -139,22 +139,18 @@ impl PositionedMesh {
         attrs.clear();
 
         let scale_matrix = Matrix4::<f64>::from_scale(spatial_data.scale);
-        let rotation_matrix = Matrix4::<f64>::from_angle_z(Deg(original_yaw as f64 + spatial_data.yaw as f64));
+        let rotation_matrix = Matrix4::<f64>::from_angle_z(Deg(original_yaw as f64 + spatial_data.yaw));
         let matrix = scale_matrix * rotation_matrix;
-        // println!("cs_offset: {:?}", cs_offset);
         for i in 0..original_positions_alpha.len() {
             let item = original_positions_alpha[i];
 
-            let ttt = (spatial_data.transform - cs_offset).cast().unwrap();
-
-            // println!("item: {:?}", item.0 + spatial_data.transform - cs_offset.cast().unwrap());
-            // println!("item2: {:?}", item.0 + spatial_data.transform);
+            let transform_with_cs_offset = spatial_data.transform - cs_offset;
             let instance_pos = InstancePos {
-                position: (item.0 + ttt).cast().unwrap().into(),
+                position: (item.0 + transform_with_cs_offset).cast().unwrap().into(),
                 color_alpha: item.1,
                 matrix: matrix.cast().unwrap().into(),
-                bbox: [ttt.x as f32,
-                    ttt.y as f32,
+                bbox: [transform_with_cs_offset.x as f32,
+                    transform_with_cs_offset.y as f32,
                     spatial_data.size.0.round() as f32,
                     spatial_data.size.1.round() as f32],
                 normal_scale: spatial_data.normal_scale as f32,
