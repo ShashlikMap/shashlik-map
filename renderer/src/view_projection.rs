@@ -88,7 +88,9 @@ impl ViewProjection {
         Self::clip_to_world_at_ground(
             &Vector2::new(coord.x, coord.y),
             &self.inv_view_proj_matrix.cast().unwrap(),
-        )
+        ).map(|coord| {
+            coord + self.cs_offset.truncate()
+        })
     }
 
     fn clip_to_world_at_ground(

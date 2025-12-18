@@ -67,7 +67,7 @@ impl CameraController {
         self.position = Point3::new(coord.x, coord.y, 0.0).cast().unwrap()
     }
 
-    pub(crate) fn update_camera(&mut self, camera: &mut Camera, offset: cgmath::Vector3<f64>) {
+    pub(crate) fn update_camera(&mut self, camera: &mut Camera) {
         let speed_koef = self.camera_z / 150.0;
 
         let (sin_pitch, cos_pitch) = Rad::from(Deg(self.pitch)).0.sin_cos();
@@ -89,7 +89,12 @@ impl CameraController {
         camera.eye += self.pan_delta.extend(0.0) * speed_koef;
         camera.target += self.pan_delta.extend(0.0) * speed_koef;
 
-        camera.offset = offset;
+        let mmm = (camera.offset - Vector3::new(camera.target.x, camera.target.y, camera.target.z)).magnitude();
+        // println!("mmm: {}", mmm);
+        if mmm >= 2619254.0 {
+            println!("REBASE!!");
+            camera.offset = Vector3::new(camera.target.x, camera.target.y, camera.target.z);
+        }
 
         let rotation_matrix = Basis3::from_angle_z(Deg(self.yaw));
         camera.up = rotation_matrix.rotate_vector(cgmath::Vector3::unit_y());
