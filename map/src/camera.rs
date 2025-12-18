@@ -57,7 +57,7 @@ pub struct CameraController {
 }
 
 impl CameraController {
-    const ORIGIN_REBASE_THRESHOLD: f64 = 2619254.0; // random now, big enough between US/JAPAN
+    const ORIGIN_REBASE_THRESHOLD: f64 = 99999.0; // random now, big enough between US/JAPAN
 
     pub fn new() -> Self {
         Self {
