@@ -96,7 +96,7 @@ impl CameraController {
             - Vector3::new(camera.target.x, camera.target.y, camera.target.z))
         .magnitude();
         if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {
-            println!("REBASE!!!!!");
+            println!("Origin rebase!");
             camera.offset = Vector3::new(camera.target.x, camera.target.y, camera.target.z);
         }
 
