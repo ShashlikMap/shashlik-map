@@ -8,7 +8,7 @@ use crate::test_puck_group::TestSimplePuck;
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use cgmath::num_traits::clamp;
-use cgmath::{point3, InnerSpace, Vector2, Vector3};
+use cgmath::{InnerSpace, Vector2, Vector3};
 use futures::executor::block_on;
 use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
@@ -72,10 +72,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
         let camera_offset = T::lat_lon_to_world(&initial_coord);
-
         let camera_offset: Vector3<f64> = (camera_offset.x, camera_offset.y, 0.0).into();
-
-        let cam = Camera::new(point3(camera_offset.x, camera_offset.y, 0.0));
+        let cam = Camera::new(camera_offset);
 
         let mut puck_spatial_data = SpatialData::transform(Vector3::new(0.0, 0.0, 0.0));
         puck_spatial_data.scale(1.0);
@@ -90,7 +88,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         let mut camera_controller = CameraController::new(1.0);
         camera_controller.pitch = 45.0;
-        camera_controller.position = point3(camera_offset.x, camera_offset.y, 0.0);
+        camera_controller.position = camera_offset;
 
         let mut map = ShashlikMap {
             renderer: Box::new(renderer),
