@@ -48,6 +48,7 @@ kotlin {
             implementation(libs.androidx.ui)
             implementation(libs.androidx.ui.graphics)
             implementation(libs.androidx.material3)
+            implementation(libs.accompanist)
             implementation("net.java.dev.jna:jna:5.18.1@aar")
         }
         commonMain.dependencies {

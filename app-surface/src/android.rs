@@ -6,6 +6,7 @@ use raw_window_handle::{
     HasWindowHandle, RawDisplayHandle, RawWindowHandle, WindowHandle,
 };
 use std::sync::{Arc, Mutex};
+use log::error;
 
 pub struct AppSurface {
     pub native_window: Arc<NativeWindow>,
@@ -17,11 +18,18 @@ pub struct AppSurface {
 impl AppSurface {
     pub fn new(env: *mut JNIEnv, surface: jobject, is_emulator: bool) -> Self {
         let native_window = Arc::new(NativeWindow::new(env, surface));
-        let backends = if is_emulator { wgpu::Backends::GL } else { wgpu::Backends::VULKAN };
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends,
+        let init_backend = if is_emulator { wgpu::Backends::GL } else { wgpu::Backends::VULKAN };
+        let mut instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: init_backend,
             ..Default::default()
         });
+        if instance.enumerate_adapters(init_backend).len() <= 0 {
+            error!("No init_backend adapters found! GL will be used!");
+            instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+                backends: wgpu::Backends::GL,
+                ..Default::default()
+            });
+        }
 
         let handle: Box<dyn wgpu::WindowHandle> = Box::new(native_window.clone());
         let surface = instance

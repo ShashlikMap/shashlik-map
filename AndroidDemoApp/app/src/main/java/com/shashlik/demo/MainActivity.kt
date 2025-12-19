@@ -8,7 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresPermission
 import com.shashlik.demo.ui.theme.MyApplicationTheme
-import com.shashlik.kmp.ShashlikMapComp
+import com.shashlik.kmp.ShashlikMap
 
 class MainActivity : ComponentActivity() {
 
@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
-                ShashlikMapComp()
+                ShashlikMap()
             }
         }
     }

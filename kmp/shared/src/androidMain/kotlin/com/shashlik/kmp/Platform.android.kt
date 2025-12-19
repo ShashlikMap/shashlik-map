@@ -5,14 +5,11 @@ import android.content.Context
 import android.location.LocationManager
 import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
@@ -30,12 +27,35 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LifecycleStartEffect
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.delay
 import uniffi.ffi_run.RouteCosting
 
+@OptIn(ExperimentalPermissionsApi::class)
 @SuppressLint("MissingPermission")
 @Composable
-fun ShashlikMapComp() {
+fun ShashlikMap() {
+    // Camera permission state
+    val cameraPermissionState = rememberMultiplePermissionsState(
+        listOf(
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+    )
+
+    if (cameraPermissionState.allPermissionsGranted) {
+        ShashlikMapComp()
+    } else {
+        LaunchedEffect(Unit) {
+            cameraPermissionState.launchMultiplePermissionRequest()
+        }
+    }
+}
+
+@SuppressLint("MissingPermission")
+@Composable
+private fun ShashlikMapComp() {
     LifecycleStartEffect(Unit) {
         Log.d("kiol", "onStart")
         TempLocationManager.locationService.getLastKnownLocation(LocationManager.GPS_PROVIDER)

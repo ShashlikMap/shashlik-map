@@ -53,8 +53,11 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    // FIXME Why should it be duplicated?
+    implementation(libs.accompanist)
     implementation("org.jetbrains.kotlinx:atomicfu:0.29.0")
     implementation("net.java.dev.jna:jna:5.18.1@aar")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
