@@ -23,6 +23,8 @@ impl AppSurface {
             backends: init_backend,
             ..Default::default()
         });
+        // TODO This is workaround for the similar issue.
+        // https://github.com/gfx-rs/wgpu/issues/2384
         if instance.enumerate_adapters(init_backend).len() <= 0 {
             error!("No init_backend adapters found! GL will be used!");
             instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
