@@ -101,7 +101,8 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
                 h.surface,
                 Build.FINGERPRINT.contains("generic") ||
                         Build.FINGERPRINT.contains("sdk_gphone"),
-                context.filesDir.absolutePath + "/tiles.db"
+                context.filesDir.absolutePath + "/tiles.db",
+                context.resources.displayMetrics.density / 2.0f
             )
             shashlikMapApi = ShashlikMapApi(ptr.toPointer())
             setWillNotDraw(false)

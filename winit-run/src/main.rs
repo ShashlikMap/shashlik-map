@@ -13,7 +13,7 @@ fn main() {
     let (sender, receiver) = mpsc::channel();
 
     let app = App::new(
-        Box::new(|| OldTilesProvider::new(ReqwestSource::new())),
+        Box::new(|| OldTilesProvider::new(ReqwestSource::new(), 1.0)),
         receiver,
     );
     let event_loop = EventLoop::with_user_event();

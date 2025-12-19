@@ -8,5 +8,5 @@ class RB {
         System.loadLibrary("ffi_run")
     }
 
-    external fun createShashlikMapApi(surface: Surface, isEmulator: Boolean, tilesDb: String): Long
+    external fun createShashlikMapApi(surface: Surface, isEmulator: Boolean, tilesDb: String, dpiScale: Float): Long
 }

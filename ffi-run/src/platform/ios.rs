@@ -23,7 +23,8 @@ pub fn create_shashlik_map_api_for_ios(view: u64, metal_layer: u64, maximum_fram
 	let app_surface = AppSurface::new(ios_view_obj);
 	let wrapper = IOSPlatformAppSurface { app_surface };
 	let reqwest_source = ReqwestSource::new();
-	let shashlik_map = pollster::block_on(ShashlikMap::new(Box::new(wrapper), OldTilesProvider::new(reqwest_source))).unwrap();
+	// TODO DPI from iOS
+	let shashlik_map = pollster::block_on(ShashlikMap::new(Box::new(wrapper), OldTilesProvider::new(reqwest_source, 1.35))).unwrap();
 	ShashlikMapApi { shashlik_map: RwLock::new(shashlik_map) }
 }
 

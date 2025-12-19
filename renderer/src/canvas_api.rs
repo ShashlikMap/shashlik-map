@@ -258,7 +258,7 @@ impl CanvasApi {
         }
     }
 
-    pub fn svg(&mut self, data: SvgData) {
+    fn svg(&mut self, data: SvgData) {
         self.screen_path_cache
             .entry(data.icon.0)
             .and_modify(|(_, screen_paths)| {

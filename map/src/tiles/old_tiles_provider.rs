@@ -37,6 +37,7 @@ pub struct OldTilesProvider<S: TileSource> {
     last_loaded_zoom_level: Arc<AtomicI32>,
     current_zoom_level: Arc<AtomicI32>,
     loading_map: Arc<RwLock<HashMap<i32, i32>>>,
+    dpi_scale: f32,
 }
 
 impl<S: TileSource> OldTilesProvider<S> {
@@ -45,7 +46,7 @@ impl<S: TileSource> OldTilesProvider<S> {
     const TOILETS_SVG: &'static [u8] = include_bytes!("../../svg/toilet.svg");
     const TRAIN_STATION_SVG: &'static [u8] = include_bytes!("../../svg/train_station.svg");
 
-    pub fn new(source: S) -> OldTilesProvider<S> {
+    pub fn new(source: S, dpi_scale: f32,) -> OldTilesProvider<S> {
         Self {
             sender: None,
             tile_store: Arc::new(TileStore::new(source)),
@@ -54,6 +55,7 @@ impl<S: TileSource> OldTilesProvider<S> {
             last_loaded_zoom_level: Arc::new(AtomicI32::new(1)),
             current_zoom_level: Arc::new(AtomicI32::new(1)),
             loading_map: Arc::new(RwLock::new(HashMap::new())),
+            dpi_scale
         }
     }
 
@@ -98,7 +100,7 @@ impl<S: TileSource> OldTilesProvider<S> {
         }
     }
 
-    fn get_tile_key_data(tile_store: Arc<TileStore<S>>, tile_key: &TileKey) -> TileData {
+    fn get_tile_key_data(tile_store: Arc<TileStore<S>>, tile_key: &TileKey, dpi_scale: f32) -> TileData {
         let zoom_level = tile_key.zoom_level;
         let tile_rect = tile_key.calc_tile_boundary(1.0);
 
@@ -130,8 +132,8 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     geometry_data.push(GeometryData::Text(TextData {
                                         id,
                                         text: poi.text.to_uppercase(),
-                                        screen_offset: Vector2::new(0.0, 25.0),
-                                        size: 40.0,
+                                        screen_offset: Vector2::new(0.0, 30.0 * dpi_scale),
+                                        size: 40.0 * dpi_scale,
                                         positions: vec![Vector3::from((
                                             local_position.x,
                                             local_position.y,
@@ -154,7 +156,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                         id: hash(poi.text.as_bytes()),
                                         text: poi.text.to_uppercase(),
                                         screen_offset: Vector2::new(0.0, 0.0),
-                                        size: 40.0,
+                                        size: 40.0 * dpi_scale,
                                         positions: vec![Vector3::from((
                                             local_position.x,
                                             local_position.y,
@@ -183,7 +185,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                     ))
                                     .cast()
                                     .unwrap(),
-                                    size: 40.0,
+                                    size: 40.0 * dpi_scale,
                                     style_id,
                                     with_collision: true,
                                 }));
@@ -263,7 +265,7 @@ impl<S: TileSource> OldTilesProvider<S> {
                                             id: hash(name.as_bytes()),
                                             text: name.to_uppercase(),
                                             screen_offset: Vector2::new(0.0, 0.0),
-                                            size: 30.0,
+                                            size: 30.0 * dpi_scale,
                                             positions:
                                                 line.iter()
                                                     .map(|item| {
@@ -414,6 +416,7 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
             let last_loaded_zoom_level = self.last_loaded_zoom_level.clone();
             let loading_map = self.loading_map.clone();
             let sender = self.sender.clone().unwrap();
+            let dpi_scale = self.dpi_scale;
             spawn(move || {
                 let loading_count = *loading_map.write().unwrap().entry(zoom_level)
                     .and_modify(|v| *v = *v + 1)
@@ -422,7 +425,7 @@ impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
                     .par_iter()
                     .filter_map(|key| {
                         if current_zoom_level.load(Ordering::Relaxed) == zoom_level {
-                            let tile_data = Self::get_tile_key_data(tile_store.clone(), key);
+                            let tile_data = Self::get_tile_key_data(tile_store.clone(), key, dpi_scale);
                             Some((key.clone(), tile_data))
                         } else {
                             None

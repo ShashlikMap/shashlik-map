@@ -10,9 +10,9 @@ use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use cgmath::num_traits::clamp;
 use cgmath::{InnerSpace, Vector2, Vector3};
 use futures::executor::block_on;
-use futures::{pin_mut, Stream, StreamExt};
+use futures::{Stream, StreamExt, pin_mut};
 use geo_types::private_utils::get_bounding_rect;
-use geo_types::{coord, Coord, Point, Rect};
+use geo_types::{Coord, Point, Rect, coord};
 use geo_types::{LineString, Polygon};
 use renderer::canvas_api::CanvasApi;
 use renderer::modifier::render_modifier::SpatialData;
@@ -27,11 +27,11 @@ use std::thread::spawn;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 mod camera;
+pub mod route;
 mod style_loader;
 mod test_kml_viewer_group;
 mod test_puck_group;
 pub mod tiles;
-pub mod route;
 
 pub struct ShashlikMap<T: TilesProvider> {
     renderer: Box<ShashlikRenderer>,
@@ -46,7 +46,22 @@ pub struct ShashlikMap<T: TilesProvider> {
     style_loader: StyleLoader,
     pub temp_color: f32,
     cam_follow_mode: bool,
-    screen_size: (f32, f32),
+    screen_params: ScreenParam,
+}
+
+struct ScreenParam {
+    width: u32,
+    height: u32,
+}
+
+impl ScreenParam {
+    fn ratio(&self) -> f32 {
+        self.width as f32 / self.height as f32
+    }
+
+    fn center(&self) -> Vector2<f32> {
+        Vector2::new(self.width as f32, self.height as f32) * 0.5f32
+    }
 }
 
 impl RenderGroup for TileData {
@@ -103,7 +118,10 @@ impl<T: TilesProvider> ShashlikMap<T> {
             style_loader: StyleLoader::new(),
             temp_color: 0.0,
             cam_follow_mode: true,
-            screen_size,
+            screen_params: ScreenParam {
+                width: screen_size.0 as u32,
+                height: screen_size.1 as u32,
+            },
         };
         map.set_lat_lon_bearing(initial_coord.y, initial_coord.x, Some(0f32));
         map.load_styles();
@@ -113,8 +131,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     pub fn clip_to_latlon(&self, coord: &Coord<f64>) -> Option<Coord<f64>> {
         let world_on_ground = self.renderer.clip_to_world(coord)?;
         Some(T::world_to_lat_lon(
-            &(world_on_ground.x, world_on_ground.y)
-                .into(),
+            &(world_on_ground.x, world_on_ground.y).into(),
         ))
     }
 
@@ -135,10 +152,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
                                     renderer_api.add_render_group(
                                         item.key.to_string(),
                                         0,
-                                        SpatialData::transform(
-                                            item.position,
-                                        )
-                                        .size(item.size),
+                                        SpatialData::transform(item.position).size(item.size),
                                         Box::new(item),
                                     );
                                 });
@@ -156,7 +170,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
     pub fn resize(&mut self, width: u32, height: u32) {
         self.camera.resize(width, height);
         self.renderer.resize(width, height);
-        self.screen_size = (width as f32, height as f32);
+        self.screen_params.width = width;
+        self.screen_params.height = height;
     }
 
     pub fn update_and_render(&mut self) {
@@ -164,8 +179,10 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         self.update_entities();
 
-        self.renderer
-            .update(self.camera.build_view_projection_matrix(), self.camera.offset);
+        self.renderer.update(
+            self.camera.build_view_projection_matrix(),
+            self.camera.offset,
+        );
 
         self.fetch_tiles();
 
@@ -242,12 +259,11 @@ impl<T: TilesProvider> ShashlikMap<T> {
     pub fn zoom_delta(&mut self, delta: f32, point: (f32, f32)) {
         self.camera_controller.zoom_delta = delta as f64;
 
-        let ratio = self.screen_size.0 / self.screen_size.1;
-        let half_screen_size = Vector2::from(self.screen_size) * 0.5f32;
-        let diff = (Vector2::from(point) - half_screen_size) * 0.5f32;
-        let px = diff.x / half_screen_size.x;
-        let py = diff.y / half_screen_size.y;
-        self.pan_delta(delta * px * ratio, delta * py);
+        let screen_center = self.screen_params.center();
+        let diff = (Vector2::from(point) - screen_center) * 0.5f32;
+        let px = diff.x / screen_center.x;
+        let py = diff.y / screen_center.y;
+        self.pan_delta(delta * px * self.screen_params.ratio(), delta * py);
     }
 
     pub fn pan_delta(&mut self, delta_x: f32, delta_y: f32) {
@@ -295,9 +311,14 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.create_route_to(center.into(), route_costing);
     }
 
-    pub fn create_route_to_screen_point(&self, point_x: f32, point_y: f32, route_costing: RouteCosting) {
-        let clip = coord! {x: (point_x / self.screen_size.0) as f64,
-        y: (point_y / self.screen_size.1) as f64};
+    pub fn create_route_to_screen_point(
+        &self,
+        point_x: f32,
+        point_y: f32,
+        route_costing: RouteCosting,
+    ) {
+        let clip = coord! {x: (point_x / self.screen_params.width as f32) as f64,
+        y: (point_y / self.screen_params.height as f32) as f64};
         let clip = coord! { x: 2.0*(clip.x - 0.5), y: 2.0*(clip.y - 0.5) };
         let center = self.clip_to_latlon(&clip).unwrap();
         self.create_route_to(center.into(), route_costing);
@@ -316,10 +337,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         Box::new(move |p| {
             let coord: Coord<f64> = (p.x(), p.y()).into();
             let coord = T::lat_lon_to_world(&coord);
-            Point::new(
-                coord.x,
-                coord.y,
-            )
+            Point::new(coord.x, coord.y)
         })
     }
 
