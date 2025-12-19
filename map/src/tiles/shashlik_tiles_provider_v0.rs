@@ -29,7 +29,7 @@ use std::thread::spawn;
 use std::time::SystemTime;
 use log::error;
 
-pub struct OldTilesProvider<S: TileSource> {
+pub struct ShashlikTilesProviderV0<S: TileSource> {
     sender: Option<UnboundedSender<TilesMessage>>,
     tile_store: Arc<TileStore<S>>,
     per_frame_cache: HashSet<TileKey>,
@@ -40,13 +40,13 @@ pub struct OldTilesProvider<S: TileSource> {
     dpi_scale: f32,
 }
 
-impl<S: TileSource> OldTilesProvider<S> {
+impl<S: TileSource> ShashlikTilesProviderV0<S> {
     const TRAFFIC_LIGHT_SVG: &'static [u8] = include_bytes!("../../svg/traffic_light.svg");
     const PARKING_SVG: &'static [u8] = include_bytes!("../../svg/parking.svg");
     const TOILETS_SVG: &'static [u8] = include_bytes!("../../svg/toilet.svg");
     const TRAIN_STATION_SVG: &'static [u8] = include_bytes!("../../svg/train_station.svg");
 
-    pub fn new(source: S, dpi_scale: f32,) -> OldTilesProvider<S> {
+    pub fn new(source: S, dpi_scale: f32,) -> ShashlikTilesProviderV0<S> {
         Self {
             sender: None,
             tile_store: Arc::new(TileStore::new(source)),
@@ -354,7 +354,7 @@ impl<S: TileSource> OldTilesProvider<S> {
         tile_data
     }
 }
-impl<S: TileSource> TilesProvider for OldTilesProvider<S> {
+impl<S: TileSource> TilesProvider for ShashlikTilesProviderV0<S> {
     fn load(&mut self, area_latlon: Rect, area_poly: geo_types::Polygon<f64>, zoom_level: i32) {
         let ranges = calc_tile_ranges(TILES_COUNT, zoom_level, &area_latlon);
         let mut current_visible_tiles: HashSet<TileKey> = HashSet::new();

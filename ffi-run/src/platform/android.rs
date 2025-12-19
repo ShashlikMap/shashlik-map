@@ -7,7 +7,7 @@ use jni_fn::jni_fn;
 use map::ShashlikMap;
 use std::sync::{Arc, RwLock};
 use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture};
-use map::tiles::old_tiles_provider::OldTilesProvider;
+use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
 use osm::source::reqwest_source::ReqwestSource;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use jni::objects::JString;
@@ -72,7 +72,7 @@ pub fn createShashlikMapApi(
     // let tiles_db: String = env.get_string(&tiles_db).unwrap().into();
     // let tiles_sqlite_store = TilesSQLiteStore::new(tiles_db);
     let reqwest_source = ReqwestSource::new();
-    let shashlik_map = pollster::block_on(ShashlikMap::new(Box::new(surface), OldTilesProvider::new(reqwest_source, dpi_scale))).unwrap();
+    let shashlik_map = pollster::block_on(ShashlikMap::new(Box::new(surface), ShashlikTilesProviderV0::new(reqwest_source, dpi_scale))).unwrap();
     let map_api = ShashlikMapApi {
         shashlik_map: RwLock::new(shashlik_map),
     };

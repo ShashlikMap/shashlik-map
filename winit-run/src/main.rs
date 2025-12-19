@@ -1,4 +1,4 @@
-use map::tiles::old_tiles_provider::OldTilesProvider;
+use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
 use std::sync::mpsc;
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
@@ -13,7 +13,7 @@ fn main() {
     let (sender, receiver) = mpsc::channel();
 
     let app = App::new(
-        Box::new(|| OldTilesProvider::new(ReqwestSource::new(), 1.0)),
+        Box::new(|| ShashlikTilesProviderV0::new(ReqwestSource::new(), 1.0)),
         receiver,
     );
     let event_loop = EventLoop::with_user_event();

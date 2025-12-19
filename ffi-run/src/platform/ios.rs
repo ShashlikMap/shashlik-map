@@ -2,7 +2,7 @@ use app_surface::{AppSurface, IOSViewObj};
 use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use crate::ShashlikMapApi;
-use map::tiles::old_tiles_provider::OldTilesProvider;
+use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
 use osm::source::reqwest_source::ReqwestSource;
 use map::ShashlikMap;
 use std::sync::RwLock;
@@ -24,7 +24,7 @@ pub fn create_shashlik_map_api_for_ios(view: u64, metal_layer: u64, maximum_fram
 	let wrapper = IOSPlatformAppSurface { app_surface };
 	let reqwest_source = ReqwestSource::new();
 	// TODO DPI from iOS
-	let shashlik_map = pollster::block_on(ShashlikMap::new(Box::new(wrapper), OldTilesProvider::new(reqwest_source, 1.35))).unwrap();
+	let shashlik_map = pollster::block_on(ShashlikMap::new(Box::new(wrapper), ShashlikTilesProviderV0::new(reqwest_source, 1.35))).unwrap();
 	ShashlikMapApi { shashlik_map: RwLock::new(shashlik_map) }
 }
 
