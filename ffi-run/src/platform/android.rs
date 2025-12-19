@@ -12,6 +12,7 @@ use osm::source::reqwest_source::ReqwestSource;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use jni::objects::JString;
 use app_surface::SurfaceFrame;
+use pollster::FutureExt;
 
 //FIXME https://github.com/gobley/gobley/issues/20
 #[uniffi::export]
@@ -56,14 +57,14 @@ impl WgpuCanvas for AndroidSurfaceAppSurface {
 #[unsafe(no_mangle)]
 #[jni_fn("com.shashlik.kmp.RB")] // TODO How to pass as a build param?
 pub fn createShashlikMapApi(
-    env: *mut JNIEnv,
+    env: *mut JNIEnv<'_>,
     _: JClass,
     surface: jobject,
     emulator: jboolean,
     _tiles_db: JString,
 ) -> jlong {
     init_logger();
-    let app_surface = AppSurface::new(env, surface, emulator != 0);
+    let app_surface = AppSurface::new(env, surface, emulator != 0).block_on();
     let surface = AndroidSurfaceAppSurface { app_surface };
     // let mut env = unsafe { JNIEnv::from_raw(env as *mut *const _).unwrap() };
     // let tiles_db: String = env.get_string(&tiles_db).unwrap().into();

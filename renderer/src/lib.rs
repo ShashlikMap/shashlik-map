@@ -400,6 +400,7 @@ impl ShashlikRenderer {
                 }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
 
             self.world_tree_node

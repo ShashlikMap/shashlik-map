@@ -31,7 +31,7 @@ impl PipeLineProvider {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &bind_group_layouts,
-            push_constant_ranges: &[],
+            immediate_size: 0
         });
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
@@ -74,11 +74,9 @@ impl PipeLineProvider {
                 depth_state
             }),
             multisample: self.multisample_state,
-            // If the pipeline will be used with a multiview render pass, this
-            // indicates how many array layers the attachments will have.
-            multiview: None,
             // Useful for optimizing shader compilation on Android
             cache: None,
+            multiview_mask: None,
         })
     }
 }

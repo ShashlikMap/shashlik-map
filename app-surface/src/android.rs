@@ -16,7 +16,7 @@ pub struct AppSurface {
 }
 
 impl AppSurface {
-    pub fn new(env: *mut JNIEnv, surface: jobject, is_emulator: bool) -> Self {
+    pub async fn new(env: *mut JNIEnv<'_>, surface: jobject, is_emulator: bool) -> Self {
         let native_window = Arc::new(NativeWindow::new(env, surface));
         let init_backend = if is_emulator { wgpu::Backends::GL } else { wgpu::Backends::VULKAN };
         let mut instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
@@ -25,7 +25,7 @@ impl AppSurface {
         });
         // TODO This is workaround for the similar issue.
         // https://github.com/gfx-rs/wgpu/issues/2384
-        if instance.enumerate_adapters(init_backend).len() <= 0 {
+        if instance.enumerate_adapters(init_backend).await.len() <= 0 {
             error!("No init_backend adapters found! GL will be used!");
             instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
                 backends: wgpu::Backends::GL,

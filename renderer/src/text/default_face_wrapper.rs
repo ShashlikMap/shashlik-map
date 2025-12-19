@@ -64,7 +64,6 @@ impl DefaultFaceWrapper {
     pub fn shape(&self, text: &str) -> GlyphBuffer {
         let mut buffer = UnicodeBuffer::new();
         buffer.push_str(text);
-        buffer.guess_segment_properties();
         rustybuzz::shape_with_plan(&self.face, &self.face_shape_plan, buffer)
     }
 

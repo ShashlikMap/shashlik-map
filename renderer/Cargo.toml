@@ -9,7 +9,7 @@ bytemuck = { workspace = true}
 cgmath = "0.18"
 wgpu = { workspace = true}
 log = { workspace = true }
-wgpu_text = "27.0.1"
+wgpu_text = { git = "https://github.com/VladasZ/wgpu-text/", branch = "wgpu-28" }
 lyon = { workspace = true}
 wgpu-canvas = { workspace = true}
 indexmap = "2.12.0"
