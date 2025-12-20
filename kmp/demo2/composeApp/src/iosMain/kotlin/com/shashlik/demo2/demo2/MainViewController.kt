@@ -4,7 +4,6 @@ import androidx.compose.ui.window.ComposeUIViewController
 import com.shashlik.kmp.ShashlikMapUIViewProvider
 import platform.UIKit.UIViewController
 
-
 fun MainViewController(createUIViewController: () -> UIViewController): UIViewController {
     ShashlikMapUIViewProvider.createUIViewController = createUIViewController
     return ComposeUIViewController {
