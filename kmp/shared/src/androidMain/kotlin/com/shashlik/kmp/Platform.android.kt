@@ -35,7 +35,7 @@ import uniffi.ffi_run.RouteCosting
 @OptIn(ExperimentalPermissionsApi::class)
 @SuppressLint("MissingPermission")
 @Composable
-fun ShashlikMap() {
+actual fun ShashlikMap() {
     // Camera permission state
     val cameraPermissionState = rememberMultiplePermissionsState(
         listOf(

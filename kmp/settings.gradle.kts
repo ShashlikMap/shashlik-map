@@ -43,4 +43,7 @@ dependencyResolutionManagement {
 }
 
 include(":shared")
-include(":demo")
+//include(":demo")
+
+include(":composeApp")
+project(":composeApp").projectDir = File(rootDir, "demo2/composeApp")
