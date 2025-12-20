@@ -1,6 +1,6 @@
-import gobley.gradle.rust.targets.RustAndroidTarget
-import org.gradle.kotlin.dsl.implementation
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -11,7 +11,11 @@ plugins {
 
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    `maven-publish`
 }
+
+val properties = Properties()
+properties.load(FileInputStream(rootProject.file("local.properties")))
 
 cargo {
     // The Cargo package is located in a `rust` subdirectory.
@@ -26,6 +30,7 @@ uniffi {
 
 kotlin {
     androidTarget {
+        publishLibraryVariants("release")
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
@@ -76,5 +81,22 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+}
+
+group = "com.shashlik"
+version = "0.0.6"
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/ShashlikMap/shashlik-map/")
+
+            credentials {
+                username = properties.getProperty("GithubUser")
+                password = properties.getProperty("GithubPAT")
+            }
+        }
     }
 }
