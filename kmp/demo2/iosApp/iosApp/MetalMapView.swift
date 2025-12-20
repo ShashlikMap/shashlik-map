@@ -92,27 +92,15 @@ struct MapWithControlsView: View {
     @State private var metalViewRef: MetalMapUIView?
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            MetalMapContainer()
-                .background(GeometryReader { proxy in
-                    Color.clear.onAppear {
-                        // Traverse view hierarchy to find MetalMapUIView.
-                        if let uiView = findMetalView(in: UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first) {
-                            metalViewRef = uiView
-                        }
+        MetalMapContainer()
+            .background(GeometryReader { proxy in
+                Color.clear.onAppear {
+                    // Traverse view hierarchy to find MetalMapUIView.
+                    if let uiView = findMetalView(in: UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first) {
+                        metalViewRef = uiView
                     }
-                })
-            Button(action: {
-                metalViewRef?.toggleExternalInput()
-                pressState.toggle()
-            }) {
-                Text(pressState ? "Input: ON" : "Input: OFF")
-                    .padding(12)
-                    .background(.ultraThinMaterial)
-                    .cornerRadius(8)
-            }
-            .padding()
-        }
+                }
+            })
         .ignoresSafeArea()
     }
 

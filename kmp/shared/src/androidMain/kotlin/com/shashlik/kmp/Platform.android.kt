@@ -36,19 +36,18 @@ import uniffi.ffi_run.RouteCosting
 @SuppressLint("MissingPermission")
 @Composable
 actual fun ShashlikMap() {
-    // Camera permission state
-    val cameraPermissionState = rememberMultiplePermissionsState(
+    val locationPermissionState = rememberMultiplePermissionsState(
         listOf(
             android.Manifest.permission.ACCESS_FINE_LOCATION,
             android.Manifest.permission.ACCESS_COARSE_LOCATION
         )
     )
 
-    if (cameraPermissionState.allPermissionsGranted) {
+    if (locationPermissionState.allPermissionsGranted) {
         ShashlikMapComp()
     } else {
         LaunchedEffect(Unit) {
-            cameraPermissionState.launchMultiplePermissionRequest()
+            locationPermissionState.launchMultiplePermissionRequest()
         }
     }
 }
@@ -83,52 +82,14 @@ private fun ShashlikMapComp() {
             TempLocationManager.locationListener.onLocationChanged(it)
         }
     }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(8.dp)
-    ) {
-        AndroidView(
-            factory = { ctx ->
-                TempLocationManager.locationService =
-                    ctx.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-                val sv = WGPUSurfaceView(context = ctx)
-                TempLocationManager.map = sv
-                sv
-            },
-            modifier = Modifier.fillMaxSize()
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .background(Color(0, 0, 0, 150))
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Button(onClick = {
-                if (routeCosting.value == RouteCosting.MOTORBIKE) {
-                    routeCosting.value = RouteCosting.PEDESTRIAN
-                } else {
-                    routeCosting.value = RouteCosting.MOTORBIKE
-                }
-            }) {
-                if (routeCosting.value == RouteCosting.MOTORBIKE) {
-                    Text("Motorbike")
-                } else {
-                    Text("Pedestrian")
-                }
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                var checkedState by remember { mutableStateOf(true) }
-                Checkbox(
-                    checkedState, onCheckedChange = {
-                        TempLocationManager.map?.shashlikMapApi?.setCamFollowMode(it)
-                        checkedState = it
-                    })
-                Text("Camera Mode")
-            }
-        }
-    }
+    AndroidView(
+        factory = { ctx ->
+            TempLocationManager.locationService =
+                ctx.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            val sv = WGPUSurfaceView(context = ctx)
+            TempLocationManager.map = sv
+            sv
+        },
+        modifier = Modifier.fillMaxSize()
+    )
 }

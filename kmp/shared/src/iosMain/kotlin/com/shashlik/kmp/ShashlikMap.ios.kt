@@ -1,16 +1,19 @@
 package com.shashlik.kmp
 
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.viewinterop.UIKitViewController
+import platform.UIKit.UIViewController
+
+object ShashlikMapUIViewProvider {
+    lateinit var createUIViewController: () -> UIViewController
+}
 
 @Composable
 actual fun ShashlikMap() {
-    Button(onClick = { }) {
-        Text("KIOL")
-    }
+    UIKitViewController(
+        factory = ShashlikMapUIViewProvider.createUIViewController,
+        modifier = Modifier.fillMaxSize(),
+    )
 }
