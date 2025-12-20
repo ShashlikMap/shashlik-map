@@ -22,6 +22,7 @@ kotlin {
         iosSimulatorArm64()
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
+            export(projects.shared)
             baseName = "ComposeApp"
             isStatic = true
         }
@@ -42,7 +43,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
 
-            implementation(project(":shared"))
+            api(project(":shared"))
 //            implementation("com.shashlik:shared:0.0.6")
         }
         commonTest.dependencies {
