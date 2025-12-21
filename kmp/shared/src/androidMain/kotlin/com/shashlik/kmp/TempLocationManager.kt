@@ -23,7 +23,7 @@ object TempLocationManager {
         )
         Log.d("kiol", "hasAltitude = ${location.hasAltitude()}, altitude = ${location.altitude}")
         val bearing: Float? = if (location.hasBearing()) location.bearing else null
-        map?.shashlikMapApi?.setLatLonBearing(latitude, longitude, bearing)
+        ShashlikMapApiHolder.shashlikMapApi?.setLatLonBearing(latitude, longitude, bearing)
     }
 
     lateinit var locationService: LocationManager
