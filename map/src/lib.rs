@@ -3,16 +3,16 @@ extern crate core;
 use crate::camera::{Camera, CameraController};
 use crate::route::RouteCosting;
 use crate::style_loader::StyleLoader;
-use crate::test_kml_viewer_group::TestKmlGroup;
-use crate::test_puck_group::TestSimplePuck;
+use crate::kml_viewer_group::KmlGroup;
+use crate::puck_group::SimplePuck;
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use cgmath::num_traits::clamp;
 use cgmath::{InnerSpace, Vector2, Vector3};
 use futures::executor::block_on;
-use futures::{Stream, StreamExt, pin_mut};
+use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
-use geo_types::{Coord, Point, Rect, coord};
+use geo_types::{coord, Coord, Point, Rect};
 use geo_types::{LineString, Polygon};
 use renderer::canvas_api::CanvasApi;
 use renderer::modifier::render_modifier::SpatialData;
@@ -29,9 +29,10 @@ use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 mod camera;
 pub mod route;
 mod style_loader;
-mod test_kml_viewer_group;
-mod test_puck_group;
+mod kml_viewer_group;
+mod puck_group;
 pub mod tiles;
+pub mod mesh_loader;
 
 pub struct ShashlikMap<T: TilesProvider> {
     renderer: Box<ShashlikRenderer>,
@@ -96,7 +97,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             "puck".to_string(),
             0,
             puck_spatial_data,
-            Box::new(TestSimplePuck {}),
+            Box::new(SimplePuck {}),
         );
 
         Self::run_tiles(renderer.api.clone(), tiles_stream);
@@ -351,7 +352,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             "kml_data".to_string(),
             0,
             SpatialData::transform(Vector3::new(0.0, 0.0, 0.0)),
-            Box::new(TestKmlGroup::new(
+            Box::new(KmlGroup::new(
                 path_buf,
                 self.create_location_coord_converter(),
             )),

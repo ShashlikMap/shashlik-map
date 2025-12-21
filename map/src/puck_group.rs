@@ -1,13 +1,13 @@
 use renderer::canvas_api::CanvasApi;
-use crate::tiles::mesh_loader::MeshLoader;
+use crate::mesh_loader::MeshLoader;
 use renderer::geometry_data::ShapeData;
 use renderer::draw_commands::GeometryType;
 use renderer::render_group::RenderGroup;
 use renderer::styles::style_id::StyleId;
 
-pub struct TestSimplePuck {}
+pub struct SimplePuck {}
 
-impl RenderGroup for TestSimplePuck {
+impl RenderGroup for SimplePuck {
     fn content(&mut self, canvas: &mut CanvasApi) {
         canvas.set_feature_layer_tag(Some("puck_layer".to_string()));
         canvas.path(

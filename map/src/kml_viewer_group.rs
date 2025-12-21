@@ -7,14 +7,14 @@ use renderer::render_group::RenderGroup;
 use renderer::styles::style_id::StyleId;
 use std::path::PathBuf;
 
-pub struct TestKmlGroup {
+pub struct KmlGroup {
     pub geom_coll: GeometryCollection<f64>,
 }
 
-impl TestKmlGroup {
+impl KmlGroup {
     pub const CIRCLE_SVG: &'static [u8] = include_bytes!("../svg/just_circle.svg");
 
-    pub fn new(path_buf: PathBuf, converter: Box<dyn Fn(&Point) -> Point>) -> TestKmlGroup {
+    pub fn new(path_buf: PathBuf, converter: Box<dyn Fn(&Point) -> Point>) -> KmlGroup {
         let mut kml_reader = KmlReader::<_, f64>::from_path(path_buf).unwrap();
         let kml_data = kml_reader.read().unwrap();
         let mut geom_coll: GeometryCollection<f64> = kml_data.try_into().unwrap();
@@ -24,11 +24,11 @@ impl TestKmlGroup {
             }
             _ => {}
         });
-        TestKmlGroup { geom_coll }
+        KmlGroup { geom_coll }
     }
 }
 
-impl RenderGroup for TestKmlGroup {
+impl RenderGroup for KmlGroup {
     fn content(&mut self, canvas: &mut CanvasApi) {
         let mut geometry_data = vec![];
         self.geom_coll.0.iter().for_each(|geom| match geom {
