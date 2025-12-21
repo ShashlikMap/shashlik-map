@@ -29,7 +29,7 @@ impl FpsNode {
                 multi_sample_state,
             ),
             counter: FpsCounter::new(),
-            text_section: OwnedSection::default().with_screen_position((100f32, 50f32)),
+            text_section: OwnedSection::default().with_screen_position((130f32, 50f32)),
             current_fps: "0".to_string(),
         }
     }

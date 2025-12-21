@@ -2,22 +2,21 @@ package com.shashlik.kmp
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.PixelFormat
+import android.graphics.SurfaceTexture
 import android.os.Build
-import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
-import android.view.SurfaceHolder
-import android.view.SurfaceView
+import android.view.Surface
+import android.view.TextureView
+import timber.log.Timber
 import uniffi.ffi_run.ShashlikMapApi
 import uniffi.ffi_run.toPointer
 
 
 @SuppressLint("ClickableViewAccessibility")
-class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
+class WGPUTextureView : TextureView {
 
     var onLongTap: (x: Float, y: Float) -> Unit = { _, _ -> }
 
@@ -72,58 +71,56 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
         context,
         attrs,
         defStyle
-    ) {
-    }
+    )
 
     init {
-        holder.addCallback(this)
+        Timber.d("WGPUTextureView created")
 
-        this.setZOrderMediaOverlay(true)
-        holder.setFormat(PixelFormat.TRANSPARENT)
+        surfaceTextureListener = object : SurfaceTextureListener {
+            override fun onSurfaceTextureAvailable(
+                st: SurfaceTexture,
+                width: Int,
+                height: Int
+            ) {
+                val surface = Surface(st)
+                val ptr = rustBrige.createShashlikMapApi(
+                    surface,
+                    Build.FINGERPRINT.contains("generic") ||
+                            Build.FINGERPRINT.contains("sdk_gphone"),
+                    context.filesDir.absolutePath + "/tiles.db",
+                    context.resources.displayMetrics.density / 2.0f
+                )
+                Timber.d("surfaceCreated = $ptr, surface = $surface")
+
+                ShashlikMapApiHolder.shashlikMapApi = ShashlikMapApi(ptr.toPointer()).apply {
+                    resize(width.toUInt(), height.toUInt())
+                    render()
+                }
+            }
+
+            override fun onSurfaceTextureSizeChanged(
+                p0: SurfaceTexture,
+                width: Int,
+                height: Int
+            ) {
+                Timber.d("onSurfaceTextureSizeChanged $width, $height")
+                ShashlikMapApiHolder.shashlikMapApi?.resize(width.toUInt(), height.toUInt())
+            }
+
+            override fun onSurfaceTextureDestroyed(p0: SurfaceTexture): Boolean {
+                Timber.d("onSurfaceTextureDestroyed")
+                return true
+            }
+
+            override fun onSurfaceTextureUpdated(p0: SurfaceTexture) {
+                ShashlikMapApiHolder.shashlikMapApi?.render()
+            }
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         gestureDetector.onTouchEvent(event)
         mScaleDetector.onTouchEvent(event)
         return true
-    }
-
-    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-        ShashlikMapApiHolder.shashlikMapApi?.resize(width.toUInt(), height.toUInt())
-    }
-
-    override fun surfaceCreated(holder: SurfaceHolder) {
-        holder.let { h ->
-            val ptr = rustBrige.createShashlikMapApi(
-                h.surface,
-                Build.FINGERPRINT.contains("generic") ||
-                        Build.FINGERPRINT.contains("sdk_gphone"),
-                context.filesDir.absolutePath + "/tiles.db",
-                context.resources.displayMetrics.density / 2.0f
-            )
-            ShashlikMapApiHolder.shashlikMapApi = ShashlikMapApi(ptr.toPointer())
-            setWillNotDraw(false)
-        }
-    }
-
-    override fun surfaceDestroyed(holder: SurfaceHolder) {
-//        if (wgpuObj != Long.MAX_VALUE) {
-//            rustBrige.dropWgpuCanvas(wgpuObj)
-//            wgpuObj = Long.MAX_VALUE
-//        }
-    }
-
-    override fun surfaceRedrawNeeded(holder: SurfaceHolder) {
-    }
-
-
-    override fun onSaveInstanceState(): Parcelable? {
-        return super.onSaveInstanceState()
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        ShashlikMapApiHolder.shashlikMapApi?.render()
-        invalidate()
     }
 }

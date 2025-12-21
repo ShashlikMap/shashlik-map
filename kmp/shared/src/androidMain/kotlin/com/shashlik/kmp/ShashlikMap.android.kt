@@ -13,16 +13,15 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import timber.log.Timber
 import timber.log.Timber.DebugTree
-import timber.log.Timber.Forest.plant
 
+fun shashlikMapInit() {
+    Timber.plant(DebugTree())
+}
 
 @OptIn(ExperimentalPermissionsApi::class)
 @SuppressLint("MissingPermission")
 @Composable
 actual fun ShashlikMap(onLongTap: (x: Float, y: Float) -> Unit) {
-    LaunchedEffect(Unit) {
-        plant(DebugTree())
-    }
     val locationPermissionState = rememberMultiplePermissionsState(
         listOf(
             android.Manifest.permission.ACCESS_FINE_LOCATION,
@@ -60,9 +59,9 @@ private fun ShashlikMapComp(onLongTap: (x: Float, y: Float) -> Unit) {
 
     AndroidView(
         factory = { ctx ->
-            val sv = WGPUSurfaceView(context = ctx)
-            sv.onLongTap = onLongTap
-            sv
+            WGPUTextureView(context = ctx).also {
+                it.onLongTap = onLongTap
+            }
         },
         modifier = Modifier.fillMaxSize()
     )
