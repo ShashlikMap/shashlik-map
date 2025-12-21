@@ -43,7 +43,6 @@ dependencyResolutionManagement {
 }
 
 include(":shared")
-//include(":demo")
 
 include(":composeApp")
 project(":composeApp").projectDir = File(rootDir, "demo/composeApp")
