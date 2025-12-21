@@ -60,7 +60,7 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
 
     private val gestureDetector = GestureDetector(context, gestureListener)
 
-    private var rustBrige = RB()
+    private var rustBrige = RustBridge()
 
     constructor(context: Context) : super(context) {
     }

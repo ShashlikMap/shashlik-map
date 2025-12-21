@@ -2,7 +2,7 @@ package com.shashlik.kmp
 
 import android.view.Surface
 
-class RB {
+class RustBridge {
 
     init {
         System.loadLibrary("ffi_run")

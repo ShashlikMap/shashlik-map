@@ -55,6 +55,7 @@ kotlin {
             implementation(libs.androidx.material3)
             implementation(libs.accompanist)
             implementation("net.java.dev.jna:jna:5.18.1@aar")
+            implementation("com.jakewharton.timber:timber:5.0.1")
         }
         commonMain.dependencies {
             implementation(compose.runtime)
