@@ -16,7 +16,6 @@ final class MetalMapUIView: UIView {
 
     private var displayLink: CADisplayLink?
     private(set) var shashlikMapApi: ShashlikMapApi?
-    private var pressed: Bool = false
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -56,17 +55,9 @@ final class MetalMapUIView: UIView {
         let viewPtr = Unmanaged.passUnretained(self).toOpaque()
         let layerPtr = Unmanaged.passUnretained(self.layer).toOpaque()
 
-        shashlikMapApi = Ffi_run_nativeKt.createShashlikMapApiForIos(view: UInt64(UInt(bitPattern: viewPtr)), metalLayer: UInt64(UInt(bitPattern: layerPtr)), maximumFrames: 90, tilesDb: "")
+        shashlikMapApi = MainViewControllerKt.createShashlikMapApiForIos(view: UInt64(UInt(bitPattern: viewPtr)), metalLayer: UInt64(UInt(bitPattern: layerPtr)))
         
         startRendering()
-    }
-
-    private static func defaultTilesDbPath() -> String {
-        // Preferred location: Library/Application Support/ShashlikTiles/Tiles.db
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let dir = base.appendingPathComponent("ShashlikTiles", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("Tiles.db").path
     }
 
     private func startRendering() {
@@ -78,16 +69,10 @@ final class MetalMapUIView: UIView {
     @objc private func frameTick() {
         shashlikMapApi?.render()
     }
-
-    func toggleExternalInput() {
-        pressed.toggle()
-        shashlikMapApi?.setCamFollowMode(enabled: pressed)
-    }
 }
 
 // Convenience SwiftUI view combining map and a control button.
 struct MapWithControlsView: View {
-    @State private var pressState: Bool = false
     // Keep a weak link to underlying view to trigger input.
     @State private var metalViewRef: MetalMapUIView?
 

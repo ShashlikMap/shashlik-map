@@ -12,20 +12,19 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import androidx.compose.runtime.mutableStateOf
-import uniffi.ffi_run.RouteCosting
 import uniffi.ffi_run.ShashlikMapApi
 import uniffi.ffi_run.toPointer
 
-var routeCosting = mutableStateOf(RouteCosting.MOTORBIKE)
 
 @SuppressLint("ClickableViewAccessibility")
 class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
 
+    var onLongTap: (x: Float, y: Float) -> Unit = { _, _ -> }
+
     private val scaleListener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
 
         override fun onScale(detector: ScaleGestureDetector): Boolean {
-            shashlikMapApi?.zoomDelta(
+            ShashlikMapApiHolder.shashlikMapApi?.zoomDelta(
                 (detector.scaleFactor - 1.0f) * 150.0f,
                 detector.focusX,
                 detector.focusY
@@ -45,9 +44,9 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
             distanceY: Float
         ): Boolean {
             if (e2.pointerCount == 2) {
-                shashlikMapApi?.pitchDelta(-distanceY / 10.0f)
+                ShashlikMapApiHolder.shashlikMapApi?.pitchDelta(-distanceY / 10.0f)
             } else {
-                shashlikMapApi?.panDelta(distanceX / 15.0f, distanceY / 15.0f)
+                ShashlikMapApiHolder.shashlikMapApi?.panDelta(distanceX / 15.0f, distanceY / 15.0f)
             }
 
             return super.onScroll(e1, e2, distanceX, distanceY)
@@ -55,15 +54,13 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
 
         override fun onLongPress(e: MotionEvent) {
             super.onLongPress(e)
-            shashlikMapApi?.calculateRoute(e.x, e.y, routeCosting.value)
+            onLongTap(e.x, e.y)
         }
     }
 
     private val gestureDetector = GestureDetector(context, gestureListener)
 
     private var rustBrige = RB()
-
-    var shashlikMapApi: ShashlikMapApi? = null
 
     constructor(context: Context) : super(context) {
     }
@@ -92,7 +89,7 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-        shashlikMapApi?.resize(width.toUInt(), height.toUInt())
+        ShashlikMapApiHolder.shashlikMapApi?.resize(width.toUInt(), height.toUInt())
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
@@ -104,7 +101,7 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
                 context.filesDir.absolutePath + "/tiles.db",
                 context.resources.displayMetrics.density / 2.0f
             )
-            shashlikMapApi = ShashlikMapApi(ptr.toPointer())
+            ShashlikMapApiHolder.shashlikMapApi = ShashlikMapApi(ptr.toPointer())
             setWillNotDraw(false)
         }
     }
@@ -126,7 +123,7 @@ class WGPUSurfaceView : SurfaceView, SurfaceHolder.Callback2 {
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        shashlikMapApi?.render()
+        ShashlikMapApiHolder.shashlikMapApi?.render()
         invalidate()
     }
 }

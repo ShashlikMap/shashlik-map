@@ -3,7 +3,7 @@ import SwiftUI
 import ComposeApp
 
 struct ComposeView: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> UIViewController {
+    func makeUIViewController(context: Context) -> UIViewController {                    
         MainViewControllerKt.MainViewController(createUIViewController: { () -> UIViewController in
             return UIHostingController(rootView: MapWithControlsView())
         })

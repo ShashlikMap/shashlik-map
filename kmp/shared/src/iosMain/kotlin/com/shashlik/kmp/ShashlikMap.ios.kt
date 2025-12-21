@@ -11,7 +11,8 @@ object ShashlikMapUIViewProvider {
 }
 
 @Composable
-actual fun ShashlikMap() {
+actual fun ShashlikMap(onLongTap: (x: Float, y: Float) -> Unit) {
+    // TODO Pass to iOS
     UIKitViewController(
         factory = ShashlikMapUIViewProvider.createUIViewController,
         modifier = Modifier.fillMaxSize(),

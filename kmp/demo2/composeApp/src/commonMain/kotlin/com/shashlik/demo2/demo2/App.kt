@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.shashlik.kmp.ShashlikMap
+import com.shashlik.kmp.ShashlikMapApiHolder
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import uniffi.ffi_run.RouteCosting
 
@@ -30,7 +31,9 @@ fun App() {
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
-            ShashlikMap()
+            ShashlikMap { x, y->
+                ShashlikMapApiHolder.shashlikMapApi?.calculateRoute(x, y, routeCosting.value)
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -57,7 +60,7 @@ fun App() {
                     var checkedState by remember { mutableStateOf(true) }
                     Checkbox(
                         checkedState, onCheckedChange = {
-//                            TempLocationManager.map?.shashlikMapApi?.setCamFollowMode(it)
+                            ShashlikMapApiHolder.shashlikMapApi?.setCamFollowMode(it)
                             checkedState = it
                         })
                     Text("Camera Mode")
