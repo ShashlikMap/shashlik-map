@@ -121,51 +121,15 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
                     match &obj_type.kind {
                         MapGeomObjectKind::Poi(poi) => {
                             let icon: Option<(&str, &[u8])> = match poi.kind {
-                                MapPointObjectKind::TrainStation(is_train) => {
-                                    let id = seahash::hash(
-                                        format!(
-                                            "{:?}{}{}",
-                                            poi.text, local_position.x, local_position.y
-                                        )
-                                        .as_bytes(),
-                                    );
-                                    geometry_data.push(GeometryData::Text(TextData {
-                                        id,
-                                        text: poi.text.to_uppercase(),
-                                        screen_offset: Vector2::new(0.0, 30.0 * dpi_scale),
-                                        size: 40.0 * dpi_scale,
-                                        positions: vec![Vector3::from((
-                                            local_position.x,
-                                            local_position.y,
-                                            0.0,
-                                        )).cast().unwrap()],
-                                    }));
-                                    if is_train {
-                                        Some(("train_station", Self::TRAIN_STATION_SVG))
-                                    } else {
-                                        Some(("railway_station", Self::TRAIN_STATION_SVG))
-                                    }
-                                }
-                                MapPointObjectKind::TrafficLight => {
-                                    Some(("traffic_light", Self::TRAFFIC_LIGHT_SVG))
-                                }
+                                MapPointObjectKind::TrainStation(is_train) => if is_train {
+                                    Some(("train_station", Self::TRAIN_STATION_SVG))
+                                } else {
+                                    Some(("railway_station", Self::TRAIN_STATION_SVG))
+                                },
+                                MapPointObjectKind::TrafficLight => Some(("traffic_light", Self::TRAFFIC_LIGHT_SVG)),
                                 MapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
                                 MapPointObjectKind::Parking => Some(("parking", Self::PARKING_SVG)),
-                                MapPointObjectKind::PopArea(..) => {
-                                    geometry_data.push(GeometryData::Text(TextData {
-                                        id: hash(poi.text.as_bytes()),
-                                        text: poi.text.to_uppercase(),
-                                        screen_offset: Vector2::new(0.0, 0.0),
-                                        size: 40.0 * dpi_scale,
-                                        positions: vec![Vector3::from((
-                                            local_position.x,
-                                            local_position.y,
-                                            0.0,
-                                        )).cast().unwrap()],
-                                    }));
-                                    None
-                                }
-                                _ => None,
+                                MapPointObjectKind::PopArea(..) => None
                             };
                             let style_id = match poi.kind {
                                 MapPointObjectKind::TrainStation(is_train) => {
@@ -190,7 +154,29 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
                                     with_collision: true,
                                 }));
                             }
-                        }
+
+                            if !poi.text.is_empty() {
+                                let id = hash(
+                                    format!(
+                                        "{:?}{}{}",
+                                        poi.text, local_position.x, local_position.y
+                                    )
+                                        .as_bytes(),
+                                );
+                                let y_offset = if icon.is_some() { 30.0 } else { 0.0 };
+                                geometry_data.push(GeometryData::Text(TextData {
+                                    id,
+                                    text: poi.text.to_uppercase(),
+                                    screen_offset: Vector2::new(0.0, y_offset * dpi_scale),
+                                    size: 40.0 * dpi_scale,
+                                    positions: vec![Vector3::from((
+                                        local_position.x,
+                                        local_position.y,
+                                        0.0,
+                                    )).cast().unwrap()],
+                                }));
+                            }
+                        },
                         _ => {}
                     }
                 }
@@ -315,19 +301,17 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
                                 },
                             ));
                         } else {
-                            let style_id = if obj_type.kind
-                                == MapGeomObjectKind::Nature(NatureKind::Water)
-                            {
-                                StyleId("water")
-                            } else if let MapGeomObjectKind::Building(_) = obj_type.kind {
-                                StyleId("building")
-                            } else if obj_type.kind == MapGeomObjectKind::Nature(NatureKind::Ground)
-                            {
-                                StyleId("ground")
-                            } else if obj_type.kind == MapGeomObjectKind::Nature(NatureKind::Park) {
-                                StyleId("park")
-                            } else {
-                                StyleId("forest")
+                            let style_id = match obj_type.kind {
+                                MapGeomObjectKind::Nature(kind) => {
+                                    match kind {
+                                        NatureKind::Ground => StyleId("ground"),
+                                        NatureKind::Park => StyleId("park"),
+                                        NatureKind::Forest => StyleId("forest"),
+                                        NatureKind::Water => StyleId("water")
+                                    }
+                                }
+                                MapGeomObjectKind::Building(_) => StyleId("building"),
+                                _ => StyleId("water"),
                             };
 
                             geometry_data.push(GeometryData::Shape(ShapeData {
