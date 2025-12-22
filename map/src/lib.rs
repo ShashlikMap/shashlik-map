@@ -33,6 +33,7 @@ mod kml_viewer_group;
 mod puck_group;
 pub mod tiles;
 pub mod mesh_loader;
+pub mod feature_processor;
 
 pub struct ShashlikMap<T: TilesProvider> {
     renderer: Box<ShashlikRenderer>,

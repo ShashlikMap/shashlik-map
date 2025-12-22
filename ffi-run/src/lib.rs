@@ -6,12 +6,12 @@ use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
 use map::ShashlikMap;
 use osm::source::reqwest_source::ReqwestSource;
 use std::sync::RwLock;
-
+use map::feature_processor::ShashlikFeatureProcessor;
 
 #[derive(uniffi::Object)]
 pub struct ShashlikMapApi {
     // TODO ?Can't use generic for FFI ShashlikMapApi?
-    shashlik_map: RwLock<ShashlikMap<ShashlikTilesProviderV0<ReqwestSource>>>,
+    shashlik_map: RwLock<ShashlikMap<ShashlikTilesProviderV0<ReqwestSource, ShashlikFeatureProcessor>>>,
 }
 
 unsafe impl Sync for ShashlikMapApi {}
