@@ -1,17 +1,21 @@
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use cgmath::{Vector2, Vector3};
-use futures::channel::mpsc::{unbounded, UnboundedSender};
 use futures::Stream;
+use futures::channel::mpsc::{UnboundedSender, unbounded};
 use geo::Intersects;
 use geo::Winding;
-use geo_types::Rect;
+use geo_types::{LineString, Rect};
 use googleprojection::{Coord, Mercator};
+use log::error;
 use lyon::geom::point;
 use lyon::path::Path;
-use osm::map::{HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointInfo, MapPointObjectKind, NatureKind};
+use osm::map::{
+    HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointInfo,
+    MapPointObjectKind, NatureKind,
+};
 use osm::source::TileSource;
-use osm::tiles::{calc_tile_ranges, TileKey, TileStore, TILES_COUNT};
+use osm::tiles::{TILES_COUNT, TileKey, TileStore, calc_tile_ranges};
 use rand::Rng;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
@@ -24,7 +28,6 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 use std::time::SystemTime;
-use log::error;
 
 pub struct ShashlikTilesProviderV0<S: TileSource> {
     sender: Option<UnboundedSender<TilesMessage>>,
@@ -43,7 +46,7 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
     const TOILETS_SVG: &'static [u8] = include_bytes!("../../svg/toilet.svg");
     const TRAIN_STATION_SVG: &'static [u8] = include_bytes!("../../svg/train_station.svg");
 
-    pub fn new(source: S, dpi_scale: f32,) -> ShashlikTilesProviderV0<S> {
+    pub fn new(source: S, dpi_scale: f32) -> ShashlikTilesProviderV0<S> {
         Self {
             sender: None,
             tile_store: Arc::new(TileStore::new(source)),
@@ -52,7 +55,7 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
             last_loaded_zoom_level: Arc::new(AtomicI32::new(1)),
             current_zoom_level: Arc::new(AtomicI32::new(1)),
             loading_map: Arc::new(RwLock::new(HashMap::new())),
-            dpi_scale
+            dpi_scale,
         }
     }
 
@@ -77,11 +80,9 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
         // shows big road better with high zooms
         let zoom = if zoom > 6.0 { zoom * zoom } else { zoom };
         match kind {
-            HighwayKind::Motorway
-            | HighwayKind::Primary => motorway_width * (zoom / 2.0).max(1.0),
-            | HighwayKind::Trunk => motorway_width * (zoom / 3.0).max(1.0),
-            HighwayKind::Tertiary
-            | HighwayKind::Secondary => motorway_width,
+            HighwayKind::Motorway | HighwayKind::Primary => motorway_width * (zoom / 2.0).max(1.0),
+            HighwayKind::Trunk => motorway_width * (zoom / 3.0).max(1.0),
+            HighwayKind::Tertiary | HighwayKind::Secondary => motorway_width,
 
             HighwayKind::MotorwayLink
             | HighwayKind::PrimaryLink
@@ -97,7 +98,11 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
         }
     }
 
-    fn get_tile_key_data(tile_store: Arc<TileStore<S>>, tile_key: &TileKey, dpi_scale: f32) -> TileData {
+    fn get_tile_key_data(
+        tile_store: Arc<TileStore<S>>,
+        tile_key: &TileKey,
+        dpi_scale: f32,
+    ) -> TileData {
         let zoom_level = tile_key.zoom_level;
         let tile_rect = tile_key.calc_tile_boundary(1.0);
 
@@ -111,163 +116,49 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
 
         let mut geometry_data: Vec<GeometryData> = vec![];
         let mut line_text_map = HashMap::new();
-        geom.into_iter().for_each(|(obj_type, geometry)| {
-            match geometry {
+        geom.into_iter()
+            .for_each(|(obj_type, geometry)| match geometry {
                 MapGeometry::Coord(coord) => {
                     let local_position = Self::lat_lon_to_world(&coord) - tile_rect_origin;
                     match &obj_type.kind {
                         MapGeomObjectKind::Poi(poi) => {
-                            Self::process_map_point_info(&mut geometry_data, poi, &local_position, dpi_scale);
-                        },
+                            Self::process_map_point_info(
+                                &mut geometry_data,
+                                poi,
+                                &local_position,
+                                dpi_scale,
+                            );
+                        }
                         _ => {}
                     }
                 }
                 MapGeometry::Line(line) => {
-                    if let Some((style_id, layer_level, width, name)) = match &obj_type.kind {
-                        MapGeomObjectKind::Way(info) => match info.line_kind {
-                            LineKind::Highway { kind } => {
-                                if kind != HighwayKind::Footway {
-                                    let show_name =  tile_key.zoom_level <= 3;
-                                    Some((
-                                        Self::highway_style_id(&kind),
-                                        info.layer,
-                                        Self::highway_width(&kind, tile_key.zoom_level as f32),
-                                        if show_name { info.name_en.clone() } else { None },
-                                    ))
-                                } else {
-                                    None
-                                }
-                            }
-                            LineKind::Railway { .. } => {
-                                // TODO Ignore rails tunnels for a while
-                                if info.layer_kind != LayerKind::Tunnel {
-                                    Some((StyleId("rails"), info.layer, 0.3 * tile_key.zoom_level.max(1) as f32, None))
-                                } else {
-                                    None
-                                }
-                            }
-                        },
-                        MapGeomObjectKind::AdminLine => {
-                            Some((StyleId("admin_line"), 0, 250.0, None))
-                        }
-                        _ => None,
-                    } {
-                        let line: Vec<(f64, f64)> = line
-                            .0
-                            .iter()
-                            .map(|item| (Self::lat_lon_to_world(&item) - tile_rect_origin).into())
-                            .collect();
-                        if line.len() >= 2 {
-                            let mut path_builder = Path::builder();
-                            path_builder.begin(point(line[0].x() as f32, line[0].y() as f32));
-
-                            for &p in line[1..].iter() {
-                                path_builder.line_to(point(p.x() as f32, p.y() as f32));
-                            }
-                            path_builder.end(false);
-
-                            let options = PolylineOptions {
-                                width,
-                                ..Default::default()
-                            };
-
-                            geometry_data.push(GeometryData::Shape(ShapeData {
-                                path: path_builder.build(),
-                                geometry_type: GeometryType::Polyline(options),
-                                style_id,
-                                index_layer_level: layer_level as i8,
-                                is_screen: false,
-                            }));
-
-                            if let Some(name) = name {
-                                // TODO When text render along the path is ready, it has to be decided how to reduce the repetitive data inside tile
-                                //  So far just accept every 30 item. There might be more then 500 lines with the same name!
-                                let name_count = line_text_map
-                                    .entry(name.clone())
-                                    .and_modify(|entry| *entry += 1)
-                                    .or_insert(0);
-                                if *name_count % 30 == 0 {
-                                    // FIXME TextRenderer has a bug for only 2 coords line, let's skip it for now
-                                    if line.len() > 2 {
-                                        geometry_data.push(GeometryData::Text(TextData {
-                                            id: hash(name.as_bytes()),
-                                            text: name.to_uppercase(),
-                                            screen_offset: Vector2::new(0.0, 0.0),
-                                            size: 30.0 * dpi_scale,
-                                            positions:
-                                                line.iter()
-                                                    .map(|item| {
-                                                        Vector3::new(
-                                                            item.x() as f32,
-                                                            item.y() as f32,
-                                                            0.0,
-                                                        )
-                                                    })
-                                                    .collect(),
-                                        }));
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    Self::process_line(
+                        &mut geometry_data,
+                        line,
+                        obj_type.kind,
+                        &mut line_text_map,
+                        tile_key.zoom_level,
+                        tile_rect_origin,
+                        dpi_scale,
+                    );
                 }
                 MapGeometry::Poly(poly) => {
-                    let mut line_string = poly.into_inner().0;
+                    let mut line = poly.into_inner().0;
                     if let MapGeomObjectKind::Building(_) = obj_type.kind {
-                        line_string.make_cw_winding();
+                        line.make_cw_winding();
                     }
-                    let line: Vec<(f64, f64)> = line_string
-                        .0
-                        .iter()
-                        .map(|item| (Self::lat_lon_to_world(item) - tile_rect_origin).into())
-                        .collect();
-                    if line.len() >= 2 {
-                        let mut path_builder = Path::builder();
-                        path_builder.begin(point(line[0].x() as f32, line[0].y() as f32));
-
-                        for &p in line[1..].iter() {
-                            path_builder.line_to(point(p.x() as f32, p.y() as f32));
-                        }
-                        path_builder.end(true);
-
-                        if let MapGeomObjectKind::Building(level) = obj_type.kind && zoom_level == 0 {
-                            let level = if level == 0 {
-                                rand::rng().random_range(2..=3)
-                            } else {
-                                level
-                            };
-                            geometry_data.push(GeometryData::ExtrudedPolygon(
-                                ExtrudedPolygonData {
-                                    path: path_builder.build(),
-                                    height: level as f32 / 2.0,
-                                },
-                            ));
-                        } else {
-                            let style_id = match obj_type.kind {
-                                MapGeomObjectKind::Nature(kind) => {
-                                    match kind {
-                                        NatureKind::Ground => StyleId("ground"),
-                                        NatureKind::Park => StyleId("park"),
-                                        NatureKind::Forest => StyleId("forest"),
-                                        NatureKind::Water => StyleId("water")
-                                    }
-                                }
-                                MapGeomObjectKind::Building(_) => StyleId("building"),
-                                _ => StyleId("water"),
-                            };
-
-                            geometry_data.push(GeometryData::Shape(ShapeData {
-                                path: path_builder.build(),
-                                geometry_type: GeometryType::Polygon,
-                                style_id,
-                                index_layer_level: -100, //no dedicated layer level for polygon in tiles-gen v1
-                                is_screen: false,
-                            }));
-                        }
-                    }
+                    Self::process_line(
+                        &mut geometry_data,
+                        line,
+                        obj_type.kind,
+                        &mut line_text_map,
+                        tile_key.zoom_level,
+                        tile_rect_origin,
+                        dpi_scale,
+                    );
                 }
-            }
-        });
+            });
 
         let tile_data = TileData {
             key: tile_key.as_string_key(),
@@ -280,22 +171,167 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
         tile_data
     }
 
-    fn process_map_point_info(geometry_data: &mut Vec<GeometryData>, poi: &MapPointInfo, local_position: &geo::Coord, dpi_scale: f32) {
+    fn process_line(
+        geometry_data: &mut Vec<GeometryData>,
+        line: LineString,
+        kind: MapGeomObjectKind,
+        line_text_map: &mut HashMap<String, i32>,
+        zoom_level: i32,
+        tile_rect_origin: geo::Coord,
+        dpi_scale: f32,
+    ) {
+        let line: Vec<(f64, f64)> = line
+            .0
+            .iter()
+            .map(|item| (Self::lat_lon_to_world(&item) - tile_rect_origin).into())
+            .collect();
+        if line.len() >= 2 {
+            let mut path_builder = Path::builder();
+            path_builder.begin(point(line[0].x() as f32, line[0].y() as f32));
+
+            for &p in line[1..].iter() {
+                path_builder.line_to(point(p.x() as f32, p.y() as f32));
+            }
+            path_builder.end(false);
+
+            if let Some((style_id, layer_level, geometry_type, name)) = match &kind {
+                MapGeomObjectKind::Way(info) => match info.line_kind {
+                    LineKind::Highway { kind } => {
+                        if kind != HighwayKind::Footway {
+                            let show_name = zoom_level <= 3;
+                            Some((
+                                Self::highway_style_id(&kind),
+                                info.layer,
+                                GeometryType::Polyline(PolylineOptions {
+                                    width: Self::highway_width(&kind, zoom_level as f32),
+                                    ..Default::default()
+                                }),
+                                if show_name {
+                                    info.name_en.clone()
+                                } else {
+                                    None
+                                },
+                            ))
+                        } else {
+                            None
+                        }
+                    }
+                    LineKind::Railway { .. } => {
+                        // TODO Ignore rails tunnels for a while
+                        if info.layer_kind != LayerKind::Tunnel {
+                            Some((
+                                StyleId("rails"),
+                                info.layer,
+                                GeometryType::Polyline(PolylineOptions {
+                                    width: 0.3 * zoom_level.max(1) as f32,
+                                    ..Default::default()
+                                }),
+                                None,
+                            ))
+                        } else {
+                            None
+                        }
+                    }
+                },
+                MapGeomObjectKind::AdminLine => Some((
+                    StyleId("admin_line"),
+                    0,
+                    GeometryType::Polyline(PolylineOptions {
+                        width: 250.0f32,
+                        ..Default::default()
+                    }),
+                    None,
+                )),
+                MapGeomObjectKind::Nature(kind) => {
+                    let style_id = match kind {
+                        NatureKind::Ground => StyleId("ground"),
+                        NatureKind::Park => StyleId("park"),
+                        NatureKind::Forest => StyleId("forest"),
+                        NatureKind::Water => StyleId("water"),
+                    };
+                    Some((style_id, -100, GeometryType::Polygon, None))
+                }
+                MapGeomObjectKind::Building(_) => {
+                    Some((StyleId("building"), -100, GeometryType::Polygon, None))
+                }
+                _ => None,
+            } {
+                if let MapGeomObjectKind::Building(level) = kind
+                    && zoom_level == 0
+                {
+                    let level = if level == 0 {
+                        rand::rng().random_range(2..=3)
+                    } else {
+                        level
+                    };
+                    geometry_data.push(GeometryData::ExtrudedPolygon(ExtrudedPolygonData {
+                        path: path_builder.build(),
+                        height: level as f32 / 2.0,
+                    }));
+                } else {
+                    geometry_data.push(GeometryData::Shape(ShapeData {
+                        path: path_builder.build(),
+                        geometry_type,
+                        style_id,
+                        index_layer_level: layer_level as i8,
+                        is_screen: false,
+                    }));
+                }
+
+                if let Some(name) = name {
+                    // TODO When text render along the path is ready, it has to be decided how to reduce the repetitive data inside tile
+                    //  So far just accept every 30 item. There might be more then 500 lines with the same name!
+                    let name_count = line_text_map
+                        .entry(name.clone())
+                        .and_modify(|entry| *entry += 1)
+                        .or_insert(0);
+                    if *name_count % 30 == 0 {
+                        // FIXME TextRenderer has a bug for only 2 coords line, let's skip it for now
+                        if line.len() > 2 {
+                            geometry_data.push(GeometryData::Text(TextData {
+                                id: hash(name.as_bytes()),
+                                text: name.to_uppercase(),
+                                screen_offset: Vector2::new(0.0, 0.0),
+                                size: 30.0 * dpi_scale,
+                                positions: line
+                                    .iter()
+                                    .map(|item| Vector3::new(item.x() as f32, item.y() as f32, 0.0))
+                                    .collect(),
+                            }));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn process_map_point_info(
+        geometry_data: &mut Vec<GeometryData>,
+        poi: &MapPointInfo,
+        local_position: &geo::Coord,
+        dpi_scale: f32,
+    ) {
         let icon: Option<(&str, &[u8])> = match poi.kind {
-            MapPointObjectKind::TrainStation(is_train) => if is_train {
-                Some(("train_station", Self::TRAIN_STATION_SVG))
-            } else {
-                Some(("railway_station", Self::TRAIN_STATION_SVG))
-            },
+            MapPointObjectKind::TrainStation(is_train) => {
+                if is_train {
+                    Some(("train_station", Self::TRAIN_STATION_SVG))
+                } else {
+                    Some(("railway_station", Self::TRAIN_STATION_SVG))
+                }
+            }
             MapPointObjectKind::TrafficLight => Some(("traffic_light", Self::TRAFFIC_LIGHT_SVG)),
             MapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
             MapPointObjectKind::Parking => Some(("parking", Self::PARKING_SVG)),
-            MapPointObjectKind::PopArea(..) => None
+            MapPointObjectKind::PopArea(..) => None,
         };
         let style_id = match poi.kind {
             MapPointObjectKind::TrainStation(is_train) => {
-                if is_train { StyleId("train_station") } else { StyleId("railway_station") }
-            },
+                if is_train {
+                    StyleId("train_station")
+                } else {
+                    StyleId("railway_station")
+                }
+            }
             MapPointObjectKind::TrafficLight => StyleId("poi_traffic_light"),
             MapPointObjectKind::Toilet => StyleId("poi_toilet"),
             _ => StyleId("poi"),
@@ -303,11 +339,7 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
         if let Some(icon) = icon {
             geometry_data.push(GeometryData::Svg(SvgData {
                 icon,
-                position: Vector3::from((
-                    local_position.x,
-                    local_position.y,
-                    0.0,
-                ))
+                position: Vector3::from((local_position.x, local_position.y, 0.0))
                     .cast()
                     .unwrap(),
                 size: 40.0 * dpi_scale,
@@ -317,24 +349,19 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
         }
 
         if !poi.text.is_empty() {
-            let id = hash(
-                format!(
-                    "{:?}{}{}",
-                    poi.text, local_position.x, local_position.y
-                )
-                    .as_bytes(),
-            );
+            let id =
+                hash(format!("{:?}{}{}", poi.text, local_position.x, local_position.y).as_bytes());
             let y_offset = if icon.is_some() { 30.0 } else { 0.0 };
             geometry_data.push(GeometryData::Text(TextData {
                 id,
                 text: poi.text.to_uppercase(),
                 screen_offset: Vector2::new(0.0, y_offset * dpi_scale),
                 size: 40.0 * dpi_scale,
-                positions: vec![Vector3::from((
-                    local_position.x,
-                    local_position.y,
-                    0.0,
-                )).cast().unwrap()],
+                positions: vec![
+                    Vector3::from((local_position.x, local_position.y, 0.0))
+                        .cast()
+                        .unwrap(),
+                ],
             }));
         }
     }
@@ -375,7 +402,7 @@ impl<S: TileSource> TilesProvider for ShashlikTilesProviderV0<S> {
                 .extract_if(|key| {
                     (key.zoom_level == zoom_level && !current_visible_tiles.contains(&key))
                         || (key.zoom_level != last_loaded_zoom_level
-                        && last_loaded_zoom_level == zoom_level)
+                            && last_loaded_zoom_level == zoom_level)
                 })
                 .collect();
 
@@ -403,14 +430,18 @@ impl<S: TileSource> TilesProvider for ShashlikTilesProviderV0<S> {
             let sender = self.sender.clone().unwrap();
             let dpi_scale = self.dpi_scale;
             spawn(move || {
-                let loading_count = *loading_map.write().unwrap().entry(zoom_level)
+                let loading_count = *loading_map
+                    .write()
+                    .unwrap()
+                    .entry(zoom_level)
                     .and_modify(|v| *v = *v + 1)
                     .or_insert(1);
                 let data: Vec<(TileKey, TileData)> = to_load
                     .par_iter()
                     .filter_map(|key| {
                         if current_zoom_level.load(Ordering::Relaxed) == zoom_level {
-                            let tile_data = Self::get_tile_key_data(tile_store.clone(), key, dpi_scale);
+                            let tile_data =
+                                Self::get_tile_key_data(tile_store.clone(), key, dpi_scale);
                             Some((key.clone(), tile_data))
                         } else {
                             None
@@ -427,7 +458,10 @@ impl<S: TileSource> TilesProvider for ShashlikTilesProviderV0<S> {
                         .unwrap()
                         .extend(data.iter().map(|item| item.0.clone()));
 
-                    error!("Tiles batch is ready: {:?}", SystemTime::now().duration_since(ts));
+                    error!(
+                        "Tiles batch is ready: {:?}",
+                        SystemTime::now().duration_since(ts)
+                    );
                     sender
                         .unbounded_send(TilesMessage::TilesData(
                             data.into_iter().map(|(_, data)| data).collect(),
@@ -435,7 +469,9 @@ impl<S: TileSource> TilesProvider for ShashlikTilesProviderV0<S> {
                         .unwrap();
                 }
 
-                loading_map.write().unwrap()
+                loading_map
+                    .write()
+                    .unwrap()
                     .entry(zoom_level)
                     .and_modify(|v| *v = (*v - 1).max(0))
                     .or_insert(0);
