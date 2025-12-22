@@ -14,6 +14,7 @@ use jni::objects::JString;
 use app_surface::SurfaceFrame;
 use pollster::FutureExt;
 use jni::sys::jfloat;
+use map::feature_processor::ShashlikFeatureProcessor;
 
 //FIXME https://github.com/gobley/gobley/issues/20
 #[uniffi::export]
@@ -72,7 +73,8 @@ pub fn createShashlikMapApi(
     // let tiles_db: String = env.get_string(&tiles_db).unwrap().into();
     // let tiles_sqlite_store = TilesSQLiteStore::new(tiles_db);
     let reqwest_source = ReqwestSource::new();
-    let shashlik_map = pollster::block_on(ShashlikMap::new(Box::new(surface), ShashlikTilesProviderV0::new(reqwest_source, dpi_scale))).unwrap();
+    let feature_processor = ShashlikFeatureProcessor::new();
+    let shashlik_map = pollster::block_on(ShashlikMap::new(Box::new(surface), ShashlikTilesProviderV0::new(reqwest_source, feature_processor, dpi_scale))).unwrap();
     let map_api = ShashlikMapApi {
         shashlik_map: RwLock::new(shashlik_map),
     };
