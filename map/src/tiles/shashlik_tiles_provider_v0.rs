@@ -9,10 +9,7 @@ use geo_types::Rect;
 use googleprojection::{Coord, Mercator};
 use lyon::geom::point;
 use lyon::path::Path;
-use osm::map::{
-    HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointObjectKind,
-    NatureKind,
-};
+use osm::map::{HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapGeometry, MapPointInfo, MapPointObjectKind, NatureKind};
 use osm::source::TileSource;
 use osm::tiles::{calc_tile_ranges, TileKey, TileStore, TILES_COUNT};
 use rand::Rng;
@@ -120,62 +117,7 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
                     let local_position = Self::lat_lon_to_world(&coord) - tile_rect_origin;
                     match &obj_type.kind {
                         MapGeomObjectKind::Poi(poi) => {
-                            let icon: Option<(&str, &[u8])> = match poi.kind {
-                                MapPointObjectKind::TrainStation(is_train) => if is_train {
-                                    Some(("train_station", Self::TRAIN_STATION_SVG))
-                                } else {
-                                    Some(("railway_station", Self::TRAIN_STATION_SVG))
-                                },
-                                MapPointObjectKind::TrafficLight => Some(("traffic_light", Self::TRAFFIC_LIGHT_SVG)),
-                                MapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
-                                MapPointObjectKind::Parking => Some(("parking", Self::PARKING_SVG)),
-                                MapPointObjectKind::PopArea(..) => None
-                            };
-                            let style_id = match poi.kind {
-                                MapPointObjectKind::TrainStation(is_train) => {
-                                    if is_train { StyleId("train_station") } else { StyleId("railway_station") }
-                                },
-                                MapPointObjectKind::TrafficLight => StyleId("poi_traffic_light"),
-                                MapPointObjectKind::Toilet => StyleId("poi_toilet"),
-                                _ => StyleId("poi"),
-                            };
-                            if let Some(icon) = icon {
-                                geometry_data.push(GeometryData::Svg(SvgData {
-                                    icon,
-                                    position: Vector3::from((
-                                        local_position.x,
-                                        local_position.y,
-                                        0.0,
-                                    ))
-                                    .cast()
-                                    .unwrap(),
-                                    size: 40.0 * dpi_scale,
-                                    style_id,
-                                    with_collision: true,
-                                }));
-                            }
-
-                            if !poi.text.is_empty() {
-                                let id = hash(
-                                    format!(
-                                        "{:?}{}{}",
-                                        poi.text, local_position.x, local_position.y
-                                    )
-                                        .as_bytes(),
-                                );
-                                let y_offset = if icon.is_some() { 30.0 } else { 0.0 };
-                                geometry_data.push(GeometryData::Text(TextData {
-                                    id,
-                                    text: poi.text.to_uppercase(),
-                                    screen_offset: Vector2::new(0.0, y_offset * dpi_scale),
-                                    size: 40.0 * dpi_scale,
-                                    positions: vec![Vector3::from((
-                                        local_position.x,
-                                        local_position.y,
-                                        0.0,
-                                    )).cast().unwrap()],
-                                }));
-                            }
+                            Self::process_map_point_info(&mut geometry_data, poi, &local_position, dpi_scale);
                         },
                         _ => {}
                     }
@@ -336,6 +278,65 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
         };
 
         tile_data
+    }
+
+    fn process_map_point_info(geometry_data: &mut Vec<GeometryData>, poi: &MapPointInfo, local_position: &geo::Coord, dpi_scale: f32) {
+        let icon: Option<(&str, &[u8])> = match poi.kind {
+            MapPointObjectKind::TrainStation(is_train) => if is_train {
+                Some(("train_station", Self::TRAIN_STATION_SVG))
+            } else {
+                Some(("railway_station", Self::TRAIN_STATION_SVG))
+            },
+            MapPointObjectKind::TrafficLight => Some(("traffic_light", Self::TRAFFIC_LIGHT_SVG)),
+            MapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
+            MapPointObjectKind::Parking => Some(("parking", Self::PARKING_SVG)),
+            MapPointObjectKind::PopArea(..) => None
+        };
+        let style_id = match poi.kind {
+            MapPointObjectKind::TrainStation(is_train) => {
+                if is_train { StyleId("train_station") } else { StyleId("railway_station") }
+            },
+            MapPointObjectKind::TrafficLight => StyleId("poi_traffic_light"),
+            MapPointObjectKind::Toilet => StyleId("poi_toilet"),
+            _ => StyleId("poi"),
+        };
+        if let Some(icon) = icon {
+            geometry_data.push(GeometryData::Svg(SvgData {
+                icon,
+                position: Vector3::from((
+                    local_position.x,
+                    local_position.y,
+                    0.0,
+                ))
+                    .cast()
+                    .unwrap(),
+                size: 40.0 * dpi_scale,
+                style_id,
+                with_collision: true,
+            }));
+        }
+
+        if !poi.text.is_empty() {
+            let id = hash(
+                format!(
+                    "{:?}{}{}",
+                    poi.text, local_position.x, local_position.y
+                )
+                    .as_bytes(),
+            );
+            let y_offset = if icon.is_some() { 30.0 } else { 0.0 };
+            geometry_data.push(GeometryData::Text(TextData {
+                id,
+                text: poi.text.to_uppercase(),
+                screen_offset: Vector2::new(0.0, y_offset * dpi_scale),
+                size: 40.0 * dpi_scale,
+                positions: vec![Vector3::from((
+                    local_position.x,
+                    local_position.y,
+                    0.0,
+                )).cast().unwrap()],
+            }));
+        }
     }
 }
 impl<S: TileSource> TilesProvider for ShashlikTilesProviderV0<S> {
