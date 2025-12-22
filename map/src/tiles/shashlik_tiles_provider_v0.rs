@@ -6,7 +6,7 @@ use futures::channel::mpsc::{UnboundedSender, unbounded};
 use geo::Intersects;
 use geo::Winding;
 use geo_types::{LineString, Rect};
-use googleprojection::{Coord, Mercator};
+use googleprojection::{Mercator};
 use log::error;
 use lyon::geom::point;
 use lyon::path::Path;
@@ -98,6 +98,13 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
         }
     }
 
+    fn convert_line_coords(line: LineString, tile_rect_origin: geo::Coord) -> LineString {
+        line.0
+            .into_iter()
+            .map(|item| Self::lat_lon_to_world(&item) - tile_rect_origin)
+            .collect()
+    }
+
     fn get_tile_key_data(
         tile_store: Arc<TileStore<S>>,
         tile_key: &TileKey,
@@ -135,11 +142,10 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
                 MapGeometry::Line(line) => {
                     Self::process_line(
                         &mut geometry_data,
-                        line,
+                        Self::convert_line_coords(line, tile_rect_origin),
                         obj_type.kind,
                         &mut line_text_map,
                         tile_key.zoom_level,
-                        tile_rect_origin,
                         dpi_scale,
                     );
                 }
@@ -150,11 +156,10 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
                     }
                     Self::process_line(
                         &mut geometry_data,
-                        line,
+                        Self::convert_line_coords(line, tile_rect_origin),
                         obj_type.kind,
                         &mut line_text_map,
                         tile_key.zoom_level,
-                        tile_rect_origin,
                         dpi_scale,
                     );
                 }
@@ -177,20 +182,15 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
         kind: MapGeomObjectKind,
         line_text_map: &mut HashMap<String, i32>,
         zoom_level: i32,
-        tile_rect_origin: geo::Coord,
         dpi_scale: f32,
     ) {
-        let line: Vec<(f64, f64)> = line
-            .0
-            .iter()
-            .map(|item| (Self::lat_lon_to_world(&item) - tile_rect_origin).into())
-            .collect();
+        let line = line.0;
         if line.len() >= 2 {
             let mut path_builder = Path::builder();
-            path_builder.begin(point(line[0].x() as f32, line[0].y() as f32));
+            path_builder.begin(point(line[0].x as f32, line[0].y as f32));
 
             for &p in line[1..].iter() {
-                path_builder.line_to(point(p.x() as f32, p.y() as f32));
+                path_builder.line_to(point(p.x as f32, p.y as f32));
             }
             path_builder.end(false);
 
@@ -295,7 +295,7 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
                                 size: 30.0 * dpi_scale,
                                 positions: line
                                     .iter()
-                                    .map(|item| Vector3::new(item.x() as f32, item.y() as f32, 0.0))
+                                    .map(|item| Vector3::new(item.x as f32, item.y as f32, 0.0))
                                     .collect(),
                             }));
                         }
@@ -324,19 +324,20 @@ impl<S: TileSource> ShashlikTilesProviderV0<S> {
             MapPointObjectKind::Parking => Some(("parking", Self::PARKING_SVG)),
             MapPointObjectKind::PopArea(..) => None,
         };
-        let style_id = match poi.kind {
-            MapPointObjectKind::TrainStation(is_train) => {
-                if is_train {
-                    StyleId("train_station")
-                } else {
-                    StyleId("railway_station")
-                }
-            }
-            MapPointObjectKind::TrafficLight => StyleId("poi_traffic_light"),
-            MapPointObjectKind::Toilet => StyleId("poi_toilet"),
-            _ => StyleId("poi"),
-        };
         if let Some(icon) = icon {
+            let style_id = match poi.kind {
+                MapPointObjectKind::TrainStation(is_train) => {
+                    if is_train {
+                        StyleId("train_station")
+                    } else {
+                        StyleId("railway_station")
+                    }
+                }
+                MapPointObjectKind::TrafficLight => StyleId("poi_traffic_light"),
+                MapPointObjectKind::Toilet => StyleId("poi_toilet"),
+                _ => StyleId("poi"),
+            };
+
             geometry_data.push(GeometryData::Svg(SvgData {
                 icon,
                 position: Vector3::from((local_position.x, local_position.y, 0.0))
