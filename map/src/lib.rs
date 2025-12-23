@@ -2,7 +2,6 @@ extern crate core;
 
 use crate::camera::{Camera, CameraController};
 use crate::route::RouteCosting;
-use crate::style_loader::StyleLoader;
 use crate::kml_viewer_group::KmlGroup;
 use crate::puck_group::SimplePuck;
 use crate::tiles::tile_data::TileData;
@@ -24,17 +23,18 @@ use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread::spawn;
+use osm::styles::RenderStyle;
+use osm::styles::style_loader::StyleLoader;
+use renderer::styles::style_id::StyleId;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 mod camera;
 pub mod route;
-mod style_loader;
 mod kml_viewer_group;
 mod puck_group;
 pub mod tiles;
 pub mod mesh_loader;
 pub mod feature_processor;
-
 pub struct ShashlikMap<T: TilesProvider> {
     renderer: Box<ShashlikRenderer>,
     camera: Camera,
@@ -45,7 +45,6 @@ pub struct ShashlikMap<T: TilesProvider> {
     current_world_position: Vector3<f64>,
     current_bearing: f64,
     current_pitch: f64,
-    style_loader: StyleLoader,
     pub temp_color: f32,
     cam_follow_mode: bool,
     screen_params: ScreenParam,
@@ -117,7 +116,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
             current_world_position: camera_offset.cast().unwrap(),
             current_bearing: 0.0,
             current_pitch: 45.0,
-            style_loader: StyleLoader::new(),
             temp_color: 0.0,
             cam_follow_mode: true,
             screen_params: ScreenParam {
@@ -344,7 +342,22 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     fn load_styles(&self) {
-        self.style_loader.load(self.renderer.api.clone());
+
+        StyleLoader::load().into_iter().for_each(|style| {
+            let style_id = StyleId(Box::leak(style.id.into_boxed_str()));
+            let actual_render_style = match style.render_style {
+                RenderStyle::Fill(color) => {
+                    renderer::styles::render_style::RenderStyle::fill(color.as_array())
+                }
+                RenderStyle::Border(color, percent) => {
+                    renderer::styles::render_style::RenderStyle::border(color.as_array(), percent)
+                }
+                RenderStyle::Dashed(color1, color2) => {
+                    renderer::styles::render_style::RenderStyle::dashed(color1.as_array(), color2.as_array())
+                }
+            };
+            self.renderer.api.update_style(style_id, move |style| *style = actual_render_style);
+        });
     }
 
     pub fn load_kml_path(&self, path_buf: PathBuf) {
