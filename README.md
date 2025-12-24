@@ -2,7 +2,7 @@
 A WIP map engine written in Rust using WGPU.
 
 The initial goal of the project is to learn a new cross-platform tech stack to build a mobile-ready MapEngine
-with focus on Navigation features(including DeadReckoning and Map-mathing)
+with focus on Navigation features(including DeadReckoning and Map-matching)
 
 ## Showcases
 Running on macOS, Android and iOS
@@ -38,6 +38,7 @@ with Android/iOS mobile apps(Android is priority for now)
 - [ ] Move TextRenderer to the separate repo
 - [ ] Support Mapbox [tilesets](https://docs.mapbox.com/data/tilesets/guides/vector-tiles-standards/)
 - [ ] Complete iOS counter-part
+- [ ] Integrate a simple search
 
 ## Running examples
 ### macOS
