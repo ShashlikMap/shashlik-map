@@ -7,9 +7,9 @@ with focus on Navigation features(including DeadReckoning and Map-mathing)
 ## Showcases
 Running on macOS, Android and iOS
 
-<img width="500" alt="Screenshot 2025-12-24 at 11 21 52" src="https://github.com/user-attachments/assets/ce9b5ea2-9cbc-40e1-b8cf-455c80f47b22" />
-<img width="200" height="1872" alt="Screenshot_20251224-112013" src="https://github.com/user-attachments/assets/2f3c26a2-5ffc-46a1-9616-eefc59df12a0" />
-<img width="200" height="2622" alt="Simulator Screenshot - iPhone 16 Pro - 2025-12-24 at 11 46 18" src="https://github.com/user-attachments/assets/ed5a0121-1402-40a6-ab26-eb0c39853708" />
+<img width="400" alt="Screenshot 2025-12-24 at 11 21 52" src="https://github.com/user-attachments/assets/ce9b5ea2-9cbc-40e1-b8cf-455c80f47b22" />
+<img width="150" height="1872" alt="Screenshot_20251224-112013" src="https://github.com/user-attachments/assets/2f3c26a2-5ffc-46a1-9616-eefc59df12a0" />
+<img width="150" height="2622" alt="Simulator Screenshot - iPhone 16 Pro - 2025-12-24 at 11 46 18" src="https://github.com/user-attachments/assets/ed5a0121-1402-40a6-ab26-eb0c39853708" />
 
 ## Tech stack
 The stack leverages the following approaches and libraries:
