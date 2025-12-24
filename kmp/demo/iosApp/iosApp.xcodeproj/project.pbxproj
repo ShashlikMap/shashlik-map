@@ -7,12 +7,25 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		88A6360ED81857037AF34270 /* .app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = .app; sourceTree = BUILT_PRODUCTS_DIR; };
+		88A6360ED81857037AF34270 /* ShashlikDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ShashlikDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		ED066DCD2EFB89A500127473 /* Exceptions for "iosApp" folder in "iosApp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 0A3B1EFAC840F8E6ACA636D0 /* iosApp */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		6B9E6D45F482151AB33A2E10 /* iosApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				ED066DCD2EFB89A500127473 /* Exceptions for "iosApp" folder in "iosApp" target */,
+			);
 			path = iosApp;
 			sourceTree = "<group>";
 		};
@@ -37,7 +50,7 @@
 		130D26187D8D60E4AF4985FD /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				88A6360ED81857037AF34270 /* .app */,
+				88A6360ED81857037AF34270 /* ShashlikDemo.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -74,7 +87,7 @@
 			packageProductDependencies = (
 			);
 			productName = iosApp;
-			productReference = 88A6360ED81857037AF34270 /* .app */;
+			productReference = 88A6360ED81857037AF34270 /* ShashlikDemo.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
