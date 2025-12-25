@@ -29,6 +29,7 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+            implementation("com.github.ShashlikMap:KoordXTract:0.1.1")
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -39,9 +40,7 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
-
             api(project(":shared"))
-//            implementation("com.shashlik:shared:0.0.6")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

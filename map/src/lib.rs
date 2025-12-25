@@ -324,7 +324,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.create_route_to(center.into(), route_costing);
     }
 
-    fn create_route_to(&self, to_lat_lon: (f64, f64), route_costing: RouteCosting) {
+    pub fn create_route_to(&self, to_lat_lon: (f64, f64), route_costing: RouteCosting) {
         self.route_controller.calc_route(
             to_lat_lon,
             route_costing,

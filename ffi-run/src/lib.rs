@@ -22,6 +22,15 @@ pub enum RouteCosting {
     Pedestrian, Motorbike
 }
 
+impl From<RouteCosting> for map::route::RouteCosting {
+    fn from(value: RouteCosting) -> Self {
+        match value {
+            RouteCosting::Pedestrian => map::route::RouteCosting::Pedestrian,
+            RouteCosting::Motorbike => map::route::RouteCosting::Motorbike
+        }
+    }
+}
+
 #[uniffi::export]
 impl ShashlikMapApi {
     fn render(&self) {
@@ -60,12 +69,13 @@ impl ShashlikMapApi {
         shashlik_map.set_camera_follow_mode(enabled);
     }
 
+    fn calculate_route_to_lat_lon(&self, lat: f64, lon: f64, route_costing: RouteCosting) {
+        let shashlik_map = self.shashlik_map.read().unwrap();
+        shashlik_map.create_route_to((lat, lon), route_costing.into());
+    }
+
     fn calculate_route(&self, point_x: f32, point_y: f32, route_costing: RouteCosting) {
         let shashlik_map = self.shashlik_map.read().unwrap();
-        let costing = match route_costing {
-            RouteCosting::Pedestrian => map::route::RouteCosting::Pedestrian,
-            RouteCosting::Motorbike => map::route::RouteCosting::Motorbike
-        };
-        shashlik_map.create_route_to_screen_point(point_x, point_y, costing);
+        shashlik_map.create_route_to_screen_point(point_x, point_y, route_costing.into());
     }
 }
