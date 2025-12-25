@@ -1,5 +1,5 @@
 jdk:
   - openjdk11
 before_install:
-  - ./prepareRustJitpack.sh
+  - bash prepareRustJitpack.sh
   - cd kmp
