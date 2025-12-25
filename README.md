@@ -27,6 +27,7 @@ with Android/iOS mobile apps(Android is priority for now)
 ### Now
 - [x] Create a baseline POC with initial architecture
 - [ ] Complete README and examples
+- - [ ] Publishing to Maven Central
 - [ ] Location sharing from GoogleMaps to improve a "field" testing
 ### Next
 - [ ] Implement an initial geometric Map-matching POC
@@ -54,5 +55,31 @@ Open "kmp" folder in AndroidStudio and just Run "demo" app or execute:
 ### iOS
 Open "kmp/iosApp" project in XCode and just Run it
 
-## Integration to mobile apps
+## Integration with mobile apps
+### Android
+_Publishing to Maven Central is in progress!_
+1. At this moment, using Github PAT is required to get access to Github Maven Repo
+```
+maven {
+    url = uri("https://maven.pkg.github.com/ShashlikMap/shashlik-map")
+    credentials {
+        username = "GithubUserName"
+        password = "GithubPAT"
+    }
+}
+```
+2. Add a gradle dependency to build.gradle.kts
+```
+implementation("com.shashlik:shared:0.1.0")
+```
+3. Call an `shashlikMapInit()` method once, in `Application/Activity` `onCreate()` method
+```
+override fun onCreate() {
+   super.onCreate()
+   shashlikMapInit()
+}
+```
+4. Include Composable function `ShashlikMap { _, _ -> }` anywhere in your Compose UI
+
+### iOS
 TODO

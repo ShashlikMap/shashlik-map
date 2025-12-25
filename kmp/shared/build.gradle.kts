@@ -89,7 +89,7 @@ android {
 }
 
 group = "com.shashlik"
-version = "0.0.6"
+version = "0.1.0"
 
 publishing {
     repositories {
