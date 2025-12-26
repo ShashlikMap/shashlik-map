@@ -1,3 +1,4 @@
+use cgmath::Vector3;
 use geo_types::Point;
 use lyon::geom::point;
 use lyon::lyon_tessellation::{LineCap, LineJoin};
@@ -19,15 +20,22 @@ impl RouteGroup {
         let route: Vec<Point> = route.iter().map(|p| converter(p)).collect();
         RouteGroup { route, route_costing }
     }
+
+    pub fn first_route_point(&self) -> Vector3<f64> {
+        Vector3::new(self.route[0].x(), self.route[0].y(), 0.0)
+    }
 }
 
 impl RenderGroup for RouteGroup {
     fn content(&mut self, canvas: &mut CanvasApi) {
         let mut path_builder = Path::builder();
-        path_builder.begin(point(self.route[0].x() as f32, self.route[0].y() as f32));
+        let first_route_point = self.route[0];
+        path_builder.begin(point(0.0f32, 0.0f32));
 
+        // TODO Should relative coords calc for the route be the route responsibility?
         for &p in self.route[1..].iter() {
-            path_builder.line_to(point(p.x() as f32, p.y() as f32));
+            path_builder.line_to(point((p.x() - first_route_point.x()) as f32,
+                                       (p.y() - first_route_point.y()) as f32));
         }
         path_builder.end(false);
 
@@ -35,7 +43,7 @@ impl RenderGroup for RouteGroup {
             width: 1f32,
             line_join: LineJoin::Round,
             line_cap: LineCap::Round,
-            tolerance: 1f32,
+            tolerance: 0.05f32,
         };
         
         let style_id = match self.route_costing {

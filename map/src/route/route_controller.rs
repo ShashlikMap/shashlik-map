@@ -62,8 +62,7 @@ impl RouteController {
                                 .collect();
 
                             let route = Box::new(RouteGroup::new(route, route_costing, converter));
-
-                            let spatial_data = SpatialData::transform(Vector3::new(0.0, 0.0, 0.0));
+                            let spatial_data = SpatialData::transform(route.first_route_point());
                             api.add_render_group("route".to_string(), 1, spatial_data, route);
                         } else {
                             error!("No legs found in route!");

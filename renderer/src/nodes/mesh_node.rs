@@ -144,9 +144,9 @@ impl PositionedMesh {
         for i in 0..original_positions_alpha.len() {
             let item = original_positions_alpha[i];
 
-            let transform_with_cs_offset = spatial_data.transform - cs_offset;
+            let transform_with_cs_offset = item.0 + spatial_data.transform - cs_offset;
             let instance_pos = InstancePos {
-                position: (item.0 + transform_with_cs_offset).cast().unwrap().into(),
+                position: transform_with_cs_offset.cast().unwrap().into(),
                 color_alpha: item.1,
                 matrix: matrix.cast().unwrap().into(),
                 bbox: [transform_with_cs_offset.x as f32,
