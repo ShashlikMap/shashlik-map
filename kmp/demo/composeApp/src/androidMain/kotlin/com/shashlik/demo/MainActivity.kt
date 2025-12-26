@@ -1,6 +1,6 @@
 package com.shashlik.demo
 
-import android.app.ComponentCaller
+import LatLonExtractor
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -10,7 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import com.shashlik.kmp.ShashlikMapApiHolder
-import com.shashlik.koordxtract.LatLonExtractor
+import com.shashlik.koordxtract.extractFromIntent
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -30,14 +30,15 @@ class MainActivity : ComponentActivity() {
 
     private fun handlingIntent(intent: Intent) {
         lifecycleScope.launch {
-            LatLonExtractor.extractFromIntent(intent)?.let { latLon ->
+            LatLonExtractor().extractFromIntent(intent).let { latLon ->
                 Log.d("ShashlikDemo", "Route destination: $latLon")
-                // FIXME Correct order
-                ShashlikMapApiHolder.shashlikMapApi?.calculateRouteToLatLon(
-                    latLon.second,
-                    latLon.first,
-                    routeCosting.value
-                )
+                latLon.getOrNull()?.let { coord ->
+                    ShashlikMapApiHolder.shashlikMapApi?.calculateRouteToLatLon(
+                        coord.first,
+                        coord.second,
+                        routeCosting.value
+                    )
+                }
             }
         }
     }

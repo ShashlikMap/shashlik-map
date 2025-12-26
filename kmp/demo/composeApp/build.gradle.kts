@@ -29,7 +29,7 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
-            implementation("com.github.ShashlikMap:KoordXTract:0.1.1")
+            implementation("com.github.ShashlikMap:KoordXTract:0.2.0")
         }
         commonMain.dependencies {
             implementation(compose.runtime)
