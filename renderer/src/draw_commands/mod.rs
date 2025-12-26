@@ -30,6 +30,7 @@ pub struct PolylineOptions {
     pub width: f32,
     pub line_cap: LineCap,
     pub line_join: LineJoin,
+    pub tolerance: f32,
 }
 
 impl Default for PolylineOptions {
@@ -38,6 +39,7 @@ impl Default for PolylineOptions {
             width: 1f32,
             line_cap: LineCap::Butt,
             line_join: LineJoin::Miter,
+            tolerance: 1f32,
         }
     }
 }

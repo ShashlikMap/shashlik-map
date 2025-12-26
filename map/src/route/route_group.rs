@@ -31,7 +31,12 @@ impl RenderGroup for RouteGroup {
         }
         path_builder.end(false);
 
-        let options = PolylineOptions { width: 1f32, line_join: LineJoin::Round, line_cap: LineCap::Round };
+        let options = PolylineOptions {
+            width: 1f32,
+            line_join: LineJoin::Round,
+            line_cap: LineCap::Round,
+            tolerance: 1f32,
+        };
         
         let style_id = match self.route_costing {
             RouteCosting::Pedestrian =>  StyleId("route_pedestrian"),

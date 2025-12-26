@@ -342,7 +342,8 @@ impl CanvasApi {
                     &StrokeOptions::default()
                         .with_line_width(polyline_options.width)
                         .with_line_cap(polyline_options.line_cap)
-                        .with_line_join(polyline_options.line_join),
+                        .with_line_join(polyline_options.line_join)
+                        .with_tolerance(polyline_options.tolerance),
                     &mut BuffersBuilder::new(&mut self.geometry, ctor),
                 )
                 .unwrap();
