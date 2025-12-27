@@ -16,6 +16,7 @@ gobley = "0.3.7"
 composeBom = "2025.11.01"
 accompanist = "0.37.3"
 lifecycleRuntimeKtx = "2.10.0"
+koordxtract = "0.3.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -38,6 +39,7 @@ androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+koordxtract = { group = "io.github.shashlikmap", name = "koordxtract", version.ref = "koordxtract" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

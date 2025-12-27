@@ -31,7 +31,6 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
-        maven { url = uri("https://jitpack.io") }
         maven {
             name = "GitHubPackages"
             url = uri("https://maven.pkg.github.com/ShashlikMap/*")

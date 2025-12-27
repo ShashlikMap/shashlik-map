@@ -48,7 +48,8 @@ In root folder:
 cargo run --package winit-run --release
 ```
 ### Android
-Open "kmp" folder in AndroidStudio and just Run "demo" app or execute:
+- Make sure the latest Xcode is installed!
+- Open "kmp" folder in AndroidStudio and just Run "demo" app or execute:
 ```
 ./gradlew :composeApp:installRelease && adb shell am start -n "com.shashlik.demo/com.shashlik.demo.MainActivity"
 ```
