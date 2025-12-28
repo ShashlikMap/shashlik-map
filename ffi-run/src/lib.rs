@@ -19,12 +19,13 @@ unsafe impl Send for ShashlikMapApi {}
 
 #[derive(uniffi::Enum)]
 pub enum RouteCosting {
-    Pedestrian, Motorbike
+    Auto, Pedestrian, Motorbike
 }
 
 impl From<RouteCosting> for map::route::RouteCosting {
     fn from(value: RouteCosting) -> Self {
         match value {
+            RouteCosting::Auto => map::route::RouteCosting::Auto,
             RouteCosting::Pedestrian => map::route::RouteCosting::Pedestrian,
             RouteCosting::Motorbike => map::route::RouteCosting::Motorbike
         }

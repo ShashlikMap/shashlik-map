@@ -12,7 +12,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,9 +24,12 @@ import androidx.compose.ui.unit.dp
 import com.shashlik.kmp.ShashlikMap
 import com.shashlik.kmp.ShashlikMapApiHolder
 import org.jetbrains.compose.ui.tooling.preview.Preview
-import uniffi.ffi_run.RouteCosting
+import uniffi.ffi_run.RouteCosting.AUTO
+import uniffi.ffi_run.RouteCosting.MOTORBIKE
+import uniffi.ffi_run.RouteCosting.PEDESTRIAN
+import uniffi.ffi_run.RouteCosting.entries
 
-var routeCosting = mutableStateOf(RouteCosting.MOTORBIKE)
+var routeCosting = mutableStateOf(AUTO)
 
 @Composable
 @Preview
@@ -38,21 +45,19 @@ fun App() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .background(Color(0, 0, 0, 150))
+                    .background(Color(0, 0, 0, 120))
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Button(onClick = {
-                    if (routeCosting.value == RouteCosting.MOTORBIKE) {
-                        routeCosting.value = RouteCosting.PEDESTRIAN
-                    } else {
-                        routeCosting.value = RouteCosting.MOTORBIKE
+                    routeCosting.value = ((routeCosting.value.ordinal + 1) % entries.size).let {
+                        entries[it]
                     }
                 }) {
-                    if (routeCosting.value == RouteCosting.MOTORBIKE) {
-                        Text("Motorbike")
-                    } else {
-                        Text("Pedestrian")
+                    when (routeCosting.value) {
+                        AUTO -> Text("Auto")
+                        PEDESTRIAN -> Text("Pedestrian")
+                        MOTORBIKE -> Text("Motorbike")
                     }
                 }
                 Spacer(modifier = Modifier.width(8.dp))

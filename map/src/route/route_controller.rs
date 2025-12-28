@@ -1,6 +1,5 @@
 use crate::route::RouteCosting;
 use crate::route::route_group::RouteGroup;
-use cgmath::Vector3;
 use geo_types::{Point, point};
 use log::error;
 use renderer::modifier::render_modifier::SpatialData;
@@ -38,10 +37,11 @@ impl RouteController {
                 let valhalla = Valhalla::default();
 
                 let source_loc = Location::new(lon as f32, lat as f32);
-                let destination_loc = Location::new(to_lat_lon.0 as f32, to_lat_lon.1 as f32);
+                let destination_loc = Location::new(to_lat_lon.1 as f32, to_lat_lon.0 as f32);
                 let costing = match route_costing {
                     RouteCosting::Pedestrian => Costing::Pedestrian(Default::default()),
                     RouteCosting::Motorbike => Costing::Motorcycle(Default::default()),
+                    RouteCosting::Auto => Costing::Auto(Default::default()),
                 };
                 let manifest = Manifest::builder()
                     .locations([source_loc, destination_loc])

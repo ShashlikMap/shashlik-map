@@ -48,7 +48,7 @@ impl RenderGroup for RouteGroup {
         
         let style_id = match self.route_costing {
             RouteCosting::Pedestrian =>  StyleId("route_pedestrian"),
-            RouteCosting::Motorbike =>  StyleId("route_motorbike")
+            RouteCosting::Auto | RouteCosting::Motorbike =>  StyleId("route_motorbike")
         };
         
         canvas.path(ShapeData {

@@ -16,7 +16,7 @@ gobley = "0.3.7"
 composeBom = "2025.11.01"
 accompanist = "0.37.3"
 lifecycleRuntimeKtx = "2.10.0"
-koordxtract = "0.3.0"
+koordxtract = "0.4.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
