@@ -1,5 +1,6 @@
 package com.shashlik.kmp
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.location.LocationListener
 import android.location.LocationManager
@@ -23,7 +24,6 @@ class SimpleLocationManager(context: Context, private val callback: (LocationDat
         val latitude: Double = location.latitude
         val longitude: Double = location.longitude
         Timber.d("latitude = $latitude, longitude = $longitude")
-        Timber.d("latitude = $latitude, longitude = $longitude")
         Timber.d("hasAccuracy = ${location.hasAccuracy()}, accuracy = ${location.accuracy}")
         Timber.d("hasBearing = ${location.hasBearing()}, bearing = ${location.bearing}")
         Timber.d(
@@ -34,15 +34,18 @@ class SimpleLocationManager(context: Context, private val callback: (LocationDat
         callback(LocationData(latitude, longitude, bearing))
     }
 
+    // FIXME Permission can be revoked at any moment. It's fine now.
+    @SuppressLint("MissingPermission")
     fun start() {
         locationService.requestLocationUpdates(
             LocationManager.GPS_PROVIDER,
             1000L,
-            2f, locationListener
+            1f, locationListener
         )
         scope.launch {
             // wait a bit, otherwise locationService might not return last location yet(even though it has it)
-            delay(500)
+            // also, now, it should be set after wgpu map is ready
+            delay(2500)
             locationService.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.let {
                 Timber.w("Cached location: $it")
                 locationListener.onLocationChanged(it)

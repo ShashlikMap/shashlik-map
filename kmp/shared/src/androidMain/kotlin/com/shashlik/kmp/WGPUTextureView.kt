@@ -18,7 +18,13 @@ import uniffi.ffi_run.toPointer
 @SuppressLint("ClickableViewAccessibility")
 class WGPUTextureView : TextureView {
 
+    init {
+        System.loadLibrary("ffi_run")
+    }
+
     var onLongTap: (x: Float, y: Float) -> Unit = { _, _ -> }
+
+    external fun createShashlikMapApi(surface: Surface, isEmulator: Boolean, tilesDb: String, dpiScale: Float): Long
 
     private val scaleListener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
 
@@ -59,8 +65,6 @@ class WGPUTextureView : TextureView {
 
     private val gestureDetector = GestureDetector(context, gestureListener)
 
-    private var rustBrige = RustBridge()
-
     constructor(context: Context) : super(context) {
     }
 
@@ -83,7 +87,7 @@ class WGPUTextureView : TextureView {
                 height: Int
             ) {
                 val surface = Surface(st)
-                val ptr = rustBrige.createShashlikMapApi(
+                val ptr = createShashlikMapApi(
                     surface,
                     Build.FINGERPRINT.contains("generic") ||
                             Build.FINGERPRINT.contains("sdk_gphone"),
