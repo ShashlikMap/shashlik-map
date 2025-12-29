@@ -2,9 +2,9 @@ use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use futures::Stream;
 use futures::channel::mpsc::{UnboundedSender, unbounded};
-use geo::Intersects;
+use geo::{Convert, Intersects};
 use geo::Winding;
-use geo_types::{LineString, Rect};
+use geo_types::{coord, LineString, Rect};
 use googleprojection::Mercator;
 use log::error;
 use osm::map::{
@@ -68,13 +68,6 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
         }
     }
 
-    fn convert_line_coords(line: LineString, tile_rect_origin: geo::Coord) -> LineString {
-        line.0
-            .into_iter()
-            .map(|item| Self::lat_lon_to_world(&item) - tile_rect_origin)
-            .collect()
-    }
-
     fn get_tile_key_data(
         tile_store: Arc<TileStore<S>>,
         feature_processor: Arc<FP>,
@@ -97,7 +90,7 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
         geom.into_iter()
             .for_each(|(obj_type, geometry)| match geometry {
                 MapGeometry::Coord(coord) => {
-                    let local_position = Self::lat_lon_to_world(&coord) - tile_rect_origin;
+                    let local_position = coord! { x: coord.x as f64, y: coord.y as f64};
                     match &obj_type.kind {
                         MapGeomObjectKind::Poi(poi) => {
                             feature_processor.process_poi(
@@ -113,7 +106,7 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
                 MapGeometry::Line(line) => {
                     feature_processor.process_line(
                         &mut geometry_data,
-                        Self::convert_line_coords(line, tile_rect_origin),
+                        line.convert(),
                         obj_type.kind,
                         &mut line_text_map,
                         zoom_level,
@@ -123,11 +116,11 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
                 MapGeometry::Poly(poly) => {
                     let mut line = poly.into_inner().0;
                     if let MapGeomObjectKind::Building(_) = obj_type.kind {
-                        line.make_cw_winding();
+                        line.make_ccw_winding();
                     }
                     feature_processor.process_line(
                         &mut geometry_data,
-                        Self::convert_line_coords(line, tile_rect_origin),
+                        line.convert(),
                         obj_type.kind,
                         &mut line_text_map,
                         zoom_level,
