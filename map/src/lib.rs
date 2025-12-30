@@ -41,7 +41,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     camera_controller: CameraController,
     tiles_provider: T,
     route_controller: RouteController,
-    last_area_latlon: Rect,
+    last_area_lon_lat: Rect,
     current_world_position: Vector3<f64>,
     current_bearing: f64,
     current_pitch: f64,
@@ -87,7 +87,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let tiles_stream = tiles_provider.tiles();
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
-        let camera_offset = T::lat_lon_to_world(&initial_coord);
+        let camera_offset = T::lon_lat_to_world(&initial_coord);
         let camera_offset: Vector3<f64> = (camera_offset.x, camera_offset.y, 0.0).into();
         let cam = Camera::new(camera_offset);
 
@@ -112,7 +112,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             camera_controller,
             tiles_provider,
             route_controller: RouteController::new(),
-            last_area_latlon: Rect::new((0.0, 0.0), (0.0, 0.0)),
+            last_area_lon_lat: Rect::new((0.0, 0.0), (0.0, 0.0)),
             current_world_position: camera_offset.cast().unwrap(),
             current_bearing: 0.0,
             current_pitch: 45.0,
@@ -123,14 +123,14 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 height: screen_size.1 as u32,
             },
         };
-        map.set_lat_lon_bearing(initial_coord.y, initial_coord.x, Some(0f32));
+        map.set_lon_lat_bearing(initial_coord.x, initial_coord.y, Some(0f32));
         map.load_styles();
         Ok(map)
     }
 
-    pub fn clip_to_latlon(&self, coord: &Coord<f64>) -> Option<Coord<f64>> {
+    pub fn clip_to_lon_lat(&self, coord: &Coord<f64>) -> Option<Coord<f64>> {
         let world_on_ground = self.renderer.clip_to_world(coord)?;
-        Some(T::world_to_lat_lon(
+        Some(T::world_to_lon_lat(
             &(world_on_ground.x, world_on_ground.y).into(),
         ))
     }
@@ -192,20 +192,20 @@ impl<T: TilesProvider> ShashlikMap<T> {
     fn fetch_tiles(&mut self) {
         let zoom_level = self.camera_controller.camera_z / 100.0;
         let zoom_level = (zoom_level.log2().round() as i32).max(0);
-        let p1 = self.clip_to_latlon(&coord! {x: -1.0, y: -1.0}).unwrap();
-        let p2 = self.clip_to_latlon(&coord! {x: 1.0, y: -1.0}).unwrap();
-        let p3 = self.clip_to_latlon(&coord! {x: 1.0, y: 1.0}).unwrap();
-        let p4 = self.clip_to_latlon(&coord! {x: -1.0, y: 1.0}).unwrap();
+        let p1 = self.clip_to_lon_lat(&coord! {x: -1.0, y: -1.0}).unwrap();
+        let p2 = self.clip_to_lon_lat(&coord! {x: 1.0, y: -1.0}).unwrap();
+        let p3 = self.clip_to_lon_lat(&coord! {x: 1.0, y: 1.0}).unwrap();
+        let p4 = self.clip_to_lon_lat(&coord! {x: -1.0, y: 1.0}).unwrap();
 
         // this will be compared for intersection later, it should have a correct winding
         let poly: Polygon<f64> = Polygon::new(LineString(vec![p1, p2, p3, p4]), Vec::new());
-        let area_latlon = get_bounding_rect(poly.exterior()).unwrap();
+        let area_lon_lat = get_bounding_rect(poly.exterior()).unwrap();
 
-        // if area_latlon != self.last_area_latlon {
-        self.tiles_provider.load(area_latlon, poly, zoom_level);
+        // if area_lon_lat != self.last_area_lon_lat {
+        self.tiles_provider.load(area_lon_lat, poly, zoom_level);
         // }
 
-        self.last_area_latlon = area_latlon;
+        self.last_area_lon_lat = area_lon_lat;
     }
 
     fn update_entities(&mut self) {
@@ -292,9 +292,9 @@ impl<T: TilesProvider> ShashlikMap<T> {
         }
     }
 
-    pub fn set_lat_lon_bearing(&mut self, lat: f64, lon: f64, bearing: Option<f32>) {
-        self.route_controller.set_current_lat_lon((lat, lon));
-        let position = T::lat_lon_to_world(&coord! {x: lon, y: lat});
+    pub fn set_lon_lat_bearing(&mut self, lon: f64, lat: f64, bearing: Option<f32>) {
+        self.route_controller.set_current_lon_lat((lon, lat));
+        let position = T::lon_lat_to_world(&coord! {x: lon, y: lat});
         self.current_world_position = Vector3::new(position.x, position.y, 0.0);
         if let Some(bearing) = bearing {
             let bearing = bearing as f64;
@@ -307,7 +307,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn create_route_to_from_screen_center(&self, route_costing: RouteCosting) {
-        let center = self.clip_to_latlon(&coord! {x: 0.0, y: 0.0}).unwrap();
+        let center = self.clip_to_lon_lat(&coord! {x: 0.0, y: 0.0}).unwrap();
         self.create_route_to(center.into(), route_costing);
     }
 
@@ -320,13 +320,13 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let clip = coord! {x: (point_x / self.screen_params.width as f32) as f64,
         y: (point_y / self.screen_params.height as f32) as f64};
         let clip = coord! { x: 2.0*(clip.x - 0.5), y: 2.0*(clip.y - 0.5) };
-        let center = self.clip_to_latlon(&clip).unwrap();
+        let center = self.clip_to_lon_lat(&clip).unwrap();
         self.create_route_to(center.into(), route_costing);
     }
 
-    pub fn create_route_to(&self, to_lat_lon: (f64, f64), route_costing: RouteCosting) {
+    pub fn create_route_to(&self, to_lon_lat: (f64, f64), route_costing: RouteCosting) {
         self.route_controller.calc_route(
-            to_lat_lon,
+            to_lon_lat,
             route_costing,
             self.create_location_coord_converter(),
             self.renderer.api.clone(),
@@ -336,7 +336,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     fn create_location_coord_converter(&self) -> Box<dyn (Fn(&Point) -> Point) + Send> {
         Box::new(move |p| {
             let coord: Coord<f64> = (p.x(), p.y()).into();
-            let coord = T::lat_lon_to_world(&coord);
+            let coord = T::lon_lat_to_world(&coord);
             Point::new(coord.x, coord.y)
         })
     }

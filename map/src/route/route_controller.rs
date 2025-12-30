@@ -12,32 +12,32 @@ use valhalla_client::costing::Costing;
 use valhalla_client::route::{DirectionsType, Location, Manifest};
 
 pub struct RouteController {
-    current_lat_lon: Option<(f64, f64)>,
+    current_lon_lat: Option<(f64, f64)>,
 }
 
 impl RouteController {
     pub fn new() -> RouteController {
         RouteController {
-            current_lat_lon: None,
+            current_lon_lat: None,
         }
     }
-    pub fn set_current_lat_lon(&mut self, lat_lon: (f64, f64)) {
-        self.current_lat_lon = Some(lat_lon);
+    pub fn set_current_lon_lat(&mut self, lon_lat: (f64, f64)) {
+        self.current_lon_lat = Some(lon_lat);
     }
 
     pub fn calc_route(
         &self,
-        to_lat_lon: (f64, f64),
+        to_lon_lat: (f64, f64),
         route_costing: RouteCosting,
         converter: Box<dyn (Fn(&Point) -> Point) + Send>,
         api: Arc<RendererApi>,
     ) {
-        if let Some((lat, lon)) = self.current_lat_lon {
+        if let Some((lon, lat)) = self.current_lon_lat {
             spawn(move || {
                 let valhalla = Valhalla::default();
 
                 let source_loc = Location::new(lon as f32, lat as f32);
-                let destination_loc = Location::new(to_lat_lon.1 as f32, to_lat_lon.0 as f32);
+                let destination_loc = Location::new(to_lon_lat.0 as f32, to_lon_lat.1 as f32);
                 let costing = match route_costing {
                     RouteCosting::Pedestrian => Costing::Pedestrian(Default::default()),
                     RouteCosting::Motorbike => Costing::Motorcycle(Default::default()),

@@ -77,8 +77,8 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
         let zoom_level = tile_key.zoom_level;
         let tile_rect = tile_key.calc_tile_boundary(1.0);
 
-        let tile_rect_origin = Self::lat_lon_to_world(&tile_rect.min());
-        let tile_rect_max = Self::lat_lon_to_world(&tile_rect.max());
+        let tile_rect_origin = Self::lon_lat_to_world(&tile_rect.min());
+        let tile_rect_max = Self::lon_lat_to_world(&tile_rect.max());
         let tile_rect_size = tile_rect_max - tile_rect_origin;
 
         let geom = tile_store.load_geometries(&tile_key);
@@ -144,8 +144,8 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
 impl<S: TileSource, FP: FeatureProcessor + 'static> TilesProvider
     for ShashlikTilesProviderV0<S, FP>
 {
-    fn load(&mut self, area_latlon: Rect, area_poly: geo_types::Polygon<f64>, zoom_level: i32) {
-        let ranges = calc_tile_ranges(TILES_COUNT, zoom_level, &area_latlon);
+    fn load(&mut self, area_lonlat: Rect, area_poly: geo_types::Polygon<f64>, zoom_level: i32) {
+        let ranges = calc_tile_ranges(TILES_COUNT, zoom_level, &area_lonlat);
         let mut current_visible_tiles: HashSet<TileKey> = HashSet::new();
         let mut to_load: HashSet<TileKey> = HashSet::new();
 
@@ -268,18 +268,18 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> TilesProvider
         receiver
     }
 
-    fn lat_lon_to_world(lat_lon: &geo_types::Coord<f64>) -> geo_types::Coord<f64> {
-        let lat_lon: (f64, f64) = (*lat_lon).into();
+    fn lon_lat_to_world(lon_lat: &geo_types::Coord<f64>) -> geo_types::Coord<f64> {
+        let lon_lat: (f64, f64) = (*lon_lat).into();
         Mercator::with_size(1)
-            .from_ll_to_subpixel(&lat_lon, 22)
+            .from_ll_to_subpixel(&lon_lat, 22)
             .unwrap()
             .into()
     }
 
-    fn world_to_lat_lon(lat_lon: &geo_types::Coord<f64>) -> geo_types::Coord<f64> {
-        let lat_lon: (f64, f64) = (*lat_lon).into();
+    fn world_to_lon_lat(xy: &geo_types::Coord<f64>) -> geo_types::Coord<f64> {
+        let xy: (f64, f64) = (*xy).into();
         Mercator::with_size(1)
-            .from_pixel_to_ll(&lat_lon, 22)
+            .from_pixel_to_ll(&xy, 22)
             .unwrap()
             .into()
     }

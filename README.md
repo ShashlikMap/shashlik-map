@@ -80,5 +80,6 @@ implementation(libs.shashlikmap)
 - Note: Android app will ask for locations permissions.
 
 ## Known issues
+- Tileset on the Web Service is generated only for Japan(Kanto region) and USA(Bay Area)
 - Android app might not work on Android Emulator with hardware GPU acceleration. Try to change GPU mode to `Software` one.
 - Debug build performance is significantly lower than Release build.

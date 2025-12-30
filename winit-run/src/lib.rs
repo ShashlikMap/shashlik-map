@@ -191,8 +191,7 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                                 //DM office 139.74777078320227 35.62298925839326
                                 //Ugusuidani office 139.7769298 35.7248164
 
-                                // map.set_lat_lon_bearing(35.7248164, 139.7769298, Some(self.fake_bearing));
-                                map.set_lat_lon_bearing(35.62298925839326, 139.74777078320227, Some(self.fake_bearing));
+                                map.set_lon_lat_bearing( 139.74777078320227, 35.62298925839326, Some(self.fake_bearing));
 
                             }
                         }

@@ -62,7 +62,8 @@ impl ShashlikMapApi {
 
     fn set_lat_lon_bearing(&self, lat: f64, lon: f64, bearing: Option<f32>) {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
-        shashlik_map.set_lat_lon_bearing(lat, lon, bearing);
+        // swap lat/lon to lon/lat
+        shashlik_map.set_lon_lat_bearing(lon, lat, bearing);
     }
 
     fn set_cam_follow_mode(&self, enabled: bool) {
@@ -72,7 +73,8 @@ impl ShashlikMapApi {
 
     fn calculate_route_to_lat_lon(&self, lat: f64, lon: f64, route_costing: RouteCosting) {
         let shashlik_map = self.shashlik_map.read().unwrap();
-        shashlik_map.create_route_to((lat, lon), route_costing.into());
+        // swap lat/lon to lon/lat
+        shashlik_map.create_route_to((lon, lat), route_costing.into());
     }
 
     fn calculate_route(&self, point_x: f32, point_y: f32, route_costing: RouteCosting) {
