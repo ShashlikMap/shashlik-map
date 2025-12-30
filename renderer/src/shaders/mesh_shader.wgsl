@@ -52,13 +52,16 @@ fn vs_main(
     return out;
 }
 
+const light_dir = normalize(vec3(0.0, -0.5, 1.0));
+const default_color = vec3(0.4, 0.4, 0.4);
+const ambient_color = vec3(0.1, 0.1, 0.1);
+
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let light_dir = normalize(vec3(0.0, 0.0, 20.0) - in.world_position);
-
     let diffuse_strength = max(dot(in.world_normal, light_dir), 0.0);
-    let diffuse_color = vec4(1.0, 1.0, 1.0, 1.0) * diffuse_strength;
+    let diffuse_color = vec3(1.0, 1.0, 1.0) * diffuse_strength * 0.8;
 
-    return vec4(0.5, 0.5, 0.5, in.color_alpha) * diffuse_color + vec4(0.1, 0.1, 0.1, in.color_alpha);
+    let result_color = (ambient_color + diffuse_color) * default_color;
+    return vec4(result_color.rgb, in.color_alpha);
 }
