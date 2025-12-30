@@ -26,9 +26,7 @@ with Android/iOS mobile apps(Android is priority for now)
 ## Roadmap
 ### Now
 - [x] Create a baseline POC with initial architecture
-- [ ] Complete README and examples
-- - [ ] Publishing to Maven Central
-- [ ] Location sharing from GoogleMaps to improve a "field" testing
+- [x] Complete README and examples
 ### Next
 - [ ] Implement an initial geometric Map-matching POC
 - [ ] General Renderer refactoring
@@ -56,31 +54,31 @@ cargo run --package winit-run --release
 ### iOS
 Open "kmp/iosApp" project in XCode and just Run it
 
-## Integration with mobile apps
-### Android
-_Publishing to Maven Central is in progress!_
-1. At this moment, using Github PAT is required to get access to Github Maven Repo
-```
-maven {
-    url = uri("https://maven.pkg.github.com/ShashlikMap/shashlik-map")
-    credentials {
-        username = "GithubUserName"
-        password = "GithubPAT"
-    }
-}
-```
-2. Add a gradle dependency to build.gradle.kts
-```
-implementation("com.shashlik:shared:0.1.0")
-```
-3. Call an `shashlikMapInit()` method once, in `Application/Activity` `onCreate()` method
-```
-override fun onCreate() {
-   super.onCreate()
-   shashlikMapInit()
-}
-```
-4. Include Composable function `ShashlikMap { _, _ -> }` anywhere in your Compose UI
+## Integration with KMP apps
+1. Add dependency to the version catalog
 
-### iOS
-TODO
+```
+[versions]
+shashlikMap = "0.2.1"
+
+[libraries]
+shashlikmap = { module = "io.github.shashlikmap:mapshared", version.ref = "shashlikMap" }
+```
+In build.gradle.kts(KMP or Android):
+```
+implementation(libs.shashlikmap)
+```
+2. Include Composable function `ShashlikMap { _, _ -> }` anywhere in your Compose UI
+```kotlin
+   @Composable
+   fun App() {
+       MaterialTheme {
+           ShashlikMap { _, _ -> }
+       }
+   }
+```
+- Note: Android app will ask for locations permissions.
+
+## Known issues
+- Android app might not work on Android Emulator with hardware GPU acceleration. Try to change GPU mode to `Software` one.
+- Debug build performance is significantly lower than Release build.

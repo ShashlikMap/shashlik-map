@@ -11,11 +11,8 @@ plugins {
 
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    `maven-publish`
+    alias(libs.plugins.vanniktech.mavenPublish)
 }
-
-val properties = Properties()
-properties.load(FileInputStream(rootProject.file("local.properties")))
 
 cargo {
     // The Cargo package is located in a `rust` subdirectory.
@@ -88,19 +85,42 @@ android {
     }
 }
 
-group = "com.shashlik"
-version = "0.1.0"
+group = "io.github.shashlikmap"
+version = "0.2.1"
 
-publishing {
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/ShashlikMap/shashlik-map/")
+mavenPublishing {
+    publishToMavenCentral()
 
-            credentials {
-                username = properties.getProperty("GithubUser")
-                password = properties.getProperty("GithubPAT")
+    signAllPublications()
+
+    coordinates(group.toString(), "mapshared", version.toString())
+
+    pom {
+        name = "ShashlikMapSDK"
+        description = "WIP Map SDK powered by KMP and Rust WGPU"
+        inceptionYear = "2025"
+        url = "https://github.com/ShashlikMap/shashlik-map"
+        licenses {
+            license {
+                name = "The Apache License, Version 2.0"
+                url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                distribution = "https://www.apache.org/licenses/LICENSE-2.0.txt"
             }
+        }
+        developers {
+            developer {
+                id = "ShashlikMap"
+                name = "ShashlikMap"
+                url = "https://github.com/ShashlikMap"
+                email = "olenyov.kirill@me.com"
+                organization = "ShashlikMap"
+                organizationUrl = "https://github.com/ShashlikMap"
+            }
+        }
+        scm {
+            url = "https://github.com/ShashlikMap/shashlik-map"
+            connection = "scm:git:git://github.com/ShashlikMap/shashlik-map.git"
+            developerConnection = "scm:git:ssh://git@github.com/ShashlikMap/shashlik-map.git"
         }
     }
 }
