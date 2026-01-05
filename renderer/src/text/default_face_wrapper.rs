@@ -18,9 +18,8 @@ pub struct DefaultFaceWrapper {
 
 impl DefaultFaceWrapper {
     const MAX_SCALE: f32 = 0.035;
-    pub fn new(device: &Device) -> DefaultFaceWrapper {
-        let face = ttf_parser::Face::parse(include_bytes!("../font.ttf"), 0).unwrap();
-        let face = rustybuzz::Face::from_face(face);
+    pub fn new(device: &Device, font: &'static rustybuzz::ttf_parser::Face) -> DefaultFaceWrapper {
+        let face = rustybuzz::Face::from_face(font.clone());
 
         let mut buffer = UnicodeBuffer::new();
         buffer.push_str("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-");

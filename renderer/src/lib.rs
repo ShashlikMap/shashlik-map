@@ -30,6 +30,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
+use rustybuzz::ttf_parser;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
 use wgpu::{CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat, include_wgsl};
@@ -89,11 +90,13 @@ pub struct GlobalContext {
 }
 
 impl GlobalContext {
-    pub fn new(collision_handler: CollisionHandler, device: &wgpu::Device) -> Self {
+    pub fn new(collision_handler: CollisionHandler,
+               device: &wgpu::Device,
+               font: &'static rustybuzz::ttf_parser::Face) -> Self {
         GlobalContext {
             view_projection: ViewProjection::new(),
             collision_handler,
-            text_renderer: TextRenderer::new(device),
+            text_renderer: TextRenderer::new(device, font),
         }
     }
 }
@@ -114,6 +117,7 @@ impl ShashlikRenderer {
     pub async fn new(
         feature_tags: &[String],
         canvas: Box<dyn WgpuCanvas>,
+        font: &'static ttf_parser::Face<'static>
     ) -> anyhow::Result<ShashlikRenderer> {
         let device = canvas.device();
         let config = canvas.config();
@@ -143,11 +147,13 @@ impl ShashlikRenderer {
             config,
             depth_state.clone(),
             multisample_state.clone(),
+            &font
         );
 
         let mut global_context = GlobalContext::new(
             CollisionHandler::new(config.width as f32, config.height as f32),
             device,
+            font,
         );
         global_context
             .view_projection

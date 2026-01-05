@@ -17,7 +17,7 @@ pub trait TilesProvider {
     fn lon_lat_to_world(_lon_lat: &Coord<f64>) -> Coord<f64> {
         (0.0, 0.0).into()
     }
-    fn world_to_lon_lat(xy: &Coord<f64>) -> Coord<f64> {
+    fn world_to_lon_lat(_xy: &Coord<f64>) -> Coord<f64> {
         (0.0, 0.0).into()
     }
 }

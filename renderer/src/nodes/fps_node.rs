@@ -1,7 +1,8 @@
-use crate::GlobalContext;
 use crate::fps::FpsCounter;
-use crate::nodes::SceneNode;
 use crate::nodes::scene_tree::RenderContext;
+use crate::nodes::SceneNode;
+use crate::GlobalContext;
+use rustybuzz::ttf_parser::Face;
 use wgpu::{DepthStencilState, Device, Queue, RenderPass, SurfaceConfiguration};
 use wgpu_text::glyph_brush::ab_glyph::FontRef;
 use wgpu_text::glyph_brush::{OwnedSection, OwnedText};
@@ -20,33 +21,20 @@ impl FpsNode {
         config: &SurfaceConfiguration,
         depth_state: DepthStencilState,
         multi_sample_state: wgpu::MultisampleState,
+        font: &'static Face
     ) -> Self {
+        let mut depth_state = depth_state.clone();
+        depth_state.depth_write_enabled = false;
+        let text_brush = BrushBuilder::using_font_bytes(font.raw_face().data).unwrap()
+            .with_depth_stencil(Some(depth_state))
+            .with_multisample(multi_sample_state)
+            .build(device, config.width, config.height, config.format);
         Self {
-            text_brush: Self::create_default_text_brush(
-                device,
-                config,
-                depth_state,
-                multi_sample_state,
-            ),
+            text_brush,
             counter: FpsCounter::new(),
             text_section: OwnedSection::default().with_screen_position((130f32, 50f32)),
             current_fps: "0".to_string(),
         }
-    }
-
-    fn create_default_text_brush<'a>(
-        device: &Device,
-        config: &SurfaceConfiguration,
-        depth_state: DepthStencilState,
-        multi_sample_state: wgpu::MultisampleState,
-    ) -> TextBrush<FontRef<'a>> {
-        let mut depth_state = depth_state.clone();
-        depth_state.depth_write_enabled = false;
-        BrushBuilder::using_font_bytes(include_bytes!("../font.ttf"))
-            .unwrap()
-            .with_depth_stencil(Some(depth_state))
-            .with_multisample(multi_sample_state)
-            .build(device, config.width, config.height, config.format)
     }
 }
 
@@ -77,6 +65,7 @@ impl SceneNode for FpsNode {
     }
 
     fn resize(&mut self, width: u32, height: u32, queue: &Queue) {
-        self.text_brush.resize_view(width as f32, height as f32, queue);
+        self.text_brush
+            .resize_view(width as f32, height as f32, queue);
     }
 }

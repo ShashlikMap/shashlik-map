@@ -21,10 +21,11 @@ use renderer::{Renderer, ShashlikRenderer};
 use route::route_controller::RouteController;
 use std::mem;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::thread::spawn;
 use osm::styles::RenderStyle;
 use osm::styles::style_loader::StyleLoader;
+use ttf_parser::Face;
 use renderer::styles::style_id::StyleId;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
@@ -74,6 +75,7 @@ impl RenderGroup for TileData {
             });
     }
 }
+static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> = LazyLock::new(|| Face::parse(include_bytes!("../font.ttf"), 0).unwrap());
 
 impl<T: TilesProvider> ShashlikMap<T> {
     const TEMP_ANIMATION_SPEED: f64 = 0.03;
@@ -83,7 +85,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     ) -> anyhow::Result<ShashlikMap<T>> {
         let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
 
-        let renderer = ShashlikRenderer::new(&["puck_layer".to_string()], canvas).await?;
+        let renderer = ShashlikRenderer::new(&["puck_layer".to_string()], canvas, &DEFAULT_FONT).await?;
         let tiles_stream = tiles_provider.tiles();
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
@@ -217,7 +219,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.renderer
             .api
             .update_spatial_data("route".to_string(), move |spatial_data| {
-                spatial_data.normal_scale = (cam_zoom / 2.5).max(1.0);
+                spatial_data.normal_scale = (cam_zoom / 2.5).max(0.75);
             });
 
         self.renderer

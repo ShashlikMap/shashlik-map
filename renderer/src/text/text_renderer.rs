@@ -55,8 +55,8 @@ pub struct TextRenderer {
 impl TextRenderer {
     const FADE_ANIM_SPEED: f32 = 0.05;
 
-    pub fn new(device: &Device) -> TextRenderer {
-        let default_face = DefaultFaceWrapper::new(device);
+    pub fn new(device: &Device, font: &'static rustybuzz::ttf_parser::Face) -> TextRenderer {
+        let default_face = DefaultFaceWrapper::new(device, font);
 
         TextRenderer {
             id_to_alpha_map: HashMap::new(),
