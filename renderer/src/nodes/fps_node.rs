@@ -38,7 +38,7 @@ impl SceneNode for FpsNode {
                 text: format!("FPS {}", self.counter.update() as i32),
                 size: 40.0,
                 alpha: 1.0,
-                positions: vec![vec3(100.0, 50.0, 0.0)],
+                positions: vec![vec3(100.0, 120.0, 0.0)],
                 screen_offset: vec2(0.0, 0.0),
                 screen_space: true,
                 glyph_buffer: None,
