@@ -5,7 +5,7 @@ use cgmath::{Matrix4, Vector2};
 use log::error;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
-use rustybuzz::{Direction, Face, GlyphBuffer, ShapePlan, UnicodeBuffer, ttf_parser, Script};
+use rustybuzz::{Direction, Face, GlyphBuffer, ShapePlan, UnicodeBuffer, Script};
 use wgpu::{Color, Device};
 
 pub struct DefaultFaceWrapper {

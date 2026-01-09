@@ -110,7 +110,6 @@ pub struct ShashlikRenderer {
     renderer_rx: Receiver<RendererMessage>,
     pub api: Arc<RendererApi>,
     global_context: GlobalContext,
-    fps_node: FpsNode, // FIXME FPS should part of text rendering or proper layer system
 }
 
 impl ShashlikRenderer {
@@ -142,13 +141,6 @@ impl ShashlikRenderer {
             alpha_to_coverage_enabled: false,
         };
 
-        let fps_node = FpsNode::new(
-            device,
-            config,
-            depth_state.clone(),
-            multisample_state.clone(),
-            &font
-        );
 
         let mut global_context = GlobalContext::new(
             CollisionHandler::new(config.width as f32, config.height as f32),
@@ -222,6 +214,9 @@ impl ShashlikRenderer {
 
         camera_node.borrow_mut().add_child_with_key(TextRendererLayer {}, "text_renderer_layer".to_string());
 
+        let fps_node = FpsNode::new();
+        text_layer.borrow_mut().add_child_with_key(fps_node,"fps_node".to_string());
+
         let feature_layers = FeatureLayers::new(
             feature_tags,
             &device,
@@ -255,7 +250,6 @@ impl ShashlikRenderer {
             renderer_rx,
             api,
             global_context,
-            fps_node,
         })
     }
 
@@ -326,7 +320,6 @@ impl ShashlikRenderer {
 
             self.world_tree_node
                 .resize(config.width, config.height, queue);
-            self.fps_node.resize(width, height, queue);
             self.depth_texture = DepthTexture::new(&device, config.width, config.height);
             self.msaa_texture =
                 MultisampledTexture::new(device, config.width, config.height, config.format);
@@ -352,8 +345,6 @@ impl ShashlikRenderer {
         let queue = self.canvas.queue();
         let device = self.canvas.device();
         let config = self.canvas.config();
-        self.fps_node
-            .update(device, queue, config, &mut self.global_context);
         self.world_tree_node
             .update(device, queue, config, &mut self.global_context);
 
@@ -410,8 +401,6 @@ impl ShashlikRenderer {
                 multiview_mask: None,
             });
 
-            self.fps_node
-                .render(&mut render_pass, &mut self.global_context);
             self.world_tree_node
                 .render(&mut render_pass, &mut self.global_context);
 
