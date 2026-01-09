@@ -34,6 +34,7 @@ struct InstanceInput {
     @location(9) model_matrix_3: vec4<f32>,
     @location(10) bbox: vec4<f32>,
     @location(11) normal_scale: f32,
+    @location(12) screen_space: u32,
 }
 
 struct VertexOutput {

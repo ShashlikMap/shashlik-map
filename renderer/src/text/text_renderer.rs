@@ -3,7 +3,7 @@ use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::vertex_attrs::InstancePos;
 use crate::view_projection::ScreenPositionCalculator;
 use cgmath::num_traits::clamp;
-use cgmath::{Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector2, Vector3};
+use cgmath::{vec3, Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector2, Vector3};
 use geo_types::{coord, point};
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
@@ -21,6 +21,7 @@ pub struct GlyphData {
     pub position: (f32, f32),
     pub alpha: f32,
     pub matrix: Matrix4<f32>,
+    pub screen_space: bool,
 }
 
 pub struct TextNodeData {
@@ -30,6 +31,7 @@ pub struct TextNodeData {
     pub alpha: f32,
     pub positions: Vec<Vector3<f32>>,
     pub screen_offset: Vector2<f32>,
+    pub screen_space: bool,
     pub glyph_buffer: Option<GlyphBuffer>,
 }
 
@@ -183,6 +185,7 @@ impl TextRenderer {
                             alpha: 1.0,
                             position: (initial_position.x as f32, initial_position.y as f32),
                             matrix,
+                            screen_space: data.screen_space,
                         };
                         glyphs_to_draw.push((glyph_rect, item));
 
@@ -226,7 +229,7 @@ impl TextRenderer {
             );
 
             let within_screen = collision_handler.within_screen(section_rect);
-            if within_screen {
+            if data.screen_space || within_screen {
                 let contains = self.id_to_alpha_map.contains_key(&data.id);
                 let mut alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
                 if contains {
@@ -234,20 +237,22 @@ impl TextRenderer {
                     return;
                 }
 
-                if collision_handler.insert(section_rect) {
-                    alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
-                } else {
-                    alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                // calc only for non screen space
+                if !data.screen_space {
+                    if collision_handler.insert(section_rect) {
+                        alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                    } else {
+                        alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                    }
                 }
                 data.alpha = alpha;
-
                 if data.alpha > 0.0 {
                     let stub_rect =
                         Rectangle::from_corners(point!(x: 0.0, y: 0.0), point!(x: 0.0, y: 0.0));
                     for index in 0..glyph_buffer.len() {
                         let position = glyphs_positions[index];
                         let glyph_info = glyphs_infos[index];
-
+                        // println!("glyph_info = {:?}", glyph_info);
                         let matrix = Matrix4::from_translation(Vector3::new(
                             glyph_total_x_advance + data.screen_offset.x + (-width / 2.0),
                             -height - data.screen_offset.y,
@@ -261,6 +266,7 @@ impl TextRenderer {
                             alpha: data.alpha,
                             position: (initial_position.x as f32, initial_position.y as f32),
                             matrix,
+                            screen_space: data.screen_space
                         };
                         glyphs_to_draw.push((stub_rect, item));
                     }
@@ -285,14 +291,17 @@ impl TextRenderer {
         self.glyph_data.iter().for_each(|(key, list)| {
             let mut attrs = vec![];
             list.iter().for_each(|glyph_data| {
+                let mut position = Vector3::new(glyph_data.position.0 , glyph_data.position.1, 0.0);
+                if !glyph_data.screen_space {
+                    position -= vec3(cs_offset.x as f32, cs_offset.y as f32, 0.0)
+                }
                 let instance_pos = InstancePos {
-                    position: Vector3::new(glyph_data.position.0 - cs_offset.x as f32,
-                                           glyph_data.position.1 - cs_offset.y as f32, 0.0)
-                        .into(),
+                    position: position.into(),
                     color_alpha: glyph_data.alpha,
                     matrix: glyph_data.matrix.cast().unwrap().into(),
                     bbox: [0.0, 0.0, 0.0, 0.0],
-                    normal_scale: 1f32
+                    normal_scale: 1f32,
+                    screen_space: glyph_data.screen_space.into(),
                 };
                 attrs.push(instance_pos);
             });

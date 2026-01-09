@@ -21,6 +21,7 @@ struct InstanceInput {
     @location(9) model_matrix_3: vec4<f32>,
     @location(10) bbox: vec4<f32>,
     @location(11) normal_scale: f32,
+    @location(12) screen_space: u32,
 }
 
 struct VertexOutput {
@@ -46,7 +47,15 @@ fn vs_main(
 
     out.color_alpha = pos.color_alpha;
 
-    let coord = camera.view_proj * vec4<f32>(pos.position.xy, 0.0, 1.0);
+    var coord = vec4<f32>(pos.position.xy, 0.0, 1.0);
+    if pos.screen_space == 0 {
+        coord = camera.view_proj * coord;
+    } else {
+        coord.x *= camera.inv_screen_size.x;
+        coord.x = 2.0*(coord.x - 0.5);
+        coord.y *= camera.inv_screen_size.y;
+        coord.y = 2.0*(coord.y - 0.5) * -1.0;
+    }
 
     out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
     return out;

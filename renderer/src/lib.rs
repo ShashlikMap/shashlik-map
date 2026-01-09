@@ -352,13 +352,14 @@ impl ShashlikRenderer {
         let queue = self.canvas.queue();
         let device = self.canvas.device();
         let config = self.canvas.config();
+        self.fps_node
+            .update(device, queue, config, &mut self.global_context);
         self.world_tree_node
             .update(device, queue, config, &mut self.global_context);
 
         self.global_context.collision_handler.clear();
 
-        self.fps_node
-            .update(device, queue, config, &mut self.global_context);
+
     }
 
     fn render(&mut self) -> Result<(), SurfaceError> {
@@ -409,11 +410,12 @@ impl ShashlikRenderer {
                 multiview_mask: None,
             });
 
+            self.fps_node
+                .render(&mut render_pass, &mut self.global_context);
             self.world_tree_node
                 .render(&mut render_pass, &mut self.global_context);
 
-            self.fps_node
-                .render(&mut render_pass, &mut self.global_context);
+
         }
 
         queue.submit(iter::once(encoder.finish()));

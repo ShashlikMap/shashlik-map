@@ -26,6 +26,7 @@ impl TextNode {
                         .map(|pos| pos + spatial_data.transform.cast().unwrap())
                         .collect(),
                     screen_offset: item.screen_offset,
+                    screen_space: false,
                     glyph_buffer: None,
                 })
                 .collect(),
