@@ -252,7 +252,6 @@ impl TextRenderer {
                     for index in 0..glyph_buffer.len() {
                         let position = glyphs_positions[index];
                         let glyph_info = glyphs_infos[index];
-                        // println!("glyph_info = {:?}", glyph_info);
                         let matrix = Matrix4::from_translation(Vector3::new(
                             glyph_total_x_advance + data.screen_offset.x + (-width / 2.0),
                             -height - data.screen_offset.y,
