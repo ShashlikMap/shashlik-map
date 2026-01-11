@@ -61,8 +61,9 @@ const ambient_color = vec3(0.1, 0.1, 0.1);
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let diffuse_strength = max(dot(in.world_normal, light_dir), 0.0);
-    let diffuse_color = vec3(1.0, 1.0, 1.0) * diffuse_strength * 0.8;
+    let gradient_koef = 0.5 + min(1.0, tanh(2.0*in.world_position.z))/2.0;
+    let diffuse_color = vec3(1.0, 1.0, 1.0) * diffuse_strength;
 
     let result_color = (ambient_color + diffuse_color) * default_color;
-    return vec4(result_color.rgb, in.color_alpha);
+    return vec4(result_color.rgb * gradient_koef, in.color_alpha);
 }
