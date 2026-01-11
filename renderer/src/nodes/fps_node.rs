@@ -25,13 +25,8 @@ impl SceneNode for FpsNode {
         &mut self,
         _device: &Device,
         _queue: &Queue,
-        config: &wgpu::SurfaceConfiguration,
         global_context: &mut GlobalContext,
     ) {
-        let screen_position_calculator = global_context
-            .view_projection
-            .screen_position_calculator(&global_context.view_projection.cs_offset, config);
-
         global_context.text_renderer.insert(
             &mut TextNodeData {
                 id: 0,
@@ -44,7 +39,7 @@ impl SceneNode for FpsNode {
                 glyph_buffer: None,
             },
             &mut global_context.collision_handler,
-            &screen_position_calculator,
+            &global_context.view_projection
         )
     }
 }

@@ -3,8 +3,8 @@ use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::SceneNode;
 use crate::vertex_attrs::InstancePos;
 use crate::{GlobalContext, ReceiverExt};
-use cgmath::{Deg, Matrix4, Vector3};
 use cgmath::num_traits::clamp;
+use cgmath::{Deg, Matrix4, Vector3};
 use geo_types::point;
 use log::error;
 use rstar::primitives::Rectangle;
@@ -24,7 +24,7 @@ pub struct PositionedMesh {
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
     with_collisions: bool,
-    first_render: bool
+    first_render: bool,
 }
 
 impl Mesh {
@@ -122,7 +122,7 @@ impl PositionedMesh {
             spatial_rx,
             original_spatial_data: spatial_data,
             with_collisions,
-            first_render: true
+            first_render: true,
         }
     }
 }
@@ -139,7 +139,8 @@ impl PositionedMesh {
         attrs.clear();
 
         let scale_matrix = Matrix4::<f64>::from_scale(spatial_data.scale);
-        let rotation_matrix = Matrix4::<f64>::from_angle_z(Deg(original_yaw as f64 + spatial_data.yaw));
+        let rotation_matrix =
+            Matrix4::<f64>::from_angle_z(Deg(original_yaw as f64 + spatial_data.yaw));
         let matrix = scale_matrix * rotation_matrix;
         for i in 0..original_positions_alpha.len() {
             let item = original_positions_alpha[i];
@@ -149,12 +150,14 @@ impl PositionedMesh {
                 position: transform_with_cs_offset.cast().unwrap().into(),
                 color_alpha: item.1,
                 matrix: matrix.cast().unwrap().into(),
-                bbox: [transform_with_cs_offset.x as f32,
+                bbox: [
+                    transform_with_cs_offset.x as f32,
                     transform_with_cs_offset.y as f32,
                     spatial_data.size.0.round() as f32,
-                    spatial_data.size.1.round() as f32],
+                    spatial_data.size.1.round() as f32,
+                ],
                 normal_scale: spatial_data.normal_scale as f32,
-                screen_space: 0
+                screen_space: 0,
             };
             attrs.push(instance_pos);
             if is_two_instances {
@@ -175,16 +178,11 @@ impl SceneNode for PositionedMesh {
         &mut self,
         _device: &Device,
         queue: &Queue,
-        config: &wgpu::SurfaceConfiguration,
         global_context: &mut GlobalContext,
     ) {
         if self.with_collisions {
-            let screen_position_calculator = global_context
-                .view_projection
-                .screen_position_calculator(&global_context.view_projection.cs_offset, config);
-
             for item in &mut self.original_positions_alpha {
-                let screen_pos = screen_position_calculator.screen_position(Vector3::new(
+                let screen_pos = global_context.view_projection.screen_position(Vector3::new(
                     item.0.x + self.original_spatial_data.transform.x,
                     item.0.y + self.original_spatial_data.transform.y,
                     0.0,

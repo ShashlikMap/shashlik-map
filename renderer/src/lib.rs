@@ -327,8 +327,11 @@ impl ShashlikRenderer {
     }
 
     fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
-        self.global_context.view_projection.update(view_proj_matrix, cs_offset);
+        let queue = self.canvas.queue();
         let device = self.canvas.device();
+        let config = self.canvas.config();
+
+        self.global_context.view_projection.update(config, view_proj_matrix, cs_offset);
         if let Ok(message) = self.renderer_rx.try_recv() {
             match message {
                 RendererMessage::Draw(mut draw_commands) => {
@@ -342,11 +345,8 @@ impl ShashlikRenderer {
             }
         }
 
-        let queue = self.canvas.queue();
-        let device = self.canvas.device();
-        let config = self.canvas.config();
         self.world_tree_node
-            .update(device, queue, config, &mut self.global_context);
+            .update(device, queue, &mut self.global_context);
 
         self.global_context.collision_handler.clear();
 

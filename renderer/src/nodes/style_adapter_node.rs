@@ -64,7 +64,6 @@ impl<T: SceneNode> SceneNode for StyleAdapterNode<T> {
         &mut self,
         device: &Device,
         _queue: &Queue,
-        _config: &wgpu::SurfaceConfiguration,
         _global_context: &mut GlobalContext,
     ) {
         if let Ok(uniforms) = self.style_uniform_rx.no_lagged() {

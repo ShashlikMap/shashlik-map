@@ -41,17 +41,13 @@ impl SceneNode for TextNode {
         &mut self,
         _device: &Device,
         _queue: &Queue,
-        config: &wgpu::SurfaceConfiguration,
         global_context: &mut GlobalContext,
     ) {
-        let screen_position_calculator = global_context
-            .view_projection
-            .screen_position_calculator(&global_context.view_projection.cs_offset, config);
         self.data.iter_mut().for_each(|item| {
             global_context.text_renderer.insert(
                 item,
                 &mut global_context.collision_handler,
-                &screen_position_calculator,
+                &global_context.view_projection,
             )
         });
     }

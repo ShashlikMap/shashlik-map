@@ -65,7 +65,6 @@ impl SceneNode for CameraNode {
         &mut self,
         _device: &Device,
         queue: &Queue,
-        _config: &wgpu::SurfaceConfiguration,
         global_context: &mut GlobalContext,
     ) {
         queue.write_buffer(

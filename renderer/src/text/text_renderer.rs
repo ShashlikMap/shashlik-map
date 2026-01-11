@@ -1,19 +1,19 @@
 use crate::collision_handler::CollisionHandler;
+use crate::nodes::SceneNode;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::vertex_attrs::InstancePos;
-use crate::view_projection::ScreenPositionCalculator;
+use crate::view_projection::ViewProjection;
+use crate::GlobalContext;
 use cgmath::num_traits::clamp;
 use cgmath::{vec3, Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector2, Vector3};
 use geo_types::{coord, point};
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
-use rustybuzz::GlyphBuffer;
 use rustybuzz::ttf_parser::GlyphId;
+use rustybuzz::GlyphBuffer;
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
-use wgpu::{Buffer, Device, Queue, RenderPass, SurfaceConfiguration};
-use crate::GlobalContext;
-use crate::nodes::SceneNode;
+use wgpu::{Buffer, Device, Queue, RenderPass};
 
 #[derive(Clone)]
 pub struct GlyphData {
@@ -38,12 +38,21 @@ pub struct TextNodeData {
 pub struct TextRendererLayer {}
 
 impl SceneNode for TextRendererLayer {
-    fn update(&mut self, device: &Device, queue: &Queue, _config: &SurfaceConfiguration, global_context: &mut GlobalContext) {
-        global_context.text_renderer.update(queue, device, &global_context.view_projection.cs_offset);
+    fn update(
+        &mut self,
+        device: &Device,
+        queue: &Queue,
+        global_context: &mut GlobalContext,
+    ) {
+        global_context.text_renderer.update(
+            queue,
+            device,
+            &global_context.view_projection.cs_offset,
+        );
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-       global_context.text_renderer.render(render_pass);
+        global_context.text_renderer.render(render_pass);
     }
 }
 
@@ -72,7 +81,7 @@ impl TextRenderer {
         &mut self,
         data: &mut TextNodeData,
         collision_handler: &mut CollisionHandler,
-        screen_position_calculator: &ScreenPositionCalculator,
+        view_projection: &ViewProjection,
     ) {
         let glyph_buffer = data
             .glyph_buffer
@@ -93,7 +102,7 @@ impl TextRenderer {
             .unwrap()
             .cast()
             .unwrap();
-        let origin = screen_position_calculator.screen_position(initial_position)
+        let origin = view_projection.screen_position(initial_position)
             + coord! { x: data.screen_offset.x as f64, y: data.screen_offset.y as f64};
 
         if data.positions.len() > 1 {
@@ -119,8 +128,7 @@ impl TextRenderer {
                     break;
                 }
 
-                let current =
-                    screen_position_calculator.screen_position(current.cast().unwrap()) - origin;
+                let current = view_projection.screen_position(current.cast().unwrap()) - origin;
                 let current = Vector3::new(current.x as f32, current.y as f32, 0.0);
 
                 // skip if two point are the same
@@ -222,7 +230,7 @@ impl TextRenderer {
             let origin = origin + coord! { x: (-width/2.0) as f64, y: 0.0 };
 
             let mut glyph_total_x_advance = 0.0;
-            
+
             let section_rect = Rectangle::from_corners(
                 point! { x: origin.x as f32, y: origin.y as f32 },
                 point! { x: origin.x as f32 + width, y: origin.y as f32 + height },
@@ -265,7 +273,7 @@ impl TextRenderer {
                             alpha: data.alpha,
                             position: (initial_position.x as f32, initial_position.y as f32),
                             matrix,
-                            screen_space: data.screen_space
+                            screen_space: data.screen_space,
                         };
                         glyphs_to_draw.push((stub_rect, item));
                     }
@@ -290,7 +298,7 @@ impl TextRenderer {
         self.glyph_data.iter().for_each(|(key, list)| {
             let mut attrs = vec![];
             list.iter().for_each(|glyph_data| {
-                let mut position = Vector3::new(glyph_data.position.0 , glyph_data.position.1, 0.0);
+                let mut position = Vector3::new(glyph_data.position.0, glyph_data.position.1, 0.0);
                 if !glyph_data.screen_space {
                     position -= vec3(cs_offset.x as f32, cs_offset.y as f32, 0.0)
                 }

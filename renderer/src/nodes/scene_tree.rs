@@ -82,17 +82,16 @@ impl SceneNode for SceneTree {
         &mut self,
         device: &Device,
         queue: &Queue,
-        config: &wgpu::SurfaceConfiguration,
         global_context: &mut GlobalContext,
     ) {
         self.children.iter().for_each(|scene_node| {
             scene_node
                 .borrow_mut()
                 .value
-                .update(device, &queue, config, global_context);
+                .update(device, &queue, global_context);
             scene_node
                 .borrow_mut()
-                .update(device, queue, config, global_context);
+                .update(device, queue, global_context);
         });
     }
 

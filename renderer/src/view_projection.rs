@@ -1,5 +1,6 @@
 use cgmath::{Matrix4, SquareMatrix, Transform, Vector2, Vector3, Vector4};
 use geo_types::{Coord, coord};
+use wgpu::SurfaceConfiguration;
 
 #[rustfmt::skip]
 const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f64> = cgmath::Matrix4::from_cols(
@@ -17,30 +18,6 @@ const FLIP_Y: Matrix4<f64> = Matrix4::new(
     0.0, 0.0, 0.0, 1.0,
 );
 
-pub(crate) struct ScreenPositionCalculator<'a> {
-    matrix: Matrix4<f32>,
-    cs_offset: &'a Vector3<f64>,
-    config: &'a wgpu::SurfaceConfiguration,
-}
-
-impl<'a> ScreenPositionCalculator<'a> {
-    pub fn new(matrix: Matrix4<f32>, cs_offset: &'a Vector3<f64>, config: &'a wgpu::SurfaceConfiguration) -> Self {
-        Self { matrix, cs_offset, config }
-    }
-    pub fn screen_position(&self, world_position: Vector3<f64>) -> Coord<f64> {
-        let world_position = world_position - self.cs_offset;
-        let pos = self.matrix.cast().unwrap() * Vector4::new(world_position.x, world_position.y, 0.0, 1.0);
-        let clip_pos_x = pos.x / pos.w;
-        let clip_pos_y = pos.y / pos.w;
-
-        let screen_size = (self.config.width as f64, self.config.height as f64);
-        coord! {
-            x: screen_size.0 * (clip_pos_x + 1.0) / 2.0,
-            y: screen_size.1 - (screen_size.1 * (clip_pos_y + 1.0) / 2.0)
-        }
-    }
-}
-
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct ViewProjUniform {
@@ -51,6 +28,7 @@ pub(crate) struct ViewProjUniform {
 pub(crate) struct ViewProjection {
     pub uniform: ViewProjUniform,
     pub cs_offset: Vector3<f64>,
+    screen_size: (f64, f64),
     inv_view_proj_matrix: Matrix4<f64>
 }
 
@@ -61,32 +39,39 @@ impl ViewProjection {
                 view_proj: Matrix4::identity().into(),
                 inv_screen_size: [0.0, 0.0],
             },
+            screen_size: (0.0, 0.0),
             cs_offset: Vector3::new(0.0, 0.0, 0.0),
             inv_view_proj_matrix: Matrix4::identity()
         }
     }
 
-    pub fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
+    pub fn update(&mut self, config: &SurfaceConfiguration, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
         self.uniform.view_proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * view_proj_matrix)
             .cast()
             .unwrap()
             .into();
         self.cs_offset = cs_offset;
         self.inv_view_proj_matrix = view_proj_matrix.inverse_transform().unwrap();
+        self.screen_size = (config.width as f64, config.height as f64);
+    }
+
+    pub fn screen_position(&self, world_position: Vector3<f64>) -> Coord<f64> {
+        let matrix: Matrix4<f32> = self.uniform.view_proj.into();
+        let world_position = world_position - self.cs_offset;
+        let pos = matrix.cast().unwrap() * Vector4::new(world_position.x, world_position.y, 0.0, 1.0);
+        let clip_pos_x = pos.x / pos.w;
+        let clip_pos_y = pos.y / pos.w;
+
+        coord! {
+            x: self.screen_size.0 * (clip_pos_x + 1.0) / 2.0,
+            y: self.screen_size.1 - (self.screen_size.1 * (clip_pos_y + 1.0) / 2.0)
+        }
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
         self.uniform.inv_screen_size = [1.0 / width as f32, 1.0 / height as f32];
     }
-
-    pub fn screen_position_calculator<'a>(
-        &self,
-        cs_offset: &'a Vector3<f64>,
-        config: &'a wgpu::SurfaceConfiguration,
-    ) -> ScreenPositionCalculator<'a> {
-        ScreenPositionCalculator::new(self.uniform.view_proj.into(), cs_offset, config)
-    }
-
+    
     pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<Vector2<f64>> {
         Self::clip_to_world_at_ground(
             &Vector2::new(coord.x, coord.y),

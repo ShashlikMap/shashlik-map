@@ -19,7 +19,6 @@ pub trait SceneNode {
         &mut self,
         _device: &Device,
         _queue: &Queue,
-        _config: &wgpu::SurfaceConfiguration,
         _global_context: &mut GlobalContext,
     ) {
     }
