@@ -9,7 +9,7 @@ use crate::styles::style_id::StyleId;
 use crate::styles::style_store::StyleStore;
 use crate::svg::svg_parser::svg_parse;
 use crate::vertex_attrs::ShapeVertex;
-use cgmath::Vector3;
+use cgmath::{InnerSpace, Vector3};
 use lyon::lyon_tessellation::{
     BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions,
     StrokeTessellator, StrokeVertex, VertexBuffers,
@@ -162,7 +162,7 @@ impl CanvasApi {
             if path_event.is_edge() {
                 let p1 = path_event.from();
                 let p2 = path_event.to();
-                let normal = Vector3::new(-(p2.y - p1.y), p2.x - p1.x, 0.0).into();
+                let normal = Vector3::new(-(p2.y - p1.y), p2.x - p1.x, 0.0).normalize().into();
 
                 geometry_buffer.vertices.push(MeshVertex {
                     position: [p1.x, p1.y, 0.0],
