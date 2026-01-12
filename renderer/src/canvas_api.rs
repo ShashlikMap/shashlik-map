@@ -20,8 +20,8 @@ use std::mem;
 use std::ops::Range;
 
 #[derive(Clone)]
-pub struct ScreenPaths {
-    pub positions: Vec<Vector3<f64>>,
+pub struct MeshInfo {
+    pub instance_positions: Vec<Vector3<f64>>,
     pub with_collision: bool,
 }
 
@@ -34,7 +34,7 @@ pub struct CanvasApi {
     real_layer: usize,
     geometry3d: VertexBuffers<MeshVertex, u32>,
     text_vec: Vec<TextData>,
-    screen_path_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, ScreenPaths)>,
+    mesh_info_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, MeshInfo)>,
     feature_layer_tag: Option<String>,
 }
 
@@ -49,7 +49,7 @@ impl CanvasApi {
             real_layer: 0,
             geometry3d: VertexBuffers::new(),
             text_vec: Vec::new(),
-            screen_path_cache: HashMap::new(),
+            mesh_info_cache: HashMap::new(),
             feature_layer_tag: None,
         }
     }
@@ -63,12 +63,12 @@ impl CanvasApi {
         self.real_layer = real_layer;
 
         // TODO Should be improved to per screen rather than per group
-        self.screen_path_cache
+        self.mesh_info_cache
             .iter_mut()
-            .for_each(|(_, (_, screen_paths))| {
+            .for_each(|(_, (_, mesh_info))| {
                 // keep only buffers, clean positions
-                screen_paths.positions.clear();
-                screen_paths.with_collision = false
+                mesh_info.instance_positions.clear();
+                mesh_info.with_collision = false
             })
     }
 
@@ -120,11 +120,11 @@ impl CanvasApi {
                 .into_values()
                 .flatten()
                 .collect();
-            let screen_paths = ScreenPaths {
-                positions: vec![Vector3::new(0.0, 0.0, 0.0)],
+            let mesh_info = MeshInfo {
+                instance_positions: vec![Vector3::new(0.0, 0.0, 0.0)],
                 with_collision: false,
             };
-            self.mesh2d_with_positions(mesh, flatten_ranges, screen_paths, is_screen);
+            self.mesh2d_with_positions(mesh, flatten_ranges, mesh_info, is_screen);
         }
     }
 
@@ -132,14 +132,14 @@ impl CanvasApi {
         &mut self,
         mesh: VertexBuffers<ShapeVertex, u32>,
         layers_indices: Vec<Range<usize>>,
-        screen_paths: ScreenPaths,
+        mesh_info: MeshInfo,
         is_screen: bool,
     ) {
         self.draw_commands.push(Box::new(Mesh2dDrawCommand {
             mesh,
             real_layer: self.real_layer,
             layers_indices,
-            screen_paths,
+            mesh_info,
             is_screen,
             outlined: !is_screen,
             feature_layer_tag: self.feature_layer_tag.clone(),
@@ -259,19 +259,19 @@ impl CanvasApi {
     }
 
     fn svg(&mut self, data: SvgData) {
-        self.screen_path_cache
+        self.mesh_info_cache
             .entry(data.icon.0)
-            .and_modify(|(_, screen_paths)| {
-                screen_paths.positions.push(data.position);
-                screen_paths.with_collision = data.with_collision
+            .and_modify(|(_, mesh_info)| {
+                mesh_info.instance_positions.push(data.position);
+                mesh_info.with_collision = data.with_collision
             })
             .or_insert_with(|| {
                 let style_index = self.style_store.get_index(&data.style_id);
                 let mesh = svg_parse(data.icon.1, data.size, style_index);
                 (
                     mesh,
-                    ScreenPaths {
-                        positions: vec![data.position],
+                    MeshInfo {
+                        instance_positions: vec![data.position],
                         with_collision: data.with_collision,
                     },
                 )
@@ -293,16 +293,16 @@ impl CanvasApi {
             self.mesh3d(mesh3d);
         }
 
-        if !self.screen_path_cache.is_empty() {
+        if !self.mesh_info_cache.is_empty() {
             let data: Vec<_> = self
-                .screen_path_cache
+                .mesh_info_cache
                 .iter()
                 .map(|(_, (mesh, positions))| (mesh.clone(), positions.clone()))
                 .collect();
-            for (mesh, screen_paths) in data {
-                if !screen_paths.positions.is_empty() {
+            for (mesh, mesh_info) in data {
+                if !mesh_info.instance_positions.is_empty() {
                     let layers_indices = vec![0..mesh.indices.len()];
-                    self.mesh2d_with_positions(mesh, layers_indices, screen_paths, true);
+                    self.mesh2d_with_positions(mesh, layers_indices, mesh_info, true);
                 }
             }
         }

@@ -43,7 +43,7 @@ impl RenderGroup for RouteGroup {
             width: 1f32,
             line_join: LineJoin::Round,
             line_cap: LineCap::Round,
-            tolerance: 0.05f32,
+            tolerance: 0.01f32, // this gives more or less a good round shape for join and caps
         };
         
         let style_id = match self.route_costing {

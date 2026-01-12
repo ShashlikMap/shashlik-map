@@ -17,7 +17,7 @@ pub struct PositionedMesh {
     mesh: Mesh,
     instance_buffer: Buffer,
     attrs: Vec<InstancePos>,
-    original_positions_alpha: Vec<(Vector3<f64>, f32)>, // TODO Proper structure with bound
+    instance_positions_and_alpha: Vec<(Vector3<f64>, f32)>, // TODO Proper structure with bound
     cs_offset: Vector3<f64>,
     original_yaw: f32,
     is_two_instances: bool,
@@ -46,7 +46,7 @@ impl Mesh {
     pub fn to_positioned_with_instances(
         self,
         device: &Device,
-        original_positions: Vec<Vector3<f64>>,
+        instance_positions: Vec<Vector3<f64>>,
         yaw: f32,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
@@ -55,7 +55,7 @@ impl Mesh {
         PositionedMesh::new(
             device,
             self,
-            original_positions,
+            instance_positions,
             yaw,
             spatial_rx,
             is_two_instances,
@@ -86,20 +86,20 @@ impl PositionedMesh {
     pub fn new(
         device: &Device,
         mesh: Mesh,
-        original_positions: Vec<Vector3<f64>>,
+        instance_positions: Vec<Vector3<f64>>,
         yaw: f32,
         mut spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
         with_collisions: bool,
     ) -> Self {
-        let original_positions_alpha = original_positions.iter().map(|v| (*v, 1.0)).collect();
+        let instance_positions_and_alpha = instance_positions.iter().map(|v| (*v, 1.0)).collect();
         let spatial_data = spatial_rx.try_recv().unwrap_or(SpatialData::new());
         let mut attrs = Vec::new();
 
         Self::update_attrs(
             &mut attrs,
             &Vector3::new(0.0, 0.0, 0.0),
-            &original_positions_alpha,
+            &instance_positions_and_alpha,
             yaw,
             &spatial_data,
             is_two_instances,
@@ -115,7 +115,7 @@ impl PositionedMesh {
             mesh,
             instance_buffer,
             attrs,
-            original_positions_alpha,
+            instance_positions_and_alpha,
             cs_offset: Vector3::new(0.0, 0.0, 0.0),
             original_yaw: yaw,
             is_two_instances,
@@ -181,7 +181,7 @@ impl SceneNode for PositionedMesh {
         global_context: &mut GlobalContext,
     ) {
         if self.with_collisions {
-            for item in &mut self.original_positions_alpha {
+            for item in &mut self.instance_positions_and_alpha {
                 let screen_pos = global_context.view_projection.screen_position(Vector3::new(
                     item.0.x + self.original_spatial_data.transform.x,
                     item.0.y + self.original_spatial_data.transform.y,
@@ -224,7 +224,7 @@ impl SceneNode for PositionedMesh {
             Self::update_attrs(
                 &mut self.attrs,
                 &self.cs_offset,
-                &self.original_positions_alpha,
+                &self.instance_positions_and_alpha,
                 self.original_yaw,
                 &self.original_spatial_data,
                 self.is_two_instances,

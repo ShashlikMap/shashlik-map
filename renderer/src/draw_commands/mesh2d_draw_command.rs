@@ -1,4 +1,4 @@
-use crate::canvas_api::ScreenPaths;
+use crate::canvas_api::MeshInfo;
 use crate::draw_commands::{geometry_to_mesh_with_layers, DrawCommand};
 use crate::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
@@ -12,7 +12,7 @@ pub(crate) struct Mesh2dDrawCommand {
     pub mesh: VertexBuffers<ShapeVertex, u32>,
     pub real_layer: usize,
     pub layers_indices: Vec<Range<usize>>,
-    pub screen_paths: ScreenPaths,
+    pub mesh_info: MeshInfo,
     pub is_screen: bool,
     pub outlined: bool,
     pub feature_layer_tag: Option<String>,
@@ -31,10 +31,10 @@ impl DrawCommand for Mesh2dDrawCommand {
 
         let mesh = mesh.to_positioned_with_instances(
             device,
-            mem::take(&mut self.screen_paths.positions),
+            mem::take(&mut self.mesh_info.instance_positions),
             0.0,
             spatial_rx, self.outlined,
-            self.screen_paths.with_collision,
+            self.mesh_info.with_collision,
         );
 
         if let Some(feature_layer) = self.feature_layer_tag.as_ref()
