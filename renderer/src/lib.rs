@@ -171,7 +171,7 @@ impl ShashlikRenderer {
                 include_wgsl!("shaders/mesh_shader.wgsl"),
                 Rc::new([VertexNormal::desc(), InstancePos::desc()]),
                 pipeline_provider.clone(),
-                Some(Face::Front),
+                Some(Face::Back),
                 CompareFunction::Less,
             ),
             "mesh layer".to_string(),

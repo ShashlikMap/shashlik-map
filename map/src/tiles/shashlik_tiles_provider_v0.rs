@@ -116,6 +116,8 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
                 MapGeometry::Poly(poly) => {
                     let mut line = poly.into_inner().0;
                     if let MapGeomObjectKind::Building(_) = obj_type.kind {
+                        // the winding might not be the same for building lines,
+                        // make it as pipelines default
                         line.make_ccw_winding();
                     }
                     feature_processor.process_line(

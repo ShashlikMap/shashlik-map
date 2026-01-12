@@ -55,9 +55,7 @@ impl PipeLineProvider {
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
-                // FrontFace::Cw since we flip Y during matrix calculation
-                // So the 3D buildings look correct
-                front_face: wgpu::FrontFace::Cw,
+                front_face: wgpu::FrontFace::Ccw,
                 cull_mode: custom_cull_mode,
                 // Setting this to anything other than Fill requires Features::POLYGON_MODE_LINE
                 // or Features::POLYGON_MODE_POINT
