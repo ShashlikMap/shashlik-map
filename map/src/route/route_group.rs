@@ -56,7 +56,6 @@ impl RenderGroup for RouteGroup {
             geometry_type: GeometryType::Polyline(options),
             style_id,
             index_layer_level: 0,
-            is_screen: false,
         });
     }
 }

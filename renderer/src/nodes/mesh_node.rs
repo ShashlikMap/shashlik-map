@@ -146,7 +146,7 @@ impl PositionedMesh {
             let item = original_positions_alpha[i];
 
             let transform_with_cs_offset = item.0 + spatial_data.transform - cs_offset;
-            let instance_pos = InstanceInput {
+            let instance_input = InstanceInput {
                 position: transform_with_cs_offset.cast().unwrap().into(),
                 color_alpha: item.1,
                 matrix: matrix.cast().unwrap().into(),
@@ -157,11 +157,10 @@ impl PositionedMesh {
                     spatial_data.size.1.round() as f32,
                 ],
                 normal_scale: spatial_data.normal_scale as f32,
-                screen_space: 0,
             };
-            attrs.push(instance_pos);
+            attrs.push(instance_input);
             if is_two_instances {
-                attrs.push(instance_pos);
+                attrs.push(instance_input);
             }
         }
     }
