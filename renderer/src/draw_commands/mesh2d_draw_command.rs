@@ -14,7 +14,6 @@ pub(crate) struct Mesh2dDrawCommand {
     pub layers_indices: Vec<Range<usize>>,
     pub mesh_info: MeshInfo,
     pub is_screen: bool,
-    pub outlined: bool,
     pub feature_layer_tag: Option<String>,
 }
 
@@ -33,7 +32,7 @@ impl DrawCommand for Mesh2dDrawCommand {
             device,
             mem::take(&mut self.mesh_info.instance_positions),
             0.0,
-            spatial_rx, self.outlined,
+            spatial_rx, !self.is_screen,
             self.mesh_info.with_collision,
         );
 

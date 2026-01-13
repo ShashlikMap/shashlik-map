@@ -113,7 +113,7 @@ impl CanvasApi {
         }
     }
 
-    fn mesh2d(&mut self, is_screen: bool) {
+    fn mesh2d(&mut self) {
         let mesh = mem::replace(&mut self.geometry, VertexBuffers::new());
         if !mesh.vertices.is_empty() {
             let flatten_ranges = mem::take(&mut self.indices_by_layers)
@@ -124,7 +124,7 @@ impl CanvasApi {
                 instance_positions: vec![Vector3::new(0.0, 0.0, 0.0)],
                 with_collision: false,
             };
-            self.mesh2d_with_positions(mesh, flatten_ranges, mesh_info, is_screen);
+            self.mesh2d_with_positions(mesh, flatten_ranges, mesh_info, false);
         }
     }
 
@@ -141,7 +141,6 @@ impl CanvasApi {
             layers_indices,
             mesh_info,
             is_screen,
-            outlined: !is_screen,
             feature_layer_tag: self.feature_layer_tag.clone(),
         }));
     }
@@ -251,11 +250,6 @@ impl CanvasApi {
         } else {
             ranges.push(initial_index..last_index);
         }
-
-        // TODO It should aggregate geometry for "screen" type layers
-        if data.is_screen {
-            self.mesh2d(true);
-        }
     }
 
     fn svg(&mut self, data: SvgData) {
@@ -286,7 +280,7 @@ impl CanvasApi {
         assert!(!self.flushed);
         self.flushed = true;
 
-        self.mesh2d(false);
+        self.mesh2d();
 
         let mesh3d = mem::replace(&mut self.geometry3d, VertexBuffers::new());
         if mesh3d.vertices.len() > 0 {

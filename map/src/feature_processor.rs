@@ -228,7 +228,6 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         geometry_type,
                         style_id,
                         index_layer_level: layer_level as i8,
-                        is_screen: false,
                     }));
                 }
 
