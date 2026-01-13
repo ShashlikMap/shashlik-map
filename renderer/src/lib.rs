@@ -17,7 +17,7 @@ use crate::nodes::world::World;
 use crate::pipeline_provider::PipeLineProvider;
 use crate::styles::style_store::StyleStore;
 use crate::text::text_renderer::{TextRenderer, TextRendererLayer};
-use crate::vertex_attrs::{InstanceInput, ShapeVertex, TextInstanceInput, VertexAttrib, VertexNormal};
+use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput, ShapeVertex, TextInstanceInput, VertexAttrib, VertexNormal};
 use crate::view_projection::ViewProjection;
 use canvas_api::CanvasApi;
 use cgmath::{Matrix4, Vector2, Vector3};
@@ -169,7 +169,7 @@ impl ShashlikRenderer {
             MeshLayer::new(
                 &device,
                 include_wgsl!("shaders/mesh_shader.wgsl"),
-                Rc::new([VertexNormal::desc(), InstanceInput::desc()]),
+                Rc::new([VertexNormal::desc(), GeneralInstanceInput::desc()]),
                 pipeline_provider.clone(),
                 Some(Face::Back),
                 CompareFunction::Less,
@@ -180,7 +180,7 @@ impl ShashlikRenderer {
         let screen_shape_layer = MeshLayer::new(
             &device,
             include_wgsl!("shaders/screen_shape_shader.wgsl"),
-            Rc::new([ShapeVertex::desc(), InstanceInput::desc()]),
+            Rc::new([ShapeVertex::desc(), ShapeInstanceInput::desc()]),
             pipeline_provider.clone(),
             None,
             CompareFunction::Always,

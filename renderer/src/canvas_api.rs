@@ -11,8 +11,8 @@ use crate::svg::svg_parser::svg_parse;
 use crate::vertex_attrs::ShapeVertex;
 use cgmath::{InnerSpace, Vector3};
 use lyon::lyon_tessellation::{
-    BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions,
-    StrokeTessellator, StrokeVertex, VertexBuffers,
+    BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator,
+    StrokeVertex, VertexBuffers,
 };
 use lyon::path::Path;
 use std::collections::{BTreeMap, HashMap};
@@ -98,9 +98,6 @@ impl CanvasApi {
             GeometryData::Shape(data) => {
                 self.path(data);
             }
-            GeometryData::Mesh3d(data) => {
-                self.mesh3d(data.mesh_data);
-            }
             GeometryData::ExtrudedPolygon(data) => {
                 self.extruded_polygon(data);
             }
@@ -113,7 +110,7 @@ impl CanvasApi {
         }
     }
 
-    fn mesh2d(&mut self) {
+    fn prepare_mesh2d_command(&mut self) {
         let mesh = mem::replace(&mut self.geometry, VertexBuffers::new());
         if !mesh.vertices.is_empty() {
             let flatten_ranges = mem::take(&mut self.indices_by_layers)
@@ -126,6 +123,32 @@ impl CanvasApi {
             };
             self.mesh2d_with_positions(mesh, flatten_ranges, mesh_info, false);
         }
+    }
+
+    fn prepare_mesh2d_screen_space_command(&mut self) {
+        if self.mesh_info_cache.is_empty() {
+            return;
+        }
+        let data: Vec<_> = self
+            .mesh_info_cache
+            .iter()
+            .map(|(_, (mesh, positions))| (mesh.clone(), positions.clone()))
+            .collect();
+        for (mesh, mesh_info) in data {
+            if !mesh_info.instance_positions.is_empty() {
+                let layers_indices = vec![0..mesh.indices.len()];
+                self.mesh2d_with_positions(mesh, layers_indices, mesh_info, true);
+            }
+        }
+    }
+
+    fn prepare_text_command(&mut self) {
+        if self.text_vec.is_empty() {
+            return;
+        }
+        self.draw_commands.push(Box::new(TextDrawCommand {
+            data: mem::replace(&mut self.text_vec, Vec::new()),
+        }));
     }
 
     fn mesh2d_with_positions(
@@ -161,7 +184,9 @@ impl CanvasApi {
             if path_event.is_edge() {
                 let p1 = path_event.from();
                 let p2 = path_event.to();
-                let normal = Vector3::new(-(p2.y - p1.y), p2.x - p1.x, 0.0).normalize().into();
+                let normal = Vector3::new(-(p2.y - p1.y), p2.x - p1.x, 0.0)
+                    .normalize()
+                    .into();
 
                 geometry_buffer.vertices.push(MeshVertex {
                     position: [p1.x, p1.y, 0.0],
@@ -204,9 +229,12 @@ impl CanvasApi {
         );
     }
 
-    pub fn mesh3d(&mut self, mesh: VertexBuffers<MeshVertex, u32>) {
-        self.draw_commands
-            .push(Box::new(Mesh3dDrawCommand { mesh }));
+    fn prepare_mesh3d_command(&mut self) {
+        let mesh = mem::replace(&mut self.geometry3d, VertexBuffers::new());
+        if mesh.vertices.len() > 0 {
+            self.draw_commands
+                .push(Box::new(Mesh3dDrawCommand { mesh }));
+        }
     }
 
     pub fn path(&mut self, data: ShapeData) {
@@ -215,16 +243,12 @@ impl CanvasApi {
         let initial_index = self.geometry.indices.len();
         match geom_type {
             GeometryType::Polyline(options) => {
-                self.tessellate_stroke_path(
-                    &data.path,
-                    options,
-                    |vertex| ShapeVertex {
-                        position: [vertex.position().x, vertex.position().y, 0.0f32],
-                        normals: [vertex.normal().x, vertex.normal().y, 0.0],
-                        dist: vertex.advancement(),
-                        style_index: style_index as u32,
-                    },
-                );
+                self.tessellate_stroke_path(&data.path, options, |vertex| ShapeVertex {
+                    position: [vertex.position().x, vertex.position().y, 0.0f32],
+                    normals: [vertex.normal().x, vertex.normal().y, 0.0],
+                    dist: vertex.advancement(),
+                    style_index: style_index as u32,
+                });
             }
             GeometryType::Polygon => {
                 Self::tessellate_fill_path(&data.path, &mut self.geometry, |vertex| ShapeVertex {
@@ -280,32 +304,10 @@ impl CanvasApi {
         assert!(!self.flushed);
         self.flushed = true;
 
-        self.mesh2d();
-
-        let mesh3d = mem::replace(&mut self.geometry3d, VertexBuffers::new());
-        if mesh3d.vertices.len() > 0 {
-            self.mesh3d(mesh3d);
-        }
-
-        if !self.mesh_info_cache.is_empty() {
-            let data: Vec<_> = self
-                .mesh_info_cache
-                .iter()
-                .map(|(_, (mesh, positions))| (mesh.clone(), positions.clone()))
-                .collect();
-            for (mesh, mesh_info) in data {
-                if !mesh_info.instance_positions.is_empty() {
-                    let layers_indices = vec![0..mesh.indices.len()];
-                    self.mesh2d_with_positions(mesh, layers_indices, mesh_info, true);
-                }
-            }
-        }
-
-        if !self.text_vec.is_empty() {
-            self.draw_commands.push(Box::new(TextDrawCommand {
-                data: mem::replace(&mut self.text_vec, Vec::new()),
-            }));
-        }
+        self.prepare_mesh2d_command();
+        self.prepare_mesh3d_command();
+        self.prepare_mesh2d_screen_space_command();
+        self.prepare_text_command();
     }
 
     fn tessellate_fill_path<F, VT>(path: &Path, geometry: &mut VertexBuffers<VT, u32>, ctor: F)

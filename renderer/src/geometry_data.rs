@@ -7,7 +7,6 @@ use lyon::path::Path;
 pub enum GeometryData {
     Shape(ShapeData),
     ExtrudedPolygon(ExtrudedPolygonData),
-    Mesh3d(Mesh3d),
     Svg(SvgData),
     Text(TextData),
 }

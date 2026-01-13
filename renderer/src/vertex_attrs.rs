@@ -43,17 +43,38 @@ impl VertexAttrib for VertexNormal {
 
     const STEP_MODE: VertexStepMode = wgpu::VertexStepMode::Vertex;
 }
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct InstanceInput {
+pub struct GeneralInstanceInput {
+    pub(crate) position: [f32; 3],
+    pub(crate) color_alpha: f32,
+    pub(crate) matrix: [[f32; 4]; 4],
+}
+
+impl VertexAttrib for GeneralInstanceInput {
+    const ATTRIBUTES: &[VertexAttribute] = &wgpu::vertex_attr_array![
+        4 => Float32x3,
+        5 => Float32,
+        6 => Float32x4,
+        7 => Float32x4,
+        8 => Float32x4,
+        9 => Float32x4,
+    ];
+
+    const STEP_MODE: VertexStepMode = wgpu::VertexStepMode::Instance;
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct ShapeInstanceInput {
     pub(crate) position: [f32; 3],
     pub(crate) color_alpha: f32,
     pub(crate) matrix: [[f32; 4]; 4],
     pub(crate) bbox: [f32; 4],
     pub(crate) normal_scale: f32,
 }
-
-impl VertexAttrib for InstanceInput {
+impl VertexAttrib for ShapeInstanceInput {
     const ATTRIBUTES: &[VertexAttribute] = &wgpu::vertex_attr_array![
         4 => Float32x3,
         5 => Float32,
