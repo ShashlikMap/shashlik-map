@@ -3,7 +3,7 @@ use crate::nodes::scene_tree::SceneTree;
 use crate::nodes::style_adapter_node::StyleAdapterNode;
 use crate::pipeline_provider::PipeLineProvider;
 use crate::styles::style_store::StyleStore;
-use crate::vertex_attrs::{InstancePos, ShapeVertex, VertexAttrib};
+use crate::vertex_attrs::{InstanceInput, ShapeVertex, VertexAttrib};
 use crate::SHADER_STYLE_GROUP_INDEX;
 use std::cell::RefCell;
 use std::cmp::min;
@@ -27,7 +27,7 @@ impl ShapeLayers {
             let shape_layer = MeshLayer::new(
                 &device,
                 include_wgsl!("../shaders/shape_shader.wgsl"),
-                Rc::new([ShapeVertex::desc(), InstancePos::desc()]),
+                Rc::new([ShapeVertex::desc(), InstanceInput::desc()]),
                 pipeline_provider.clone(),
                 None,
                 CompareFunction::Less

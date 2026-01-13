@@ -1,7 +1,7 @@
 use crate::mesh::mesh::Mesh;
 use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::SceneNode;
-use crate::vertex_attrs::InstancePos;
+use crate::vertex_attrs::InstanceInput;
 use crate::{GlobalContext, ReceiverExt};
 use cgmath::num_traits::clamp;
 use cgmath::{Deg, Matrix4, Vector3};
@@ -16,7 +16,7 @@ use wgpu::{Buffer, Device, Queue, RenderPass};
 pub struct PositionedMesh {
     mesh: Mesh,
     instance_buffer: Buffer,
-    attrs: Vec<InstancePos>,
+    attrs: Vec<InstanceInput>,
     instance_positions_and_alpha: Vec<(Vector3<f64>, f32)>, // TODO Proper structure with bound
     cs_offset: Vector3<f64>,
     original_yaw: f32,
@@ -129,7 +129,7 @@ impl PositionedMesh {
 
 impl PositionedMesh {
     fn update_attrs(
-        attrs: &mut Vec<InstancePos>,
+        attrs: &mut Vec<InstanceInput>,
         cs_offset: &Vector3<f64>,
         original_positions_alpha: &Vec<(Vector3<f64>, f32)>,
         original_yaw: f32,
@@ -146,7 +146,7 @@ impl PositionedMesh {
             let item = original_positions_alpha[i];
 
             let transform_with_cs_offset = item.0 + spatial_data.transform - cs_offset;
-            let instance_pos = InstancePos {
+            let instance_pos = InstanceInput {
                 position: transform_with_cs_offset.cast().unwrap().into(),
                 color_alpha: item.1,
                 matrix: matrix.cast().unwrap().into(),

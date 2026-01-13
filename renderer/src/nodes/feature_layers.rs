@@ -4,7 +4,7 @@ use crate::nodes::scene_tree::SceneTree;
 use crate::nodes::style_adapter_node::StyleAdapterNode;
 use crate::pipeline_provider::PipeLineProvider;
 use crate::styles::style_store::StyleStore;
-use crate::vertex_attrs::{InstancePos, ShapeVertex, VertexAttrib};
+use crate::vertex_attrs::{InstanceInput, ShapeVertex, VertexAttrib};
 use linked_hash_map::LinkedHashMap;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -30,7 +30,7 @@ impl FeatureLayers {
             let shape_layer = MeshLayer::new(
                 &device,
                 include_wgsl!("../shaders/shape_shader.wgsl"),
-                Rc::new([ShapeVertex::desc(), InstancePos::desc()]),
+                Rc::new([ShapeVertex::desc(), InstanceInput::desc()]),
                 pipeline_provider.clone(),
                 None,
                 CompareFunction::Always,

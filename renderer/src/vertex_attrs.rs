@@ -48,7 +48,7 @@ impl VertexAttrib for VertexNormal {
 }
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct InstancePos {
+pub struct InstanceInput {
     pub(crate) position: [f32; 3],
     pub(crate) color_alpha: f32,
     pub(crate) matrix: [[f32; 4]; 4],
@@ -57,7 +57,7 @@ pub struct InstancePos {
     pub(crate) screen_space: u32,
 }
 
-impl VertexAttrib for InstancePos {
+impl VertexAttrib for InstanceInput {
     fn desc() -> VertexBufferLayout<'static> {
         const ATTRIBUTES: &[VertexAttribute; 9] = &wgpu::vertex_attr_array![
             4 => Float32x3,

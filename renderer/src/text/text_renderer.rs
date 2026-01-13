@@ -1,7 +1,7 @@
 use crate::collision_handler::CollisionHandler;
 use crate::nodes::SceneNode;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
-use crate::vertex_attrs::InstancePos;
+use crate::vertex_attrs::InstanceInput;
 use crate::view_projection::ViewProjection;
 use crate::GlobalContext;
 use cgmath::num_traits::clamp;
@@ -302,7 +302,7 @@ impl TextRenderer {
                 if !glyph_data.screen_space {
                     position -= vec3(cs_offset.x as f32, cs_offset.y as f32, 0.0)
                 }
-                let instance_pos = InstancePos {
+                let instance_pos = InstanceInput {
                     position: position.into(),
                     color_alpha: glyph_data.alpha,
                     matrix: glyph_data.matrix.cast().unwrap().into(),
@@ -331,7 +331,7 @@ impl TextRenderer {
         });
     }
 
-    fn create_instance_buffer(device: &Device, instances: &Vec<InstancePos>) -> Buffer {
+    fn create_instance_buffer(device: &Device, instances: &Vec<InstanceInput>) -> Buffer {
         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Instance Buffer"),
             contents: bytemuck::cast_slice(instances.as_slice()),
