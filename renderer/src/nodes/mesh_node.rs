@@ -1,8 +1,9 @@
 use crate::mesh::mesh::Mesh;
 use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::SceneNode;
-use crate::vertex_attrs::InstanceInput;
+use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput};
 use crate::{GlobalContext, ReceiverExt};
+use bytemuck::Pod;
 use cgmath::num_traits::clamp;
 use cgmath::{Deg, Matrix4, Vector3};
 use geo_types::point;
@@ -13,10 +14,10 @@ use tokio::sync::broadcast::Receiver;
 use wgpu::util::DeviceExt;
 use wgpu::{Buffer, Device, Queue, RenderPass};
 
-pub struct PositionedMesh {
+pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
     instance_buffer: Buffer,
-    attrs: Vec<InstanceInput>,
+    attrs: Vec<T>,
     instance_positions_and_alpha: Vec<(Vector3<f64>, f32)>, // TODO Proper structure with bound
     cs_offset: Vector3<f64>,
     original_yaw: f32,
@@ -32,26 +33,18 @@ impl Mesh {
         self,
         device: &Device,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-    ) -> PositionedMesh {
-        PositionedMesh::new(
-            device,
-            self,
-            vec![Vector3::new(0.0, 0.0, 0.0)],
-            0.0,
-            spatial_rx,
-            false,
-            false,
-        )
+    ) -> PositionedMesh<GeneralInstanceInput> {
+        PositionedMesh::new(device, self, None, 0.0, spatial_rx, false, false)
     }
     pub fn to_positioned_with_instances(
         self,
         device: &Device,
-        instance_positions: Vec<Vector3<f64>>,
+        instance_positions: Option<Vec<Vector3<f64>>>,
         yaw: f32,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
         with_collisions: bool,
-    ) -> PositionedMesh {
+    ) -> PositionedMesh<ShapeInstanceInput> {
         PositionedMesh::new(
             device,
             self,
@@ -82,21 +75,25 @@ impl Mesh {
     }
 }
 
-impl PositionedMesh {
+impl<T: MeshInstanceInput> PositionedMesh<T> {
     pub fn new(
         device: &Device,
         mesh: Mesh,
-        instance_positions: Vec<Vector3<f64>>,
+        instance_positions: Option<Vec<Vector3<f64>>>,
         yaw: f32,
         mut spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
         with_collisions: bool,
     ) -> Self {
-        let instance_positions_and_alpha = instance_positions.iter().map(|v| (*v, 1.0)).collect();
+        let instance_positions_and_alpha = instance_positions
+            .unwrap_or(vec![Vector3::new(0.0, 0.0, 0.0)])
+            .iter()
+            .map(|v| (*v, 1.0))
+            .collect();
         let spatial_data = spatial_rx.try_recv().unwrap_or(SpatialData::new());
         let mut attrs = Vec::new();
 
-        Self::update_attrs(
+        T::fill_attrs(
             &mut attrs,
             &Vector3::new(0.0, 0.0, 0.0),
             &instance_positions_and_alpha,
@@ -127,58 +124,14 @@ impl PositionedMesh {
     }
 }
 
-impl PositionedMesh {
-    fn update_attrs(
-        attrs: &mut Vec<InstanceInput>,
-        cs_offset: &Vector3<f64>,
-        original_positions_alpha: &Vec<(Vector3<f64>, f32)>,
-        original_yaw: f32,
-        spatial_data: &SpatialData,
-        is_two_instances: bool,
-    ) {
-        attrs.clear();
-
-        let scale_matrix = Matrix4::<f64>::from_scale(spatial_data.scale);
-        let rotation_matrix =
-            Matrix4::<f64>::from_angle_z(Deg(original_yaw as f64 + spatial_data.yaw));
-        let matrix = scale_matrix * rotation_matrix;
-        for i in 0..original_positions_alpha.len() {
-            let item = original_positions_alpha[i];
-
-            let transform_with_cs_offset = item.0 + spatial_data.transform - cs_offset;
-            let instance_input = InstanceInput {
-                position: transform_with_cs_offset.cast().unwrap().into(),
-                color_alpha: item.1,
-                matrix: matrix.cast().unwrap().into(),
-                bbox: [
-                    transform_with_cs_offset.x as f32,
-                    transform_with_cs_offset.y as f32,
-                    spatial_data.size.0.round() as f32,
-                    spatial_data.size.1.round() as f32,
-                ],
-                normal_scale: spatial_data.normal_scale as f32,
-            };
-            attrs.push(instance_input);
-            if is_two_instances {
-                attrs.push(instance_input);
-            }
-        }
-    }
-}
-
 impl SceneNode for Mesh {
     fn render(&mut self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
         self.render_internal(render_pass, &(0..1));
     }
 }
 
-impl SceneNode for PositionedMesh {
-    fn update(
-        &mut self,
-        _device: &Device,
-        queue: &Queue,
-        global_context: &mut GlobalContext,
-    ) {
+impl<T: MeshInstanceInput> SceneNode for PositionedMesh<T> {
+    fn update(&mut self, _device: &Device, queue: &Queue, global_context: &mut GlobalContext) {
         if self.with_collisions {
             for item in &mut self.instance_positions_and_alpha {
                 let screen_pos = global_context.view_projection.screen_position(Vector3::new(
@@ -220,7 +173,7 @@ impl SceneNode for PositionedMesh {
         }
 
         if update_attrs {
-            Self::update_attrs(
+            T::fill_attrs(
                 &mut self.attrs,
                 &self.cs_offset,
                 &self.instance_positions_and_alpha,
@@ -241,5 +194,86 @@ impl SceneNode for PositionedMesh {
         render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
         let range = 0u32..self.attrs.len() as u32;
         self.mesh.render_internal(render_pass, &range);
+    }
+}
+
+pub trait MeshInstanceInput: Sized + Pod {
+    fn fill_attrs(
+        attrs: &mut Vec<Self>,
+        cs_offset: &Vector3<f64>,
+        original_positions_alpha: &Vec<(Vector3<f64>, f32)>,
+        original_yaw: f32,
+        spatial_data: &SpatialData,
+        is_two_instances: bool,
+    ) {
+        attrs.clear();
+
+        let scale_matrix = Matrix4::<f64>::from_scale(spatial_data.scale);
+        let rotation_matrix =
+            Matrix4::<f64>::from_angle_z(Deg(original_yaw as f64 + spatial_data.yaw));
+        let matrix = scale_matrix * rotation_matrix;
+        for i in 0..original_positions_alpha.len() {
+            let item = original_positions_alpha[i];
+
+            let transform_with_cs_offset = item.0 + spatial_data.transform - cs_offset;
+            let instance_input = Self::create_instance_struct(
+                transform_with_cs_offset.cast().unwrap().into(),
+                item.1,
+                matrix.cast().unwrap().into(),
+                [
+                    transform_with_cs_offset.x as f32,
+                    transform_with_cs_offset.y as f32,
+                    spatial_data.size.0.round() as f32,
+                    spatial_data.size.1.round() as f32,
+                ],
+                spatial_data.normal_scale as f32,
+            );
+            attrs.push(instance_input);
+            if is_two_instances {
+                attrs.push(instance_input);
+            }
+        }
+    }
+
+    fn create_instance_struct(
+        position: [f32; 3],
+        color_alpha: f32,
+        matrix: [[f32; 4]; 4],
+        bbox: [f32; 4],
+        normal_scale: f32,
+    ) -> Self;
+}
+
+impl MeshInstanceInput for GeneralInstanceInput {
+    fn create_instance_struct(
+        position: [f32; 3],
+        color_alpha: f32,
+        matrix: [[f32; 4]; 4],
+        _bbox: [f32; 4],
+        _normal_scale: f32,
+    ) -> Self {
+        GeneralInstanceInput {
+            position,
+            color_alpha,
+            matrix,
+        }
+    }
+}
+
+impl MeshInstanceInput for ShapeInstanceInput {
+    fn create_instance_struct(
+        position: [f32; 3],
+        color_alpha: f32,
+        matrix: [[f32; 4]; 4],
+        bbox: [f32; 4],
+        normal_scale: f32,
+    ) -> Self {
+        ShapeInstanceInput {
+            position,
+            color_alpha,
+            matrix,
+            bbox,
+            normal_scale,
+        }
     }
 }

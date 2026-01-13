@@ -30,9 +30,10 @@ impl DrawCommand for Mesh2dDrawCommand {
 
         let mesh = mesh.to_positioned_with_instances(
             device,
-            mem::take(&mut self.mesh_info.instance_positions),
+            Some(mem::take(&mut self.mesh_info.instance_positions)),
             0.0,
-            spatial_rx, !self.is_screen,
+            spatial_rx,
+            !self.is_screen,
             self.mesh_info.with_collision,
         );
 
