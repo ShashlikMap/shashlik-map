@@ -2,7 +2,7 @@ use crate::canvas_api::MeshInfo;
 use crate::draw_commands::{geometry_to_mesh_with_layers, DrawCommand};
 use crate::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
-use crate::vertex_attrs::ShapeVertex;
+use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex};
 use lyon::tessellation::VertexBuffers;
 use std::mem;
 use std::ops::Range;
@@ -28,7 +28,7 @@ impl DrawCommand for Mesh2dDrawCommand {
     ) {
         let mesh = geometry_to_mesh_with_layers(&device, &self.mesh, mem::take(&mut self.layers_indices));
 
-        let mesh = mesh.to_positioned_with_instances(
+        let mesh = mesh.to_positioned_with_instances::<ShapeInstanceInput>(
             device,
             Some(mem::take(&mut self.mesh_info.instance_positions)),
             0.0,

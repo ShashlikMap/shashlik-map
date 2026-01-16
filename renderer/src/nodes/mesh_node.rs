@@ -29,14 +29,14 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
 }
 
 impl Mesh {
-    pub fn to_positioned(
+    pub fn to_positioned<T: MeshInstanceInput>(
         self,
         device: &Device,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-    ) -> PositionedMesh<GeneralInstanceInput> {
+    ) -> PositionedMesh<T> {
         PositionedMesh::new(device, self, None, 0.0, spatial_rx, false, false)
     }
-    pub fn to_positioned_with_instances(
+    pub fn to_positioned_with_instances<T: MeshInstanceInput>(
         self,
         device: &Device,
         instance_positions: Option<Vec<Vector3<f64>>>,
@@ -44,7 +44,7 @@ impl Mesh {
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
         with_collisions: bool,
-    ) -> PositionedMesh<ShapeInstanceInput> {
+    ) -> PositionedMesh<T> {
         PositionedMesh::new(
             device,
             self,
