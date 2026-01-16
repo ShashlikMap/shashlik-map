@@ -237,7 +237,7 @@ impl CanvasApi {
         }
     }
 
-    pub fn path(&mut self, data: ShapeData) {
+    fn path(&mut self, data: ShapeData) {
         let geom_type = data.geometry_type;
         let style_index = self.style_store.get_index(&data.style_id);
         let initial_index = self.geometry.indices.len();

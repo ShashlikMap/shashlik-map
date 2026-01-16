@@ -5,7 +5,7 @@ use lyon::lyon_tessellation::{LineCap, LineJoin};
 use lyon::path::Path;
 use renderer::canvas_api::CanvasApi;
 use renderer::draw_commands::{GeometryType, PolylineOptions};
-use renderer::geometry_data::ShapeData;
+use renderer::geometry_data::{GeometryData, ShapeData};
 use renderer::render_group::RenderGroup;
 use renderer::styles::style_id::StyleId;
 use crate::route::RouteCosting;
@@ -50,12 +50,12 @@ impl RenderGroup for RouteGroup {
             RouteCosting::Pedestrian =>  StyleId("route_pedestrian"),
             RouteCosting::Auto | RouteCosting::Motorbike =>  StyleId("route_motorbike")
         };
-        
-        canvas.path(ShapeData {
+
+        canvas.geometry_data(GeometryData::Shape(ShapeData {
             path: path_builder.build(),
             geometry_type: GeometryType::Polyline(options),
             style_id,
             index_layer_level: 0,
-        });
+        }));
     }
 }
