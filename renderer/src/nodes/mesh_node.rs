@@ -20,7 +20,6 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     attrs: Vec<T>,
     instance_positions_and_alpha: Vec<(Vector3<f64>, f32)>, // TODO Proper structure with bound
     cs_offset: Vector3<f64>,
-    original_yaw: f32,
     is_two_instances: bool,
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
@@ -34,13 +33,12 @@ impl Mesh {
         device: &Device,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
     ) -> PositionedMesh<T> {
-        PositionedMesh::new(device, self, None, 0.0, spatial_rx, false, false)
+        PositionedMesh::new(device, self, None, spatial_rx, false, false)
     }
     pub fn to_positioned_with_instances<T: MeshInstanceInput>(
         self,
         device: &Device,
         instance_positions: Option<Vec<Vector3<f64>>>,
-        yaw: f32,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
         with_collisions: bool,
@@ -49,7 +47,6 @@ impl Mesh {
             device,
             self,
             instance_positions,
-            yaw,
             spatial_rx,
             is_two_instances,
             with_collisions,
@@ -80,7 +77,6 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         device: &Device,
         mesh: Mesh,
         instance_positions: Option<Vec<Vector3<f64>>>,
-        yaw: f32,
         mut spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
         with_collisions: bool,
@@ -97,7 +93,6 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             &mut attrs,
             &Vector3::new(0.0, 0.0, 0.0),
             &instance_positions_and_alpha,
-            yaw,
             &spatial_data,
             is_two_instances,
         );
@@ -114,7 +109,6 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             attrs,
             instance_positions_and_alpha,
             cs_offset: Vector3::new(0.0, 0.0, 0.0),
-            original_yaw: yaw,
             is_two_instances,
             spatial_rx,
             original_spatial_data: spatial_data,
@@ -177,7 +171,6 @@ impl<T: MeshInstanceInput> SceneNode for PositionedMesh<T> {
                 &mut self.attrs,
                 &self.cs_offset,
                 &self.instance_positions_and_alpha,
-                self.original_yaw,
                 &self.original_spatial_data,
                 self.is_two_instances,
             );
@@ -202,7 +195,6 @@ pub trait MeshInstanceInput: Sized + Pod {
         attrs: &mut Vec<Self>,
         cs_offset: &Vector3<f64>,
         original_positions_alpha: &Vec<(Vector3<f64>, f32)>,
-        original_yaw: f32,
         spatial_data: &SpatialData,
         is_two_instances: bool,
     ) {
@@ -210,7 +202,7 @@ pub trait MeshInstanceInput: Sized + Pod {
 
         let scale_matrix = Matrix4::<f64>::from_scale(spatial_data.scale);
         let rotation_matrix =
-            Matrix4::<f64>::from_angle_z(Deg(original_yaw as f64 + spatial_data.yaw));
+            Matrix4::<f64>::from_angle_z(Deg(spatial_data.yaw));
         let matrix = scale_matrix * rotation_matrix;
         for i in 0..original_positions_alpha.len() {
             let item = original_positions_alpha[i];
