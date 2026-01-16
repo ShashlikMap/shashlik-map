@@ -13,24 +13,26 @@ use crate::nodes::mesh_layer::MeshLayer;
 use crate::nodes::scene_tree::{RenderContext, SceneTree};
 use crate::nodes::shape_layers::ShapeLayers;
 use crate::nodes::style_adapter_node::StyleAdapterNode;
-use crate::nodes::world::World;
 use crate::pipeline_provider::PipeLineProvider;
 use crate::styles::style_store::StyleStore;
 use crate::text::text_renderer::{TextRenderer, TextRendererLayer};
-use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput, ShapeVertex, TextInstanceInput, VertexAttrib, VertexNormal};
+use crate::vertex_attrs::{
+    GeneralInstanceInput, ShapeInstanceInput, ShapeVertex, TextInstanceInput, VertexAttrib,
+    VertexNormal,
+};
 use crate::view_projection::ViewProjection;
 use canvas_api::CanvasApi;
 use cgmath::{Matrix4, Vector2, Vector3};
 use geo_types::Coord;
 use messages::RendererApiMsg;
 use renderer_api::RendererApi;
+use rustybuzz::ttf_parser;
 use std::collections::HashMap;
 use std::iter;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
-use rustybuzz::ttf_parser;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
 use wgpu::{CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat, include_wgsl};
@@ -90,9 +92,11 @@ pub struct GlobalContext {
 }
 
 impl GlobalContext {
-    pub fn new(collision_handler: CollisionHandler,
-               device: &wgpu::Device,
-               font: &'static rustybuzz::ttf_parser::Face) -> Self {
+    pub fn new(
+        collision_handler: CollisionHandler,
+        device: &wgpu::Device,
+        font: &'static rustybuzz::ttf_parser::Face,
+    ) -> Self {
         GlobalContext {
             view_projection: ViewProjection::new(),
             collision_handler,
@@ -102,7 +106,7 @@ impl GlobalContext {
 }
 
 pub struct ShashlikRenderer {
-    world_tree_node: SceneTree,
+    camera_node: SceneTree,
     layers: Layers,
     depth_texture: DepthTexture,
     msaa_texture: MultisampledTexture,
@@ -116,14 +120,12 @@ impl ShashlikRenderer {
     pub async fn new(
         feature_tags: &[String],
         canvas: Box<dyn WgpuCanvas>,
-        font: &'static ttf_parser::Face<'static>
+        font: &'static ttf_parser::Face<'static>,
     ) -> anyhow::Result<ShashlikRenderer> {
         let device = canvas.device();
         let config = canvas.config();
 
-        let mut world_tree_node = SceneTree::new(World::new(), "".to_string());
-
-        let camera_node = world_tree_node.add_child(CameraNode::new(&device));
+        let mut camera_node = SceneTree::new(CameraNode::new(&device), "".to_string());
 
         let depth_texture = DepthTexture::new(&device, config.width, config.height);
         let msaa_texture =
@@ -162,10 +164,10 @@ impl ShashlikRenderer {
             device,
             pipeline_provider.clone(),
             &style_store,
-            camera_node.clone(),
+            &mut camera_node,
         );
 
-        let mesh_layer = camera_node.borrow_mut().add_child_with_key(
+        let mesh_layer = camera_node.add_child_with_key(
             MeshLayer::new(
                 &device,
                 include_wgsl!("shaders/mesh_shader.wgsl"),
@@ -195,9 +197,8 @@ impl ShashlikRenderer {
             CompareFunction::Always,
         );
 
-        let screen_shape_layer = camera_node
-            .borrow_mut()
-            .add_child_with_key(screen_shape_layer, "screen shape".to_string());
+        let screen_shape_layer =
+            camera_node.add_child_with_key(screen_shape_layer, "screen shape".to_string());
 
         let text_layer = MeshLayer::new(
             &device,
@@ -208,25 +209,25 @@ impl ShashlikRenderer {
             CompareFunction::Always,
         );
 
-        let text_layer = camera_node
-            .borrow_mut()
-            .add_child_with_key(text_layer, "text_layer".to_string());
+        let text_layer = camera_node.add_child_with_key(text_layer, "text_layer".to_string());
 
-        camera_node.borrow_mut().add_child_with_key(TextRendererLayer {}, "text_renderer_layer".to_string());
+        camera_node.add_child_with_key(TextRendererLayer {}, "text_renderer_layer".to_string());
 
         let fps_node = FpsNode::new();
-        text_layer.borrow_mut().add_child_with_key(fps_node,"fps_node".to_string());
+        text_layer
+            .borrow_mut()
+            .add_child_with_key(fps_node, "fps_node".to_string());
 
         let feature_layers = FeatureLayers::new(
             feature_tags,
             &device,
-            &camera_node,
+            &mut camera_node,
             &pipeline_provider,
             &style_store,
         );
 
         let mut render_context = RenderContext::default();
-        world_tree_node.setup(&mut render_context, &device);
+        camera_node.setup(&mut render_context, &device);
 
         let (renderer_api_tx, renderer_api_rx) = channel();
 
@@ -236,7 +237,7 @@ impl ShashlikRenderer {
         let api = Arc::new(RendererApi::new(renderer_api_tx));
 
         Ok(Self {
-            world_tree_node,
+            camera_node,
             layers: Layers::new(
                 shape_layers,
                 feature_layers,
@@ -318,8 +319,7 @@ impl ShashlikRenderer {
                 .collision_handler
                 .resize(config.width as f32, config.height as f32);
 
-            self.world_tree_node
-                .resize(config.width, config.height, queue);
+            self.camera_node.resize(config.width, config.height, queue);
             self.depth_texture = DepthTexture::new(&device, config.width, config.height);
             self.msaa_texture =
                 MultisampledTexture::new(device, config.width, config.height, config.format);
@@ -331,7 +331,9 @@ impl ShashlikRenderer {
         let device = self.canvas.device();
         let config = self.canvas.config();
 
-        self.global_context.view_projection.update(config, view_proj_matrix, cs_offset);
+        self.global_context
+            .view_projection
+            .update(config, view_proj_matrix, cs_offset);
         if let Ok(message) = self.renderer_rx.try_recv() {
             match message {
                 RendererMessage::Draw(mut draw_commands) => {
@@ -345,12 +347,10 @@ impl ShashlikRenderer {
             }
         }
 
-        self.world_tree_node
+        self.camera_node
             .update(device, queue, &mut self.global_context);
 
         self.global_context.collision_handler.clear();
-
-
     }
 
     fn render(&mut self) -> Result<(), SurfaceError> {
@@ -401,10 +401,8 @@ impl ShashlikRenderer {
                 multiview_mask: None,
             });
 
-            self.world_tree_node
+            self.camera_node
                 .render(&mut render_pass, &mut self.global_context);
-
-
         }
 
         queue.submit(iter::once(encoder.finish()));

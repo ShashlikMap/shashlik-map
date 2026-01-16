@@ -18,7 +18,7 @@ impl FeatureLayers {
     pub fn new(
         tags: &[String],
         device: &Device,
-        camera_node: &Rc<RefCell<SceneTree>>,
+        camera_node: &mut SceneTree,
         pipeline_provider: &PipeLineProvider,
         style_store: &StyleStore,
     ) -> FeatureLayers {
@@ -45,7 +45,6 @@ impl FeatureLayers {
             );
 
             let layer = camera_node
-                .borrow_mut()
                 .add_child_with_key(shape_layer, format!("feature_layer {tag}").to_string());
             layers.shape_layers.insert(tag.clone(), layer);
         });
