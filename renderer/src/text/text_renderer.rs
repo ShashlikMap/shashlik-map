@@ -1,16 +1,16 @@
 use crate::collision_handler::CollisionHandler;
+use crate::geometry_data::TextData;
 use crate::nodes::SceneNode;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::vertex_attrs::TextInstanceInput;
 use crate::view_projection::ViewProjection;
 use crate::GlobalContext;
 use cgmath::num_traits::clamp;
-use cgmath::{vec3, Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector2, Vector3};
+use cgmath::{vec3, Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector3};
 use geo_types::{coord, point};
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
-use rustybuzz::GlyphBuffer;
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 use wgpu::{Buffer, Device, Queue, RenderPass};
@@ -23,18 +23,6 @@ pub struct GlyphData {
     pub matrix: Matrix4<f32>,
     pub screen_space: bool,
 }
-
-pub struct TextNodeData {
-    pub id: u64,
-    pub text: String,
-    pub size: f32,
-    pub alpha: f32,
-    pub positions: Vec<Vector3<f32>>,
-    pub screen_offset: Vector2<f32>,
-    pub screen_space: bool,
-    pub glyph_buffer: Option<GlyphBuffer>,
-}
-
 pub struct TextRendererLayer {}
 
 impl SceneNode for TextRendererLayer {
@@ -79,7 +67,7 @@ impl TextRenderer {
 
     pub fn insert(
         &mut self,
-        data: &mut TextNodeData,
+        data: &mut TextData,
         collision_handler: &mut CollisionHandler,
         view_projection: &ViewProjection,
     ) {

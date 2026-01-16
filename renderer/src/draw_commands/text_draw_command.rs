@@ -6,7 +6,6 @@ use crate::nodes::text_node::TextNode;
 use std::mem;
 use wgpu::Device;
 
-#[derive(Clone)]
 pub(crate) struct TextDrawCommand {
     pub data: Vec<TextData>,
 }

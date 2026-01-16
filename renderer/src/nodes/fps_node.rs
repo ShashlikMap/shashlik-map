@@ -1,10 +1,10 @@
 use crate::fps::FpsCounter;
 use crate::nodes::scene_tree::RenderContext;
 use crate::nodes::SceneNode;
-use crate::text::text_renderer::TextNodeData;
 use crate::GlobalContext;
 use cgmath::{vec2, vec3};
 use wgpu::{Device, Queue};
+use crate::geometry_data::TextData;
 
 pub struct FpsNode {
     counter: FpsCounter<100>,
@@ -28,7 +28,7 @@ impl SceneNode for FpsNode {
         global_context: &mut GlobalContext,
     ) {
         global_context.text_renderer.insert(
-            &mut TextNodeData {
+            &mut TextData {
                 id: 0,
                 text: format!("FPS {}", self.counter.update() as i32),
                 size: 40.0,

@@ -115,17 +115,17 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             let id =
                 hash(format!("{:?}{}{}", poi.text, local_position.x, local_position.y).as_bytes());
             let y_offset = if icon.is_some() { 30.0 } else { 0.0 };
-            geometry_data.push(GeometryData::Text(TextData {
+            geometry_data.push(GeometryData::Text(TextData::new(
                 id,
-                text: poi.text.to_uppercase(),
-                screen_offset: Vector2::new(0.0, y_offset * dpi_scale),
-                size: 40.0 * dpi_scale,
-                positions: vec![
+                poi.text.to_uppercase(),
+                Vector2::new(0.0, y_offset * dpi_scale),
+                40.0 * dpi_scale,
+                vec![
                     Vector3::from((local_position.x, local_position.y, 0.0))
                         .cast()
                         .unwrap(),
                 ],
-            }));
+            )));
         }
     }
 
@@ -241,16 +241,16 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     if *name_count % 30 == 0 {
                         // FIXME TextRenderer has a bug for only 2 coords line, let's skip it for now
                         if line.len() > 2 {
-                            geometry_data.push(GeometryData::Text(TextData {
-                                id: hash(name.as_bytes()),
-                                text: name.to_uppercase(),
-                                screen_offset: Vector2::new(0.0, 0.0),
-                                size: 30.0 * dpi_scale,
-                                positions: line
+                            geometry_data.push(GeometryData::Text(TextData::new(
+                                hash(name.as_bytes()),
+                                name.to_uppercase(),
+                                Vector2::new(0.0, 0.0),
+                                30.0 * dpi_scale,
+                                line
                                     .iter()
                                     .map(|item| Vector3::new(item.x as f32, item.y as f32, 0.0))
                                     .collect(),
-                            }));
+                            )));
                         }
                     }
                 }
