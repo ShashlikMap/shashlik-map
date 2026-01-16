@@ -9,7 +9,6 @@ pub(crate) mod mesh_node;
 pub mod scene_tree;
 pub mod style_adapter_node;
 pub mod text_node;
-pub mod world;
 pub mod shape_layers;
 pub mod feature_layers;
 

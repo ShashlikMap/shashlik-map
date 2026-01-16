@@ -20,7 +20,7 @@ impl ShapeLayers {
         device: &Device,
         pipeline_provider: PipeLineProvider,
         style_store: &StyleStore,
-        camera_node: Rc<RefCell<SceneTree>>,
+        camera_node: &mut SceneTree,
     ) -> ShapeLayers {
         let mut shape_layers = Vec::with_capacity(MAX_SHAPE_LAYERS);
         for i in 0..MAX_SHAPE_LAYERS {
@@ -42,7 +42,6 @@ impl ShapeLayers {
             );
 
             let shape_layer = camera_node
-                .borrow_mut()
                 .add_child_with_key(shape_layer, format!("shape_layer {i}").to_string());
             shape_layers.push(shape_layer);
         }

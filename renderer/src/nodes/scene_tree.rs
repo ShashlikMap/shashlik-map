@@ -1,5 +1,5 @@
-use crate::nodes::SceneNode;
 use crate::GlobalContext;
+use crate::nodes::SceneNode;
 use std::cell::RefCell;
 use std::rc::Rc;
 use wgpu::{BindGroupLayout, CompareFunction, Device, Queue, RenderPass};
@@ -36,9 +36,6 @@ impl SceneTree {
         }
     }
 
-    pub fn add_child(&mut self, value: impl SceneNode + 'static) -> Rc<RefCell<SceneTree>> {
-        self.add_child_with_key(value, "".to_string())
-    }
     pub fn add_child_with_key(
         &mut self,
         value: impl SceneNode + 'static,
@@ -58,37 +55,23 @@ impl SceneTree {
         //     self.children.len()
         // );
     }
-
-    pub fn clear(&mut self) {
-        self.children.clear();
-    }
 }
 
 impl SceneNode for SceneTree {
     fn setup(&mut self, render_context: &mut RenderContext, device: &Device) {
+        let mut cloned_context = render_context.clone();
+        self.value.setup(&mut cloned_context, device);
         self.children.iter().for_each(|scene_node| {
             // clone the context so the subtree gets its own version
-            let mut cloned_context = render_context.clone();
-
             scene_node
                 .borrow_mut()
-                .value
-                .setup(&mut cloned_context, device);
-            scene_node.borrow_mut().setup(&mut cloned_context, device);
+                .setup(&mut cloned_context.clone(), device);
         });
     }
 
-    fn update(
-        &mut self,
-        device: &Device,
-        queue: &Queue,
-        global_context: &mut GlobalContext,
-    ) {
+    fn update(&mut self, device: &Device, queue: &Queue, global_context: &mut GlobalContext) {
+        self.value.update(device, queue, global_context);
         self.children.iter().for_each(|scene_node| {
-            scene_node
-                .borrow_mut()
-                .value
-                .update(device, &queue, global_context);
             scene_node
                 .borrow_mut()
                 .update(device, queue, global_context);
@@ -96,18 +79,15 @@ impl SceneNode for SceneTree {
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
+        self.value.render(render_pass, global_context);
         self.children.iter().for_each(|scene_node| {
-            scene_node
-                .borrow_mut()
-                .value
-                .render(render_pass, global_context);
             scene_node.borrow_mut().render(render_pass, global_context);
         });
     }
 
     fn resize(&mut self, width: u32, height: u32, queue: &Queue) {
+        self.value.resize(width, height, queue);
         self.children.iter().for_each(|scene_node| {
-            scene_node.borrow_mut().value.resize(width, height, queue);
             scene_node.borrow_mut().resize(width, height, queue);
         });
     }
