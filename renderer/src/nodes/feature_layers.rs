@@ -34,6 +34,7 @@ impl FeatureLayers {
                 pipeline_provider.clone(),
                 None,
                 CompareFunction::Always,
+                None
             );
 
             let shape_layer: StyleAdapterNode<MeshLayer> = StyleAdapterNode::new(

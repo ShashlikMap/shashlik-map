@@ -12,6 +12,7 @@ pub struct MeshLayer<'a> {
     pipeline_provider: PipeLineProvider,
     render_pipeline: Option<RenderPipeline>,
     depth_compare: CompareFunction,
+    vs_entry_point: Option<&'static str>
 }
 
 impl<'a> MeshLayer<'a> {
@@ -22,6 +23,7 @@ impl<'a> MeshLayer<'a> {
         pipeline_provider: PipeLineProvider,
         custom_cull_mode: Option<Face>,
         depth_compare: CompareFunction,
+        vs_entry_point: Option<&'static str>
     ) -> Self {
         let shader_module = device.create_shader_module(shader_module_desc);
         MeshLayer {
@@ -31,6 +33,7 @@ impl<'a> MeshLayer<'a> {
             pipeline_provider,
             render_pipeline: None,
             depth_compare,
+            vs_entry_point
         }
     }
 }
@@ -44,6 +47,7 @@ impl<'a> SceneNode for MeshLayer<'a> {
             &*self.buffer_layouts,
             &self.shader_module,
             self.custom_cull_mode,
+            self.vs_entry_point
         ));
     }
 

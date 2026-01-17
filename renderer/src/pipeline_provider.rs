@@ -26,19 +26,20 @@ impl PipeLineProvider {
         buffer_layouts: &[VertexBufferLayout],
         shader_module: &ShaderModule,
         custom_cull_mode: Option<Face>,
+        vs_entry_point: Option<&'static str>
     ) -> RenderPipeline {
         let bind_group_layouts: Vec<&BindGroupLayout> = render_context.bind_group_layouts.iter().collect();
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
             bind_group_layouts: &bind_group_layouts,
-            immediate_size: 0
+            ..Default::default()
         });
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: shader_module,
-                entry_point: Some("vs_main"),
+                entry_point: vs_entry_point.or(Some("vs_main")),
                 buffers: buffer_layouts,
                 compilation_options: Default::default(),
             },
@@ -54,16 +55,10 @@ impl PipeLineProvider {
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
                 cull_mode: custom_cull_mode,
-                // Setting this to anything other than Fill requires Features::POLYGON_MODE_LINE
-                // or Features::POLYGON_MODE_POINT
                 polygon_mode: wgpu::PolygonMode::Fill,
-                // Requires Features::DEPTH_CLIP_CONTROL
-                unclipped_depth: false,
-                // Requires Features::CONSERVATIVE_RASTERIZATION
-                conservative: false,
+                ..Default::default()
             },
             depth_stencil: Some({
                 let mut depth_state = self.depth_state.clone();
