@@ -9,13 +9,10 @@ use wgpu::{
     BindGroup, BindGroupLayout, BlendState, Buffer, CompareFunction, DepthStencilState, Device,
     Face, Queue, RenderPass, SurfaceConfiguration, TextureFormat, include_wgsl,
 };
-use crate::mesh::mesh::Mesh;
-use crate::modifier::render_modifier::SpatialData;
-use crate::nodes::mesh_node::PositionedMesh;
 
 pub struct MeshPipeline {
     buffer: Buffer,
-    bind_group_layout: BindGroupLayout,
+    pub bind_group_layout: BindGroupLayout,
     bind_group: BindGroup,
 }
 
@@ -67,15 +64,10 @@ impl MeshPipeline {
 impl RenderPipeline for MeshPipeline {
     type InstanceInputType = GeneralInstanceInput;
 
-    fn create_positioned_mesh(device: &Device,
-                              spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-                              mesh: Mesh) -> PositionedMesh<GeneralInstanceInput> {
-        mesh.to_positioned::<GeneralInstanceInput>(device, spatial_rx)
-    }
-    
     fn render(
         &mut self,
         render_pass: &mut RenderPass,
+        _device: &Device,
         queue: &Queue,
         global_context: &mut GlobalContext,
     ) {
@@ -94,7 +86,7 @@ impl RenderPipeline for MeshPipeline {
         config: &SurfaceConfiguration,
     ) -> OwnedRenderPipelineDescriptor<'_> {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Render Pipeline Layout"),
+            label: Some("Mesh Render Pipeline Layout"),
             bind_group_layouts: &[&self.bind_group_layout],
             ..Default::default()
         });

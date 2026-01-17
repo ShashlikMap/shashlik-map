@@ -1,19 +1,26 @@
-use crate::GlobalContext;
-use wgpu::{ColorTargetState, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, Queue, RenderPass, ShaderModule, SurfaceConfiguration, VertexBufferLayout};
 use crate::mesh::mesh::Mesh;
 use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::mesh_node::{MeshInstanceInput, PositionedMesh};
+use crate::GlobalContext;
+use cgmath::Vector3;
+use wgpu::{ColorTargetState, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, Queue, RenderPass, ShaderModule, SurfaceConfiguration, VertexBufferLayout};
 
 pub mod mesh_pipeline;
+mod shape_pipeline;
 
 pub trait RenderPipeline {
     type InstanceInputType: MeshInstanceInput;
 
     fn create_positioned_mesh(device: &Device,
+                              instance_positions: Option<Vec<Vector3<f64>>>,
                               spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-                              mesh: Mesh) -> PositionedMesh<Self::InstanceInputType>;
+                              is_two_instances: bool,
+                              with_collisions: bool,
+                              mesh: Mesh) -> PositionedMesh<Self::InstanceInputType> {
+        mesh.to_positioned_with_instances::<Self::InstanceInputType>(device, instance_positions, spatial_rx, is_two_instances, with_collisions)
+    }
 
-    fn render(&mut self, render_pass: &mut RenderPass, queue: &Queue, global_context: &mut GlobalContext);
+    fn render(&mut self, render_pass: &mut RenderPass, device: &Device, queue: &Queue, global_context: &mut GlobalContext);
     fn prepare(&self, device: &Device, config: &SurfaceConfiguration) -> OwnedRenderPipelineDescriptor<'_>;
 }
 

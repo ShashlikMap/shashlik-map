@@ -1,4 +1,4 @@
-use crate::draw_commands::{geometry_to_mesh, DrawCommand, MeshVertex};
+use crate::draw_commands::{DrawCommand, MeshVertex, geometry_to_mesh};
 use crate::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
 use lyon::lyon_tessellation::VertexBuffers;
@@ -19,6 +19,8 @@ impl DrawCommand for Mesh3dDrawCommand {
     ) {
         let mesh = geometry_to_mesh(&device, &self.mesh);
         // layers.mesh_layer.borrow_mut().add_child_with_key(mesh.to_positioned::<GeneralInstanceInput>(device, spatial_rx), key.clone());
-        layers.new_mesh_layer.add(device, spatial_rx, mesh);
+        layers
+            .new_mesh_layer
+            .add(device, None, spatial_rx, false, false, mesh);
     }
 }

@@ -1,3 +1,4 @@
+use cgmath::Vector3;
 use crate::GlobalContext;
 use crate::mesh::mesh::Mesh;
 use crate::mesh_layers::BaseMeshLayer;
@@ -24,11 +25,14 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
     pub fn add(
         &mut self,
         device: &Device,
+        instance_positions: Option<Vec<Vector3<f64>>>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
+        is_two_instances: bool,
+        with_collisions: bool,
         mesh: Mesh,
     ) {
         self.meshes
-            .push(P::create_positioned_mesh(device, spatial_rx, mesh));
+            .push(P::create_positioned_mesh(device, instance_positions, spatial_rx, is_two_instances, with_collisions, mesh));
     }
 }
 
@@ -52,7 +56,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
             render_pass.set_pipeline(pp);
 
             self.render_pipeline
-                .render(render_pass, queue, global_context);
+                .render(render_pass, device, queue, global_context);
             self.meshes
                 .iter_mut()
                 .for_each(|mesh| mesh.render_kiol(render_pass));
