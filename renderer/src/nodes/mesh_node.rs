@@ -77,7 +77,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         device: &Device,
         mesh: Mesh,
         instance_positions: Option<Vec<Vector3<f64>>>,
-        mut spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
+        spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
         with_collisions: bool,
     ) -> Self {
@@ -86,14 +86,14 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             .iter()
             .map(|v| (*v, 1.0))
             .collect();
-        let spatial_data = spatial_rx.try_recv().unwrap_or(SpatialData::new());
+        let spatial_data = SpatialData::new();
         let mut attrs = Vec::new();
 
         T::fill_attrs(
             &mut attrs,
             &Vector3::new(0.0, 0.0, 0.0),
             &instance_positions_and_alpha,
-            &spatial_data,
+            &SpatialData::new(),
             is_two_instances,
         );
 
@@ -115,12 +115,6 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             with_collisions,
             first_render: true,
         }
-    }
-}
-
-impl SceneNode for Mesh {
-    fn render(&mut self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
-        self.render_internal(render_pass, &(0..1));
     }
 }
 
