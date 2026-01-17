@@ -31,6 +31,7 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
         with_collisions: bool,
         mesh: Mesh,
     ) {
+        println!("qq");
         self.meshes
             .push(P::create_positioned_mesh(device, instance_positions, spatial_rx, is_two_instances, with_collisions, mesh));
     }
@@ -57,6 +58,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
 
             self.render_pipeline
                 .render(render_pass, device, queue, global_context);
+
             self.meshes
                 .iter_mut()
                 .for_each(|mesh| mesh.render_kiol(render_pass));

@@ -6,7 +6,7 @@ use cgmath::Vector3;
 use wgpu::{ColorTargetState, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, Queue, RenderPass, ShaderModule, SurfaceConfiguration, VertexBufferLayout};
 
 pub mod mesh_pipeline;
-mod shape_pipeline;
+pub mod shape_pipeline;
 
 pub trait RenderPipeline {
     type InstanceInputType: MeshInstanceInput;

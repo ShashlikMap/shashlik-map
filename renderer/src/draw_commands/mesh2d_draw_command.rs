@@ -1,5 +1,5 @@
 use crate::canvas_api::MeshInfo;
-use crate::draw_commands::{geometry_to_mesh_with_layers, DrawCommand};
+use crate::draw_commands::{DrawCommand, geometry_to_mesh_with_layers};
 use crate::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
 use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex};
@@ -26,26 +26,39 @@ impl DrawCommand for Mesh2dDrawCommand {
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         layers: &mut Layers,
     ) {
-        let mesh = geometry_to_mesh_with_layers(&device, &self.mesh, mem::take(&mut self.layers_indices));
+        let mesh =
+            geometry_to_mesh_with_layers(&device, &self.mesh, mem::take(&mut self.layers_indices));
 
-        let mesh = mesh.to_positioned_with_instances::<ShapeInstanceInput>(
-            device,
-            Some(mem::take(&mut self.mesh_info.instance_positions)),
-            spatial_rx,
-            !self.is_screen,
-            self.mesh_info.with_collision,
-        );
+        // let mesh = mesh.to_positioned_with_instances::<ShapeInstanceInput>(
+        //     device,
+        //     Some(mem::take(&mut self.mesh_info.instance_positions)),
+        //     spatial_rx,
+        //     !self.is_screen,
+        //     self.mesh_info.with_collision,
+        // );
 
-        if let Some(feature_layer) = self.feature_layer_tag.as_ref()
-            .and_then(|tag| layers.feature_layers(tag)) {
-            feature_layer.borrow_mut().add_child_with_key(mesh, key);
+        if let Some(feature_layer) = self
+            .feature_layer_tag
+            .as_ref()
+            .and_then(|tag| layers.feature_layers(tag))
+        {
+            // feature_layer.borrow_mut().add_child_with_key(mesh, key);
         } else {
             if self.is_screen {
-                layers.screen_shape_layer.borrow_mut().add_child_with_key(mesh, key);
+                // layers.screen_shape_layer.borrow_mut().add_child_with_key(mesh, key);
             } else {
-                layers.shape_layers(self.real_layer)
-                    .borrow_mut()
-                    .add_child_with_key(mesh, key);
+                layers.new_shape_layer.add(
+                    device,
+                    Some(mem::take(&mut self.mesh_info.instance_positions)),
+                    spatial_rx,
+                    !self.is_screen,
+                    self.mesh_info.with_collision,
+                    mesh,
+                );
+
+                // layers.shape_layers(self.real_layer)
+                //     .borrow_mut()
+                //     .add_child_with_key(mesh, key);
             }
         }
     }

@@ -85,6 +85,7 @@ impl RenderPipeline for MeshPipeline {
         device: &Device,
         config: &SurfaceConfiguration,
     ) -> OwnedRenderPipelineDescriptor<'_> {
+        
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Mesh Render Pipeline Layout"),
             bind_group_layouts: &[&self.bind_group_layout],

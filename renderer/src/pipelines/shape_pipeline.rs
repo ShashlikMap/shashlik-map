@@ -79,6 +79,10 @@ impl RenderPipeline for ShapePipeline {
         // TODO It should be like that
         self.mesh_pipeline
             .render(render_pass, device, queue, global_context);
+
+        if let Some(bind_group) = self.style_bind_group.as_ref() {
+            render_pass.set_bind_group(1, bind_group, &[]);
+        }
     }
 
     fn prepare(
@@ -91,7 +95,6 @@ impl RenderPipeline for ShapePipeline {
         stencil.depth_compare = CompareFunction::Always;
         stencil.depth_write_enabled = false;
         mesh_descriptor.depth_stencil = Some(stencil);
-
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shape Render Pipeline Layout"),
             bind_group_layouts: &[

@@ -236,13 +236,6 @@ impl ShashlikRenderer {
         let mut render_context = RenderContext::default();
         camera_node.setup(&mut render_context, &device);
 
-        let (renderer_api_tx, renderer_api_rx) = channel();
-
-        let (renderer_tx, renderer_rx) = channel();
-        Self::run_background(style_store, renderer_tx.clone(), renderer_api_rx);
-
-        let api = Arc::new(RendererApi::new(renderer_api_tx));
-
         let mut layers= Layers::new(
             device,
             shape_layers,
@@ -250,7 +243,17 @@ impl ShashlikRenderer {
             mesh_layer,
             screen_shape_layer,
             text_layer,
+            &style_store
         );
+
+        let (renderer_api_tx, renderer_api_rx) = channel();
+
+        let (renderer_tx, renderer_rx) = channel();
+        Self::run_background(style_store, renderer_tx.clone(), renderer_api_rx);
+
+        let api = Arc::new(RendererApi::new(renderer_api_tx));
+
+        layers.new_shape_layer.prepare(device, config);
         layers.new_mesh_layer.prepare(device, config);
 
         Ok(Self {
@@ -412,6 +415,7 @@ impl ShashlikRenderer {
                 multiview_mask: None,
             });
 
+            self.layers.new_shape_layer.render(&mut render_pass, queue, device, &mut self.global_context);
             self.layers.new_mesh_layer.render(&mut render_pass, queue, device, &mut self.global_context);
             // self.camera_node
             //     .render(&mut render_pass, &mut self.global_context);
