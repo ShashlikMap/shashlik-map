@@ -8,7 +8,7 @@ use crate::layers::Layers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
 use crate::msaa_texture::MultisampledTexture;
-use crate::nodes::feature_layers::FeatureLayers;
+use mesh_layers::feature_layers::FeatureLayers;
 use crate::styles::style_store::StyleStore;
 use crate::view_projection::ViewProjection;
 use canvas_api::CanvasApi;
@@ -24,7 +24,7 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
-use wgpu::SurfaceError;
+use wgpu::{Device, SurfaceError};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 pub mod canvas_api;
@@ -82,9 +82,9 @@ pub struct GlobalContext {
 }
 
 impl GlobalContext {
-    pub fn new(collision_handler: CollisionHandler) -> Self {
+    pub fn new(device: &Device, collision_handler: CollisionHandler) -> Self {
         GlobalContext {
-            view_projection: ViewProjection::new(),
+            view_projection: ViewProjection::new(device),
             collision_handler,
         }
     }
@@ -114,7 +114,7 @@ impl ShashlikRenderer {
         let msaa_texture =
             MultisampledTexture::new(device, config.width, config.height, config.format);
 
-        let mut global_context = GlobalContext::new(CollisionHandler::new(
+        let mut global_context = GlobalContext::new(device, CollisionHandler::new(
             config.width as f32,
             config.height as f32,
         ));
@@ -124,9 +124,9 @@ impl ShashlikRenderer {
 
         let style_store = StyleStore::new();
 
-        let feature_layers = FeatureLayers::new(feature_tags, &device, &style_store);
+        let feature_layers = FeatureLayers::new(feature_tags, &device, &mut global_context, &style_store);
 
-        let mut layers = Layers::new(device, feature_layers, &style_store, font);
+        let mut layers = Layers::new(device, &mut global_context, feature_layers, &style_store, font);
 
         let (renderer_api_tx, renderer_api_rx) = channel();
 
@@ -135,7 +135,7 @@ impl ShashlikRenderer {
 
         let api = Arc::new(RendererApi::new(renderer_api_tx));
 
-        layers.prepare(device, config);
+        layers.prepare(&mut global_context, device, config);
 
         Ok(Self {
             layers,
@@ -222,11 +222,12 @@ impl ShashlikRenderer {
 
     fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
         let device = self.canvas.device();
+        let queue = self.canvas.queue();
         let config = self.canvas.config();
 
         self.global_context
             .view_projection
-            .update(config, view_proj_matrix, cs_offset);
+            .update(queue, config, view_proj_matrix, cs_offset);
         if let Ok(message) = self.renderer_rx.try_recv() {
             match message {
                 RendererMessage::Draw(mut draw_commands) => {

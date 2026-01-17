@@ -42,8 +42,8 @@ impl<P: RenderPipeline> TextMeshLayer<P> {
 }
 
 impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
-    fn prepare(&mut self, device: &Device, config: &SurfaceConfiguration) {
-        let descriptor = self.render_pipeline.prepare(device, config);
+    fn prepare(&mut self, global_context: &mut GlobalContext, device: &Device, config: &SurfaceConfiguration) {
+        let descriptor = self.render_pipeline.prepare(global_context, device, config);
         self.pipeline = Some(descriptor.to_render_pipeline(device));
     }
 

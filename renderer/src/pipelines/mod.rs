@@ -22,7 +22,7 @@ pub trait RenderPipeline {
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, device: &Device, queue: &Queue, global_context: &mut GlobalContext);
-    fn prepare(&self, device: &Device, config: &SurfaceConfiguration) -> OwnedRenderPipelineDescriptor<'_>;
+    fn prepare(&self, global_context: &mut GlobalContext, device: &Device, config: &SurfaceConfiguration) -> OwnedRenderPipelineDescriptor<'_>;
 }
 
 #[derive(Clone, Debug)]

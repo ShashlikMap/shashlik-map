@@ -1,8 +1,8 @@
-use crate::{GlobalContext, ReceiverExt};
 use crate::consts::STYLE_SHADER_PARAMS_COUNT;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex, VertexAttrib};
+use crate::{GlobalContext, ReceiverExt};
 use tokio::sync::broadcast::Receiver;
 use wgpu::util::DeviceExt;
 use wgpu::{
@@ -21,6 +21,7 @@ pub struct ShapePipeline {
 impl ShapePipeline {
     pub fn new(
         device: &Device,
+        global_context: &mut GlobalContext,
         is_screen: bool,
         style_uniform_rx: Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
     ) -> Self {
@@ -40,7 +41,7 @@ impl ShapePipeline {
             });
 
         Self {
-            mesh_pipeline: MeshPipeline::new(device),
+            mesh_pipeline: MeshPipeline::new(device, global_context),
             is_screen,
             styles_bind_group_layout,
             style_bind_group: None,
@@ -79,7 +80,6 @@ impl RenderPipeline for ShapePipeline {
             self.style_bind_group = Some(styles_bind_group);
         }
 
-        // TODO It should not be like that
         self.mesh_pipeline
             .render(render_pass, device, queue, global_context);
 
@@ -90,10 +90,11 @@ impl RenderPipeline for ShapePipeline {
 
     fn prepare(
         &self,
+        global_context: &mut GlobalContext,
         device: &Device,
         config: &SurfaceConfiguration,
     ) -> OwnedRenderPipelineDescriptor<'_> {
-        let mut mesh_descriptor = self.mesh_pipeline.prepare(device, config);
+        let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context, device, config);
         let mut stencil = mesh_descriptor.depth_stencil.unwrap();
         stencil.depth_compare = CompareFunction::Always;
         stencil.depth_write_enabled = false;

@@ -1,22 +1,17 @@
+use crate::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
-use crate::vertex_attrs::{
-    ShapeInstanceInput, TextInstanceInput, VertexAttrib, VertexNormal,
-};
-use crate::GlobalContext;
-use wgpu::{
-    include_wgsl, CompareFunction, Device, Queue, RenderPass,
-    SurfaceConfiguration,
-};
+use crate::vertex_attrs::{ShapeInstanceInput, TextInstanceInput, VertexAttrib, VertexNormal};
+use wgpu::{CompareFunction, Device, Queue, RenderPass, SurfaceConfiguration, include_wgsl};
 
 pub struct TextPipeline {
     mesh_pipeline: MeshPipeline,
 }
 
 impl TextPipeline {
-    pub fn new(device: &Device) -> Self {
+    pub fn new(device: &Device, global_context: &mut GlobalContext) -> Self {
         Self {
-            mesh_pipeline: MeshPipeline::new(device),
+            mesh_pipeline: MeshPipeline::new(device, global_context),
         }
     }
 }
@@ -31,17 +26,17 @@ impl RenderPipeline for TextPipeline {
         queue: &Queue,
         global_context: &mut GlobalContext,
     ) {
-        // TODO It should not be like that
         self.mesh_pipeline
             .render(render_pass, device, queue, global_context);
     }
 
     fn prepare(
         &self,
+        global_context: &mut GlobalContext,
         device: &Device,
         config: &SurfaceConfiguration,
     ) -> OwnedRenderPipelineDescriptor<'_> {
-        let mut mesh_descriptor = self.mesh_pipeline.prepare(device, config);
+        let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context, device, config);
 
         let mut stencil = mesh_descriptor.depth_stencil.unwrap();
         stencil.depth_compare = CompareFunction::Always;

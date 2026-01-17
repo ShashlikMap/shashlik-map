@@ -1,7 +1,6 @@
 use wgpu::{Device, Queue, RenderPass};
 use crate::GlobalContext;
 
-pub mod feature_layers;
 pub mod mesh_node;
 
 pub trait SceneNode {

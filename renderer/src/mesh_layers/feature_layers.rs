@@ -11,14 +11,14 @@ pub struct FeatureLayers {
 }
 
 impl FeatureLayers {
-    pub fn new(tags: &[String], device: &Device, style_store: &StyleStore) -> FeatureLayers {
+    pub fn new(tags: &[String], device: &Device, global_context: &mut GlobalContext, style_store: &StyleStore) -> FeatureLayers {
         let mut layers = FeatureLayers {
             shape_layers: LinkedHashMap::new(),
         };
 
         tags.into_iter().for_each(|tag| {
             let layer =
-                GeneralMeshLayer::new(ShapePipeline::new(device, false, style_store.subscribe()));
+                GeneralMeshLayer::new(ShapePipeline::new(device, global_context,false, style_store.subscribe()));
             layers.shape_layers.insert(tag.clone(), layer);
         });
 
@@ -37,9 +37,9 @@ impl FeatureLayers {
 }
 
 impl BaseMeshLayer for FeatureLayers {
-    fn prepare(&mut self, device: &Device, config: &SurfaceConfiguration) {
+    fn prepare(&mut self, global_context: &mut GlobalContext, device: &Device, config: &SurfaceConfiguration) {
         self.shape_layers.iter_mut().for_each(|(_, layer)| {
-            layer.prepare(device, config);
+            layer.prepare(global_context, device, config);
         });
     }
 
