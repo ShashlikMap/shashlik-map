@@ -1,9 +1,18 @@
-use wgpu::{ColorTargetState, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, Queue, RenderPass, ShaderModule, SurfaceConfiguration, VertexBufferLayout};
 use crate::GlobalContext;
+use wgpu::{ColorTargetState, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, Queue, RenderPass, ShaderModule, SurfaceConfiguration, VertexBufferLayout};
+use crate::mesh::mesh::Mesh;
+use crate::modifier::render_modifier::SpatialData;
+use crate::nodes::mesh_node::{MeshInstanceInput, PositionedMesh};
 
 pub mod mesh_pipeline;
 
 pub trait RenderPipeline {
+    type InstanceInputType: MeshInstanceInput;
+
+    fn create_positioned_mesh(device: &Device,
+                              spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
+                              mesh: Mesh) -> PositionedMesh<Self::InstanceInputType>;
+
     fn render(&mut self, render_pass: &mut RenderPass, queue: &Queue, global_context: &mut GlobalContext);
     fn prepare(&self, device: &Device, config: &SurfaceConfiguration) -> OwnedRenderPipelineDescriptor<'_>;
 }
@@ -17,6 +26,40 @@ pub struct OwnedRenderPipelineDescriptor<'a> {
     pub depth_stencil: Option<DepthStencilState>,
     pub multisample: MultisampleState,
     pub fragment: Option<OwnedFragmentState<'a>>,
+}
+
+impl OwnedRenderPipelineDescriptor<'_> {
+    pub fn to_render_pipeline(self, device: &Device) -> wgpu::RenderPipeline {
+        let descriptor = self;
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline"),
+            layout: descriptor.layout.as_ref(),
+            vertex: wgpu::VertexState {
+                module: &descriptor.vertex.module,
+                entry_point: Some("vs_main"),
+                buffers: &*descriptor.vertex.buffers,
+                compilation_options: Default::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &descriptor.vertex.module,
+                entry_point: Some("fs_main"),
+                targets: &*descriptor.fragment.unwrap().targets,
+                compilation_options: Default::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: descriptor.primitive.cull_mode,
+                polygon_mode: wgpu::PolygonMode::Fill,
+                ..Default::default()
+            },
+            depth_stencil: descriptor.depth_stencil,
+            multisample: descriptor.multisample,
+            // Useful for optimizing shader compilation on Android
+            cache: None,
+            multiview_mask: None,
+        })
+    }
 }
 
 #[derive(Clone, Debug)]

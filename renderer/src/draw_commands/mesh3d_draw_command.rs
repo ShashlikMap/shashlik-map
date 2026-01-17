@@ -2,7 +2,6 @@ use crate::draw_commands::{geometry_to_mesh, DrawCommand, MeshVertex};
 use crate::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
 use lyon::lyon_tessellation::VertexBuffers;
-use crate::vertex_attrs::GeneralInstanceInput;
 
 #[derive(Clone)]
 pub(crate) struct Mesh3dDrawCommand {

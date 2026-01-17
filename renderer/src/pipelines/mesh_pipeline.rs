@@ -9,6 +9,9 @@ use wgpu::{
     BindGroup, BindGroupLayout, BlendState, Buffer, CompareFunction, DepthStencilState, Device,
     Face, Queue, RenderPass, SurfaceConfiguration, TextureFormat, include_wgsl,
 };
+use crate::mesh::mesh::Mesh;
+use crate::modifier::render_modifier::SpatialData;
+use crate::nodes::mesh_node::PositionedMesh;
 
 pub struct MeshPipeline {
     buffer: Buffer,
@@ -62,6 +65,14 @@ impl MeshPipeline {
 }
 
 impl RenderPipeline for MeshPipeline {
+    type InstanceInputType = GeneralInstanceInput;
+
+    fn create_positioned_mesh(device: &Device,
+                              spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
+                              mesh: Mesh) -> PositionedMesh<GeneralInstanceInput> {
+        mesh.to_positioned::<GeneralInstanceInput>(device, spatial_rx)
+    }
+    
     fn render(
         &mut self,
         render_pass: &mut RenderPass,

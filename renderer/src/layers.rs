@@ -5,6 +5,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wgpu::Device;
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
+use crate::pipelines::mesh_pipeline::MeshPipeline;
 
 pub(crate) struct Layers {
     shape_layers: ShapeLayers,
@@ -12,7 +13,7 @@ pub(crate) struct Layers {
     pub mesh_layer: Rc<RefCell<SceneTree>>,
     pub screen_shape_layer: Rc<RefCell<SceneTree>>,
     pub text_layer: Rc<RefCell<SceneTree>>,
-    pub new_mesh_layer: GeneralMeshLayer
+    pub new_mesh_layer: GeneralMeshLayer<MeshPipeline>
 }
 
 impl Layers {
@@ -30,7 +31,7 @@ impl Layers {
             mesh_layer,
             screen_shape_layer,
             text_layer,
-            new_mesh_layer: GeneralMeshLayer::new(device)
+            new_mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(device))
         }
     }
     pub fn shape_layers(&self, index: usize) -> Rc<RefCell<SceneTree>> {
