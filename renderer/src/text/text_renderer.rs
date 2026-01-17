@@ -1,10 +1,8 @@
 use crate::collision_handler::CollisionHandler;
 use crate::geometry_data::TextData;
-use crate::nodes::SceneNode;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::vertex_attrs::TextInstanceInput;
 use crate::view_projection::ViewProjection;
-use crate::GlobalContext;
 use cgmath::num_traits::clamp;
 use cgmath::{vec3, Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector3};
 use geo_types::{coord, point};
@@ -22,26 +20,6 @@ pub struct GlyphData {
     pub alpha: f32,
     pub matrix: Matrix4<f32>,
     pub screen_space: bool,
-}
-pub struct TextRendererLayer {}
-
-impl SceneNode for TextRendererLayer {
-    fn update(
-        &mut self,
-        device: &Device,
-        queue: &Queue,
-        global_context: &mut GlobalContext,
-    ) {
-        global_context.text_renderer.update(
-            queue,
-            device,
-            &global_context.view_projection.cs_offset,
-        );
-    }
-
-    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        global_context.text_renderer.render(render_pass);
-    }
 }
 
 pub struct TextRenderer {

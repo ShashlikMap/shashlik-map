@@ -1,19 +1,10 @@
-use crate::nodes::scene_tree::RenderContext;
-use crate::GlobalContext;
 use wgpu::{Device, Queue, RenderPass};
+use crate::GlobalContext;
 
-pub mod camera_node;
-pub mod fps_node;
-pub mod mesh_layer;
-pub(crate) mod mesh_node;
-pub mod scene_tree;
-pub mod style_adapter_node;
-pub mod text_node;
-pub mod shape_layers;
 pub mod feature_layers;
+pub mod mesh_node;
 
 pub trait SceneNode {
-    fn setup(&mut self, _render_context: &mut RenderContext, _device: &Device) {}
     fn update(
         &mut self,
         _device: &Device,

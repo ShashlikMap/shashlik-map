@@ -8,24 +8,19 @@ use crate::layers::Layers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
 use crate::msaa_texture::MultisampledTexture;
-use crate::nodes::camera_node::CameraNode;
 use crate::nodes::feature_layers::FeatureLayers;
-use crate::nodes::scene_tree::SceneTree;
-use crate::nodes::SceneNode;
 use crate::styles::style_store::StyleStore;
-use crate::text::text_renderer::TextRenderer;
-use crate::vertex_attrs::VertexAttrib;
 use crate::view_projection::ViewProjection;
 use canvas_api::CanvasApi;
-use cgmath::{vec2, vec3, Matrix4, Vector2, Vector3};
+use cgmath::{Matrix4, Vector2, Vector3, vec2, vec3};
 use geo_types::Coord;
 use messages::RendererApiMsg;
 use renderer_api::RendererApi;
 use rustybuzz::ttf_parser;
 use std::collections::HashMap;
 use std::iter;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
@@ -45,7 +40,6 @@ pub mod messages;
 pub mod modifier;
 mod msaa_texture;
 pub mod nodes;
-mod pipeline_provider;
 pub mod render_group;
 pub mod renderer_api;
 pub mod styles;
@@ -54,8 +48,8 @@ mod text;
 pub mod vertex_attrs;
 mod view_projection;
 
-pub mod pipelines;
 pub mod mesh_layers;
+pub mod pipelines;
 
 pub const SHADER_STYLE_GROUP_INDEX: u32 = 1;
 
@@ -85,25 +79,18 @@ impl<T: Clone> ReceiverExt<T> for tokio::sync::broadcast::Receiver<T> {
 pub struct GlobalContext {
     view_projection: ViewProjection,
     collision_handler: CollisionHandler,
-    text_renderer: TextRenderer,
 }
 
 impl GlobalContext {
-    pub fn new(
-        collision_handler: CollisionHandler,
-        device: &wgpu::Device,
-        font: &'static rustybuzz::ttf_parser::Face,
-    ) -> Self {
+    pub fn new(collision_handler: CollisionHandler) -> Self {
         GlobalContext {
             view_projection: ViewProjection::new(),
             collision_handler,
-            text_renderer: TextRenderer::new(device, font),
         }
     }
 }
 
 pub struct ShashlikRenderer {
-    camera_node: SceneTree,
     layers: Layers,
     depth_texture: DepthTexture,
     msaa_texture: MultisampledTexture,
@@ -123,121 +110,23 @@ impl ShashlikRenderer {
         let device = canvas.device();
         let config = canvas.config();
 
-        let mut camera_node = SceneTree::new(CameraNode::new(&device), "".to_string());
-
         let depth_texture = DepthTexture::new(&device, config.width, config.height);
         let msaa_texture =
             MultisampledTexture::new(device, config.width, config.height, config.format);
-        // let depth_state = DepthStencilState {
-        //     format: TextureFormat::Depth32Float,
-        //     depth_write_enabled: false,
-        //     depth_compare: CompareFunction::Less,
-        //     stencil: Default::default(),
-        //     bias: Default::default(),
-        // };
-        // let multisample_state = wgpu::MultisampleState {
-        //     count: MultisampledTexture::SAMPLE_COUNT,
-        //     mask: !0,
-        //     alpha_to_coverage_enabled: false,
-        // };
 
-
-        let mut global_context = GlobalContext::new(
-            CollisionHandler::new(config.width as f32, config.height as f32),
-            device,
-            font,
-        );
+        let mut global_context = GlobalContext::new(CollisionHandler::new(
+            config.width as f32,
+            config.height as f32,
+        ));
         global_context
             .view_projection
             .resize(config.width, config.height);
-        // let pipeline_provider = PipeLineProvider::new(
-        //     config.format,
-        //     depth_state.clone(),
-        //     multisample_state.clone(),
-        // );
 
         let style_store = StyleStore::new();
-        //
-        // let shape_layers = ShapeLayers::new(
-        //     device,
-        //     pipeline_provider.clone(),
-        //     &style_store,
-        //     &mut camera_node,
-        // );
-        //
-        // let mesh_layer = camera_node.add_child_with_key(
-        //     MeshLayer::new(
-        //         &device,
-        //         include_wgsl!("shaders/mesh_shader.wgsl"),
-        //         Rc::new([VertexNormal::desc(), GeneralInstanceInput::desc()]),
-        //         pipeline_provider.clone(),
-        //         Some(Face::Back),
-        //         CompareFunction::Less,
-        //         None
-        //     ),
-        //     "mesh layer".to_string(),
-        // );
-        //
-        // let screen_shape_layer = MeshLayer::new(
-        //     &device,
-        //     include_wgsl!("shaders/shape_shader.wgsl"),
-        //     Rc::new([ShapeVertex::desc(), ShapeInstanceInput::desc()]),
-        //     pipeline_provider.clone(),
-        //     None,
-        //     CompareFunction::Always,
-        //     Some("vs_main_screen")
-        // );
-        //
-        // // TODO Why does it need a specific CompareFunction while e.g. FpsNode doesn't need it to be on top of screen?
-        // let screen_shape_layer: StyleAdapterNode<MeshLayer> = StyleAdapterNode::new(
-        //     device,
-        //     style_store.subscribe(),
-        //     screen_shape_layer,
-        //     SHADER_STYLE_GROUP_INDEX,
-        //     CompareFunction::Always,
-        // );
-        //
-        // let screen_shape_layer =
-        //     camera_node.add_child_with_key(screen_shape_layer, "screen shape".to_string());
-        //
-        // let text_layer = MeshLayer::new(
-        //     &device,
-        //     include_wgsl!("shaders/text_shader.wgsl"),
-        //     Rc::new([VertexNormal::desc(), TextInstanceInput::desc()]),
-        //     pipeline_provider.clone(),
-        //     None,
-        //     CompareFunction::Always,
-        //     None
-        // );
-        //
-        // let text_layer = camera_node.add_child_with_key(text_layer, "text_layer".to_string());
-        //
-        // camera_node.add_child_with_key(TextRendererLayer {}, "text_renderer_layer".to_string());
-        //
-        // let fps_node = FpsNode::new();
-        // text_layer
-        //     .borrow_mut()
-        //     .add_child_with_key(fps_node, "fps_node".to_string());
-        //
-        let feature_layers = FeatureLayers::new(
-            feature_tags,
-            &device,
-            &style_store,
-        );
-        //
-        // let mut render_context = RenderContext::default();
-        // camera_node.setup(&mut render_context, &device);
 
-        let mut layers= Layers::new(
-            device,
-            // shape_layers,
-            feature_layers,
-            // mesh_layer,
-            // screen_shape_layer,
-            // text_layer,
-            &style_store,
-            font
-        );
+        let feature_layers = FeatureLayers::new(feature_tags, &device, &style_store);
+
+        let mut layers = Layers::new(device, feature_layers, &style_store, font);
 
         let (renderer_api_tx, renderer_api_rx) = channel();
 
@@ -249,7 +138,6 @@ impl ShashlikRenderer {
         layers.prepare(device, config);
 
         Ok(Self {
-            camera_node,
             layers,
             depth_texture,
             msaa_texture,
@@ -318,7 +206,6 @@ impl ShashlikRenderer {
             self.canvas.on_resize();
             let config = self.canvas.config();
             let device = self.canvas.device();
-            let queue = self.canvas.queue();
 
             self.global_context
                 .view_projection
@@ -327,7 +214,6 @@ impl ShashlikRenderer {
                 .collision_handler
                 .resize(config.width as f32, config.height as f32);
 
-            // self.camera_node.resize(config.width, config.height, queue);
             self.depth_texture = DepthTexture::new(&device, config.width, config.height);
             self.msaa_texture =
                 MultisampledTexture::new(device, config.width, config.height, config.format);
@@ -335,7 +221,6 @@ impl ShashlikRenderer {
     }
 
     fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
-        let queue = self.canvas.queue();
         let device = self.canvas.device();
         let config = self.canvas.config();
 
@@ -354,9 +239,6 @@ impl ShashlikRenderer {
                 }
             }
         }
-
-        // self.camera_node
-        //     .update(device, queue, &mut self.global_context);
 
         self.global_context.collision_handler.clear();
     }
@@ -424,9 +306,8 @@ impl ShashlikRenderer {
                 &mut self.global_context.collision_handler,
                 &self.global_context.view_projection,
             );
-            self.layers.render(&mut render_pass, queue, device, &mut self.global_context);
-            // self.camera_node
-            //     .render(&mut render_pass, &mut self.global_context);
+            self.layers
+                .render(&mut render_pass, queue, device, &mut self.global_context);
         }
 
         queue.submit(iter::once(encoder.finish()));

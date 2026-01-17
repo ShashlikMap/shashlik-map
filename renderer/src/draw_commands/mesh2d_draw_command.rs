@@ -1,8 +1,8 @@
 use crate::canvas_api::MeshInfo;
-use crate::draw_commands::{DrawCommand, geometry_to_mesh_with_layers};
+use crate::draw_commands::{geometry_to_mesh_with_layers, DrawCommand};
 use crate::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
-use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex};
+use crate::vertex_attrs::ShapeVertex;
 use lyon::tessellation::VertexBuffers;
 use std::mem;
 use std::ops::Range;
