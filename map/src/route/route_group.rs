@@ -28,6 +28,7 @@ impl RouteGroup {
 
 impl RenderGroup for RouteGroup {
     fn content(&mut self, canvas: &mut CanvasApi) {
+        canvas.set_feature_layer_tag(Some("route_layer".to_string()));
         let mut path_builder = Path::builder();
         let first_route_point = self.route[0];
         path_builder.begin(point(0.0f32, 0.0f32));

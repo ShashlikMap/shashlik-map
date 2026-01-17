@@ -2,24 +2,19 @@ extern crate core;
 
 use crate::collision_handler::CollisionHandler;
 use crate::depth_texture::DepthTexture;
+use crate::fps::FpsCounter;
+use crate::geometry_data::TextData;
 use crate::layers::Layers;
+use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
 use crate::msaa_texture::MultisampledTexture;
-use crate::nodes::SceneNode;
 use crate::nodes::camera_node::CameraNode;
 use crate::nodes::feature_layers::FeatureLayers;
-use crate::nodes::fps_node::FpsNode;
-use crate::nodes::mesh_layer::MeshLayer;
-use crate::nodes::scene_tree::{RenderContext, SceneTree};
-use crate::nodes::shape_layers::ShapeLayers;
-use crate::nodes::style_adapter_node::StyleAdapterNode;
-use crate::pipeline_provider::PipeLineProvider;
+use crate::nodes::scene_tree::SceneTree;
+use crate::nodes::SceneNode;
 use crate::styles::style_store::StyleStore;
-use crate::text::text_renderer::{TextRenderer, TextRendererLayer};
-use crate::vertex_attrs::{
-    GeneralInstanceInput, ShapeInstanceInput, ShapeVertex, TextInstanceInput, VertexAttrib,
-    VertexNormal,
-};
+use crate::text::text_renderer::TextRenderer;
+use crate::vertex_attrs::VertexAttrib;
 use crate::view_projection::ViewProjection;
 use canvas_api::CanvasApi;
 use cgmath::{vec2, vec3, Matrix4, Vector2, Vector3};
@@ -29,17 +24,13 @@ use renderer_api::RendererApi;
 use rustybuzz::ttf_parser;
 use std::collections::HashMap;
 use std::iter;
-use std::rc::Rc;
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
-use wgpu::{CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat, include_wgsl};
+use wgpu::SurfaceError;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use crate::fps::FpsCounter;
-use crate::geometry_data::TextData;
-use crate::mesh_layers::BaseMeshLayer;
 
 pub mod canvas_api;
 mod collision_handler;
@@ -137,18 +128,18 @@ impl ShashlikRenderer {
         let depth_texture = DepthTexture::new(&device, config.width, config.height);
         let msaa_texture =
             MultisampledTexture::new(device, config.width, config.height, config.format);
-        let depth_state = DepthStencilState {
-            format: TextureFormat::Depth32Float,
-            depth_write_enabled: false,
-            depth_compare: CompareFunction::Less,
-            stencil: Default::default(),
-            bias: Default::default(),
-        };
-        let multisample_state = wgpu::MultisampleState {
-            count: MultisampledTexture::SAMPLE_COUNT,
-            mask: !0,
-            alpha_to_coverage_enabled: false,
-        };
+        // let depth_state = DepthStencilState {
+        //     format: TextureFormat::Depth32Float,
+        //     depth_write_enabled: false,
+        //     depth_compare: CompareFunction::Less,
+        //     stencil: Default::default(),
+        //     bias: Default::default(),
+        // };
+        // let multisample_state = wgpu::MultisampleState {
+        //     count: MultisampledTexture::SAMPLE_COUNT,
+        //     mask: !0,
+        //     alpha_to_coverage_enabled: false,
+        // };
 
 
         let mut global_context = GlobalContext::new(
@@ -159,93 +150,91 @@ impl ShashlikRenderer {
         global_context
             .view_projection
             .resize(config.width, config.height);
-        let pipeline_provider = PipeLineProvider::new(
-            config.format,
-            depth_state.clone(),
-            multisample_state.clone(),
-        );
+        // let pipeline_provider = PipeLineProvider::new(
+        //     config.format,
+        //     depth_state.clone(),
+        //     multisample_state.clone(),
+        // );
 
         let style_store = StyleStore::new();
-
-        let shape_layers = ShapeLayers::new(
-            device,
-            pipeline_provider.clone(),
-            &style_store,
-            &mut camera_node,
-        );
-
-        let mesh_layer = camera_node.add_child_with_key(
-            MeshLayer::new(
-                &device,
-                include_wgsl!("shaders/mesh_shader.wgsl"),
-                Rc::new([VertexNormal::desc(), GeneralInstanceInput::desc()]),
-                pipeline_provider.clone(),
-                Some(Face::Back),
-                CompareFunction::Less,
-                None
-            ),
-            "mesh layer".to_string(),
-        );
-
-        let screen_shape_layer = MeshLayer::new(
-            &device,
-            include_wgsl!("shaders/shape_shader.wgsl"),
-            Rc::new([ShapeVertex::desc(), ShapeInstanceInput::desc()]),
-            pipeline_provider.clone(),
-            None,
-            CompareFunction::Always,
-            Some("vs_main_screen")
-        );
-
-        // TODO Why does it need a specific CompareFunction while e.g. FpsNode doesn't need it to be on top of screen?
-        let screen_shape_layer: StyleAdapterNode<MeshLayer> = StyleAdapterNode::new(
-            device,
-            style_store.subscribe(),
-            screen_shape_layer,
-            SHADER_STYLE_GROUP_INDEX,
-            CompareFunction::Always,
-        );
-
-        let screen_shape_layer =
-            camera_node.add_child_with_key(screen_shape_layer, "screen shape".to_string());
-
-        let text_layer = MeshLayer::new(
-            &device,
-            include_wgsl!("shaders/text_shader.wgsl"),
-            Rc::new([VertexNormal::desc(), TextInstanceInput::desc()]),
-            pipeline_provider.clone(),
-            None,
-            CompareFunction::Always,
-            None
-        );
-
-        let text_layer = camera_node.add_child_with_key(text_layer, "text_layer".to_string());
-
-        camera_node.add_child_with_key(TextRendererLayer {}, "text_renderer_layer".to_string());
-
-        let fps_node = FpsNode::new();
-        text_layer
-            .borrow_mut()
-            .add_child_with_key(fps_node, "fps_node".to_string());
-
+        //
+        // let shape_layers = ShapeLayers::new(
+        //     device,
+        //     pipeline_provider.clone(),
+        //     &style_store,
+        //     &mut camera_node,
+        // );
+        //
+        // let mesh_layer = camera_node.add_child_with_key(
+        //     MeshLayer::new(
+        //         &device,
+        //         include_wgsl!("shaders/mesh_shader.wgsl"),
+        //         Rc::new([VertexNormal::desc(), GeneralInstanceInput::desc()]),
+        //         pipeline_provider.clone(),
+        //         Some(Face::Back),
+        //         CompareFunction::Less,
+        //         None
+        //     ),
+        //     "mesh layer".to_string(),
+        // );
+        //
+        // let screen_shape_layer = MeshLayer::new(
+        //     &device,
+        //     include_wgsl!("shaders/shape_shader.wgsl"),
+        //     Rc::new([ShapeVertex::desc(), ShapeInstanceInput::desc()]),
+        //     pipeline_provider.clone(),
+        //     None,
+        //     CompareFunction::Always,
+        //     Some("vs_main_screen")
+        // );
+        //
+        // // TODO Why does it need a specific CompareFunction while e.g. FpsNode doesn't need it to be on top of screen?
+        // let screen_shape_layer: StyleAdapterNode<MeshLayer> = StyleAdapterNode::new(
+        //     device,
+        //     style_store.subscribe(),
+        //     screen_shape_layer,
+        //     SHADER_STYLE_GROUP_INDEX,
+        //     CompareFunction::Always,
+        // );
+        //
+        // let screen_shape_layer =
+        //     camera_node.add_child_with_key(screen_shape_layer, "screen shape".to_string());
+        //
+        // let text_layer = MeshLayer::new(
+        //     &device,
+        //     include_wgsl!("shaders/text_shader.wgsl"),
+        //     Rc::new([VertexNormal::desc(), TextInstanceInput::desc()]),
+        //     pipeline_provider.clone(),
+        //     None,
+        //     CompareFunction::Always,
+        //     None
+        // );
+        //
+        // let text_layer = camera_node.add_child_with_key(text_layer, "text_layer".to_string());
+        //
+        // camera_node.add_child_with_key(TextRendererLayer {}, "text_renderer_layer".to_string());
+        //
+        // let fps_node = FpsNode::new();
+        // text_layer
+        //     .borrow_mut()
+        //     .add_child_with_key(fps_node, "fps_node".to_string());
+        //
         let feature_layers = FeatureLayers::new(
             feature_tags,
             &device,
-            &mut camera_node,
-            &pipeline_provider,
             &style_store,
         );
-
-        let mut render_context = RenderContext::default();
-        camera_node.setup(&mut render_context, &device);
+        //
+        // let mut render_context = RenderContext::default();
+        // camera_node.setup(&mut render_context, &device);
 
         let mut layers= Layers::new(
             device,
-            shape_layers,
+            // shape_layers,
             feature_layers,
-            mesh_layer,
-            screen_shape_layer,
-            text_layer,
+            // mesh_layer,
+            // screen_shape_layer,
+            // text_layer,
             &style_store,
             font
         );

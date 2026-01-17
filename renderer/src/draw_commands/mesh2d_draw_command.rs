@@ -27,21 +27,19 @@ impl DrawCommand for Mesh2dDrawCommand {
     ) {
         let mesh =
             geometry_to_mesh_with_layers(&device, &self.mesh, mem::take(&mut self.layers_indices));
-
-        // let mesh = mesh.to_positioned_with_instances::<ShapeInstanceInput>(
-        //     device,
-        //     Some(mem::take(&mut self.mesh_info.instance_positions)),
-        //     spatial_rx,
-        //     !self.is_screen,
-        //     self.mesh_info.with_collision,
-        // );
-
         if let Some(feature_layer) = self
             .feature_layer_tag
             .as_ref()
             .and_then(|tag| layers.feature_layers(tag))
         {
-            // feature_layer.borrow_mut().add_child_with_key(mesh, key);
+            feature_layer.add(
+                device,
+                Some(mem::take(&mut self.mesh_info.instance_positions)),
+                spatial_rx,
+                true,
+                false,
+                mesh,
+            )
         } else {
             if self.is_screen {
                 layers.new_screen_shape_layer.add(
