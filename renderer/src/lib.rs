@@ -37,6 +37,7 @@ use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
 use wgpu::{CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat, include_wgsl};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use crate::mesh_layers::BaseMeshLayer;
 
 pub mod canvas_api;
 mod collision_handler;
@@ -59,6 +60,9 @@ mod svg;
 mod text;
 pub mod vertex_attrs;
 mod view_projection;
+
+pub mod pipelines;
+pub mod mesh_layers;
 
 pub const SHADER_STYLE_GROUP_INDEX: u32 = 1;
 
@@ -239,15 +243,19 @@ impl ShashlikRenderer {
 
         let api = Arc::new(RendererApi::new(renderer_api_tx));
 
+        let mut layers= Layers::new(
+            device,
+            shape_layers,
+            feature_layers,
+            mesh_layer,
+            screen_shape_layer,
+            text_layer,
+        );
+        layers.new_mesh_layer.prepare(device, config);
+
         Ok(Self {
             camera_node,
-            layers: Layers::new(
-                shape_layers,
-                feature_layers,
-                mesh_layer,
-                screen_shape_layer,
-                text_layer,
-            ),
+            layers,
             depth_texture,
             msaa_texture,
             canvas,
@@ -322,7 +330,7 @@ impl ShashlikRenderer {
                 .collision_handler
                 .resize(config.width as f32, config.height as f32);
 
-            self.camera_node.resize(config.width, config.height, queue);
+            // self.camera_node.resize(config.width, config.height, queue);
             self.depth_texture = DepthTexture::new(&device, config.width, config.height);
             self.msaa_texture =
                 MultisampledTexture::new(device, config.width, config.height, config.format);
@@ -350,8 +358,8 @@ impl ShashlikRenderer {
             }
         }
 
-        self.camera_node
-            .update(device, queue, &mut self.global_context);
+        // self.camera_node
+        //     .update(device, queue, &mut self.global_context);
 
         self.global_context.collision_handler.clear();
     }
@@ -404,8 +412,9 @@ impl ShashlikRenderer {
                 multiview_mask: None,
             });
 
-            self.camera_node
-                .render(&mut render_pass, &mut self.global_context);
+            self.layers.new_mesh_layer.render(&mut render_pass, queue, device, &mut self.global_context);
+            // self.camera_node
+            //     .render(&mut render_pass, &mut self.global_context);
         }
 
         queue.submit(iter::once(encoder.finish()));

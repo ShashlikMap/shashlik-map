@@ -116,6 +116,12 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             first_render: true,
         }
     }
+
+    pub fn render_kiol(&mut self, render_pass: &mut RenderPass) {
+        render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+        let range = 0u32..self.attrs.len() as u32;
+        self.mesh.render_internal(render_pass, &range);
+    }
 }
 
 impl<T: MeshInstanceInput> SceneNode for PositionedMesh<T> {

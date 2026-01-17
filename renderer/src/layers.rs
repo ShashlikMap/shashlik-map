@@ -3,6 +3,8 @@ use crate::nodes::scene_tree::SceneTree;
 use crate::nodes::shape_layers::ShapeLayers;
 use std::cell::RefCell;
 use std::rc::Rc;
+use wgpu::Device;
+use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
 
 pub(crate) struct Layers {
     shape_layers: ShapeLayers,
@@ -10,10 +12,12 @@ pub(crate) struct Layers {
     pub mesh_layer: Rc<RefCell<SceneTree>>,
     pub screen_shape_layer: Rc<RefCell<SceneTree>>,
     pub text_layer: Rc<RefCell<SceneTree>>,
+    pub new_mesh_layer: GeneralMeshLayer
 }
 
 impl Layers {
     pub fn new(
+        device: &Device,
         shape_layers: ShapeLayers,
         feature_layers: FeatureLayers,
         mesh_layer: Rc<RefCell<SceneTree>>,
@@ -26,6 +30,7 @@ impl Layers {
             mesh_layer,
             screen_shape_layer,
             text_layer,
+            new_mesh_layer: GeneralMeshLayer::new(device)
         }
     }
     pub fn shape_layers(&self, index: usize) -> Rc<RefCell<SceneTree>> {

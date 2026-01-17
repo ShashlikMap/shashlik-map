@@ -19,6 +19,7 @@ impl DrawCommand for Mesh3dDrawCommand {
         layers: &mut Layers,
     ) {
         let mesh = geometry_to_mesh(&device, &self.mesh);
-        layers.mesh_layer.borrow_mut().add_child_with_key(mesh.to_positioned::<GeneralInstanceInput>(device, spatial_rx), key.clone());
+        // layers.mesh_layer.borrow_mut().add_child_with_key(mesh.to_positioned::<GeneralInstanceInput>(device, spatial_rx), key.clone());
+        layers.new_mesh_layer.add(device, spatial_rx, mesh);
     }
 }
