@@ -86,14 +86,14 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             .iter()
             .map(|v| (*v, 1.0))
             .collect();
-        let spatial_data = spatial_rx.try_recv().unwrap_or(SpatialData::new());
+        let spatial_data = SpatialData::new();
         let mut attrs = Vec::new();
 
         T::fill_attrs(
             &mut attrs,
             &Vector3::new(0.0, 0.0, 0.0),
             &instance_positions_and_alpha,
-            &spatial_data,
+            &SpatialData::new(),
             is_two_instances,
         );
 

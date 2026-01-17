@@ -1,8 +1,7 @@
-use crate::GlobalContext;
 use crate::geometry_data::TextData;
 use crate::modifier::render_modifier::SpatialData;
 use crate::nodes::SceneNode;
-use crate::nodes::scene_tree::RenderContext;
+use crate::GlobalContext;
 use wgpu::{Device, Queue};
 
 pub struct TextNode {
@@ -24,8 +23,6 @@ impl TextNode {
 }
 
 impl SceneNode for TextNode {
-    fn setup(&mut self, _render_context: &mut RenderContext, _device: &Device) {}
-
     fn update(&mut self, _device: &Device, _queue: &Queue, global_context: &mut GlobalContext) {
         self.data.iter_mut().for_each(|item| {
             global_context.text_renderer.insert(
