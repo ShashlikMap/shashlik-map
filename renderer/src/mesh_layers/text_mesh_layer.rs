@@ -9,7 +9,7 @@ use wgpu::{Device, Queue, RenderPass, SurfaceConfiguration};
 pub struct TextMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
     meshes: Vec<Vec<TextData>>,
-    text_renderer: TextRenderer,
+    pub(crate) text_renderer: TextRenderer,
     pipeline: Option<wgpu::RenderPipeline>,
 }
 

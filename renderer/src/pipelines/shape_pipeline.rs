@@ -12,6 +12,7 @@ use wgpu::{
 
 pub struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
+    is_screen: bool,
     styles_bind_group_layout: BindGroupLayout,
     style_bind_group: Option<BindGroup>,
     style_uniform_rx: Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
@@ -20,6 +21,7 @@ pub struct ShapePipeline {
 impl ShapePipeline {
     pub fn new(
         device: &Device,
+        is_screen: bool,
         style_uniform_rx: Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
     ) -> Self {
         let styles_bind_group_layout =
@@ -39,6 +41,7 @@ impl ShapePipeline {
 
         Self {
             mesh_pipeline: MeshPipeline::new(device),
+            is_screen,
             styles_bind_group_layout,
             style_bind_group: None,
             style_uniform_rx,
@@ -76,7 +79,7 @@ impl RenderPipeline for ShapePipeline {
             self.style_bind_group = Some(styles_bind_group);
         }
 
-        // TODO It should be like that
+        // TODO It should not be like that
         self.mesh_pipeline
             .render(render_pass, device, queue, global_context);
 
@@ -109,6 +112,9 @@ impl RenderPipeline for ShapePipeline {
             device.create_shader_module(include_wgsl!("../shaders/shape_shader.wgsl"));
 
         let vertex = &mut mesh_descriptor.vertex;
+        if self.is_screen {
+            vertex.entry_point = Some("vs_main_screen");
+        }
         vertex.module = shader_module.to_owned();
         vertex.buffers = vec![ShapeVertex::desc(), ShapeInstanceInput::desc()];
         let fragment = &mut mesh_descriptor.fragment.as_mut().unwrap();

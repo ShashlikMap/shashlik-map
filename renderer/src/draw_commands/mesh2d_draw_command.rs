@@ -10,7 +10,6 @@ use std::ops::Range;
 #[derive(Clone)]
 pub(crate) struct Mesh2dDrawCommand {
     pub mesh: VertexBuffers<ShapeVertex, u32>,
-    pub real_layer: usize,
     pub layers_indices: Vec<Range<usize>>,
     pub mesh_info: MeshInfo,
     pub is_screen: bool,
@@ -45,7 +44,15 @@ impl DrawCommand for Mesh2dDrawCommand {
             // feature_layer.borrow_mut().add_child_with_key(mesh, key);
         } else {
             if self.is_screen {
-                // layers.screen_shape_layer.borrow_mut().add_child_with_key(mesh, key);
+                layers.new_screen_shape_layer.add(
+                    device,
+                    Some(mem::take(&mut self.mesh_info.instance_positions)),
+                    spatial_rx,
+                    !self.is_screen,
+                    self.mesh_info.with_collision,
+                    mesh,
+                );
+
             } else {
                 layers.new_shape_layer.add(
                     device,
@@ -55,6 +62,7 @@ impl DrawCommand for Mesh2dDrawCommand {
                     self.mesh_info.with_collision,
                     mesh,
                 );
+
 
                 // layers.shape_layers(self.real_layer)
                 //     .borrow_mut()

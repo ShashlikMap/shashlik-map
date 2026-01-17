@@ -31,7 +31,7 @@ impl RenderPipeline for TextPipeline {
         queue: &Queue,
         global_context: &mut GlobalContext,
     ) {
-        // TODO It should be like that
+        // TODO It should not be like that
         self.mesh_pipeline
             .render(render_pass, device, queue, global_context);
     }

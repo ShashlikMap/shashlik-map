@@ -2,7 +2,6 @@ use crate::draw_commands::DrawCommand;
 use crate::geometry_data::TextData;
 use crate::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
-use crate::nodes::text_node::TextNode;
 use std::mem;
 use wgpu::Device;
 

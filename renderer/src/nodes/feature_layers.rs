@@ -11,6 +11,7 @@ use std::rc::Rc;
 use wgpu::{CompareFunction, Device, include_wgsl};
 
 pub struct FeatureLayers {
+    // TODO make key and map sortable
     shape_layers: LinkedHashMap<String, Rc<RefCell<SceneTree>>>,
 }
 

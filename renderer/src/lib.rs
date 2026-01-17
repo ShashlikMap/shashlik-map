@@ -22,7 +22,7 @@ use crate::vertex_attrs::{
 };
 use crate::view_projection::ViewProjection;
 use canvas_api::CanvasApi;
-use cgmath::{Matrix4, Vector2, Vector3};
+use cgmath::{vec2, vec3, Matrix4, Vector2, Vector3};
 use geo_types::Coord;
 use messages::RendererApiMsg;
 use renderer_api::RendererApi;
@@ -37,6 +37,8 @@ use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
 use wgpu::{CompareFunction, DepthStencilState, Face, SurfaceError, TextureFormat, include_wgsl};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use crate::fps::FpsCounter;
+use crate::geometry_data::TextData;
 use crate::mesh_layers::BaseMeshLayer;
 
 pub mod canvas_api;
@@ -117,6 +119,7 @@ pub struct ShashlikRenderer {
     canvas: Box<dyn WgpuCanvas>,
     renderer_rx: Receiver<RendererMessage>,
     pub api: Arc<RendererApi>,
+    fps_counter: FpsCounter<100>,
     global_context: GlobalContext,
 }
 
@@ -254,9 +257,7 @@ impl ShashlikRenderer {
 
         let api = Arc::new(RendererApi::new(renderer_api_tx));
 
-        layers.new_shape_layer.prepare(device, config);
-        layers.new_mesh_layer.prepare(device, config);
-        layers.new_text_layer.prepare(device, config);
+        layers.prepare(device, config);
 
         Ok(Self {
             camera_node,
@@ -266,6 +267,7 @@ impl ShashlikRenderer {
             canvas,
             renderer_rx,
             api,
+            fps_counter: FpsCounter::new(),
             global_context,
         })
     }
@@ -281,12 +283,13 @@ impl ShashlikRenderer {
             loop {
                 let api_msg = receiver_api_rx.recv().unwrap();
                 match api_msg {
-                    RendererApiMsg::RenderGroup((key, layer, spatial_data, mut rg)) => {
+                    // TODO remove layer
+                    RendererApiMsg::RenderGroup((key, _layer, spatial_data, mut rg)) => {
                         let (spatial_tx, _) = broadcast::channel(1);
                         spatial_data_map
                             .insert(key.clone(), (spatial_data.clone(), spatial_tx.clone()));
 
-                        canvas_api.begin_shape(layer);
+                        canvas_api.begin_shape();
                         rg.content(&mut canvas_api);
                         canvas_api.flush();
 
@@ -417,9 +420,22 @@ impl ShashlikRenderer {
                 multiview_mask: None,
             });
 
-            self.layers.new_shape_layer.render(&mut render_pass, queue, device, &mut self.global_context);
-            self.layers.new_mesh_layer.render(&mut render_pass, queue, device, &mut self.global_context);
-            self.layers.new_text_layer.render(&mut render_pass, queue, device, &mut self.global_context);
+            // TODO can we do it better?
+            self.layers.new_text_layer.text_renderer.insert(
+                &mut TextData {
+                    id: 0,
+                    text: format!("FPS {}", self.fps_counter.update() as i32),
+                    size: 40.0,
+                    alpha: 1.0,
+                    positions: vec![vec3(100.0, 120.0, 0.0)],
+                    screen_offset: vec2(0.0, 0.0),
+                    screen_space: true,
+                    glyph_buffer: None,
+                },
+                &mut self.global_context.collision_handler,
+                &self.global_context.view_projection,
+            );
+            self.layers.render(&mut render_pass, queue, device, &mut self.global_context);
             // self.camera_node
             //     .render(&mut render_pass, &mut self.global_context);
         }

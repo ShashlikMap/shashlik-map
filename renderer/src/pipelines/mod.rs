@@ -44,7 +44,7 @@ impl OwnedRenderPipelineDescriptor<'_> {
             layout: descriptor.layout.as_ref(),
             vertex: wgpu::VertexState {
                 module: &descriptor.vertex.module,
-                entry_point: Some("vs_main"),
+                entry_point: descriptor.vertex.entry_point,
                 buffers: &*descriptor.vertex.buffers,
                 compilation_options: Default::default(),
             },

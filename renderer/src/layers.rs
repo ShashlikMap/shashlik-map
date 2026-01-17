@@ -4,7 +4,9 @@ use crate::nodes::shape_layers::ShapeLayers;
 use std::cell::RefCell;
 use std::rc::Rc;
 use rustybuzz::ttf_parser;
-use wgpu::Device;
+use wgpu::{Device, Queue, RenderPass, SurfaceConfiguration};
+use crate::GlobalContext;
+use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
 use crate::mesh_layers::text_mesh_layer::TextMeshLayer;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
@@ -20,6 +22,7 @@ pub(crate) struct Layers {
     pub text_layer: Rc<RefCell<SceneTree>>,
     pub new_shape_layer: GeneralMeshLayer<ShapePipeline>,
     pub new_mesh_layer: GeneralMeshLayer<MeshPipeline>,
+    pub new_screen_shape_layer: GeneralMeshLayer<ShapePipeline>,
     pub new_text_layer: TextMeshLayer<TextPipeline>
 }
 
@@ -41,7 +44,8 @@ impl Layers {
             screen_shape_layer,
             text_layer,
             new_mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(device)),
-            new_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(device, style_store.subscribe())),
+            new_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(device, false, style_store.subscribe())),
+            new_screen_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(device, true, style_store.subscribe())),
             new_text_layer: TextMeshLayer::new(TextPipeline::new(device), device, font)
         }
     }
@@ -61,5 +65,21 @@ impl Layers {
             .clear_by_key(key.clone());
         self.text_layer.borrow_mut().clear_by_key(key.clone());
         self.feature_layers.clear_by_key(key.clone());
+    }
+}
+
+impl BaseMeshLayer for Layers {
+    fn prepare(&mut self, device: &Device, config: &SurfaceConfiguration) {
+        self.new_shape_layer.prepare(device, config);
+        self.new_mesh_layer.prepare(device, config);
+        self.new_screen_shape_layer.prepare(device, config);
+        self.new_text_layer.prepare(device, config);
+    }
+
+    fn render(&mut self, render_pass: &mut RenderPass, queue: &Queue, device: &Device, global_context: &mut GlobalContext) {
+        self.new_shape_layer.render(render_pass, queue, device, global_context);
+        self.new_mesh_layer.render(render_pass, queue, device, global_context);
+        self.new_screen_shape_layer.render(render_pass, queue, device, global_context);
+        self.new_text_layer.render(render_pass, queue, device, global_context);
     }
 }
