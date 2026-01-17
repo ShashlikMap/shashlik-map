@@ -175,17 +175,19 @@ impl ShashlikRenderer {
                 pipeline_provider.clone(),
                 Some(Face::Back),
                 CompareFunction::Less,
+                None
             ),
             "mesh layer".to_string(),
         );
 
         let screen_shape_layer = MeshLayer::new(
             &device,
-            include_wgsl!("shaders/screen_shape_shader.wgsl"),
+            include_wgsl!("shaders/shape_shader.wgsl"),
             Rc::new([ShapeVertex::desc(), ShapeInstanceInput::desc()]),
             pipeline_provider.clone(),
             None,
             CompareFunction::Always,
+            Some("vs_main_screen")
         );
 
         // TODO Why does it need a specific CompareFunction while e.g. FpsNode doesn't need it to be on top of screen?
@@ -207,6 +209,7 @@ impl ShashlikRenderer {
             pipeline_provider.clone(),
             None,
             CompareFunction::Always,
+            None
         );
 
         let text_layer = camera_node.add_child_with_key(text_layer, "text_layer".to_string());

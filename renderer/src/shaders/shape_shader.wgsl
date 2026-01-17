@@ -83,6 +83,41 @@ fn vs_main(
     return out;
 }
 
+@vertex
+fn vs_main_screen(
+    model: VertexInput,
+    pos: InstanceInput
+) -> VertexOutput {
+    var out: VertexOutput;
+
+     let model_matrix = mat4x4<f32>(
+                pos.model_matrix_0,
+                pos.model_matrix_1,
+                pos.model_matrix_2,
+                pos.model_matrix_3,
+     );
+
+    let model_position = model_matrix * vec4(model.position.xyz, 1.0);
+    let ratio_fixed_modelpos = vec4(model_position.xy * vec2(2.0*camera.inv_screen_size.x, 2.0*camera.inv_screen_size.y), model_position.z, 1.0);
+
+    out.style_index = model.style_index;
+    // FIXME Disable outlining for screen shapes for a while
+    out.outline_flag = 1; //model.instance_index % 2;
+    out.color_alpha = pos.color_alpha;
+
+    var pointPos = ratio_fixed_modelpos.xyz;
+    if(model.instance_index % 2 == 0) {
+        // only two components for normal
+//        pointPos += vec3(model.normal.xy * inflate_factor, 0.0);
+    }
+
+    let coord = camera.view_proj * vec4<f32>(pos.position.xy, 0.0, 1.0);
+
+    out.clip_position = vec4(pointPos, 0.0) + vec4(coord.xyz/coord.w, 1.0);
+
+    return out;
+}
+
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
