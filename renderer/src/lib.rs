@@ -243,7 +243,8 @@ impl ShashlikRenderer {
             mesh_layer,
             screen_shape_layer,
             text_layer,
-            &style_store
+            &style_store,
+            font
         );
 
         let (renderer_api_tx, renderer_api_rx) = channel();
@@ -255,6 +256,7 @@ impl ShashlikRenderer {
 
         layers.new_shape_layer.prepare(device, config);
         layers.new_mesh_layer.prepare(device, config);
+        layers.new_text_layer.prepare(device, config);
 
         Ok(Self {
             camera_node,
@@ -417,6 +419,7 @@ impl ShashlikRenderer {
 
             self.layers.new_shape_layer.render(&mut render_pass, queue, device, &mut self.global_context);
             self.layers.new_mesh_layer.render(&mut render_pass, queue, device, &mut self.global_context);
+            self.layers.new_text_layer.render(&mut render_pass, queue, device, &mut self.global_context);
             // self.camera_node
             //     .render(&mut render_pass, &mut self.global_context);
         }

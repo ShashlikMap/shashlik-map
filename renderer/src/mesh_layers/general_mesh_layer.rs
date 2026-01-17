@@ -31,7 +31,6 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
         with_collisions: bool,
         mesh: Mesh,
     ) {
-        println!("qq");
         self.meshes
             .push(P::create_positioned_mesh(device, instance_positions, spatial_rx, is_two_instances, with_collisions, mesh));
     }

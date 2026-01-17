@@ -19,7 +19,10 @@ impl DrawCommand for TextDrawCommand {
         _spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         layers: &mut Layers,
     ) {
-        let text_node = TextNode::new(mem::take(&mut self.data), spatial_data);
-        layers.text_layer.borrow_mut().add_child_with_key(text_node, key.clone());
+        layers
+            .new_text_layer
+            .add(mem::take(&mut self.data), spatial_data);
+        // let text_node = TextNode::new(mem::take(&mut self.data), spatial_data);
+        // layers.text_layer.borrow_mut().add_child_with_key(text_node, key.clone());
     }
 }

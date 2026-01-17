@@ -3,10 +3,13 @@ use crate::nodes::scene_tree::SceneTree;
 use crate::nodes::shape_layers::ShapeLayers;
 use std::cell::RefCell;
 use std::rc::Rc;
+use rustybuzz::ttf_parser;
 use wgpu::Device;
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
+use crate::mesh_layers::text_mesh_layer::TextMeshLayer;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::shape_pipeline::ShapePipeline;
+use crate::pipelines::text_pipeline::TextPipeline;
 use crate::styles::style_store::StyleStore;
 
 pub(crate) struct Layers {
@@ -16,7 +19,8 @@ pub(crate) struct Layers {
     pub screen_shape_layer: Rc<RefCell<SceneTree>>,
     pub text_layer: Rc<RefCell<SceneTree>>,
     pub new_shape_layer: GeneralMeshLayer<ShapePipeline>,
-    pub new_mesh_layer: GeneralMeshLayer<MeshPipeline>
+    pub new_mesh_layer: GeneralMeshLayer<MeshPipeline>,
+    pub new_text_layer: TextMeshLayer<TextPipeline>
 }
 
 impl Layers {
@@ -28,6 +32,7 @@ impl Layers {
         screen_shape_layer: Rc<RefCell<SceneTree>>,
         text_layer: Rc<RefCell<SceneTree>>,
         style_store: &StyleStore,
+        font: &'static ttf_parser::Face<'static>
     ) -> Layers {
         Layers {
             shape_layers,
@@ -36,7 +41,8 @@ impl Layers {
             screen_shape_layer,
             text_layer,
             new_mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(device)),
-            new_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(device, style_store.subscribe()))
+            new_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(device, style_store.subscribe())),
+            new_text_layer: TextMeshLayer::new(TextPipeline::new(device), device, font)
         }
     }
     pub fn shape_layers(&self, index: usize) -> Rc<RefCell<SceneTree>> {

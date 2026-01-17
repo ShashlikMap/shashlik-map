@@ -2,6 +2,7 @@ use crate::GlobalContext;
 use wgpu::{Device, Queue, RenderPass, SurfaceConfiguration};
 
 pub mod general_mesh_layer;
+pub mod text_mesh_layer;
 
 pub trait BaseMeshLayer {
     fn prepare(&mut self, device: &Device, config: &SurfaceConfiguration);
