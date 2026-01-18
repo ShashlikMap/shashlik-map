@@ -22,7 +22,7 @@ impl StyleStore {
         store.register_styles(vec![(Self::STUB_STYLE_ID, RenderStyle::default())]);
         store
     }
-
+    
     fn register_styles(&mut self, styles: Vec<(StyleId, RenderStyle)>) {
         styles.into_iter().for_each(|(style_id, style)| {
             self.style_map.insert(style_id, style);
@@ -46,6 +46,7 @@ impl StyleStore {
             .iter()
             .map(|it| it.params())
             .collect::<Vec<_>>();
+        
         if self.style_uniform_tx.receiver_count() > 0 {
             self.style_uniform_tx.send(styles).unwrap();
         } else {

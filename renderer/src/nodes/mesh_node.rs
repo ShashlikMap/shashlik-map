@@ -1,6 +1,5 @@
 use crate::mesh::mesh::Mesh;
 use crate::modifier::render_modifier::SpatialData;
-use crate::nodes::SceneNode;
 use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput};
 use crate::{GlobalContext, ReceiverExt};
 use bytemuck::Pod;
@@ -117,15 +116,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         }
     }
 
-    pub fn render_kiol(&mut self, render_pass: &mut RenderPass) {
-        render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-        let range = 0u32..self.attrs.len() as u32;
-        self.mesh.render_internal(render_pass, &range);
-    }
-}
-
-impl<T: MeshInstanceInput> SceneNode for PositionedMesh<T> {
-    fn update(&mut self, global_context: &mut GlobalContext) {
+    pub fn update(&mut self, global_context: &mut GlobalContext) {
         if self.with_collisions {
             for item in &mut self.instance_positions_and_alpha {
                 let screen_pos = global_context.view_projection.screen_position(Vector3::new(
@@ -184,13 +175,12 @@ impl<T: MeshInstanceInput> SceneNode for PositionedMesh<T> {
         }
     }
 
-    fn render(&mut self, render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
+    pub fn render(&mut self, render_pass: &mut RenderPass) {
         render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
         let range = 0u32..self.attrs.len() as u32;
         self.mesh.render_internal(render_pass, &range);
     }
 }
-
 pub trait MeshInstanceInput: Sized + Pod {
     fn fill_attrs(
         attrs: &mut Vec<Self>,

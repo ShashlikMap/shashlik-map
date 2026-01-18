@@ -3,7 +3,6 @@ use crate::mesh::mesh::Mesh;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::modifier::render_modifier::SpatialData;
-use crate::nodes::SceneNode;
 use crate::nodes::mesh_node::PositionedMesh;
 use crate::pipelines::RenderPipeline;
 use cgmath::Vector3;
@@ -64,7 +63,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
             self.render_data_holder
                 .holder
                 .iter_mut()
-                .for_each(|(_, mesh)| mesh.render_kiol(render_pass));
+                .for_each(|(_, mesh)| mesh.render(render_pass));
         }
     }
 

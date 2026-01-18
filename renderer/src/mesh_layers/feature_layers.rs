@@ -14,7 +14,7 @@ impl FeatureLayers {
     pub fn new(
         tags: &[String],
         global_context: &GlobalContext,
-        style_store: &StyleStore,
+        style_store: &mut StyleStore,
     ) -> FeatureLayers {
         let mut layers = FeatureLayers {
             shape_layers: LinkedHashMap::new(),
@@ -24,7 +24,6 @@ impl FeatureLayers {
             let layer = GeneralMeshLayer::new(ShapePipeline::new(
                 global_context,
                 false,
-                style_store.subscribe(),
             ));
             layers.shape_layers.insert(tag.clone(), layer);
         });

@@ -22,7 +22,7 @@ impl Layers {
     pub fn new(
         feature_tags: &[String],
         global_context: &GlobalContext,
-        style_store: &StyleStore,
+        style_store: &mut StyleStore,
         font: &'static ttf_parser::Face<'static>,
     ) -> Layers {
         let feature_layers = FeatureLayers::new(feature_tags, global_context, style_store);
@@ -32,12 +32,10 @@ impl Layers {
             new_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(
                 global_context,
                 false,
-                style_store.subscribe(),
             )),
             new_screen_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(
                 global_context,
                 true,
-                style_store.subscribe(),
             )),
             new_text_layer: TextMeshLayer::new(
                 TextPipeline::new(global_context),

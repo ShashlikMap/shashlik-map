@@ -1,6 +1,7 @@
 extern crate core;
 
 use crate::collision_handler::CollisionHandler;
+use crate::consts::STYLE_SHADER_PARAMS_COUNT;
 use crate::depth_texture::DepthTexture;
 use crate::fps::FpsCounter;
 use crate::geometry_data::TextData;
@@ -23,7 +24,8 @@ use std::sync::Arc;
 use std::thread::spawn;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
-use wgpu::SurfaceError;
+use wgpu::util::DeviceExt;
+use wgpu::{BindGroup, BindGroupLayout, Device, SurfaceError};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 pub mod canvas_api;
@@ -79,19 +81,42 @@ pub struct GlobalContext {
     pub canvas: Box<dyn WgpuCanvas>,
     view_projection: ViewProjection,
     collision_handler: CollisionHandler,
+    styles_bind_group_layout: BindGroupLayout,
+    style_bind_group: Option<BindGroup>,
+    style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>
 }
 
 impl GlobalContext {
-    pub fn new(canvas: Box<dyn WgpuCanvas>) -> Self {
+    pub fn new(canvas: Box<dyn WgpuCanvas>, style_store: &StyleStore) -> Self {
         let device = canvas.device();
         let config = canvas.config();
         let view_projection = ViewProjection::new(device);
         let collision_handler = CollisionHandler::new(config.width as f32, config.height as f32);
+        let styles_bind_group_layout = Self::create_style_bind_group_layout(device);
         GlobalContext {
             canvas,
             view_projection,
             collision_handler,
+            styles_bind_group_layout,
+            style_bind_group: None,
+            style_uniform_rx: style_store.subscribe(),
         }
+    }
+
+    fn create_style_bind_group_layout(device: &Device) -> BindGroupLayout {
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("styles_bind_group_layout"),
+        })
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -112,6 +137,31 @@ impl GlobalContext {
             view_proj_matrix,
             cs_offset,
         );
+
+        self.update_style_bind_group();
+    }
+
+    fn update_style_bind_group(&mut self) {
+        let device = self.canvas.device();
+        if let Ok(uniforms) = self.style_uniform_rx.no_lagged() {
+            // TODO We could reuse the buffer if styles count has not changed
+            let styles_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Style Buffer"),
+                contents: bytemuck::cast_slice(&uniforms),
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            });
+
+            let styles_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &self.styles_bind_group_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: styles_buffer.as_entire_binding(),
+                }],
+                label: Some("styles_bind_group"),
+            });
+
+            self.style_bind_group = Some(styles_bind_group);
+        }
     }
 
     pub fn queue(&self) -> &wgpu::Queue {
@@ -141,7 +191,9 @@ impl ShashlikRenderer {
         canvas: Box<dyn WgpuCanvas>,
         font: &'static ttf_parser::Face<'static>,
     ) -> anyhow::Result<ShashlikRenderer> {
-        let mut global_context = GlobalContext::new(canvas);
+        let mut style_store = StyleStore::new();
+
+        let mut global_context = GlobalContext::new(canvas, &style_store);
 
         let depth_texture = DepthTexture::new(&global_context);
         let msaa_texture = MultisampledTexture::new(&global_context);
@@ -151,9 +203,8 @@ impl ShashlikRenderer {
         //     .view_projection
         //     .resize(config.width, config.height);
 
-        let style_store = StyleStore::new();
 
-        let mut layers = Layers::new(feature_tags, &global_context, &style_store, font);
+        let mut layers = Layers::new(feature_tags, &global_context, &mut style_store, font);
 
         let (renderer_api_tx, renderer_api_rx) = channel();
 
