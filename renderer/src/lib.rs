@@ -5,14 +5,14 @@ use crate::consts::STYLE_SHADER_PARAMS_COUNT;
 use crate::depth_texture::DepthTexture;
 use crate::fps::FpsCounter;
 use crate::geometry_data::TextData;
-use crate::layers::Layers;
+use mesh_layers::layers::Layers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
 use crate::msaa_texture::MultisampledTexture;
 use crate::styles::style_store::StyleStore;
 use crate::view_projection::ViewProjection;
 use canvas_api::CanvasApi;
-use cgmath::{Matrix4, Vector2, Vector3, vec2, vec3};
+use cgmath::{vec2, vec3, Matrix4, Vector2, Vector3};
 use geo_types::Coord;
 use messages::RendererApiMsg;
 use renderer_api::RendererApi;
@@ -20,7 +20,7 @@ use rustybuzz::ttf_parser;
 use std::collections::HashMap;
 use std::iter;
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread::spawn;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
@@ -35,7 +35,6 @@ mod depth_texture;
 pub mod draw_commands;
 mod fps;
 pub mod geometry_data;
-mod layers;
 mod mesh;
 pub mod messages;
 pub mod modifier;
@@ -296,7 +295,7 @@ impl ShashlikRenderer {
                 }
                 RendererMessage::ClearGroups(keys) => {
                     keys.into_iter().for_each(|key| {
-                        self.layers.clear_by_key(key);
+                        self.layers.clear_by_key(&*key);
                     });
                 }
             }

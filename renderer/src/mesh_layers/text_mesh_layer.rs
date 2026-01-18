@@ -64,7 +64,7 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
         }
     }
 
-    fn clear_by_key(&mut self, key: String) {
+    fn clear_by_key(&mut self, key: &str) {
         self.render_data_holder.remove(key);
     }
 }

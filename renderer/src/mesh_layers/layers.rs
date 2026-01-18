@@ -8,7 +8,6 @@ use crate::pipelines::shape_pipeline::ShapePipeline;
 use crate::pipelines::text_pipeline::TextPipeline;
 use rustybuzz::ttf_parser;
 use wgpu::RenderPass;
-
 pub(crate) struct Layers {
     feature_layers: FeatureLayers,
     pub new_shape_layer: GeneralMeshLayer<ShapePipeline>,
@@ -42,6 +41,7 @@ impl Layers {
     }
 }
 
+// TODO Refactor
 impl BaseMeshLayer for Layers {
     fn prepare(&mut self, global_context: &GlobalContext) {
         self.new_shape_layer.prepare(global_context);
@@ -68,11 +68,11 @@ impl BaseMeshLayer for Layers {
         self.feature_layers.render(render_pass, global_context);
     }
 
-    fn clear_by_key(&mut self, key: String) {
-        self.new_shape_layer.clear_by_key(key.clone());
-        self.new_mesh_layer.clear_by_key(key.clone());
-        self.new_screen_shape_layer.clear_by_key(key.clone());
-        self.new_text_layer.clear_by_key(key.clone());
-        self.feature_layers.clear_by_key(key.clone());
+    fn clear_by_key(&mut self, key: &str) {
+        self.new_shape_layer.clear_by_key(key);
+        self.new_mesh_layer.clear_by_key(key);
+        self.new_screen_shape_layer.clear_by_key(key);
+        self.new_text_layer.clear_by_key(key);
+        self.feature_layers.clear_by_key(key);
     }
 }

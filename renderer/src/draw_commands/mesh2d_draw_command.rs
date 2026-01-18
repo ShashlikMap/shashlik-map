@@ -1,6 +1,6 @@
 use crate::canvas_api::MeshInfo;
 use crate::draw_commands::{DrawCommand, geometry_to_mesh_with_layers};
-use crate::layers::Layers;
+use crate::mesh_layers::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
 use crate::vertex_attrs::ShapeVertex;
 use lyon::tessellation::VertexBuffers;
@@ -27,42 +27,27 @@ impl DrawCommand for Mesh2dDrawCommand {
     ) {
         let mesh =
             geometry_to_mesh_with_layers(&device, &self.mesh, mem::take(&mut self.layers_indices));
-        if let Some(feature_layer) = self
+
+        let layer = if let Some(feature_layer) = self
             .feature_layer_tag
             .as_ref()
             .and_then(|tag| layers.feature_layers(tag))
         {
-            feature_layer.add(
-                key,
-                device,
-                Some(mem::take(&mut self.mesh_info.instance_positions)),
-                spatial_rx,
-                true,
-                false,
-                mesh,
-            )
+            feature_layer
+        } else if self.is_screen {
+            &mut layers.new_screen_shape_layer
         } else {
-            if self.is_screen {
-                layers.new_screen_shape_layer.add(
-                    key,
-                    device,
-                    Some(mem::take(&mut self.mesh_info.instance_positions)),
-                    spatial_rx,
-                    !self.is_screen,
-                    self.mesh_info.with_collision,
-                    mesh,
-                );
-            } else {
-                layers.new_shape_layer.add(
-                    key,
-                    device,
-                    Some(mem::take(&mut self.mesh_info.instance_positions)),
-                    spatial_rx,
-                    !self.is_screen,
-                    self.mesh_info.with_collision,
-                    mesh,
-                );
-            }
-        }
+            &mut layers.new_shape_layer
+        };
+
+        layer.add(
+            key,
+            device,
+            Some(mem::take(&mut self.mesh_info.instance_positions)),
+            spatial_rx,
+            !self.is_screen,
+            self.mesh_info.with_collision,
+            mesh,
+        );
     }
 }

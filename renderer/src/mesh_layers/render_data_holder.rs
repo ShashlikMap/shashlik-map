@@ -20,8 +20,8 @@ impl<T> RenderDataHolder<T> {
         };
     }
 
-    pub fn remove(&mut self, key: String) {
-        self.holder.remove(&key);
+    pub fn remove(&mut self, key: &str) {
+        self.holder.remove(&key.to_string());
     }
 
     pub fn run_mut_action<F>(&mut self, mut block: F)

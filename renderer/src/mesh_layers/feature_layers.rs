@@ -47,9 +47,9 @@ impl BaseMeshLayer for FeatureLayers {
         });
     }
 
-    fn clear_by_key(&mut self, key: String) {
+    fn clear_by_key(&mut self, key: &str) {
         self.shape_layers
             .iter_mut()
-            .for_each(|(_, layer)| layer.clear_by_key(key.clone()));
+            .for_each(|(_, layer)| layer.clear_by_key(key));
     }
 }
