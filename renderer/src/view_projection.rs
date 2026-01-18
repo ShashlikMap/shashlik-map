@@ -1,6 +1,6 @@
 use cgmath::{Matrix4, SquareMatrix, Transform, Vector2, Vector3, Vector4};
 use geo_types::{Coord, coord};
-use wgpu::SurfaceConfiguration;
+use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 
 #[rustfmt::skip]
 const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f64> = cgmath::Matrix4::from_cols(
@@ -26,14 +26,27 @@ pub(crate) struct ViewProjUniform {
 }
 
 pub(crate) struct ViewProjection {
-    pub uniform: ViewProjUniform,
+    uniform: ViewProjUniform,
     pub cs_offset: Vector3<f64>,
     screen_size: (f64, f64),
-    inv_view_proj_matrix: Matrix4<f64>
+    inv_view_proj_matrix: Matrix4<f64>,
+    pub uniform_buffer: Buffer
 }
 
 impl ViewProjection {
-    pub fn new() -> Self {
+    pub fn new(device: &Device) -> Self {
+        // ViewProjection align is 16byte since vec4 is used
+        let vec4size = size_of::<[f32; 4]>() as u64;
+        let size = size_of::<ViewProjUniform>() as u64;
+        let align_mask = vec4size - 1;
+        let size = ((size + align_mask) & !align_mask).max(vec4size);
+        let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ViewProjection Buffer"),
+            size,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
+            mapped_at_creation: false,
+        });
+
         ViewProjection {
             uniform: ViewProjUniform {
                 view_proj: Matrix4::identity().into(),
@@ -41,11 +54,12 @@ impl ViewProjection {
             },
             screen_size: (0.0, 0.0),
             cs_offset: Vector3::new(0.0, 0.0, 0.0),
-            inv_view_proj_matrix: Matrix4::identity()
+            inv_view_proj_matrix: Matrix4::identity(),
+            uniform_buffer,
         }
     }
 
-    pub fn update(&mut self, config: &SurfaceConfiguration, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
+    pub fn update(&mut self, queue: &Queue, config: &SurfaceConfiguration, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
         self.uniform.view_proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * view_proj_matrix)
             .cast()
             .unwrap()
@@ -53,6 +67,12 @@ impl ViewProjection {
         self.cs_offset = cs_offset;
         self.inv_view_proj_matrix = view_proj_matrix.inverse_transform().unwrap();
         self.screen_size = (config.width as f64, config.height as f64);
+
+        queue.write_buffer(
+            &self.uniform_buffer,
+            0,
+            bytemuck::cast_slice(&[self.uniform]),
+        );
     }
 
     pub fn screen_position(&self, world_position: Vector3<f64>) -> Coord<f64> {

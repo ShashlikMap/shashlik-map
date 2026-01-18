@@ -24,20 +24,22 @@ with Android/iOS mobile apps(Android is priority for now)
 <img width="500" alt="ShashlikDiagram" src="https://github.com/user-attachments/assets/c0e6d330-2e97-4f77-acba-e7b186fcb194" />
 
 ## Roadmap
-### Now
+### Completed
 - [x] Create a baseline POC with initial architecture
 - [x] Complete README and examples
-### Next
+### Now
 - [ ] Implement an initial geometric Map-matching POC
-- [ ] General Renderer refactoring
+- [ ] _In progress_ General Renderer refactoring
 - - [ ] Support a texture as a render target to improve CI and integration with [SlintUI](https://slint.dev/blog/slint-1.12-released)
 - [ ] CI for KMP mobile SDK
-### Later
+### Next
 - [ ] Software Dead-reckoning
 - [ ] Move TextRenderer to the separate repo
 - [ ] Support Mapbox [tilesets](https://docs.mapbox.com/data/tilesets/guides/vector-tiles-standards/)
 - [ ] Complete iOS counter-part
 - [ ] Integrate a simple search
+### Later
+- TBD
 
 ## Running examples
 ### macOS

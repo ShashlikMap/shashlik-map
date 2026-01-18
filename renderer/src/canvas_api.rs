@@ -31,7 +31,6 @@ pub struct CanvasApi {
     draw_commands: Vec<Box<dyn DrawCommand>>,
     geometry: VertexBuffers<ShapeVertex, u32>,
     indices_by_layers: BTreeMap<i8, Vec<Range<usize>>>,
-    real_layer: usize,
     geometry3d: VertexBuffers<MeshVertex, u32>,
     text_vec: Vec<TextData>,
     mesh_info_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, MeshInfo)>,
@@ -46,21 +45,19 @@ impl CanvasApi {
             draw_commands: Vec::new(),
             geometry: VertexBuffers::new(),
             indices_by_layers: BTreeMap::new(),
-            real_layer: 0,
             geometry3d: VertexBuffers::new(),
             text_vec: Vec::new(),
             mesh_info_cache: HashMap::new(),
             feature_layer_tag: None,
         }
     }
-    pub(crate) fn begin_shape(&mut self, real_layer: usize) {
+    pub(crate) fn begin_shape(&mut self) {
         self.flushed = false;
         self.feature_layer_tag = None;
         self.indices_by_layers.clear();
         self.geometry.clear();
         self.geometry3d.clear();
         self.text_vec.clear();
-        self.real_layer = real_layer;
 
         // TODO Should be improved to per screen rather than per group
         self.mesh_info_cache
@@ -160,7 +157,6 @@ impl CanvasApi {
     ) {
         self.draw_commands.push(Box::new(Mesh2dDrawCommand {
             mesh,
-            real_layer: self.real_layer,
             layers_indices,
             mesh_info,
             is_screen,

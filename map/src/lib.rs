@@ -85,7 +85,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     ) -> anyhow::Result<ShashlikMap<T>> {
         let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
 
-        let renderer = ShashlikRenderer::new(&["puck_layer".to_string()], canvas, &DEFAULT_FONT).await?;
+        let renderer = ShashlikRenderer::new(&["route_layer".to_string(), "puck_layer".to_string()], canvas, &DEFAULT_FONT).await?;
         let tiles_stream = tiles_provider.tiles();
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();

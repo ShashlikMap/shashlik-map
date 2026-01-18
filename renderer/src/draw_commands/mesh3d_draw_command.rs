@@ -1,8 +1,7 @@
-use crate::draw_commands::{geometry_to_mesh, DrawCommand, MeshVertex};
-use crate::layers::Layers;
+use crate::draw_commands::{DrawCommand, MeshVertex, geometry_to_mesh};
+use crate::mesh_layers::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
 use lyon::lyon_tessellation::VertexBuffers;
-use crate::vertex_attrs::GeneralInstanceInput;
 
 #[derive(Clone)]
 pub(crate) struct Mesh3dDrawCommand {
@@ -19,6 +18,8 @@ impl DrawCommand for Mesh3dDrawCommand {
         layers: &mut Layers,
     ) {
         let mesh = geometry_to_mesh(&device, &self.mesh);
-        layers.mesh_layer.borrow_mut().add_child_with_key(mesh.to_positioned::<GeneralInstanceInput>(device, spatial_rx), key.clone());
+        layers
+            .new_mesh_layer
+            .add(key, device, None, spatial_rx, false, false, mesh);
     }
 }
