@@ -51,14 +51,9 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
     }
 
     fn update(&mut self, global_context: &mut GlobalContext) {
-        self.render_data_holder
-            .holder
-            .iter_mut()
-            .for_each(|(_, meshes)| {
-                meshes.iter_mut().for_each(|mesh| {
-                    mesh.update(global_context);
-                });
-            });
+        self.render_data_holder.run_mut_action(|mesh| {
+            mesh.update(global_context);
+        });
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
@@ -67,14 +62,9 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
 
             self.render_pipeline.render(render_pass, global_context);
 
-            self.render_data_holder
-                .holder
-                .iter_mut()
-                .for_each(|(_, meshes)| {
-                    meshes.iter_mut().for_each(|mesh| {
-                        mesh.render(render_pass);
-                    });
-                });
+            self.render_data_holder.run_mut_action(|mesh| {
+                mesh.render(render_pass);
+            });
         }
     }
 

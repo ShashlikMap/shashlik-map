@@ -49,33 +49,15 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
     }
 
     fn update(&mut self, global_context: &mut GlobalContext) {
-        self.render_data_holder
-            .holder
-            .iter_mut()
-            .for_each(|(_, data)| {
-                data.iter_mut().for_each(|items| {
-                    items
-                        .iter_mut()
-                        .for_each(|item| self.text_renderer.insert(item, global_context));
-                });
-            });
-
+        self.render_data_holder.run_mut_action(|item| {
+            item.iter_mut()
+                .for_each(|item| self.text_renderer.insert(item, global_context));
+        });
     }
 
-
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        // self.render_data_holder
-        //     .holder
-        //     .iter_mut()
-        //     .for_each(|(_, data)| {
-        //         data.iter_mut()
-        //             .for_each(|item| self.text_renderer.insert(item, global_context));
-        //     });
-        //
-        // self.text_renderer.update(&global_context);
-
-        if let Some(pp) = self.pipeline.as_ref() {
-            render_pass.set_pipeline(pp);
+        if let Some(render_pipeline) = self.pipeline.as_ref() {
+            render_pass.set_pipeline(render_pipeline);
 
             self.render_pipeline.render(render_pass, global_context);
             self.text_renderer.render(render_pass, global_context);
