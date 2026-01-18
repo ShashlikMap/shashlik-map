@@ -247,7 +247,7 @@ impl ShashlikRenderer {
                 }
                 RendererMessage::ClearGroups(keys) => {
                     keys.into_iter().for_each(|key| {
-                        self.layers.clear(key);
+                        self.layers.clear_by_key(key);
                     });
                 }
             }

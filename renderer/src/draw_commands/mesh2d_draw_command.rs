@@ -1,5 +1,5 @@
 use crate::canvas_api::MeshInfo;
-use crate::draw_commands::{geometry_to_mesh_with_layers, DrawCommand};
+use crate::draw_commands::{DrawCommand, geometry_to_mesh_with_layers};
 use crate::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
 use crate::vertex_attrs::ShapeVertex;
@@ -33,6 +33,7 @@ impl DrawCommand for Mesh2dDrawCommand {
             .and_then(|tag| layers.feature_layers(tag))
         {
             feature_layer.add(
+                key,
                 device,
                 Some(mem::take(&mut self.mesh_info.instance_positions)),
                 spatial_rx,
@@ -43,6 +44,7 @@ impl DrawCommand for Mesh2dDrawCommand {
         } else {
             if self.is_screen {
                 layers.new_screen_shape_layer.add(
+                    key,
                     device,
                     Some(mem::take(&mut self.mesh_info.instance_positions)),
                     spatial_rx,
@@ -50,9 +52,9 @@ impl DrawCommand for Mesh2dDrawCommand {
                     self.mesh_info.with_collision,
                     mesh,
                 );
-
             } else {
                 layers.new_shape_layer.add(
+                    key,
                     device,
                     Some(mem::take(&mut self.mesh_info.instance_positions)),
                     spatial_rx,
@@ -60,11 +62,6 @@ impl DrawCommand for Mesh2dDrawCommand {
                     self.mesh_info.with_collision,
                     mesh,
                 );
-
-
-                // layers.shape_layers(self.real_layer)
-                //     .borrow_mut()
-                //     .add_child_with_key(mesh, key);
             }
         }
     }

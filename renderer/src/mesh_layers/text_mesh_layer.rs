@@ -1,6 +1,7 @@
 use crate::GlobalContext;
 use crate::geometry_data::TextData;
 use crate::mesh_layers::BaseMeshLayer;
+use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::modifier::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use crate::text::text_renderer::TextRenderer;
@@ -8,7 +9,7 @@ use wgpu::RenderPass;
 
 pub struct TextMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
-    meshes: Vec<Vec<TextData>>,
+    render_data_holder: RenderDataHolder<Vec<TextData>>,
     pub(crate) text_renderer: TextRenderer,
     pipeline: Option<wgpu::RenderPipeline>,
 }
@@ -21,13 +22,13 @@ impl<P: RenderPipeline> TextMeshLayer<P> {
     ) -> Self {
         Self {
             render_pipeline,
-            meshes: vec![],
+            render_data_holder: RenderDataHolder::new(),
             text_renderer: TextRenderer::new(global_context.device(), font),
             pipeline: None,
         }
     }
 
-    pub fn add(&mut self, mut text_data: Vec<TextData>, spatial_data: SpatialData) {
+    pub fn add(&mut self, key: String, mut text_data: Vec<TextData>, spatial_data: SpatialData) {
         text_data.iter_mut().for_each(|item| {
             item.alpha = 0.0;
             item.positions = item
@@ -37,7 +38,7 @@ impl<P: RenderPipeline> TextMeshLayer<P> {
                 .collect()
         });
 
-        self.meshes.push(text_data);
+        self.render_data_holder.add(key, text_data);
     }
 }
 
@@ -48,10 +49,13 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        self.meshes.iter_mut().for_each(|data| {
-            data.iter_mut()
-                .for_each(|item| self.text_renderer.insert(item, global_context));
-        });
+        self.render_data_holder
+            .holder
+            .iter_mut()
+            .for_each(|(_, data)| {
+                data.iter_mut()
+                    .for_each(|item| self.text_renderer.insert(item, global_context));
+            });
 
         self.text_renderer.update(&global_context);
 
@@ -61,5 +65,9 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
             self.render_pipeline.render(render_pass, global_context);
             self.text_renderer.render(render_pass);
         }
+    }
+
+    fn clear_by_key(&mut self, key: String) {
+        self.render_data_holder.remove(key);
     }
 }

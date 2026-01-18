@@ -32,12 +32,6 @@ impl FeatureLayers {
         layers
     }
 
-    pub fn clear_by_key(&mut self, key: String) {
-        self.shape_layers.values().for_each(|layer| {
-            // layer..clear_by_key(key.clone());
-        });
-    }
-
     pub fn get_layer(&mut self, tag: &String) -> Option<&mut GeneralMeshLayer<ShapePipeline>> {
         self.shape_layers.get_mut(tag)
     }
@@ -53,6 +47,12 @@ impl BaseMeshLayer for FeatureLayers {
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         self.shape_layers.iter_mut().for_each(|(_, layer)| {
             layer.render(render_pass, global_context);
+        });
+    }
+
+    fn clear_by_key(&mut self, key: String) {
+        self.shape_layers.iter_mut().for_each(|(_, layer)| {
+            layer.clear_by_key(key.clone())
         });
     }
 }
