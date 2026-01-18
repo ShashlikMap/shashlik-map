@@ -1,12 +1,12 @@
-use cgmath::Vector3;
-use crate::GlobalContext;
 use crate::mesh::mesh::Mesh;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::modifier::render_modifier::SpatialData;
-use crate::pipelines::RenderPipeline;
-use wgpu::{Device, Queue, RenderPass, SurfaceConfiguration};
 use crate::nodes::mesh_node::PositionedMesh;
 use crate::nodes::SceneNode;
+use crate::pipelines::RenderPipeline;
+use crate::GlobalContext;
+use cgmath::Vector3;
+use wgpu::{Device, RenderPass};
 
 pub struct GeneralMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
@@ -37,26 +37,24 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
 }
 
 impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
-    fn prepare(&mut self, global_context: &mut GlobalContext, device: &Device, config: &SurfaceConfiguration) {
-        let descriptor = self.render_pipeline.prepare(global_context, device, config);
-        self.pipeline = Some(descriptor.to_render_pipeline(device));
+    fn prepare(&mut self, global_context: &GlobalContext) {
+        let descriptor = self.render_pipeline.prepare(global_context);
+        self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
     }
 
     fn render(
         &mut self,
         render_pass: &mut RenderPass,
-        queue: &Queue,
-        device: &Device,
         global_context: &mut GlobalContext,
     ) {
         self.meshes
             .iter_mut()
-            .for_each(|mesh| mesh.update(device, queue, global_context));
+            .for_each(|mesh| mesh.update(global_context));
         if let Some(pp) = self.pipeline.as_ref() {
             render_pass.set_pipeline(pp);
 
             self.render_pipeline
-                .render(render_pass, device, queue, global_context);
+                .render(render_pass, global_context);
 
             self.meshes
                 .iter_mut()

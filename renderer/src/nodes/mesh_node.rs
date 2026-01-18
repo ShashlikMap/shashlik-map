@@ -12,7 +12,7 @@ use rstar::primitives::Rectangle;
 use std::ops::Range;
 use tokio::sync::broadcast::Receiver;
 use wgpu::util::DeviceExt;
-use wgpu::{Buffer, Device, Queue, RenderPass};
+use wgpu::{Buffer, Device, RenderPass};
 
 pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
@@ -125,7 +125,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
 }
 
 impl<T: MeshInstanceInput> SceneNode for PositionedMesh<T> {
-    fn update(&mut self, _device: &Device, queue: &Queue, global_context: &mut GlobalContext) {
+    fn update(&mut self, global_context: &mut GlobalContext) {
         if self.with_collisions {
             for item in &mut self.instance_positions_and_alpha {
                 let screen_pos = global_context.view_projection.screen_position(Vector3::new(
@@ -175,6 +175,7 @@ impl<T: MeshInstanceInput> SceneNode for PositionedMesh<T> {
                 self.is_two_instances,
             );
 
+            let queue = global_context.queue();
             queue.write_buffer(
                 &self.instance_buffer,
                 0,
@@ -201,8 +202,7 @@ pub trait MeshInstanceInput: Sized + Pod {
         attrs.clear();
 
         let scale_matrix = Matrix4::<f64>::from_scale(spatial_data.scale);
-        let rotation_matrix =
-            Matrix4::<f64>::from_angle_z(Deg(spatial_data.yaw));
+        let rotation_matrix = Matrix4::<f64>::from_angle_z(Deg(spatial_data.yaw));
         let matrix = scale_matrix * rotation_matrix;
         for i in 0..original_positions_alpha.len() {
             let item = original_positions_alpha[i];

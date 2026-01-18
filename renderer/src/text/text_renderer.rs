@@ -1,8 +1,7 @@
-use crate::collision_handler::CollisionHandler;
 use crate::geometry_data::TextData;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::vertex_attrs::TextInstanceInput;
-use crate::view_projection::ViewProjection;
+use crate::GlobalContext;
 use cgmath::num_traits::clamp;
 use cgmath::{vec3, Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector3};
 use geo_types::{coord, point};
@@ -11,7 +10,7 @@ use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
-use wgpu::{Buffer, Device, Queue, RenderPass};
+use wgpu::{Buffer, Device, RenderPass};
 
 #[derive(Clone)]
 pub struct GlyphData {
@@ -46,9 +45,11 @@ impl TextRenderer {
     pub fn insert(
         &mut self,
         data: &mut TextData,
-        collision_handler: &mut CollisionHandler,
-        view_projection: &ViewProjection,
+        global_context: &mut GlobalContext,
     ) {
+        let view_projection = &global_context.view_projection;
+        let collision_handler = &mut global_context.collision_handler;
+
         let glyph_buffer = data
             .glyph_buffer
             .get_or_insert_with(|| self.default_face.shape(data.text.as_str()));
@@ -260,7 +261,10 @@ impl TextRenderer {
         }
     }
 
-    fn update_attrs(&mut self, queue: &Queue, device: &Device, cs_offset: &Vector3<f64>) {
+    fn update_attrs(&mut self, global_context: &GlobalContext) {
+        let cs_offset = global_context.view_projection.cs_offset;
+        let device = global_context.device();
+        let queue = global_context.queue();
         self.glyph_data.iter().for_each(|(key, list)| {
             let mut attrs = vec![];
             list.iter().for_each(|glyph_data| {
@@ -303,9 +307,9 @@ impl TextRenderer {
         })
     }
 
-    pub fn update(&mut self, queue: &Queue, device: &wgpu::Device, cs_offset: &Vector3<f64>) {
+    pub fn update(&mut self, global_context: &GlobalContext) {
         self.id_to_alpha_map.clear();
-        self.update_attrs(queue, device, cs_offset);
+        self.update_attrs(global_context);
     }
 
     pub fn render(&mut self, render_pass: &mut RenderPass) {

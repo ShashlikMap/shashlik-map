@@ -5,10 +5,7 @@ use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex, VertexAttrib};
 use crate::{GlobalContext, ReceiverExt};
 use tokio::sync::broadcast::Receiver;
 use wgpu::util::DeviceExt;
-use wgpu::{
-    BindGroup, BindGroupLayout, CompareFunction, Device, Queue, RenderPass, SurfaceConfiguration,
-    include_wgsl,
-};
+use wgpu::{BindGroup, BindGroupLayout, CompareFunction, RenderPass, include_wgsl};
 
 pub struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
@@ -20,11 +17,11 @@ pub struct ShapePipeline {
 
 impl ShapePipeline {
     pub fn new(
-        device: &Device,
-        global_context: &mut GlobalContext,
+        global_context: &GlobalContext,
         is_screen: bool,
         style_uniform_rx: Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
     ) -> Self {
+        let device = global_context.device();
         let styles_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[wgpu::BindGroupLayoutEntry {
@@ -41,7 +38,7 @@ impl ShapePipeline {
             });
 
         Self {
-            mesh_pipeline: MeshPipeline::new(device, global_context),
+            mesh_pipeline: MeshPipeline::new(global_context),
             is_screen,
             styles_bind_group_layout,
             style_bind_group: None,
@@ -53,13 +50,8 @@ impl ShapePipeline {
 impl RenderPipeline for ShapePipeline {
     type InstanceInputType = ShapeInstanceInput;
 
-    fn render(
-        &mut self,
-        render_pass: &mut RenderPass,
-        device: &Device,
-        queue: &Queue,
-        global_context: &mut GlobalContext,
-    ) {
+    fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        let device = global_context.device();
         if let Ok(uniforms) = self.style_uniform_rx.no_lagged() {
             // TODO We could reuse the buffer if styles count has not changed
             let styles_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -80,21 +72,16 @@ impl RenderPipeline for ShapePipeline {
             self.style_bind_group = Some(styles_bind_group);
         }
 
-        self.mesh_pipeline
-            .render(render_pass, device, queue, global_context);
+        self.mesh_pipeline.render(render_pass, global_context);
 
         if let Some(bind_group) = self.style_bind_group.as_ref() {
             render_pass.set_bind_group(1, bind_group, &[]);
         }
     }
 
-    fn prepare(
-        &self,
-        global_context: &mut GlobalContext,
-        device: &Device,
-        config: &SurfaceConfiguration,
-    ) -> OwnedRenderPipelineDescriptor<'_> {
-        let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context, device, config);
+    fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
+        let device = global_context.device();
+        let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context);
         let mut stencil = mesh_descriptor.depth_stencil.unwrap();
         stencil.depth_compare = CompareFunction::Always;
         stencil.depth_write_enabled = false;

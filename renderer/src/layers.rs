@@ -1,14 +1,14 @@
-use crate::GlobalContext;
-use crate::mesh_layers::BaseMeshLayer;
+use crate::mesh_layers::feature_layers::FeatureLayers;
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
 use crate::mesh_layers::text_mesh_layer::TextMeshLayer;
-use crate::mesh_layers::feature_layers::FeatureLayers;
+use crate::mesh_layers::BaseMeshLayer;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use crate::pipelines::text_pipeline::TextPipeline;
 use crate::styles::style_store::StyleStore;
+use crate::GlobalContext;
 use rustybuzz::ttf_parser;
-use wgpu::{Device, Queue, RenderPass, SurfaceConfiguration};
+use wgpu::RenderPass;
 
 pub(crate) struct Layers {
     feature_layers: FeatureLayers,
@@ -20,28 +20,30 @@ pub(crate) struct Layers {
 
 impl Layers {
     pub fn new(
-        device: &Device,
-        global_context: &mut GlobalContext,
-        feature_layers: FeatureLayers,
+        feature_tags: &[String],
+        global_context: &GlobalContext,
         style_store: &StyleStore,
         font: &'static ttf_parser::Face<'static>,
     ) -> Layers {
+        let feature_layers = FeatureLayers::new(feature_tags, global_context, style_store);
         Layers {
             feature_layers,
-            new_mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(device, global_context)),
+            new_mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context)),
             new_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(
-                device,
                 global_context,
                 false,
                 style_store.subscribe(),
             )),
             new_screen_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(
-                device,
                 global_context,
                 true,
                 style_store.subscribe(),
             )),
-            new_text_layer: TextMeshLayer::new(TextPipeline::new(device, global_context), device, font),
+            new_text_layer: TextMeshLayer::new(
+                TextPipeline::new(global_context),
+                global_context,
+                font,
+            ),
         }
     }
 
@@ -61,30 +63,20 @@ impl Layers {
 }
 
 impl BaseMeshLayer for Layers {
-    fn prepare(&mut self, global_context: &mut GlobalContext, device: &Device, config: &SurfaceConfiguration) {
-        self.new_shape_layer.prepare(global_context, device, config);
-        self.new_mesh_layer.prepare(global_context, device, config);
-        self.new_screen_shape_layer.prepare(global_context, device, config);
-        self.new_text_layer.prepare(global_context, device, config);
-        self.feature_layers.prepare(global_context, device, config);
+    fn prepare(&mut self, global_context: &GlobalContext) {
+        self.new_shape_layer.prepare(global_context);
+        self.new_mesh_layer.prepare(global_context);
+        self.new_screen_shape_layer.prepare(global_context);
+        self.new_text_layer.prepare(global_context);
+        self.feature_layers.prepare(global_context);
     }
 
-    fn render(
-        &mut self,
-        render_pass: &mut RenderPass,
-        queue: &Queue,
-        device: &Device,
-        global_context: &mut GlobalContext,
-    ) {
-        self.new_shape_layer
-            .render(render_pass, queue, device, global_context);
-        self.new_mesh_layer
-            .render(render_pass, queue, device, global_context);
+    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
+        self.new_shape_layer.render(render_pass, global_context);
+        self.new_mesh_layer.render(render_pass, global_context);
         self.new_screen_shape_layer
-            .render(render_pass, queue, device, global_context);
-        self.new_text_layer
-            .render(render_pass, queue, device, global_context);
-        self.feature_layers
-            .render(render_pass, queue, device, global_context);
+            .render(render_pass, global_context);
+        self.new_text_layer.render(render_pass, global_context);
+        self.feature_layers.render(render_pass, global_context);
     }
 }

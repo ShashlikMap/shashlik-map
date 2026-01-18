@@ -1,12 +1,12 @@
-use crate::GlobalContext;
 use crate::msaa_texture::MultisampledTexture;
 use crate::pipelines::{
     OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline,
 };
 use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib, VertexNormal};
+use crate::GlobalContext;
 use wgpu::{
-    BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState, Device, Face,
-    Queue, RenderPass, SurfaceConfiguration, TextureFormat, include_wgsl,
+    include_wgsl, BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState
+    , Face, RenderPass, TextureFormat,
 };
 
 pub struct MeshPipeline {
@@ -15,7 +15,8 @@ pub struct MeshPipeline {
 }
 
 impl MeshPipeline {
-    pub fn new(device: &Device, global_context: &mut GlobalContext) -> Self {
+    pub fn new(global_context: &GlobalContext) -> Self {
+        let device = global_context.device();
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -51,22 +52,14 @@ impl MeshPipeline {
 impl RenderPipeline for MeshPipeline {
     type InstanceInputType = GeneralInstanceInput;
 
-    fn render(
-        &mut self,
-        render_pass: &mut RenderPass,
-        _device: &Device,
-        queue: &Queue,
-        global_context: &mut GlobalContext,
-    ) {
+    fn render(&mut self, render_pass: &mut RenderPass, _global_context: &GlobalContext) {
         render_pass.set_bind_group(0, &self.bind_group, &[]);
     }
 
-    fn prepare(
-        &'_ self,
-        global_context: &mut GlobalContext,
-        device: &Device,
-        config: &SurfaceConfiguration,
-    ) -> OwnedRenderPipelineDescriptor<'_> {
+    fn prepare(&'_ self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
+        let device = global_context.device();
+        let config = global_context.config();
+
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Mesh Render Pipeline Layout"),
             bind_group_layouts: &[&self.bind_group_layout],

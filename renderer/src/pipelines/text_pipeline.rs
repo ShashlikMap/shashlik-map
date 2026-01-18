@@ -1,17 +1,17 @@
-use crate::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::vertex_attrs::{ShapeInstanceInput, TextInstanceInput, VertexAttrib, VertexNormal};
-use wgpu::{CompareFunction, Device, Queue, RenderPass, SurfaceConfiguration, include_wgsl};
+use crate::GlobalContext;
+use wgpu::{include_wgsl, CompareFunction, RenderPass};
 
 pub struct TextPipeline {
     mesh_pipeline: MeshPipeline,
 }
 
 impl TextPipeline {
-    pub fn new(device: &Device, global_context: &mut GlobalContext) -> Self {
+    pub fn new(global_context: &GlobalContext) -> Self {
         Self {
-            mesh_pipeline: MeshPipeline::new(device, global_context),
+            mesh_pipeline: MeshPipeline::new(global_context),
         }
     }
 }
@@ -19,24 +19,14 @@ impl TextPipeline {
 impl RenderPipeline for TextPipeline {
     type InstanceInputType = ShapeInstanceInput;
 
-    fn render(
-        &mut self,
-        render_pass: &mut RenderPass,
-        device: &Device,
-        queue: &Queue,
-        global_context: &mut GlobalContext,
-    ) {
-        self.mesh_pipeline
-            .render(render_pass, device, queue, global_context);
+    fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        self.mesh_pipeline.render(render_pass, global_context);
     }
 
-    fn prepare(
-        &self,
-        global_context: &mut GlobalContext,
-        device: &Device,
-        config: &SurfaceConfiguration,
-    ) -> OwnedRenderPipelineDescriptor<'_> {
-        let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context, device, config);
+    fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
+        let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context);
+
+        let device = global_context.device();
 
         let mut stencil = mesh_descriptor.depth_stencil.unwrap();
         stencil.depth_compare = CompareFunction::Always;

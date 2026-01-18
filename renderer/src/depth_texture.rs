@@ -1,17 +1,20 @@
-use wgpu::{Device, TextureView};
 use crate::msaa_texture::MultisampledTexture;
+use crate::GlobalContext;
+use wgpu::TextureView;
 
 pub struct DepthTexture {
     pub view: TextureView,
 }
 
 impl DepthTexture {
-    pub fn new(device: &Device, width: u32, height: u32) -> Self {
+    pub fn new(global_context: &GlobalContext) -> Self {
         pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+        let device = global_context.device();
+        let config = global_context.config();
 
         let multisampled_texture_extent = wgpu::Extent3d {
-            width,
-            height,
+            width: config.width,
+            height: config.height,
             depth_or_array_layers: 1,
         };
 
