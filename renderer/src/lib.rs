@@ -40,7 +40,6 @@ mod mesh;
 pub mod messages;
 pub mod modifier;
 mod msaa_texture;
-pub mod nodes;
 pub mod render_group;
 pub mod renderer_api;
 pub mod styles;
@@ -191,7 +190,7 @@ impl ShashlikRenderer {
         canvas: Box<dyn WgpuCanvas>,
         font: &'static ttf_parser::Face<'static>,
     ) -> anyhow::Result<ShashlikRenderer> {
-        let mut style_store = StyleStore::new();
+        let style_store = StyleStore::new();
 
         let mut global_context = GlobalContext::new(canvas, &style_store);
 
@@ -204,7 +203,7 @@ impl ShashlikRenderer {
         //     .resize(config.width, config.height);
 
 
-        let mut layers = Layers::new(feature_tags, &global_context, &mut style_store, font);
+        let mut layers = Layers::new(feature_tags, &global_context, font);
 
         let (renderer_api_tx, renderer_api_rx) = channel();
 

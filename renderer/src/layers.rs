@@ -1,12 +1,11 @@
-use crate::GlobalContext;
-use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::feature_layers::FeatureLayers;
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
 use crate::mesh_layers::text_mesh_layer::TextMeshLayer;
+use crate::mesh_layers::BaseMeshLayer;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use crate::pipelines::text_pipeline::TextPipeline;
-use crate::styles::style_store::StyleStore;
+use crate::GlobalContext;
 use rustybuzz::ttf_parser;
 use wgpu::RenderPass;
 
@@ -22,10 +21,9 @@ impl Layers {
     pub fn new(
         feature_tags: &[String],
         global_context: &GlobalContext,
-        style_store: &mut StyleStore,
         font: &'static ttf_parser::Face<'static>,
     ) -> Layers {
-        let feature_layers = FeatureLayers::new(feature_tags, global_context, style_store);
+        let feature_layers = FeatureLayers::new(feature_tags, global_context);
         Layers {
             feature_layers,
             new_mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context)),

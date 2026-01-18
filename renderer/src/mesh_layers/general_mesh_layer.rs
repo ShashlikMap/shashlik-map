@@ -3,7 +3,7 @@ use crate::mesh::mesh::Mesh;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::modifier::render_modifier::SpatialData;
-use crate::nodes::mesh_node::PositionedMesh;
+use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::pipelines::RenderPipeline;
 use cgmath::Vector3;
 use wgpu::{Device, RenderPass};

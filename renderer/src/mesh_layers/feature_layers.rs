@@ -1,8 +1,7 @@
-use crate::GlobalContext;
-use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
+use crate::mesh_layers::BaseMeshLayer;
 use crate::pipelines::shape_pipeline::ShapePipeline;
-use crate::styles::style_store::StyleStore;
+use crate::GlobalContext;
 use linked_hash_map::LinkedHashMap;
 use wgpu::RenderPass;
 
@@ -14,7 +13,6 @@ impl FeatureLayers {
     pub fn new(
         tags: &[String],
         global_context: &GlobalContext,
-        style_store: &mut StyleStore,
     ) -> FeatureLayers {
         let mut layers = FeatureLayers {
             shape_layers: LinkedHashMap::new(),
