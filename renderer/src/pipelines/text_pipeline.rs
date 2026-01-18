@@ -1,7 +1,7 @@
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::vertex_attrs::{ShapeInstanceInput, TextInstanceInput, VertexAttrib, VertexNormal};
-use crate::GlobalContext;
+use crate::global_context::GlobalContext;
 use wgpu::{include_wgsl, CompareFunction, RenderPass};
 
 pub struct TextPipeline {

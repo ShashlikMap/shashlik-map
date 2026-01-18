@@ -3,7 +3,7 @@ use crate::pipelines::{
     OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline,
 };
 use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib, VertexNormal};
-use crate::GlobalContext;
+use crate::global_context::GlobalContext;
 use wgpu::{
     include_wgsl, BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState
     , Face, RenderPass, TextureFormat,

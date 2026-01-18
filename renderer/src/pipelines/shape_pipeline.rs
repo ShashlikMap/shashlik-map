@@ -1,8 +1,8 @@
+use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex, VertexAttrib};
-use crate::GlobalContext;
-use wgpu::{include_wgsl, CompareFunction, RenderPass};
+use wgpu::{CompareFunction, RenderPass, include_wgsl};
 
 pub struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
@@ -10,10 +10,9 @@ pub struct ShapePipeline {
 }
 
 impl ShapePipeline {
-    pub fn new(
-        global_context: &GlobalContext,
-        is_screen: bool,
-    ) -> Self {
+    const SHADER_STYLE_GROUP_INDEX: u32 = 1;
+
+    pub fn new(global_context: &GlobalContext, is_screen: bool) -> Self {
         Self {
             mesh_pipeline: MeshPipeline::new(global_context),
             is_screen,
@@ -27,7 +26,7 @@ impl RenderPipeline for ShapePipeline {
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         self.mesh_pipeline.render(render_pass, global_context);
         if let Some(bind_group) = global_context.style_bind_group.as_ref() {
-            render_pass.set_bind_group(1, bind_group, &[]);
+            render_pass.set_bind_group(Self::SHADER_STYLE_GROUP_INDEX, bind_group, &[]);
         }
     }
 

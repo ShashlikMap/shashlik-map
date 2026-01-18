@@ -1,31 +1,27 @@
 extern crate core;
 
-use crate::collision_handler::CollisionHandler;
-use crate::consts::STYLE_SHADER_PARAMS_COUNT;
 use crate::depth_texture::DepthTexture;
 use crate::fps::FpsCounter;
 use crate::geometry_data::TextData;
-use mesh_layers::layers::Layers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
 use crate::msaa_texture::MultisampledTexture;
 use crate::styles::style_store::StyleStore;
-use crate::view_projection::ViewProjection;
 use canvas_api::CanvasApi;
 use cgmath::{vec2, vec3, Matrix4, Vector2, Vector3};
 use geo_types::Coord;
+use mesh_layers::layers::Layers;
 use messages::RendererApiMsg;
 use renderer_api::RendererApi;
 use rustybuzz::ttf_parser;
 use std::collections::HashMap;
 use std::iter;
-use std::sync::Arc;
 use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::Arc;
 use std::thread::spawn;
 use tokio::sync::broadcast;
-use tokio::sync::broadcast::error::TryRecvError;
-use wgpu::util::DeviceExt;
-use wgpu::{BindGroup, BindGroupLayout, Device, SurfaceError};
+use wgpu::SurfaceError;
+use global_context::GlobalContext;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 pub mod canvas_api;
@@ -49,128 +45,13 @@ mod view_projection;
 
 pub mod mesh_layers;
 pub mod pipelines;
-
-pub const SHADER_STYLE_GROUP_INDEX: u32 = 1;
+mod utils;
+mod global_context;
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
     fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>);
     fn render(&mut self) -> Result<(), SurfaceError>;
-}
-
-pub trait ReceiverExt<T: Clone> {
-    fn no_lagged(&mut self) -> Result<T, TryRecvError>;
-}
-
-impl<T: Clone> ReceiverExt<T> for tokio::sync::broadcast::Receiver<T> {
-    fn no_lagged(&mut self) -> Result<T, TryRecvError> {
-        let result = self.try_recv();
-        if let Err(err) = &result {
-            match err {
-                TryRecvError::Lagged(_) => return self.no_lagged(),
-                _ => {}
-            }
-        }
-        result
-    }
-}
-
-pub struct GlobalContext {
-    pub canvas: Box<dyn WgpuCanvas>,
-    view_projection: ViewProjection,
-    collision_handler: CollisionHandler,
-    styles_bind_group_layout: BindGroupLayout,
-    style_bind_group: Option<BindGroup>,
-    style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
-}
-
-impl GlobalContext {
-    pub fn new(canvas: Box<dyn WgpuCanvas>, style_store: &StyleStore) -> Self {
-        let device = canvas.device();
-        let config = canvas.config();
-        let view_projection = ViewProjection::new(device);
-        let collision_handler = CollisionHandler::new(config.width as f32, config.height as f32);
-        let styles_bind_group_layout = Self::create_style_bind_group_layout(device);
-        GlobalContext {
-            canvas,
-            view_projection,
-            collision_handler,
-            styles_bind_group_layout,
-            style_bind_group: None,
-            style_uniform_rx: style_store.subscribe(),
-        }
-    }
-
-    fn create_style_bind_group_layout(device: &Device) -> BindGroupLayout {
-        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-            label: Some("styles_bind_group_layout"),
-        })
-    }
-
-    pub fn resize(&mut self, width: u32, height: u32) {
-        if width > 0 && height > 0 {
-            self.canvas.on_resize();
-            let config = self.canvas.config();
-
-            self.view_projection.resize(config.width, config.height);
-            self.collision_handler
-                .resize(config.width as f32, config.height as f32);
-        }
-    }
-
-    pub fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
-        self.view_projection.update(
-            self.canvas.queue(),
-            self.canvas.config(),
-            view_proj_matrix,
-            cs_offset,
-        );
-
-        self.update_style_bind_group();
-    }
-
-    fn update_style_bind_group(&mut self) {
-        let device = self.canvas.device();
-        if let Ok(uniforms) = self.style_uniform_rx.no_lagged() {
-            // TODO We could reuse the buffer if styles count has not changed
-            let styles_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Style Buffer"),
-                contents: bytemuck::cast_slice(&uniforms),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            });
-
-            let styles_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &self.styles_bind_group_layout,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: styles_buffer.as_entire_binding(),
-                }],
-                label: Some("styles_bind_group"),
-            });
-
-            self.style_bind_group = Some(styles_bind_group);
-        }
-    }
-
-    pub fn queue(&self) -> &wgpu::Queue {
-        self.canvas.queue()
-    }
-    pub fn config(&self) -> &wgpu::SurfaceConfiguration {
-        self.canvas.config()
-    }
-    pub fn device(&self) -> &wgpu::Device {
-        self.canvas.device()
-    }
 }
 
 pub struct ShashlikRenderer {

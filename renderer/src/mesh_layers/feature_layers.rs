@@ -1,4 +1,4 @@
-use crate::GlobalContext;
+use crate::global_context::GlobalContext;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
 use crate::pipelines::shape_pipeline::ShapePipeline;

@@ -1,4 +1,4 @@
-use crate::GlobalContext;
+use crate::global_context::GlobalContext;
 use crate::mesh::mesh::Mesh;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;

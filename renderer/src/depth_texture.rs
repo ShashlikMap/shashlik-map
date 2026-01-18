@@ -1,5 +1,5 @@
 use crate::msaa_texture::MultisampledTexture;
-use crate::GlobalContext;
+use crate::global_context::GlobalContext;
 use wgpu::TextureView;
 
 pub struct DepthTexture {

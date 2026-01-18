@@ -1,4 +1,4 @@
-use crate::GlobalContext;
+use crate::global_context::GlobalContext;
 use wgpu::RenderPass;
 
 pub mod feature_layers;

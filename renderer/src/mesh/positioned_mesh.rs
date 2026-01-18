@@ -1,7 +1,6 @@
 use crate::mesh::mesh::Mesh;
 use crate::modifier::render_modifier::SpatialData;
 use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput};
-use crate::{GlobalContext, ReceiverExt};
 use bytemuck::Pod;
 use cgmath::num_traits::clamp;
 use cgmath::{Deg, Matrix4, Vector3};
@@ -12,6 +11,8 @@ use std::ops::Range;
 use tokio::sync::broadcast::Receiver;
 use wgpu::util::DeviceExt;
 use wgpu::{Buffer, Device, RenderPass};
+use crate::global_context::GlobalContext;
+use crate::utils::ReceiverExt;
 
 pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,

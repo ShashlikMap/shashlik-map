@@ -1,7 +1,7 @@
 use crate::geometry_data::TextData;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::vertex_attrs::TextInstanceInput;
-use crate::GlobalContext;
+use crate::global_context::GlobalContext;
 use cgmath::num_traits::clamp;
 use cgmath::{vec3, Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector3};
 use geo_types::{coord, point};
