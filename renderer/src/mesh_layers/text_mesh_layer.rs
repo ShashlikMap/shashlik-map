@@ -53,8 +53,11 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
             .holder
             .iter_mut()
             .for_each(|(_, data)| {
-                data.iter_mut()
-                    .for_each(|item| self.text_renderer.insert(item, global_context));
+                data.iter_mut().for_each(|items| {
+                    items
+                        .iter_mut()
+                        .for_each(|item| self.text_renderer.insert(item, global_context));
+                });
             });
 
         self.text_renderer.update(&global_context);

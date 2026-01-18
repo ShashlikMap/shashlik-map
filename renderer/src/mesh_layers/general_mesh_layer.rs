@@ -54,7 +54,11 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
         self.render_data_holder
             .holder
             .iter_mut()
-            .for_each(|(_, mesh)| mesh.update(global_context));
+            .for_each(|(_, meshes)| {
+                meshes.iter_mut().for_each(|mesh| {
+                    mesh.update(global_context);
+                });
+            });
         if let Some(pp) = self.pipeline.as_ref() {
             render_pass.set_pipeline(pp);
 
@@ -63,7 +67,11 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
             self.render_data_holder
                 .holder
                 .iter_mut()
-                .for_each(|(_, mesh)| mesh.render(render_pass));
+                .for_each(|(_, meshes)| {
+                    meshes.iter_mut().for_each(|mesh| {
+                        mesh.render(render_pass);
+                    });
+                });
         }
     }
 
