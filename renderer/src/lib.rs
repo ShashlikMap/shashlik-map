@@ -12,15 +12,15 @@ use crate::msaa_texture::MultisampledTexture;
 use crate::styles::style_store::StyleStore;
 use crate::view_projection::ViewProjection;
 use canvas_api::CanvasApi;
-use cgmath::{vec2, vec3, Matrix4, Vector2, Vector3};
+use cgmath::{Matrix4, Vector2, Vector3, vec2, vec3};
 use geo_types::Coord;
 use messages::RendererApiMsg;
 use renderer_api::RendererApi;
 use rustybuzz::ttf_parser;
 use std::collections::HashMap;
 use std::iter;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::TryRecvError;
@@ -82,7 +82,7 @@ pub struct GlobalContext {
     collision_handler: CollisionHandler,
     styles_bind_group_layout: BindGroupLayout,
     style_bind_group: Option<BindGroup>,
-    style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>
+    style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
 }
 
 impl GlobalContext {
@@ -202,7 +202,6 @@ impl ShashlikRenderer {
         //     .view_projection
         //     .resize(config.width, config.height);
 
-
         let mut layers = Layers::new(feature_tags, &global_context, font);
 
         let (renderer_api_tx, renderer_api_rx) = channel();
@@ -303,6 +302,8 @@ impl ShashlikRenderer {
             }
         }
 
+        self.layers.update(&mut self.global_context);
+
         self.global_context.collision_handler.clear();
     }
 
@@ -318,9 +319,12 @@ impl ShashlikRenderer {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        let mut encoder = self.global_context.device().create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
-        });
+        let mut encoder =
+            self.global_context
+                .device()
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Render Encoder"),
+                });
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -364,13 +368,15 @@ impl ShashlikRenderer {
                     screen_space: true,
                     glyph_buffer: None,
                 },
-                &mut self.global_context
+                &mut self.global_context,
             );
             self.layers
                 .render(&mut render_pass, &mut self.global_context);
         }
 
-        self.global_context.queue().submit(iter::once(encoder.finish()));
+        self.global_context
+            .queue()
+            .submit(iter::once(encoder.finish()));
         output.present();
 
         self.global_context.canvas.on_post_render();

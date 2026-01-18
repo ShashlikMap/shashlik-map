@@ -48,7 +48,7 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
     }
 
-    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
+    fn update(&mut self, global_context: &mut GlobalContext) {
         self.render_data_holder
             .holder
             .iter_mut()
@@ -60,13 +60,25 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
                 });
             });
 
-        self.text_renderer.update(&global_context);
+    }
+
+
+    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
+        // self.render_data_holder
+        //     .holder
+        //     .iter_mut()
+        //     .for_each(|(_, data)| {
+        //         data.iter_mut()
+        //             .for_each(|item| self.text_renderer.insert(item, global_context));
+        //     });
+        //
+        // self.text_renderer.update(&global_context);
 
         if let Some(pp) = self.pipeline.as_ref() {
             render_pass.set_pipeline(pp);
 
             self.render_pipeline.render(render_pass, global_context);
-            self.text_renderer.render(render_pass);
+            self.text_renderer.render(render_pass, global_context);
         }
     }
 

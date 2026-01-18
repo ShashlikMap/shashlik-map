@@ -1,11 +1,11 @@
+use crate::GlobalContext;
+use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::feature_layers::FeatureLayers;
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
 use crate::mesh_layers::text_mesh_layer::TextMeshLayer;
-use crate::mesh_layers::BaseMeshLayer;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use crate::pipelines::text_pipeline::TextPipeline;
-use crate::GlobalContext;
 use rustybuzz::ttf_parser;
 use wgpu::RenderPass;
 
@@ -27,14 +27,8 @@ impl Layers {
         Layers {
             feature_layers,
             new_mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context)),
-            new_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(
-                global_context,
-                false,
-            )),
-            new_screen_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(
-                global_context,
-                true,
-            )),
+            new_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, false)),
+            new_screen_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, true)),
             new_text_layer: TextMeshLayer::new(
                 TextPipeline::new(global_context),
                 global_context,
@@ -55,6 +49,14 @@ impl BaseMeshLayer for Layers {
         self.new_screen_shape_layer.prepare(global_context);
         self.new_text_layer.prepare(global_context);
         self.feature_layers.prepare(global_context);
+    }
+
+    fn update(&mut self, global_context: &mut GlobalContext) {
+        self.new_shape_layer.update(global_context);
+        self.new_mesh_layer.update(global_context);
+        self.new_screen_shape_layer.update(global_context);
+        self.new_text_layer.update(global_context);
+        self.feature_layers.update(global_context);
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {

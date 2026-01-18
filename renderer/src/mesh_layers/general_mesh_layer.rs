@@ -50,7 +50,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
     }
 
-    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
+    fn update(&mut self, global_context: &mut GlobalContext) {
         self.render_data_holder
             .holder
             .iter_mut()
@@ -59,8 +59,11 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
                     mesh.update(global_context);
                 });
             });
-        if let Some(pp) = self.pipeline.as_ref() {
-            render_pass.set_pipeline(pp);
+    }
+
+    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
+        if let Some(render_pipeline) = self.pipeline.as_ref() {
+            render_pass.set_pipeline(render_pipeline);
 
             self.render_pipeline.render(render_pass, global_context);
 

@@ -8,6 +8,8 @@ mod render_data_holder;
 
 pub trait BaseMeshLayer {
     fn prepare(&mut self, global_context: &GlobalContext);
+
+    fn update(&mut self, global_context: &mut GlobalContext);
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext);
 
     fn clear_by_key(&mut self, key: String);

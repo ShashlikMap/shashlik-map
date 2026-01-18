@@ -307,12 +307,10 @@ impl TextRenderer {
         })
     }
 
-    pub fn update(&mut self, global_context: &GlobalContext) {
+    pub fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         self.id_to_alpha_map.clear();
         self.update_attrs(global_context);
-    }
 
-    pub fn render(&mut self, render_pass: &mut RenderPass) {
         if !self.instance_buffer_map.is_empty() && !self.glyph_data.is_empty() {
             self.glyph_data.iter().for_each(|(glyph_id, list)| {
                 if let Some(mesh) = self.default_face.glyph_mesh_map.get(glyph_id) {
