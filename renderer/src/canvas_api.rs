@@ -51,7 +51,7 @@ impl CanvasApi {
             feature_layer_tag: None,
         }
     }
-    pub(crate) fn begin_shape(&mut self) {
+    pub(crate) fn start_commands(&mut self) {
         self.flushed = false;
         self.feature_layer_tag = None;
         self.indices_by_layers.clear();
@@ -75,19 +75,6 @@ impl CanvasApi {
 
     pub fn update_style<F: FnOnce(&mut RenderStyle)>(&mut self, style_id: &StyleId, updater: F) {
         self.style_store.update_style(style_id, updater);
-    }
-    pub(crate) fn draw_commands(
-        &mut self,
-        key: String,
-        spatial_data: SpatialData,
-        spatial_tx: tokio::sync::broadcast::Sender<SpatialData>,
-    ) -> DrawCommands {
-        DrawCommands::new(
-            key,
-            spatial_data,
-            spatial_tx,
-            mem::take(&mut self.draw_commands),
-        )
     }
 
     pub fn geometry_data(&mut self, geometry_data: GeometryData) {
@@ -296,7 +283,12 @@ impl CanvasApi {
         self.text_vec.push(data);
     }
 
-    pub(crate) fn flush(&mut self) {
+    pub(crate) fn flush_commands(
+        &mut self,
+        key: String,
+        spatial_data: SpatialData,
+        spatial_tx: tokio::sync::broadcast::Sender<SpatialData>,
+    ) -> DrawCommands {
         assert!(!self.flushed);
         self.flushed = true;
 
@@ -304,6 +296,13 @@ impl CanvasApi {
         self.prepare_mesh3d_command();
         self.prepare_mesh2d_screen_space_command();
         self.prepare_text_command();
+
+        DrawCommands::new(
+            key,
+            spatial_data,
+            spatial_tx,
+            mem::take(&mut self.draw_commands),
+        )
     }
 
     fn tessellate_fill_path<F, VT>(path: &Path, geometry: &mut VertexBuffers<VT, u32>, ctor: F)

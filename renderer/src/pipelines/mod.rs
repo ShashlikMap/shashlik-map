@@ -1,9 +1,10 @@
 use crate::mesh::mesh::Mesh;
 use crate::modifier::render_modifier::SpatialData;
-use crate::mesh::positioned_mesh::{MeshInstanceInput, PositionedMesh};
+use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::global_context::GlobalContext;
 use cgmath::Vector3;
 use wgpu::{ColorTargetState, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, VertexBufferLayout};
+use crate::mesh::mesh_instance_input::MeshInstanceInput;
 
 pub mod mesh_pipeline;
 pub mod shape_pipeline;

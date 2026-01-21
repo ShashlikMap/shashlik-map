@@ -121,11 +121,10 @@ impl ShashlikRenderer {
                         spatial_data_map
                             .insert(key.clone(), (spatial_data.clone(), spatial_tx.clone()));
 
-                        canvas_api.begin_shape();
+                        canvas_api.start_commands();
                         rg.content(&mut canvas_api);
-                        canvas_api.flush();
+                        let commands = canvas_api.flush_commands(key, spatial_data, spatial_tx);
 
-                        let commands = canvas_api.draw_commands(key, spatial_data, spatial_tx);
                         renderer_tx.send(RendererMessage::Draw(commands)).unwrap();
                     }
                     RendererApiMsg::UpdateStyle((style, block)) => {
