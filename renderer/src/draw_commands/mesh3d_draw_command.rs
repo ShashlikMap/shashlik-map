@@ -20,6 +20,6 @@ impl DrawCommand for Mesh3dDrawCommand {
         let mesh = geometry_to_mesh(&device, &self.mesh);
         layers
             .new_mesh_layer
-            .add(key, device, None, spatial_rx, false, false, mesh);
+            .add(key, None, spatial_rx, false, false, mesh);
     }
 }

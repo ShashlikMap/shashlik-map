@@ -1,21 +1,21 @@
+use crate::global_context::GlobalContext;
 use crate::mesh::mesh::Mesh;
+use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::modifier::render_modifier::SpatialData;
+use crate::utils::ReceiverExt;
+use cgmath::Vector3;
 use cgmath::num_traits::clamp;
-use cgmath::{Vector3};
 use geo_types::point;
 use log::error;
 use rstar::primitives::Rectangle;
 use std::ops::Range;
 use tokio::sync::broadcast::Receiver;
 use wgpu::util::DeviceExt;
-use wgpu::{Buffer, Device, RenderPass};
-use crate::global_context::GlobalContext;
-use crate::mesh::mesh_instance_input::MeshInstanceInput;
-use crate::utils::ReceiverExt;
+use wgpu::{Buffer, RenderPass};
 
 pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
-    instance_buffer: Buffer,
+    instance_buffer: Option<Buffer>,
     attrs: Vec<T>,
     instance_positions_and_alpha: Vec<(Vector3<f64>, f32)>, // TODO Proper structure with bound
     cs_offset: Vector3<f64>,
@@ -29,21 +29,18 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
 impl Mesh {
     pub fn to_positioned<T: MeshInstanceInput>(
         self,
-        device: &Device,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
     ) -> PositionedMesh<T> {
-        PositionedMesh::new(device, self, None, spatial_rx, false, false)
+        PositionedMesh::new(self, None, spatial_rx, false, false)
     }
     pub fn to_positioned_with_instances<T: MeshInstanceInput>(
         self,
-        device: &Device,
         instance_positions: Option<Vec<Vector3<f64>>>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
         with_collisions: bool,
     ) -> PositionedMesh<T> {
         PositionedMesh::new(
-            device,
             self,
             instance_positions,
             spatial_rx,
@@ -52,7 +49,7 @@ impl Mesh {
         )
     }
 
-    fn render_internal(&self, render_pass: &mut RenderPass, instances: &Range<u32>) {
+    fn render(&self, render_pass: &mut RenderPass, instances: &Range<u32>) {
         self.vertex_buf.iter().enumerate().for_each(|(i, v_buf)| {
             let (i_buf, _) = self.index_buf.get(i).unwrap();
             if v_buf.size() > 0 && i_buf.size() > 0 {
@@ -73,7 +70,6 @@ impl Mesh {
 
 impl<T: MeshInstanceInput> PositionedMesh<T> {
     pub fn new(
-        device: &Device,
         mesh: Mesh,
         instance_positions: Option<Vec<Vector3<f64>>>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
@@ -85,32 +81,15 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             .iter()
             .map(|v| (*v, 1.0))
             .collect();
-        let spatial_data = SpatialData::new();
-        let mut attrs = Vec::new();
-
-        T::fill_attrs(
-            &mut attrs,
-            &Vector3::new(0.0, 0.0, 0.0),
-            &instance_positions_and_alpha,
-            &SpatialData::new(),
-            is_two_instances,
-        );
-
-        let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Instance Buffer"),
-            // TODO It probably should be configurable, so it would be possible to draw two or more instances.
-            contents: bytemuck::cast_slice(attrs.as_slice()),
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-        });
         Self {
             mesh,
-            instance_buffer,
-            attrs,
+            instance_buffer: None,
+            attrs: vec![],
             instance_positions_and_alpha,
             cs_offset: Vector3::new(0.0, 0.0, 0.0),
             is_two_instances,
             spatial_rx,
-            original_spatial_data: spatial_data,
+            original_spatial_data: SpatialData::new(),
             with_collisions,
             first_render: true,
         }
@@ -158,6 +137,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         }
 
         if update_attrs {
+            let prev_attr_len = self.attrs.len();
             T::fill_attrs(
                 &mut self.attrs,
                 &self.cs_offset,
@@ -165,20 +145,37 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 &self.original_spatial_data,
                 self.is_two_instances,
             );
-
-            let queue = global_context.queue();
-            queue.write_buffer(
-                &self.instance_buffer,
-                0,
-                bytemuck::cast_slice(self.attrs.as_slice()),
-            );
+            if self.attrs.len() != prev_attr_len {
+                self.instance_buffer = Some(global_context.device().create_buffer_init(
+                    &wgpu::util::BufferInitDescriptor {
+                        label: Some("Instance Buffer"),
+                        // TODO It probably should be configurable, so it would be possible to draw two or more instances.
+                        contents: bytemuck::cast_slice(self.attrs.as_slice()),
+                        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                    },
+                ));
+            } else {
+                let queue = global_context.queue();
+                queue.write_buffer(
+                    self.instance_buffer
+                        .as_ref()
+                        .expect("Buffer should be created"),
+                    0,
+                    bytemuck::cast_slice(self.attrs.as_slice()),
+                );
+            }
         }
     }
 
     pub fn render(&mut self, render_pass: &mut RenderPass) {
-        render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+        render_pass.set_vertex_buffer(
+            1,
+            self.instance_buffer
+                .as_ref()
+                .expect("Buffer should be created")
+                .slice(..),
+        );
         let range = 0u32..self.attrs.len() as u32;
-        self.mesh.render_internal(render_pass, &range);
+        self.mesh.render(render_pass, &range);
     }
 }
-

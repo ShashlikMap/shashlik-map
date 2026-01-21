@@ -1,12 +1,12 @@
 use crate::global_context::GlobalContext;
 use crate::mesh::mesh::Mesh;
-use crate::mesh_layers::BaseMeshLayer;
-use crate::mesh_layers::render_data_holder::RenderDataHolder;
-use crate::modifier::render_modifier::SpatialData;
 use crate::mesh::positioned_mesh::PositionedMesh;
+use crate::mesh_layers::render_data_holder::RenderDataHolder;
+use crate::mesh_layers::BaseMeshLayer;
+use crate::modifier::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use cgmath::Vector3;
-use wgpu::{Device, RenderPass};
+use wgpu::RenderPass;
 
 pub struct GeneralMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
@@ -25,7 +25,6 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
     pub fn add(
         &mut self,
         key: String,
-        device: &Device,
         instance_positions: Option<Vec<Vector3<f64>>>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
@@ -33,7 +32,6 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
         mesh: Mesh,
     ) {
         let mesh = P::create_positioned_mesh(
-            device,
             instance_positions,
             spatial_rx,
             is_two_instances,

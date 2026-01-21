@@ -42,7 +42,6 @@ impl DrawCommand for Mesh2dDrawCommand {
 
         layer.add(
             key,
-            device,
             Some(mem::take(&mut self.mesh_info.instance_positions)),
             spatial_rx,
             !self.is_screen,
