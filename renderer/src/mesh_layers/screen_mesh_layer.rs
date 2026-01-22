@@ -118,7 +118,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenMeshLayer<P> {
 
             self.render_pipeline.render(render_pass, global_context);
 
-            self.meshes.iter().for_each(|(key, (mesh, instance_buf))| {
+            self.meshes.iter().for_each(|(_, (mesh, instance_buf))| {
                 if let Some(buf) = instance_buf.buffer.as_ref() {
                     render_pass.set_vertex_buffer(1, buf.slice(..));
                     let range = 0u32..instance_buf.length as u32;

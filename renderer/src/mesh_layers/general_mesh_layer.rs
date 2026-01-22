@@ -28,14 +28,12 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
         instance_positions: Option<Vec<Vector3<f64>>>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         is_two_instances: bool,
-        with_collisions: bool,
         mesh: Mesh,
     ) {
         let mesh = P::create_positioned_mesh(
             instance_positions,
             spatial_rx,
             is_two_instances,
-            with_collisions,
             mesh,
         );
         self.render_data_holder.add(key, mesh);

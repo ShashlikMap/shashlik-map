@@ -38,10 +38,10 @@ impl DrawCommand for Mesh2dDrawCommand {
                 Some(mem::take(&mut self.mesh_info.instance_positions)),
                 spatial_rx,
                 !self.is_screen,
-                self.mesh_info.with_collision,
                 mesh,
             );
         } else if self.is_screen {
+            // TODO check mesh collision
             layers.new_screen_shape_layer.submit(key,
                                                  self.mesh_info.instance_key.as_str(),
                                                  self.mesh_info.instance_positions.clone(), spatial_data, mesh);
@@ -51,7 +51,6 @@ impl DrawCommand for Mesh2dDrawCommand {
                 Some(mem::take(&mut self.mesh_info.instance_positions)),
                 spatial_rx,
                 !self.is_screen,
-                self.mesh_info.with_collision,
                 mesh,
             );
         };
