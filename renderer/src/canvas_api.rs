@@ -23,6 +23,7 @@ use std::ops::Range;
 pub struct MeshInfo {
     pub instance_positions: Vec<Vector3<f64>>,
     pub with_collision: bool,
+    pub instance_key: String
 }
 
 pub struct CanvasApi {
@@ -104,6 +105,7 @@ impl CanvasApi {
             let mesh_info = MeshInfo {
                 instance_positions: vec![Vector3::new(0.0, 0.0, 0.0)],
                 with_collision: false,
+                instance_key: "".to_string()
             };
             self.mesh2d_with_positions(mesh, flatten_ranges, mesh_info, false);
         }
@@ -274,6 +276,7 @@ impl CanvasApi {
                     MeshInfo {
                         instance_positions: vec![data.position],
                         with_collision: data.with_collision,
+                        instance_key: data.icon.0.to_string()
                     },
                 )
             });

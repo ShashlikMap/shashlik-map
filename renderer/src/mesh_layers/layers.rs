@@ -8,11 +8,13 @@ use crate::pipelines::shape_pipeline::ShapePipeline;
 use crate::pipelines::text_pipeline::TextPipeline;
 use rustybuzz::ttf_parser;
 use wgpu::RenderPass;
+use crate::mesh_layers::screen_mesh_layer::ScreenMeshLayer;
+
 pub(crate) struct Layers {
     feature_layers: FeatureLayers,
     pub new_shape_layer: GeneralMeshLayer<ShapePipeline>,
     pub new_mesh_layer: GeneralMeshLayer<MeshPipeline>,
-    pub new_screen_shape_layer: GeneralMeshLayer<ShapePipeline>,
+    pub new_screen_shape_layer: ScreenMeshLayer<ShapePipeline>,
     pub new_text_layer: TextMeshLayer<TextPipeline>,
 }
 
@@ -27,7 +29,7 @@ impl Layers {
             feature_layers,
             new_mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context)),
             new_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, false)),
-            new_screen_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, true)),
+            new_screen_shape_layer: ScreenMeshLayer::new(ShapePipeline::new(global_context, true)),
             new_text_layer: TextMeshLayer::new(
                 TextPipeline::new(global_context),
                 global_context,

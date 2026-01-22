@@ -1,13 +1,10 @@
 use crate::global_context::GlobalContext;
-use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh::InstanceBuffer;
 use crate::modifier::render_modifier::SpatialData;
 use crate::utils::ReceiverExt;
 use cgmath::Vector3;
-use cgmath::num_traits::clamp;
-use geo_types::point;
-use rstar::primitives::Rectangle;
 use tokio::sync::broadcast::Receiver;
 use wgpu::RenderPass;
 
@@ -21,7 +18,6 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
     with_collisions: bool,
-    first_render: bool,
 }
 
 impl Mesh {
@@ -71,7 +67,6 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             spatial_rx,
             original_spatial_data: SpatialData::new(),
             with_collisions,
-            first_render: true,
         }
     }
 
@@ -84,38 +79,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             self.original_spatial_data = spatial_data;
             update_attrs = true;
         }
-
-        if self.with_collisions {
-            for item in &mut self.instance_positions_and_alpha {
-                let screen_pos = global_context.view_projection.screen_position(Vector3::new(
-                    item.0.x + self.original_spatial_data.transform.x,
-                    item.0.y + self.original_spatial_data.transform.y,
-                    0.0,
-                ));
-                // TODO Bounds for svg?
-                // no need to use f64 for collision detection
-                let bounds = Rectangle::from_corners(
-                    point! { x: screen_pos.x as f32 - 20.0, y: screen_pos.y as f32 - 20.0},
-                    point! { x: screen_pos.x as f32+ 20.0, y: screen_pos.y as f32 + 20.0},
-                );
-
-                let within_screen = global_context.collision_handler.within_screen(bounds);
-                if within_screen {
-                    if global_context.collision_handler.insert(bounds) {
-                        item.1 = clamp(item.1 + 0.05, 0.0, 1.0);
-                    } else {
-                        if self.first_render {
-                            item.1 = 0.0;
-                        } else {
-                            item.1 = clamp(item.1 - 0.05, 0.0, 1.0);
-                        }
-                    }
-                }
-            }
-        }
-
-        self.first_render = false;
-
+        
         if update_attrs {
             T::fill_attrs(
                 &mut self.attrs,
