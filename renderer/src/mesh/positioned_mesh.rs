@@ -1,19 +1,19 @@
 use crate::global_context::GlobalContext;
+use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::modifier::render_modifier::SpatialData;
 use crate::utils::ReceiverExt;
-use cgmath::num_traits::clamp;
 use cgmath::Vector3;
+use cgmath::num_traits::clamp;
 use geo_types::point;
 use rstar::primitives::Rectangle;
 use tokio::sync::broadcast::Receiver;
-use wgpu::util::DeviceExt;
-use wgpu::{Buffer, RenderPass};
+use wgpu::RenderPass;
 
 pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
-    instance_buffer: Option<Buffer>,
+    instance_buffer: InstanceBuffer<T>,
     attrs: Vec<T>,
     instance_positions_and_alpha: Vec<(Vector3<f64>, f32)>, // TODO Proper structure with bound
     cs_offset: Vector3<f64>,
@@ -63,7 +63,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             .collect();
         Self {
             mesh,
-            instance_buffer: None,
+            instance_buffer: InstanceBuffer::default(),
             attrs: vec![],
             instance_positions_and_alpha,
             cs_offset: Vector3::new(0.0, 0.0, 0.0),
@@ -117,7 +117,6 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         self.first_render = false;
 
         if update_attrs {
-            let prev_attr_len = self.attrs.len();
             T::fill_attrs(
                 &mut self.attrs,
                 &self.cs_offset,
@@ -125,37 +124,20 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 &self.original_spatial_data,
                 self.is_two_instances,
             );
-            if self.attrs.len() != prev_attr_len {
-                self.instance_buffer = Some(global_context.device().create_buffer_init(
-                    &wgpu::util::BufferInitDescriptor {
-                        label: Some("Instance Buffer"),
-                        // TODO It probably should be configurable, so it would be possible to draw two or more instances.
-                        contents: bytemuck::cast_slice(self.attrs.as_slice()),
-                        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                    },
-                ));
-            } else {
-                let queue = global_context.queue();
-                queue.write_buffer(
-                    self.instance_buffer
-                        .as_ref()
-                        .expect("Buffer should be created"),
-                    0,
-                    bytemuck::cast_slice(self.attrs.as_slice()),
-                );
-            }
+            self.instance_buffer.update(
+                "PositionedInstanceBuffer",
+                global_context.device(),
+                global_context.queue(),
+                &self.attrs,
+            );
         }
     }
 
     pub fn render(&mut self, render_pass: &mut RenderPass) {
-        render_pass.set_vertex_buffer(
-            1,
-            self.instance_buffer
-                .as_ref()
-                .expect("Buffer should be created")
-                .slice(..),
-        );
-        let range = 0u32..self.attrs.len() as u32;
-        self.mesh.render(render_pass, &range);
+        if let Some(buffer) = self.instance_buffer.buffer.as_ref() {
+            render_pass.set_vertex_buffer(1, buffer.slice(..));
+            let range = 0u32..self.instance_buffer.length as u32;
+            self.mesh.render(render_pass, &range);
+        }
     }
 }

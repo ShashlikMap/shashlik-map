@@ -1,7 +1,8 @@
 use crate::geometry_data::TextData;
+use crate::global_context::GlobalContext;
+use crate::mesh::InstanceBuffer;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::vertex_attrs::TextInstanceInput;
-use crate::global_context::GlobalContext;
 use cgmath::num_traits::clamp;
 use cgmath::{vec3, Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector3};
 use geo_types::{coord, point};
@@ -9,8 +10,7 @@ use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
 use std::collections::HashMap;
-use wgpu::util::DeviceExt;
-use wgpu::{Buffer, Device, RenderPass};
+use wgpu::{Device, RenderPass};
 
 #[derive(Clone)]
 pub struct GlyphData {
@@ -25,7 +25,7 @@ pub struct TextRenderer {
     id_to_alpha_map: HashMap<u64, f32>,
     default_face: DefaultFaceWrapper,
     glyph_data: FxHashMap<GlyphId, Vec<GlyphData>>,
-    instance_buffer_map: FxHashMap<GlyphId, (usize, Buffer)>,
+    instance_buffer_map: FxHashMap<GlyphId, InstanceBuffer<TextInstanceInput>>,
 }
 
 impl TextRenderer {
@@ -281,30 +281,11 @@ impl TextRenderer {
                 attrs.push(instance_input);
             });
 
-            let attrs_len = attrs.len();
-            self.instance_buffer_map
+            let instance_buffer = self.instance_buffer_map
                 .entry(*key)
-                .and_modify(|list| {
-                    if list.0 < attrs_len {
-                        list.1 = Self::create_instance_buffer(device, &attrs);
-                    } else {
-                        queue.write_buffer(&list.1, 0, bytemuck::cast_slice(attrs.as_slice()));
-                    }
-                    list.0 = attrs_len;
-                })
-                .or_insert_with(|| {
-                    let instance_buffer = Self::create_instance_buffer(device, &attrs);
-                    (attrs_len, instance_buffer)
-                });
+                .or_insert(InstanceBuffer::default());
+            instance_buffer.update("TextInstanceBuffer", device, queue, &attrs);
         });
-    }
-
-    fn create_instance_buffer(device: &Device, instances: &Vec<TextInstanceInput>) -> Buffer {
-        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Instance Buffer"),
-            contents: bytemuck::cast_slice(instances.as_slice()),
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-        })
     }
 
     pub fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
@@ -317,13 +298,14 @@ impl TextRenderer {
                     let v_buf = mesh.vertex_buf.get(0).unwrap();
                     let i_buf = mesh.index_buf.get(0).unwrap();
                     let instance_buffer = self.instance_buffer_map.get(glyph_id).unwrap();
+                    if let Some(instance_buffer) = instance_buffer.buffer.as_ref() {
+                        render_pass.set_vertex_buffer(0, v_buf.slice(..));
+                        render_pass.set_index_buffer(i_buf.0.slice(..), wgpu::IndexFormat::Uint32);
 
-                    render_pass.set_vertex_buffer(0, v_buf.slice(..));
-                    render_pass.set_index_buffer(i_buf.0.slice(..), wgpu::IndexFormat::Uint32);
+                        render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
 
-                    render_pass.set_vertex_buffer(1, instance_buffer.1.slice(..));
-
-                    render_pass.draw_indexed(0..i_buf.1 as u32, 0, 0..list.len() as u32);
+                        render_pass.draw_indexed(0..i_buf.1 as u32, 0, 0..list.len() as u32);
+                    }
                 }
             });
         }
