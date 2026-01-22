@@ -1,7 +1,7 @@
-use bytemuck::Pod;
-use cgmath::{Deg, Matrix4, Vector3};
 use crate::modifier::render_modifier::SpatialData;
 use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput};
+use bytemuck::Pod;
+use cgmath::Vector3;
 
 pub trait MeshInstanceInput: Sized + Pod {
     fn fill_attrs(
@@ -12,10 +12,7 @@ pub trait MeshInstanceInput: Sized + Pod {
         is_two_instances: bool,
     ) {
         attrs.clear();
-
-        let scale_matrix = Matrix4::<f64>::from_scale(spatial_data.scale);
-        let rotation_matrix = Matrix4::<f64>::from_angle_z(Deg(spatial_data.yaw));
-        let matrix = scale_matrix * rotation_matrix;
+        let matrix = spatial_data.scale_rot_matrix();
         for i in 0..original_positions_alpha.len() {
             let item = original_positions_alpha[i];
 

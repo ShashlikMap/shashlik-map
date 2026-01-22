@@ -1,4 +1,4 @@
-use cgmath::Vector3;
+use cgmath::{Deg, Matrix4, Vector3};
 
 #[derive(Clone)]
 #[derive(Debug)]
@@ -39,5 +39,11 @@ impl SpatialData {
 
     pub fn normal_scale(&mut self, normal_scale: f64) {
         self.normal_scale = normal_scale;
+    }
+
+    pub fn scale_rot_matrix(&self) -> Matrix4<f64> {
+        let scale_matrix = Matrix4::<f64>::from_scale(self.scale);
+        let rotation_matrix = Matrix4::<f64>::from_angle_z(Deg(self.yaw));
+        scale_matrix * rotation_matrix
     }
 }

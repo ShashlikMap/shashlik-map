@@ -3,12 +3,10 @@ use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::modifier::render_modifier::SpatialData;
 use crate::utils::ReceiverExt;
-use cgmath::Vector3;
 use cgmath::num_traits::clamp;
+use cgmath::Vector3;
 use geo_types::point;
-use log::error;
 use rstar::primitives::Rectangle;
-use std::ops::Range;
 use tokio::sync::broadcast::Receiver;
 use wgpu::util::DeviceExt;
 use wgpu::{Buffer, RenderPass};
@@ -48,24 +46,6 @@ impl Mesh {
             with_collisions,
         )
     }
-
-    fn render(&self, render_pass: &mut RenderPass, instances: &Range<u32>) {
-        self.vertex_buf.iter().enumerate().for_each(|(i, v_buf)| {
-            let (i_buf, _) = self.index_buf.get(i).unwrap();
-            if v_buf.size() > 0 && i_buf.size() > 0 {
-                render_pass.set_vertex_buffer(0, v_buf.slice(..));
-                render_pass.set_index_buffer(i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                for range in &self.layers_indices {
-                    let start = range.start;
-                    let end = range.end;
-                    // draw two instances, outlined and normal
-                    render_pass.draw_indexed(start as u32..end as u32, 0, instances.clone());
-                }
-            } else {
-                error!("Vertex/Index buffer are empty");
-            }
-        });
-    }
 }
 
 impl<T: MeshInstanceInput> PositionedMesh<T> {
@@ -96,6 +76,15 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
     }
 
     pub fn update(&mut self, global_context: &mut GlobalContext) {
+        let cs_offset_updated = global_context.view_projection.cs_offset != self.cs_offset;
+        self.cs_offset = global_context.view_projection.cs_offset;
+        let mut update_attrs = self.with_collisions || cs_offset_updated;
+
+        if let Ok(spatial_data) = self.spatial_rx.no_lagged() {
+            self.original_spatial_data = spatial_data;
+            update_attrs = true;
+        }
+
         if self.with_collisions {
             for item in &mut self.instance_positions_and_alpha {
                 let screen_pos = global_context.view_projection.screen_position(Vector3::new(
@@ -126,15 +115,6 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         }
 
         self.first_render = false;
-
-        let cs_offset_updated = global_context.view_projection.cs_offset != self.cs_offset;
-        self.cs_offset = global_context.view_projection.cs_offset;
-        let mut update_attrs = self.with_collisions || cs_offset_updated;
-
-        if let Ok(spatial_data) = self.spatial_rx.no_lagged() {
-            self.original_spatial_data = spatial_data;
-            update_attrs = true;
-        }
 
         if update_attrs {
             let prev_attr_len = self.attrs.len();
