@@ -97,7 +97,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
         puck_spatial_data.scale(1.0);
         renderer.api.add_render_group(
             "puck".to_string(),
-            0,
             puck_spatial_data,
             Box::new(SimplePuck {}),
         );
@@ -153,7 +152,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
                                 data.into_iter().for_each(|item| {
                                     renderer_api.add_render_group(
                                         item.key.to_string(),
-                                        0,
                                         SpatialData::transform(item.position).size(item.size),
                                         Box::new(item),
                                     );
@@ -366,7 +364,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
         println!("Loading KML from {:?}", path_buf);
         self.renderer.api.add_render_group(
             "kml_data".to_string(),
-            0,
             SpatialData::transform(Vector3::new(0.0, 0.0, 0.0)),
             Box::new(KmlGroup::new(
                 path_buf,

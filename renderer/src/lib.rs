@@ -76,12 +76,7 @@ impl ShashlikRenderer {
 
         let depth_texture = DepthTexture::new(&global_context);
         let msaa_texture = MultisampledTexture::new(&global_context);
-
-        // FIXME Do we need it?
-        // global_context
-        //     .view_projection
-        //     .resize(config.width, config.height);
-
+        
         let mut layers = Layers::new(feature_tags, &global_context, font);
 
         let (renderer_api_tx, renderer_api_rx) = channel();
@@ -115,8 +110,7 @@ impl ShashlikRenderer {
             loop {
                 let api_msg = receiver_api_rx.recv().unwrap();
                 match api_msg {
-                    // TODO remove layer
-                    RendererApiMsg::RenderGroup((key, _layer, spatial_data, mut rg)) => {
+                    RendererApiMsg::RenderGroup((key, spatial_data, mut rg)) => {
                         let (spatial_tx, _) = broadcast::channel(1);
                         spatial_data_map
                             .insert(key.clone(), (spatial_data.clone(), spatial_tx.clone()));
