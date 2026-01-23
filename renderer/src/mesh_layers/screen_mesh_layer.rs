@@ -1,3 +1,4 @@
+use crate::draw_commands::mesh2d_draw_command::Mesh2dDrawCommand;
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
@@ -11,11 +12,11 @@ use cgmath::num_traits::clamp;
 use geo_types::point;
 use rstar::primitives::Rectangle;
 use std::collections::HashMap;
-use std::collections::hash_map::Entry;
-use wgpu::RenderPass;
+use std::mem;
+use wgpu::{Device, RenderPass};
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
-pub struct ScreenMeshLayer<P: RenderPipeline> {
+pub(crate) struct ScreenMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
     pipeline: Option<wgpu::RenderPipeline>,
     meshes: HashMap<String, (Mesh, InstanceBuffer<P::InstanceInputType>)>,
@@ -31,22 +32,32 @@ impl<P: RenderPipeline> ScreenMeshLayer<P> {
             instance_data: RenderDataHolder::new(),
         }
     }
+
     pub fn submit(
         &mut self,
-        key: String,
-        instance_key: &str,
-        instance_positions: Vec<Vector3<f64>>,
+        key: &str,
         spatial_data: SpatialData,
-        mesh: Mesh,
+        device: &Device,
+        command: &mut Mesh2dDrawCommand,
     ) {
-        self.meshes
-            .entry(instance_key.to_string())
-            .or_insert((mesh, InstanceBuffer::default()));
+        let instance_key = command.mesh_info.instance_key.to_string();
+        self.meshes.entry(instance_key.clone()).or_insert({
+            (
+                Mesh::create_layered(
+                    &device,
+                    &command.mesh,
+                    mem::take(&mut command.layers_indices),
+                ),
+                InstanceBuffer::default(),
+            )
+        });
 
+        let instance_positions =
+            mem::take(&mut command.mesh_info.instance_positions).unwrap_or_default();
         instance_positions.into_iter().for_each(|item| {
             self.instance_data.add(
-                key.clone(),
-                (item + spatial_data.transform, 0.0, instance_key.to_string()),
+                key.to_string(),
+                (item + spatial_data.transform, 0.0, instance_key.clone()),
             );
         });
     }
@@ -80,12 +91,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenMeshLayer<P> {
                 }
             }
 
-            match hm.entry(key.clone()) {
-                Entry::Occupied(mut entry) => entry.get_mut().push((*pos, *alpha)),
-                Entry::Vacant(entry) => {
-                    entry.insert(vec![(*pos, *alpha)]);
-                }
-            };
+            hm.entry(key.clone()).or_default().push((*pos, *alpha));
         });
 
         let cs_offset = global_context.view_projection.cs_offset;
@@ -120,11 +126,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenMeshLayer<P> {
             self.render_pipeline.render(render_pass, global_context);
 
             self.meshes.iter().for_each(|(_, (mesh, instance_buf))| {
-                if let Some(buf) = instance_buf.buffer.as_ref() {
-                    render_pass.set_vertex_buffer(1, buf.slice(..));
-                    let range = 0u32..instance_buf.length as u32;
-                    mesh.render(render_pass, &range);
-                }
+                mesh.render_instanced(1, render_pass, instance_buf);
             });
         }
     }

@@ -1,4 +1,5 @@
-use crate::draw_commands::{DrawCommand, MeshVertex, geometry_to_mesh};
+use crate::draw_commands::{DrawCommand, MeshVertex};
+use crate::mesh::mesh::Mesh;
 use crate::mesh_layers::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
 use lyon::lyon_tessellation::VertexBuffers;
@@ -17,9 +18,7 @@ impl DrawCommand for Mesh3dDrawCommand {
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         layers: &mut Layers,
     ) {
-        let mesh = geometry_to_mesh(&device, &self.mesh);
-        layers
-            .mesh_layer
-            .add(key, None, spatial_rx, false, mesh);
+        let mesh = Mesh::create(&device, &self.mesh);
+        layers.mesh_layer.add(key, None, spatial_rx, false, mesh);
     }
 }

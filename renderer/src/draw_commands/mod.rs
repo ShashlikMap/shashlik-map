@@ -3,14 +3,9 @@ pub mod mesh3d_draw_command;
 pub mod text_draw_command;
 
 use crate::mesh_layers::layers::Layers;
-use crate::mesh::mesh::Mesh;
 use crate::modifier::render_modifier::SpatialData;
-use bytemuck::NoUninit;
-use lyon::lyon_tessellation::{LineJoin, VertexBuffers};
-use std::ops::Range;
+use lyon::lyon_tessellation::LineJoin;
 use lyon::path::LineCap;
-use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use wgpu::Device;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -94,31 +89,4 @@ pub(crate) trait DrawCommand: Send {
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         layers: &mut Layers
     );
-}
-
-pub fn geometry_to_mesh<T: NoUninit>(device: &Device, geometry: &VertexBuffers<T, u32>) -> Mesh {
-    geometry_to_mesh_with_layers(device, geometry, vec![0..geometry.indices.len()])
-}
-fn geometry_to_mesh_with_layers<T: NoUninit>(
-    device: &Device,
-    geometry: &VertexBuffers<T, u32>,
-    layers_indices: Vec<Range<usize>>,
-) -> Mesh {
-    let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
-        label: Some("Vertex Buffer"),
-        contents: bytemuck::cast_slice(geometry.vertices.as_slice()),
-        usage: wgpu::BufferUsages::VERTEX,
-    });
-    let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
-        label: Some("Index Buffer"),
-        contents: bytemuck::cast_slice(geometry.indices.as_slice()),
-        usage: wgpu::BufferUsages::INDEX,
-    });
-    let num_indices = geometry.indices.len() as u32;
-
-    Mesh::new(
-        vec![vertex_buffer],
-        vec![(index_buffer, num_indices as usize)],
-        layers_indices,
-    )
 }

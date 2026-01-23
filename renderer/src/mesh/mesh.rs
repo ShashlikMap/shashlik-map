@@ -1,6 +1,10 @@
 use std::ops::Range;
+use bytemuck::{NoUninit, Pod};
 use log::error;
-use wgpu::{Buffer, RenderPass};
+use lyon::lyon_tessellation::VertexBuffers;
+use wgpu::{Buffer, Device, RenderPass};
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
+use crate::mesh::InstanceBuffer;
 
 pub struct Mesh {
     pub vertex_buf: Vec<Buffer>,
@@ -17,6 +21,41 @@ impl Mesh {
             vertex_buf: v_buf,
             index_buf: i_buf,
             layers_indices
+        }
+    }
+
+    pub fn create<T: NoUninit>(device: &Device,
+                               geometry: &VertexBuffers<T, u32>) -> Self {
+        Self::create_layered(device, geometry, vec![0..geometry.indices.len()])
+    }
+
+    pub fn create_layered<T: NoUninit>(device: &Device,
+                                       geometry: &VertexBuffers<T, u32>,
+                                       layers_indices: Vec<Range<usize>>) -> Self {
+        let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(geometry.vertices.as_slice()),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Index Buffer"),
+            contents: bytemuck::cast_slice(geometry.indices.as_slice()),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+        let num_indices = geometry.indices.len() as u32;
+
+        Mesh::new(
+            vec![vertex_buffer],
+            vec![(index_buffer, num_indices as usize)],
+            layers_indices,
+        )
+    }
+
+    pub fn render_instanced<T: Pod>(&self, slot: u32, render_pass: &mut RenderPass, instance_buffer: &InstanceBuffer<T>) {
+        if let Some(buffer) = instance_buffer.buffer.as_ref() {
+            render_pass.set_vertex_buffer(slot, buffer.slice(..));
+            let range = 0u32..instance_buffer.length as u32;
+            self.render(render_pass, &range);
         }
     }
 

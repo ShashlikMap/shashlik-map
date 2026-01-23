@@ -87,10 +87,6 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
     }
 
     pub fn render(&mut self, render_pass: &mut RenderPass) {
-        if let Some(buffer) = self.instance_buffer.buffer.as_ref() {
-            render_pass.set_vertex_buffer(1, buffer.slice(..));
-            let range = 0u32..self.instance_buffer.length as u32;
-            self.mesh.render(render_pass, &range);
-        }
+        self.mesh.render_instanced(1, render_pass, &self.instance_buffer);
     }
 }
