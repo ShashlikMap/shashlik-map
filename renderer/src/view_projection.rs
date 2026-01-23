@@ -75,7 +75,7 @@ impl ViewProjection {
         );
     }
 
-    pub fn screen_position(&self, world_position: Vector3<f64>) -> Coord<f64> {
+    pub fn screen_position(&self, world_position: &Vector3<f64>) -> Coord<f64> {
         let matrix: Matrix4<f32> = self.uniform.view_proj.into();
         let world_position = world_position - self.cs_offset;
         let pos = matrix.cast().unwrap() * Vector4::new(world_position.x, world_position.y, 0.0, 1.0);

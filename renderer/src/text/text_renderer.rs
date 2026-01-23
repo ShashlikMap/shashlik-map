@@ -63,13 +63,11 @@ impl TextRenderer {
         let mut glyphs_to_draw = vec![];
 
         let middle_point_index = data.positions.len() / 2;
-        let initial_position: Vector3<f64> = data
+        let initial_position: Vector3<f64> = *data
             .positions
             .get(middle_point_index)
-            .unwrap()
-            .cast()
             .unwrap();
-        let origin = view_projection.screen_position(initial_position)
+        let origin = view_projection.screen_position(&initial_position)
             + coord! { x: data.screen_offset.x as f64, y: data.screen_offset.y as f64};
 
         if data.positions.len() > 1 {
@@ -95,7 +93,7 @@ impl TextRenderer {
                     break;
                 }
 
-                let current = view_projection.screen_position(current.cast().unwrap()) - origin;
+                let current = view_projection.screen_position(&current) - origin;
                 let current = Vector3::new(current.x as f32, current.y as f32, 0.0);
 
                 // skip if two point are the same

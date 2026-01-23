@@ -74,7 +74,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenMeshLayer<P> {
 
         let mut hm: HashMap<String, Vec<(Vector3<f64>, f32)>> = HashMap::new();
         self.instance_data.run_mut_action(|(pos, alpha, key)| {
-            let screen_pos = global_context.view_projection.screen_position(pos.clone());
+            let screen_pos = global_context.view_projection.screen_position(&pos);
             // TODO Bounds for svg?
             // no need to use f64 for collision detection
             let bounds = Rectangle::from_corners(

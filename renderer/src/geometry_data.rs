@@ -42,7 +42,7 @@ pub struct TextData {
     pub screen_offset: Vector2<f32>,
     pub size: f32,
     pub(crate) alpha: f32,
-    pub positions: Vec<Vector3<f32>>,
+    pub positions: Vec<Vector3<f64>>,
     pub(crate) screen_space: bool,
     pub(crate) glyph_buffer: Option<GlyphBuffer>,
 }
@@ -53,7 +53,7 @@ impl TextData {
         text: String,
         screen_offset: Vector2<f32>,
         size: f32,
-        positions: Vec<Vector3<f32>>,
+        positions: Vec<Vector3<f64>>,
     ) -> Self {
         Self {
             id,

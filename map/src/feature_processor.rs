@@ -248,7 +248,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                                 30.0 * dpi_scale,
                                 line
                                     .iter()
-                                    .map(|item| Vector3::new(item.x as f32, item.y as f32, 0.0))
+                                    .map(|item| Vector3::new(item.x, item.y, 0.0))
                                     .collect(),
                             )));
                         }
