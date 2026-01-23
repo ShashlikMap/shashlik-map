@@ -51,11 +51,12 @@ impl CollisionHandler {
 
     fn check_rectangle(&self, rectangle: &Rectangle<Point<f32>>) -> bool {
         let envelope = rectangle.envelope();
-        let count = self
+        // no need to count all items, non-empty check is enough
+        let has_items = self
             .objects
             .locate_in_envelope_intersecting(&envelope)
-            .count();
-        if count > 0 {
+            .peekable().peek().is_some();
+        if has_items {
             return false;
         }
         true
