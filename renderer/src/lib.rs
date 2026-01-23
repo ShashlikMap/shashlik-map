@@ -236,7 +236,7 @@ impl ShashlikRenderer {
             });
 
             // TODO can we do it better?
-            self.layers.new_text_layer.text_renderer.insert(
+            self.layers.text_layer.text_renderer.insert(
                 &mut TextData {
                     id: 0,
                     text: format!("FPS {}", self.fps_counter.update() as i32),

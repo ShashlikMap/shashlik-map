@@ -6,6 +6,7 @@ pub mod general_mesh_layer;
 pub mod text_mesh_layer;
 mod render_data_holder;
 pub mod layers;
+pub mod screen_mesh_layer;
 
 pub trait BaseMeshLayer {
     fn prepare(&mut self, global_context: &GlobalContext);

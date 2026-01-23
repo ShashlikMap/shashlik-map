@@ -1,13 +1,10 @@
 use crate::global_context::GlobalContext;
-use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh::InstanceBuffer;
 use crate::modifier::render_modifier::SpatialData;
 use crate::utils::ReceiverExt;
 use cgmath::Vector3;
-use cgmath::num_traits::clamp;
-use geo_types::point;
-use rstar::primitives::Rectangle;
 use tokio::sync::broadcast::Receiver;
 use wgpu::RenderPass;
 
@@ -17,33 +14,23 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     attrs: Vec<T>,
     instance_positions_and_alpha: Vec<(Vector3<f64>, f32)>, // TODO Proper structure with bound
     cs_offset: Vector3<f64>,
-    is_two_instances: bool,
+    double_style: bool,
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
-    with_collisions: bool,
-    first_render: bool,
 }
 
 impl Mesh {
     pub fn to_positioned<T: MeshInstanceInput>(
         self,
-        spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-    ) -> PositionedMesh<T> {
-        PositionedMesh::new(self, None, spatial_rx, false, false)
-    }
-    pub fn to_positioned_with_instances<T: MeshInstanceInput>(
-        self,
         instance_positions: Option<Vec<Vector3<f64>>>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-        is_two_instances: bool,
-        with_collisions: bool,
+        double_style: bool,
     ) -> PositionedMesh<T> {
         PositionedMesh::new(
             self,
             instance_positions,
             spatial_rx,
-            is_two_instances,
-            with_collisions,
+            double_style,
         )
     }
 }
@@ -53,8 +40,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         mesh: Mesh,
         instance_positions: Option<Vec<Vector3<f64>>>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-        is_two_instances: bool,
-        with_collisions: bool,
+        double_style: bool,
     ) -> Self {
         let instance_positions_and_alpha = instance_positions
             .unwrap_or(vec![Vector3::new(0.0, 0.0, 0.0)])
@@ -67,62 +53,29 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             attrs: vec![],
             instance_positions_and_alpha,
             cs_offset: Vector3::new(0.0, 0.0, 0.0),
-            is_two_instances,
+            double_style,
             spatial_rx,
             original_spatial_data: SpatialData::new(),
-            with_collisions,
-            first_render: true,
         }
     }
 
     pub fn update(&mut self, global_context: &mut GlobalContext) {
         let cs_offset_updated = global_context.view_projection.cs_offset != self.cs_offset;
         self.cs_offset = global_context.view_projection.cs_offset;
-        let mut update_attrs = self.with_collisions || cs_offset_updated;
+        let mut update_attrs = cs_offset_updated;
 
         if let Ok(spatial_data) = self.spatial_rx.no_lagged() {
             self.original_spatial_data = spatial_data;
             update_attrs = true;
         }
-
-        if self.with_collisions {
-            for item in &mut self.instance_positions_and_alpha {
-                let screen_pos = global_context.view_projection.screen_position(Vector3::new(
-                    item.0.x + self.original_spatial_data.transform.x,
-                    item.0.y + self.original_spatial_data.transform.y,
-                    0.0,
-                ));
-                // TODO Bounds for svg?
-                // no need to use f64 for collision detection
-                let bounds = Rectangle::from_corners(
-                    point! { x: screen_pos.x as f32 - 20.0, y: screen_pos.y as f32 - 20.0},
-                    point! { x: screen_pos.x as f32+ 20.0, y: screen_pos.y as f32 + 20.0},
-                );
-
-                let within_screen = global_context.collision_handler.within_screen(bounds);
-                if within_screen {
-                    if global_context.collision_handler.insert(bounds) {
-                        item.1 = clamp(item.1 + 0.05, 0.0, 1.0);
-                    } else {
-                        if self.first_render {
-                            item.1 = 0.0;
-                        } else {
-                            item.1 = clamp(item.1 - 0.05, 0.0, 1.0);
-                        }
-                    }
-                }
-            }
-        }
-
-        self.first_render = false;
-
+        
         if update_attrs {
             T::fill_attrs(
                 &mut self.attrs,
                 &self.cs_offset,
                 &self.instance_positions_and_alpha,
                 &self.original_spatial_data,
-                self.is_two_instances,
+                self.double_style,
             );
             self.instance_buffer.update(
                 "PositionedInstanceBuffer",

@@ -19,7 +19,7 @@ impl DrawCommand for TextDrawCommand {
         layers: &mut Layers,
     ) {
         layers
-            .new_text_layer
+            .text_layer
             .add(key, mem::take(&mut self.data), spatial_data);
     }
 }

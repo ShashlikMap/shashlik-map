@@ -9,7 +9,7 @@ pub trait MeshInstanceInput: Sized + Pod {
         cs_offset: &Vector3<f64>,
         original_positions_alpha: &Vec<(Vector3<f64>, f32)>,
         spatial_data: &SpatialData,
-        is_two_instances: bool,
+        double_style: bool,
     ) {
         attrs.clear();
         let matrix = spatial_data.scale_rot_matrix();
@@ -30,7 +30,7 @@ pub trait MeshInstanceInput: Sized + Pod {
                 spatial_data.normal_scale as f32,
             );
             attrs.push(instance_input);
-            if is_two_instances {
+            if double_style {
                 attrs.push(instance_input);
             }
         }

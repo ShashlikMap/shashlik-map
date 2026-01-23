@@ -21,32 +21,40 @@ impl DrawCommand for Mesh2dDrawCommand {
         &mut self,
         device: &wgpu::Device,
         key: String,
-        _spatial_data: SpatialData,
+        spatial_data: SpatialData,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         layers: &mut Layers,
     ) {
+        // TODO Mesh bufs still need to created all the time even though it makes no sense for 
+        //  screen_shape_layer. Should it be moved anywhere else?
         let mesh =
             geometry_to_mesh_with_layers(&device, &self.mesh, mem::take(&mut self.layers_indices));
 
-        let layer = if let Some(feature_layer) = self
+        if let Some(feature_layer) = self
             .feature_layer_tag
             .as_ref()
             .and_then(|tag| layers.feature_layers(tag))
         {
-            feature_layer
+            feature_layer.add(
+                key,
+                mem::take(&mut self.mesh_info.instance_positions),
+                spatial_rx,
+                !self.is_screen,
+                mesh,
+            );
         } else if self.is_screen {
-            &mut layers.new_screen_shape_layer
+            // TODO check mesh collision
+            layers.screen_shape_layer.submit(key,
+                                             self.mesh_info.instance_key.as_str(),
+                                             mem::take(&mut self.mesh_info.instance_positions).unwrap_or_default(), spatial_data, mesh);
         } else {
-            &mut layers.new_shape_layer
+            layers.shape_layer.add(
+                key,
+                mem::take(&mut self.mesh_info.instance_positions),
+                spatial_rx,
+                !self.is_screen,
+                mesh,
+            );
         };
-
-        layer.add(
-            key,
-            Some(mem::take(&mut self.mesh_info.instance_positions)),
-            spatial_rx,
-            !self.is_screen,
-            self.mesh_info.with_collision,
-            mesh,
-        );
     }
 }
