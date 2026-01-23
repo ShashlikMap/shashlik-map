@@ -25,6 +25,8 @@ impl DrawCommand for Mesh2dDrawCommand {
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         layers: &mut Layers,
     ) {
+        // TODO Mesh bufs still need to created all the time even though it makes no sense for 
+        //  screen_shape_layer. Should it be moved anywhere else?
         let mesh =
             geometry_to_mesh_with_layers(&device, &self.mesh, mem::take(&mut self.layers_indices));
 
@@ -35,20 +37,20 @@ impl DrawCommand for Mesh2dDrawCommand {
         {
             feature_layer.add(
                 key,
-                Some(mem::take(&mut self.mesh_info.instance_positions)),
+                mem::take(&mut self.mesh_info.instance_positions),
                 spatial_rx,
                 !self.is_screen,
                 mesh,
             );
         } else if self.is_screen {
             // TODO check mesh collision
-            layers.new_screen_shape_layer.submit(key,
-                                                 self.mesh_info.instance_key.as_str(),
-                                                 self.mesh_info.instance_positions.clone(), spatial_data, mesh);
+            layers.screen_shape_layer.submit(key,
+                                             self.mesh_info.instance_key.as_str(),
+                                             mem::take(&mut self.mesh_info.instance_positions).unwrap_or_default(), spatial_data, mesh);
         } else {
-            layers.new_shape_layer.add(
+            layers.shape_layer.add(
                 key,
-                Some(mem::take(&mut self.mesh_info.instance_positions)),
+                mem::take(&mut self.mesh_info.instance_positions),
                 spatial_rx,
                 !self.is_screen,
                 mesh,

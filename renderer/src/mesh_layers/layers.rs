@@ -12,10 +12,10 @@ use crate::mesh_layers::screen_mesh_layer::ScreenMeshLayer;
 
 pub(crate) struct Layers {
     feature_layers: FeatureLayers,
-    pub new_shape_layer: GeneralMeshLayer<ShapePipeline>,
-    pub new_mesh_layer: GeneralMeshLayer<MeshPipeline>,
-    pub new_screen_shape_layer: ScreenMeshLayer<ShapePipeline>,
-    pub new_text_layer: TextMeshLayer<TextPipeline>,
+    pub shape_layer: GeneralMeshLayer<ShapePipeline>,
+    pub mesh_layer: GeneralMeshLayer<MeshPipeline>,
+    pub screen_shape_layer: ScreenMeshLayer<ShapePipeline>,
+    pub text_layer: TextMeshLayer<TextPipeline>,
 }
 
 impl Layers {
@@ -27,10 +27,10 @@ impl Layers {
         let feature_layers = FeatureLayers::new(feature_tags, global_context);
         Layers {
             feature_layers,
-            new_mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context)),
-            new_shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, false)),
-            new_screen_shape_layer: ScreenMeshLayer::new(ShapePipeline::new(global_context, true)),
-            new_text_layer: TextMeshLayer::new(
+            mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context)),
+            shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, false)),
+            screen_shape_layer: ScreenMeshLayer::new(ShapePipeline::new(global_context, true)),
+            text_layer: TextMeshLayer::new(
                 TextPipeline::new(global_context),
                 global_context,
                 font,
@@ -46,35 +46,35 @@ impl Layers {
 // TODO Refactor
 impl BaseMeshLayer for Layers {
     fn prepare(&mut self, global_context: &GlobalContext) {
-        self.new_shape_layer.prepare(global_context);
-        self.new_mesh_layer.prepare(global_context);
-        self.new_screen_shape_layer.prepare(global_context);
-        self.new_text_layer.prepare(global_context);
+        self.shape_layer.prepare(global_context);
+        self.mesh_layer.prepare(global_context);
+        self.screen_shape_layer.prepare(global_context);
+        self.text_layer.prepare(global_context);
         self.feature_layers.prepare(global_context);
     }
 
     fn update(&mut self, global_context: &mut GlobalContext) {
-        self.new_shape_layer.update(global_context);
-        self.new_mesh_layer.update(global_context);
-        self.new_screen_shape_layer.update(global_context);
-        self.new_text_layer.update(global_context);
+        self.shape_layer.update(global_context);
+        self.mesh_layer.update(global_context);
+        self.screen_shape_layer.update(global_context);
+        self.text_layer.update(global_context);
         self.feature_layers.update(global_context);
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        self.new_shape_layer.render(render_pass, global_context);
-        self.new_mesh_layer.render(render_pass, global_context);
-        self.new_screen_shape_layer
+        self.shape_layer.render(render_pass, global_context);
+        self.mesh_layer.render(render_pass, global_context);
+        self.screen_shape_layer
             .render(render_pass, global_context);
-        self.new_text_layer.render(render_pass, global_context);
+        self.text_layer.render(render_pass, global_context);
         self.feature_layers.render(render_pass, global_context);
     }
 
     fn clear_by_key(&mut self, key: &str) {
-        self.new_shape_layer.clear_by_key(key);
-        self.new_mesh_layer.clear_by_key(key);
-        self.new_screen_shape_layer.clear_by_key(key);
-        self.new_text_layer.clear_by_key(key);
+        self.shape_layer.clear_by_key(key);
+        self.mesh_layer.clear_by_key(key);
+        self.screen_shape_layer.clear_by_key(key);
+        self.text_layer.clear_by_key(key);
         self.feature_layers.clear_by_key(key);
     }
 }

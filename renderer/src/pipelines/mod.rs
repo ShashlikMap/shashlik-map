@@ -15,9 +15,9 @@ pub trait RenderPipeline {
 
     fn create_positioned_mesh(instance_positions: Option<Vec<Vector3<f64>>>,
                               spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-                              is_two_instances: bool,
+                              double_style: bool,
                               mesh: Mesh) -> PositionedMesh<Self::InstanceInputType> {
-        mesh.to_positioned_with_instances::<Self::InstanceInputType>(instance_positions, spatial_rx, is_two_instances)
+        mesh.to_positioned::<Self::InstanceInputType>(instance_positions, spatial_rx, double_style)
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext);

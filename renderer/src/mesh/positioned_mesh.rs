@@ -14,7 +14,7 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     attrs: Vec<T>,
     instance_positions_and_alpha: Vec<(Vector3<f64>, f32)>, // TODO Proper structure with bound
     cs_offset: Vector3<f64>,
-    is_two_instances: bool,
+    double_style: bool,
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
 }
@@ -22,21 +22,15 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
 impl Mesh {
     pub fn to_positioned<T: MeshInstanceInput>(
         self,
-        spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-    ) -> PositionedMesh<T> {
-        PositionedMesh::new(self, None, spatial_rx, false)
-    }
-    pub fn to_positioned_with_instances<T: MeshInstanceInput>(
-        self,
         instance_positions: Option<Vec<Vector3<f64>>>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-        is_two_instances: bool,
+        double_style: bool,
     ) -> PositionedMesh<T> {
         PositionedMesh::new(
             self,
             instance_positions,
             spatial_rx,
-            is_two_instances,
+            double_style,
         )
     }
 }
@@ -46,7 +40,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         mesh: Mesh,
         instance_positions: Option<Vec<Vector3<f64>>>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-        is_two_instances: bool,
+        double_style: bool,
     ) -> Self {
         let instance_positions_and_alpha = instance_positions
             .unwrap_or(vec![Vector3::new(0.0, 0.0, 0.0)])
@@ -59,7 +53,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             attrs: vec![],
             instance_positions_and_alpha,
             cs_offset: Vector3::new(0.0, 0.0, 0.0),
-            is_two_instances,
+            double_style,
             spatial_rx,
             original_spatial_data: SpatialData::new(),
         }
@@ -81,7 +75,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 &self.cs_offset,
                 &self.instance_positions_and_alpha,
                 &self.original_spatial_data,
-                self.is_two_instances,
+                self.double_style,
             );
             self.instance_buffer.update(
                 "PositionedInstanceBuffer",

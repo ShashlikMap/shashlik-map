@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use wgpu::RenderPass;
 
+// TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
 pub struct ScreenMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
     pipeline: Option<wgpu::RenderPipeline>,

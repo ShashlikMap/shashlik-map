@@ -21,7 +21,7 @@ use std::ops::Range;
 
 #[derive(Clone)]
 pub struct MeshInfo {
-    pub instance_positions: Vec<Vector3<f64>>,
+    pub instance_positions: Option<Vec<Vector3<f64>>>,
     pub with_collision: bool,
     pub instance_key: String
 }
@@ -65,8 +65,8 @@ impl CanvasApi {
             .iter_mut()
             .for_each(|(_, (_, mesh_info))| {
                 // keep only buffers, clean positions
-                mesh_info.instance_positions.clear();
-                mesh_info.with_collision = false
+                mesh_info.instance_positions = None;
+                mesh_info.with_collision = false;
             })
     }
 
@@ -103,7 +103,7 @@ impl CanvasApi {
                 .flatten()
                 .collect();
             let mesh_info = MeshInfo {
-                instance_positions: vec![Vector3::new(0.0, 0.0, 0.0)],
+                instance_positions: None,
                 with_collision: false,
                 instance_key: "".to_string()
             };
@@ -121,10 +121,8 @@ impl CanvasApi {
             .map(|(_, (mesh, positions))| (mesh.clone(), positions.clone()))
             .collect();
         for (mesh, mesh_info) in data {
-            if !mesh_info.instance_positions.is_empty() {
-                let layers_indices = vec![0..mesh.indices.len()];
-                self.mesh2d_with_positions(mesh, layers_indices, mesh_info, true);
-            }
+            let layers_indices = vec![0..mesh.indices.len()];
+            self.mesh2d_with_positions(mesh, layers_indices, mesh_info, true);
         }
     }
 
@@ -265,7 +263,7 @@ impl CanvasApi {
         self.mesh_info_cache
             .entry(data.icon.0)
             .and_modify(|(_, mesh_info)| {
-                mesh_info.instance_positions.push(data.position);
+                mesh_info.instance_positions.get_or_insert_default().push(data.position);
                 mesh_info.with_collision = data.with_collision
             })
             .or_insert_with(|| {
@@ -274,7 +272,7 @@ impl CanvasApi {
                 (
                     mesh,
                     MeshInfo {
-                        instance_positions: vec![data.position],
+                        instance_positions: Some(vec![data.position]),
                         with_collision: data.with_collision,
                         instance_key: data.icon.0.to_string()
                     },
