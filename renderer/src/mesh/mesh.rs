@@ -52,7 +52,7 @@ impl Mesh {
     }
 
     pub fn render_instanced<T: Pod>(&self, slot: u32, render_pass: &mut RenderPass, instance_buffer: &InstanceBuffer<T>) {
-        if let Some(buffer) = instance_buffer.buffer.as_ref() {
+        if instance_buffer.length > 0 && let Some(buffer) = instance_buffer.buffer.as_ref() {
             render_pass.set_vertex_buffer(slot, buffer.slice(..));
             let range = 0u32..instance_buffer.length as u32;
             self.render(render_pass, &range);

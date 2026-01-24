@@ -5,7 +5,6 @@ use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::modifier::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
-use cgmath::Vector3;
 use wgpu::RenderPass;
 
 pub struct GeneralMeshLayer<P: RenderPipeline> {
@@ -25,13 +24,11 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
     pub fn add(
         &mut self,
         key: String,
-        instance_positions: Option<Vec<Vector3<f64>>>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,
         mesh: Mesh,
     ) {
         let mesh = P::create_positioned_mesh(
-            instance_positions,
             spatial_rx,
             double_style,
             mesh,

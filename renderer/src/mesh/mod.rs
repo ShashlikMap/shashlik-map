@@ -10,6 +10,7 @@ pub mod positioned_mesh;
 pub struct InstanceBuffer<T: Pod> {
     pub buffer: Option<Buffer>,
     pub length: usize,
+    max_length: usize,
     _phantom_data: PhantomData<T>,
 }
 
@@ -18,6 +19,7 @@ impl<T: Pod> Default for InstanceBuffer<T> {
         InstanceBuffer {
             buffer: None,
             length: 0,
+            max_length: 0,
             _phantom_data: Default::default(),
         }
     }
@@ -25,10 +27,17 @@ impl<T: Pod> Default for InstanceBuffer<T> {
 
 impl<T: Pod> InstanceBuffer<T> {
     pub fn update(&mut self, label: &'static str, device: &Device, queue: &Queue, data: &Vec<T>) {
-        if data.len() <= self.length
+        // don't recreate the buffer if its max length doesn't grow
+        // TODO benchmark create_buffer_init vs write_buffer vs write_buffer_with
+        let data_len = data.len();
+        if data_len <= self.max_length
             && let Some(buffer) = self.buffer.as_ref()
         {
             queue.write_buffer(buffer, 0, bytemuck::cast_slice(data.as_slice()));
+            // FIXME write_buffer_with doesn't work as expected, why?
+            // if let Some(mut buf_view) = queue.write_buffer_with(buffer, 0, data_size) {
+            //     buf_view.copy_from_slice(data);
+            // }
         } else {
             self.buffer = Some(
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -39,5 +48,6 @@ impl<T: Pod> InstanceBuffer<T> {
             );
         }
         self.length = data.len();
+        self.max_length = self.max_length.max(self.length);
     }
 }
