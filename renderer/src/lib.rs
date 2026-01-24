@@ -47,6 +47,7 @@ pub mod mesh_layers;
 pub mod pipelines;
 mod utils;
 mod global_context;
+mod collider;
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
@@ -161,14 +162,14 @@ impl ShashlikRenderer {
     fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
         self.global_context.update(view_proj_matrix, cs_offset);
 
-        let device = self.global_context.device();
         if let Ok(message) = self.renderer_rx.try_recv() {
             match message {
                 RendererMessage::Draw(mut draw_commands) => {
-                    draw_commands.execute(&device, &mut self.layers);
+                    draw_commands.execute(&mut self.global_context, &mut self.layers);
                 }
                 RendererMessage::ClearGroups(keys) => {
                     keys.into_iter().for_each(|key| {
+                        self.global_context.collider.clear_by_key(&*key);
                         self.layers.clear_by_key(&*key);
                     });
                 }

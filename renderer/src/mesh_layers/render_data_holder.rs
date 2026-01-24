@@ -1,5 +1,6 @@
 use linked_hash_map::LinkedHashMap;
 
+#[derive(Clone)]
 pub struct RenderDataHolder<T> {
     holder: LinkedHashMap<String, Vec<T>>,
 }
