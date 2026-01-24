@@ -1,14 +1,14 @@
 use crate::collision_handler::CollisionHandler;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::view_projection::ViewProjection;
-use cgmath::Vector3;
 use cgmath::num_traits::clamp;
+use cgmath::Vector3;
 use geo_types::point;
 use rstar::primitives::Rectangle;
 use std::collections::HashMap;
 use std::mem;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{Arc, RwLock, mpsc};
+use std::sync::{mpsc, Arc, RwLock};
 use std::thread::spawn;
 
 enum ColliderMsg {
@@ -86,6 +86,7 @@ impl Collider {
             }
         });
     }
+
     pub fn update_view_proj(&mut self, view_projection: &ViewProjection) {
         self.sender
             .send(ColliderMsg::ViewProj(view_projection.clone()))
@@ -97,10 +98,12 @@ impl Collider {
     }
 
     pub fn get_result1(&self) -> Option<HashMap<String, Vec<(Vector3<f64>, f32)>>> {
-        if let Ok(mut res) = self.result1.try_write() {
-            return Some(mem::take(&mut res));
+        let mut res = self.result1.try_write().ok()?;
+        let res: HashMap<String, Vec<(Vector3<f64>, f32)>> = mem::take(&mut res);
+        if res.is_empty() {
+            return None
         }
-        None
+        Some(res)
     }
 
     pub fn clear_by_key(&mut self, key: &str) {
