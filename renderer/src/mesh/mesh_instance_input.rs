@@ -15,6 +15,9 @@ pub trait MeshInstanceInput: Sized + Pod {
         let matrix = spatial_data.scale_rot_matrix();
         for i in 0..original_positions_alpha.len() {
             let item = original_positions_alpha[i];
+            if item.1 <= 0.0 {
+                continue;
+            }
 
             let transform_with_cs_offset = item.0 + spatial_data.transform - cs_offset;
             let instance_input = Self::create_instance_struct(

@@ -1,10 +1,9 @@
-use crate::mesh::mesh::Mesh;
-use crate::modifier::render_modifier::SpatialData;
-use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::global_context::GlobalContext;
-use cgmath::Vector3;
-use wgpu::{ColorTargetState, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, VertexBufferLayout};
+use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh::positioned_mesh::PositionedMesh;
+use crate::modifier::render_modifier::SpatialData;
+use wgpu::{ColorTargetState, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, VertexBufferLayout};
 
 pub mod mesh_pipeline;
 pub mod shape_pipeline;
@@ -13,11 +12,10 @@ pub mod text_pipeline;
 pub trait RenderPipeline {
     type InstanceInputType: MeshInstanceInput;
 
-    fn create_positioned_mesh(instance_positions: Option<Vec<Vector3<f64>>>,
-                              spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
+    fn create_positioned_mesh(spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
                               double_style: bool,
                               mesh: Mesh) -> PositionedMesh<Self::InstanceInputType> {
-        mesh.to_positioned::<Self::InstanceInputType>(instance_positions, spatial_rx, double_style)
+        mesh.to_positioned::<Self::InstanceInputType>(spatial_rx, double_style)
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext);

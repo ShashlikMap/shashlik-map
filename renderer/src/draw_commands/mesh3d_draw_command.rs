@@ -19,6 +19,6 @@ impl DrawCommand for Mesh3dDrawCommand {
         layers: &mut Layers,
     ) {
         let mesh = Mesh::create(&device, &self.mesh);
-        layers.mesh_layer.add(key, None, spatial_rx, false, mesh);
+        layers.mesh_layer.add(key, spatial_rx, false, mesh);
     }
 }

@@ -12,7 +12,6 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
     instance_buffer: InstanceBuffer<T>,
     attrs: Vec<T>,
-    instance_positions_and_alpha: Vec<(Vector3<f64>, f32)>, // TODO Proper structure with bound
     cs_offset: Vector3<f64>,
     double_style: bool,
     spatial_rx: Receiver<SpatialData>,
@@ -22,13 +21,11 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
 impl Mesh {
     pub fn to_positioned<T: MeshInstanceInput>(
         self,
-        instance_positions: Option<Vec<Vector3<f64>>>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,
     ) -> PositionedMesh<T> {
         PositionedMesh::new(
             self,
-            instance_positions,
             spatial_rx,
             double_style,
         )
@@ -38,20 +35,13 @@ impl Mesh {
 impl<T: MeshInstanceInput> PositionedMesh<T> {
     pub fn new(
         mesh: Mesh,
-        instance_positions: Option<Vec<Vector3<f64>>>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,
     ) -> Self {
-        let instance_positions_and_alpha = instance_positions
-            .unwrap_or(vec![Vector3::new(0.0, 0.0, 0.0)])
-            .iter()
-            .map(|v| (*v, 1.0))
-            .collect();
         Self {
             mesh,
             instance_buffer: InstanceBuffer::default(),
             attrs: vec![],
-            instance_positions_and_alpha,
             cs_offset: Vector3::new(0.0, 0.0, 0.0),
             double_style,
             spatial_rx,
@@ -73,7 +63,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             T::fill_attrs(
                 &mut self.attrs,
                 &self.cs_offset,
-                &self.instance_positions_and_alpha,
+                &vec![(Vector3::new(0.0, 0.0, 0.0), 1.0)],
                 &self.original_spatial_data,
                 self.double_style,
             );

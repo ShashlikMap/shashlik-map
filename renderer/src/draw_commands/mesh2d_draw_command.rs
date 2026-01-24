@@ -35,7 +35,6 @@ impl DrawCommand for Mesh2dDrawCommand {
                 Mesh::create_layered(&device, &self.mesh, mem::take(&mut self.layers_indices));
             feature_layer.add(
                 key,
-                mem::take(&mut self.mesh_info.instance_positions),
                 spatial_rx,
                 !self.is_screen,
                 mesh,
@@ -49,7 +48,6 @@ impl DrawCommand for Mesh2dDrawCommand {
                 Mesh::create_layered(&device, &self.mesh, mem::take(&mut self.layers_indices));
             layers.shape_layer.add(
                 key,
-                mem::take(&mut self.mesh_info.instance_positions),
                 spatial_rx,
                 !self.is_screen,
                 mesh,
