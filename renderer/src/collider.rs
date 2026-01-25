@@ -46,42 +46,44 @@ impl Collider {
             let mut instance_data1: RenderDataHolder<(Vector3<f64>, f32, String)> =
                 RenderDataHolder::new();
             loop {
-                match receiver.recv().unwrap() {
-                    ColliderMsg::ViewProj(view_projection) => {
-                        let mut hm: HashMap<String, Vec<(Vector3<f64>, f32)>> = HashMap::new();
-                        instance_data1.run_mut_action(|(pos, alpha, key)| {
-                            let screen_pos = view_projection.screen_position(&pos);
-                            // TODO Bounds for svg?
-                            // no need to use f64 for collision detection
-                            let bounds = Rectangle::from_corners(
-                                point! { x: screen_pos.x as f32 - 20.0, y: screen_pos.y as f32 - 20.0},
-                                point! { x: screen_pos.x as f32 + 20.0, y: screen_pos.y as f32 + 20.0},
-                            );
+                if let Some(msg) = receiver.recv().ok() {
+                    match msg {
+                        ColliderMsg::ViewProj(view_projection) => {
+                            let mut hm: HashMap<String, Vec<(Vector3<f64>, f32)>> = HashMap::new();
+                            instance_data1.run_mut_action(|(pos, alpha, key)| {
+                                let screen_pos = view_projection.screen_position(&pos);
+                                // TODO Bounds for svg?
+                                // no need to use f64 for collision detection
+                                let bounds = Rectangle::from_corners(
+                                    point! { x: screen_pos.x as f32 - 20.0, y: screen_pos.y as f32 - 20.0},
+                                    point! { x: screen_pos.x as f32 + 20.0, y: screen_pos.y as f32 + 20.0},
+                                );
 
-                            let within_screen = collision_handler.within_screen(bounds);
-                            if within_screen {
-                                if collision_handler.insert(bounds) {
-                                    *alpha = clamp(*alpha + 0.05, 0.0, 1.0);
-                                } else {
-                                    *alpha = clamp(*alpha - 0.05, 0.0, 1.0);
+                                let within_screen = collision_handler.within_screen(bounds);
+                                if within_screen {
+                                    if collision_handler.insert(bounds) {
+                                        *alpha = clamp(*alpha + 0.05, 0.0, 1.0);
+                                    } else {
+                                        *alpha = clamp(*alpha - 0.05, 0.0, 1.0);
+                                    }
                                 }
-                            }
 
-                            hm.entry(key.clone()).or_default().push((*pos, *alpha));
-                        });
-                        *result1.write().unwrap() = hm;
-                        collision_handler.clear();
-                    }
-                    ColliderMsg::InstanceData1(data) => {
-                        data.into_iter().for_each(|item| {
-                            let key = item.0;
-                            let (position, instance_key) = item.1;
-                            instance_data1.add(key, (position, 0.0, instance_key));
-                        });
-                    }
+                                hm.entry(key.clone()).or_default().push((*pos, *alpha));
+                            });
+                            *result1.write().unwrap() = hm;
+                            collision_handler.clear();
+                        }
+                        ColliderMsg::InstanceData1(data) => {
+                            data.into_iter().for_each(|item| {
+                                let key = item.0;
+                                let (position, instance_key) = item.1;
+                                instance_data1.add(key, (position, 0.0, instance_key));
+                            });
+                        }
 
-                    ColliderMsg::Resize(width, height) => collision_handler.resize(width, height),
-                    ColliderMsg::Clear(key) => instance_data1.remove(key.as_str()),
+                        ColliderMsg::Resize(width, height) => collision_handler.resize(width, height),
+                        ColliderMsg::Clear(key) => instance_data1.remove(key.as_str()),
+                    }
                 }
             }
         });
