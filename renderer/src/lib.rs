@@ -108,37 +108,38 @@ impl ShashlikRenderer {
             let mut canvas_api = CanvasApi::new(style_store);
             let mut spatial_data_map = HashMap::new();
             loop {
-                let api_msg = receiver_api_rx.recv().unwrap();
-                match api_msg {
-                    RendererApiMsg::RenderGroup((key, spatial_data, mut rg)) => {
-                        let (spatial_tx, _) = broadcast::channel(1);
-                        spatial_data_map
-                            .insert(key.clone(), (spatial_data.clone(), spatial_tx.clone()));
+                if let Some(api_msg) = receiver_api_rx.recv().ok() {
+                    match api_msg {
+                        RendererApiMsg::RenderGroup((key, spatial_data, mut rg)) => {
+                            let (spatial_tx, _) = broadcast::channel(1);
+                            spatial_data_map
+                                .insert(key.clone(), (spatial_data.clone(), spatial_tx.clone()));
 
-                        canvas_api.start_commands();
-                        rg.content(&mut canvas_api);
-                        let commands = canvas_api.flush_commands(key, spatial_data, spatial_tx);
+                            canvas_api.start_commands();
+                            rg.content(&mut canvas_api);
+                            let commands = canvas_api.flush_commands(key, spatial_data, spatial_tx);
 
-                        renderer_tx.send(RendererMessage::Draw(commands)).unwrap();
-                    }
-                    RendererApiMsg::UpdateStyle((style, block)) => {
-                        canvas_api.update_style(&style, block);
-                    }
-                    RendererApiMsg::UpdateSpatialData((key, spatial_data_cb)) => {
-                        if let Some((spatial_data, tx)) = spatial_data_map.get_mut(&key) {
-                            spatial_data_cb(spatial_data);
-                            if tx.receiver_count() > 0 {
-                                tx.send(spatial_data.clone()).unwrap();
+                            renderer_tx.send(RendererMessage::Draw(commands)).unwrap();
+                        }
+                        RendererApiMsg::UpdateStyle((style, block)) => {
+                            canvas_api.update_style(&style, block);
+                        }
+                        RendererApiMsg::UpdateSpatialData((key, spatial_data_cb)) => {
+                            if let Some((spatial_data, tx)) = spatial_data_map.get_mut(&key) {
+                                spatial_data_cb(spatial_data);
+                                if tx.receiver_count() > 0 {
+                                    tx.send(spatial_data.clone()).unwrap();
+                                }
                             }
                         }
-                    }
-                    RendererApiMsg::ClearGroups(keys) => {
-                        keys.iter().for_each(|key| {
-                            spatial_data_map.remove(key);
-                        });
-                        renderer_tx
-                            .send(RendererMessage::ClearGroups(keys))
-                            .unwrap();
+                        RendererApiMsg::ClearGroups(keys) => {
+                            keys.iter().for_each(|key| {
+                                spatial_data_map.remove(key);
+                            });
+                            renderer_tx
+                                .send(RendererMessage::ClearGroups(keys))
+                                .unwrap();
+                        }
                     }
                 }
             }
