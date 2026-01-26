@@ -9,7 +9,7 @@ use wgpu::RenderPass;
 
 pub struct TextMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
-    render_data_holder: RenderDataHolder<Vec<TextData>>,
+    render_data_holder: RenderDataHolder<TextData>,
     text_renderer: TextRenderer,
     pipeline: Option<wgpu::RenderPipeline>,
 }
@@ -28,26 +28,23 @@ impl<P: RenderPipeline> TextMeshLayer<P> {
         }
     }
 
-    pub fn add(&mut self, key: String, mut text_data: Vec<TextData>, spatial_data: SpatialData) {
-        text_data.iter_mut().for_each(|item| {
+    pub fn add(&mut self, key: String, text_data: Vec<TextData>, spatial_data: SpatialData) {
+        text_data.into_iter().for_each(|mut item| {
             item.alpha = 0.0;
             item.positions = item
                 .positions
                 .iter()
                 .map(|pos| pos + spatial_data.transform.cast().unwrap())
-                .collect()
+                .collect();
+            self.render_data_holder.add(key.to_string(), item);
         });
-
-        self.render_data_holder.add(key, text_data);
     }
 
-    pub fn run_mut_action_with_key<F>(&mut self, key: &str, mut block: F)
+    pub fn run_mut_action_with_key<F>(&mut self, key: &str, block: F)
     where
         F: FnMut(&mut TextData),
     {
-        self.render_data_holder.run_mut_action_with_key(key, |items| {
-            items.iter_mut().for_each(&mut block)
-        })
+        self.render_data_holder.run_mut_action_with_key(key, block)
     }
 }
 
@@ -59,8 +56,7 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
 
     fn update(&mut self, global_context: &mut GlobalContext) {
         self.render_data_holder.run_mut_action(|item| {
-            item.iter_mut()
-                .for_each(|item| self.text_renderer.insert(item, global_context));
+            self.text_renderer.insert(item, global_context);
         });
     }
 
