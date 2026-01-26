@@ -66,4 +66,11 @@ impl TextData {
             glyph_buffer: None,
         }
     }
+
+    pub fn update_text(&mut self, new_text: &str, alpha: f32) {
+        self.text = new_text.to_string();
+        self.alpha = alpha;
+        // clear buffer so render can re-create it
+        self.glyph_buffer = None;
+    }
 }
