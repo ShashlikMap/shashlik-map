@@ -10,7 +10,7 @@ use wgpu::RenderPass;
 pub struct TextMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
     render_data_holder: RenderDataHolder<Vec<TextData>>,
-    pub(crate) text_renderer: TextRenderer,
+    text_renderer: TextRenderer,
     pipeline: Option<wgpu::RenderPipeline>,
 }
 
@@ -39,6 +39,15 @@ impl<P: RenderPipeline> TextMeshLayer<P> {
         });
 
         self.render_data_holder.add(key, text_data);
+    }
+
+    pub fn run_mut_action_with_key<F>(&mut self, key: &str, mut block: F)
+    where
+        F: FnMut(&mut TextData),
+    {
+        self.render_data_holder.run_mut_action_with_key(key, |items| {
+            items.iter_mut().for_each(&mut block)
+        })
     }
 }
 

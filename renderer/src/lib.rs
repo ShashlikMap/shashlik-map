@@ -20,9 +20,11 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread::spawn;
 use tokio::sync::broadcast;
+use wgpu::naga::compact::KeepUnused::No;
 use wgpu::SurfaceError;
 use global_context::GlobalContext;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use crate::modifier::render_modifier::SpatialData;
 
 pub mod canvas_api;
 mod collision_handler;
@@ -79,6 +81,17 @@ impl ShashlikRenderer {
         let msaa_texture = MultisampledTexture::new(&global_context);
         
         let mut layers = Layers::new(feature_tags, &global_context, font);
+
+        layers.text_layer.add("fps_info".to_string(), vec![TextData {
+            id: 0,
+            text: "FPS 0".to_string(),
+            size: 40.0,
+            alpha: 1.0,
+            positions: vec![vec3(100.0, 120.0, 0.0)],
+            screen_offset: vec2(0.0, 0.0),
+            screen_space: true,
+            glyph_buffer: None,
+        }], SpatialData::new());
 
         let (renderer_api_tx, renderer_api_rx) = channel();
 
@@ -231,20 +244,11 @@ impl ShashlikRenderer {
                 multiview_mask: None,
             });
 
-            // TODO can we do it better?
-            self.layers.text_layer.text_renderer.insert(
-                &mut TextData {
-                    id: 0,
-                    text: format!("FPS {}", self.fps_counter.update() as i32),
-                    size: 40.0,
-                    alpha: 1.0,
-                    positions: vec![vec3(100.0, 120.0, 0.0)],
-                    screen_offset: vec2(0.0, 0.0),
-                    screen_space: true,
-                    glyph_buffer: None,
-                },
-                &mut self.global_context,
-            );
+            let fps = format!("FPS {}", self.fps_counter.update() as i32);
+            self.layers.text_layer.run_mut_action_with_key("fps_info", |item| {
+                item.update_text(fps.as_str(), 1.0);
+            });
+
             self.layers
                 .render(&mut render_pass, &mut self.global_context);
         }

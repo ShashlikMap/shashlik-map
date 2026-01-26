@@ -20,6 +20,15 @@ impl<T> RenderDataHolder<T> {
         self.holder.remove(&key.to_string());
     }
 
+    pub fn run_mut_action_with_key<F>(&mut self, key: &str, mut block: F)
+    where
+        F: FnMut(&mut T),
+    {
+        if let Some(items) = self.holder.get_mut(key) {
+            items.iter_mut().for_each(&mut block)
+        }
+    }
+
     pub fn run_mut_action<F>(&mut self, mut block: F)
     where
         F: FnMut(&mut T),
