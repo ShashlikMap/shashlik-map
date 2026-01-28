@@ -1,7 +1,6 @@
-use crate::global_context::GlobalContext;
 use crate::geometry_data::TextData;
+use crate::global_context::GlobalContext;
 use crate::mesh_layers::BaseMeshLayer;
-use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::modifier::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use crate::text::text_renderer::TextRenderer;
@@ -9,7 +8,6 @@ use wgpu::RenderPass;
 
 pub struct TextMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
-    render_data_holder: RenderDataHolder<TextData>,
     text_renderer: TextRenderer,
     pipeline: Option<wgpu::RenderPipeline>,
 }
@@ -17,34 +15,33 @@ pub struct TextMeshLayer<P: RenderPipeline> {
 impl<P: RenderPipeline> TextMeshLayer<P> {
     pub fn new(
         render_pipeline: P,
-        global_context: &GlobalContext,
+        global_context: &mut GlobalContext,
         font: &'static rustybuzz::ttf_parser::Face,
     ) -> Self {
         Self {
             render_pipeline,
-            render_data_holder: RenderDataHolder::new(),
-            text_renderer: TextRenderer::new(global_context.device(), font),
+            text_renderer: TextRenderer::new(global_context, font),
             pipeline: None,
         }
     }
 
-    pub fn add(&mut self, key: String, text_data: Vec<TextData>, spatial_data: SpatialData) {
-        text_data.into_iter().for_each(|mut item| {
+    pub fn add(&mut self, key: String, mut text_data: Vec<TextData>, spatial_data: SpatialData) {
+        text_data.iter_mut().for_each(|item| {
             item.alpha = 0.0;
             item.positions = item
                 .positions
                 .iter()
                 .map(|pos| pos + spatial_data.transform.cast().unwrap())
                 .collect();
-            self.render_data_holder.add(key.to_string(), item);
         });
+        self.text_renderer.insert(key.as_str(), text_data);
     }
 
     pub fn run_mut_action_with_key<F>(&mut self, key: &str, block: F)
     where
         F: FnMut(&mut TextData),
     {
-        self.render_data_holder.run_mut_action_with_key(key, block)
+        // self.render_data_holder.run_mut_action_with_key(key, block)
     }
 }
 
@@ -55,9 +52,9 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
     }
 
     fn update(&mut self, global_context: &mut GlobalContext) {
-        self.render_data_holder.run_mut_action(|item| {
-            self.text_renderer.insert(item, global_context);
-        });
+        // self.render_data_holder.run_mut_action(|item| {
+        //     self.text_renderer.insert(item, global_context);
+        // });
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
@@ -70,6 +67,6 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
     }
 
     fn clear_by_key(&mut self, key: &str) {
-        self.render_data_holder.remove(key);
+        // self.render_data_holder.remove(key);
     }
 }

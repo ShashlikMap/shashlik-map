@@ -79,7 +79,7 @@ impl ShashlikRenderer {
         let depth_texture = DepthTexture::new(&global_context);
         let msaa_texture = MultisampledTexture::new(&global_context);
         
-        let mut layers = Layers::new(feature_tags, &global_context, font);
+        let mut layers = Layers::new(feature_tags, &mut global_context, font);
 
         layers.text_layer.add("fps_info".to_string(), vec![TextData {
             id: 0,

@@ -21,7 +21,7 @@ pub(crate) struct Layers {
 impl Layers {
     pub fn new(
         feature_tags: &[String],
-        global_context: &GlobalContext,
+        global_context: &mut GlobalContext,
         font: &'static ttf_parser::Face<'static>,
     ) -> Layers {
         let feature_layers = FeatureLayers::new(feature_tags, global_context);

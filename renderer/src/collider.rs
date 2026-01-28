@@ -8,7 +8,7 @@ use rstar::primitives::Rectangle;
 use std::collections::HashMap;
 use std::mem;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{mpsc, Arc, RwLock};
+use std::sync::{mpsc, Arc, Mutex, RwLock};
 use std::thread::spawn;
 
 enum ColliderMsg {
@@ -17,7 +17,13 @@ enum ColliderMsg {
     Clear(String),
     InstanceData1(Vec<(String, (Vector3<f64>, String))>),
 }
+
+pub trait ColliderTask: Send {
+    fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler);
+}
+
 pub struct Collider {
+    tasks: Arc<Mutex<Vec<Box<dyn ColliderTask>>>>,
     sender: Sender<ColliderMsg>,
     result1: Arc<RwLock<HashMap<String, Vec<(Vector3<f64>, f32)>>>>,
 }
@@ -27,8 +33,17 @@ impl Collider {
         let collision_handler = CollisionHandler::new(width, height);
         let (sender, receiver) = mpsc::channel();
         let result1 = Arc::new(RwLock::new(HashMap::new()));
-        Self::run_background(Arc::clone(&result1), collision_handler, receiver);
-        Self { sender, result1 }
+        let tasks = Arc::new(Mutex::new(vec![]));
+        Self::run_background(Arc::clone(&tasks), Arc::clone(&result1), collision_handler, receiver);
+        Self {
+            tasks,
+            sender,
+            result1,
+        }
+    }
+
+    pub fn register_task(&mut self, task: Box<dyn ColliderTask>) {
+        self.tasks.lock().unwrap().push(task);
     }
 
     pub fn resize(&mut self, width: f32, height: f32) {
@@ -38,6 +53,7 @@ impl Collider {
     }
 
     fn run_background(
+        tasks: Arc<Mutex<Vec<Box<dyn ColliderTask>>>>,
         result1: Arc<RwLock<HashMap<String, Vec<(Vector3<f64>, f32)>>>>,
         mut collision_handler: CollisionHandler,
         receiver: Receiver<ColliderMsg>,
@@ -49,6 +65,12 @@ impl Collider {
                 if let Some(msg) = receiver.recv().ok() {
                     match msg {
                         ColliderMsg::ViewProj(view_projection) => {
+                            if let Ok(mut tasks) = tasks.try_lock() {
+                                tasks.iter_mut().for_each(|task| {
+                                    task.run(&view_projection, &mut collision_handler);
+                                })
+                            }
+
                             let mut hm: HashMap<String, Vec<(Vector3<f64>, f32)>> = HashMap::new();
                             instance_data1.run_mut_action(|(pos, alpha, key)| {
                                 let screen_pos = view_projection.screen_position(&pos);

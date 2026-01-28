@@ -1,8 +1,12 @@
+use crate::collider::ColliderTask;
+use crate::collision_handler::CollisionHandler;
 use crate::geometry_data::TextData;
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
+use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::vertex_attrs::TextInstanceInput;
+use crate::view_projection::ViewProjection;
 use cgmath::num_traits::clamp;
 use cgmath::{vec3, Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector3};
 use geo_types::{coord, point};
@@ -10,7 +14,9 @@ use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
 use std::collections::HashMap;
-use wgpu::{Device, RenderPass};
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::{Arc, Mutex};
+use wgpu::RenderPass;
 
 #[derive(Clone)]
 pub struct GlyphData {
@@ -22,248 +28,44 @@ pub struct GlyphData {
 }
 
 pub struct TextRenderer {
-    id_to_alpha_map: HashMap<u64, f32>,
-    default_face: DefaultFaceWrapper,
-    glyph_data: FxHashMap<GlyphId, Vec<GlyphData>>,
+    default_face: Arc<DefaultFaceWrapper>,
+    data_tx: Sender<(String, Vec<TextData>)>,
+    result_rx: Receiver<FxHashMap<GlyphId, Vec<GlyphData>>>,
     instance_buffer_map: FxHashMap<GlyphId, InstanceBuffer<TextInstanceInput>>,
 }
 
 impl TextRenderer {
-    const FADE_ANIM_SPEED: f32 = 0.05;
-
-    pub fn new(device: &Device, font: &'static rustybuzz::ttf_parser::Face) -> TextRenderer {
-        let default_face = DefaultFaceWrapper::new(device, font);
-
+    pub fn new(
+        global_context: &mut GlobalContext,
+        font: &'static rustybuzz::ttf_parser::Face,
+    ) -> TextRenderer {
+        let device = global_context.device();
+        let default_face = Arc::new(DefaultFaceWrapper::new(device, font));
+        let (data_tx, data_rx) = channel();
+        let (result_tx, result_rx) = channel();
+        let task = TextRendererCollisionHandler::new(Arc::clone(&default_face), data_rx, result_tx);
+        global_context.collider.register_task(Box::new(task));
         TextRenderer {
-            id_to_alpha_map: HashMap::new(),
             default_face,
-            glyph_data: FxHashMap::default(),
+            data_tx,
+            result_rx,
             instance_buffer_map: FxHashMap::default(),
         }
     }
 
-    pub fn insert(
-        &mut self,
-        data: &mut TextData,
-        global_context: &mut GlobalContext,
-    ) {
-        let view_projection = &global_context.view_projection;
-        let collision_handler = &mut global_context.collision_handler;
-
-        let glyph_buffer = data
-            .glyph_buffer
-            .get_or_insert_with(|| self.default_face.shape(data.text.as_str()));
-
-        let glyphs_positions = glyph_buffer.glyph_positions();
-        let glyphs_infos = glyph_buffer.glyph_infos();
-
-        let (scale_m, width, height, scale) =
-            self.default_face.get_text_params(&glyph_buffer, data.size);
-
-        let mut glyphs_to_draw = vec![];
-
-        let middle_point_index = data.positions.len() / 2;
-        let initial_position: Vector3<f64> = *data
-            .positions
-            .get(middle_point_index)
-            .unwrap();
-        let origin = view_projection.screen_position(&initial_position)
-            + coord! { x: data.screen_offset.x as f64, y: data.screen_offset.y as f64};
-
-        if data.positions.len() > 1 {
-            let line_positions = &data.positions;
-
-            let middle_point_index = line_positions.len() / 2;
-            let mut prev: Option<Vector3<f32>> = None;
-            let mut glyph_index = 0;
-            let glyphs_len = glyph_buffer.len();
-            let segments_count = line_positions.len();
-
-            let mut segments_len = 0.0;
-            let mut segments_vector = Vector3::new(0.0, 0.0, 0.0);
-
-            let mut backward = false;
-
-            let flip_rot_m = Matrix4::from_angle_z(Deg(180.0));
-            let half_height_translation =
-                Matrix4::from_translation(Vector3::new(0.0, -height / 2.0, 0.0));
-
-            for (index, current) in line_positions[middle_point_index..].iter().enumerate() {
-                if glyph_index >= glyphs_len {
-                    break;
-                }
-
-                let current = view_projection.screen_position(&current) - origin;
-                let current = Vector3::new(current.x as f32, current.y as f32, 0.0);
-
-                // skip if two point are the same
-                if let Some(prev) = prev
-                    && prev != current
-                {
-                    // check if we need to render text backward to
-                    if index == 1 {
-                        if current.x < prev.x {
-                            backward = true;
-                        }
-                    }
-                    let seg_vector = current - prev;
-                    segments_len += seg_vector.magnitude();
-
-                    let seg_rotation: Quaternion<f32> =
-                        Rotation::between_vectors(seg_vector.normalize(), Vector3::unit_x());
-
-                    let rot_m: Matrix4<f32> = seg_rotation.into();
-                    let scale_rot_height_m = scale_m * rot_m * half_height_translation;
-
-                    while glyph_index < glyphs_len {
-                        if index < segments_count - 1 && segments_vector.magnitude() > segments_len
-                        {
-                            break;
-                        }
-
-                        let real_glyph_index = if backward {
-                            glyphs_len - glyph_index - 1
-                        } else {
-                            glyph_index
-                        };
-
-                        let position = glyphs_positions[real_glyph_index];
-                        let glyph_info = glyphs_infos[real_glyph_index];
-
-                        let x_advance = position.x_advance as f32 * scale;
-                        let x_advance_vector = Vector3::new(x_advance, 0.0, 0.0);
-                        let rotated_glyph_vector = seg_rotation.rotate_vector(x_advance_vector);
-
-                        let matrix = if backward {
-                            let x_advance_translation =
-                                Matrix4::from_translation(-x_advance_vector);
-                            Matrix4::from_translation(segments_vector)
-                                * flip_rot_m
-                                * scale_rot_height_m
-                                * x_advance_translation
-                        } else {
-                            Matrix4::from_translation(segments_vector) * scale_rot_height_m
-                        };
-
-                        // note: segments_vector.y goes negative so we should diff y-axis!
-                        let glyph_rect = Rectangle::from_corners(
-                            point! { x: origin.x as f32 + segments_vector.x - height, y: origin.y as f32 - segments_vector.y - height },
-                            point! { x: origin.x as f32 + segments_vector.x + height, y: origin.y as f32 - segments_vector.y + height},
-                        );
-
-                        segments_vector += rotated_glyph_vector;
-
-                        let item = GlyphData {
-                            glyph_id: GlyphId(glyph_info.glyph_id as u16),
-                            alpha: 1.0,
-                            position: (initial_position.x as f32, initial_position.y as f32),
-                            matrix,
-                            screen_space: data.screen_space,
-                        };
-                        glyphs_to_draw.push((glyph_rect, item));
-
-                        glyph_index += 1;
-                    }
-                }
-
-                prev = Some(current);
-            }
-
-            // render only completed text
-            if glyph_index >= glyphs_len {
-                let contains = self.id_to_alpha_map.contains_key(&data.id);
-                let mut alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
-                if contains {
-                    data.alpha = alpha;
-                    return;
-                }
-
-                let rects = glyphs_to_draw
-                    .iter()
-                    .map(|(rect, _)| rect.clone())
-                    .collect();
-                if collision_handler.insert_rectangles(rects) {
-                    alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
-                } else {
-                    alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
-                };
-                data.alpha = alpha;
-            } else {
-                glyphs_to_draw.clear();
-            }
-        } else {
-            let origin = origin + coord! { x: (-width/2.0) as f64, y: 0.0 };
-
-            let mut glyph_total_x_advance = 0.0;
-
-            let section_rect = Rectangle::from_corners(
-                point! { x: origin.x as f32, y: origin.y as f32 },
-                point! { x: origin.x as f32 + width, y: origin.y as f32 + height },
-            );
-
-            let within_screen = collision_handler.within_screen(section_rect);
-            if data.screen_space || within_screen {
-                let contains = self.id_to_alpha_map.contains_key(&data.id);
-                let mut alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
-                if contains {
-                    data.alpha = alpha;
-                    return;
-                }
-
-                // calc only for non screen space
-                if !data.screen_space {
-                    if collision_handler.insert(section_rect) {
-                        alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
-                    } else {
-                        alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
-                    }
-                }
-                data.alpha = alpha;
-                if data.alpha > 0.0 {
-                    let stub_rect =
-                        Rectangle::from_corners(point!(x: 0.0, y: 0.0), point!(x: 0.0, y: 0.0));
-                    for index in 0..glyph_buffer.len() {
-                        let position = glyphs_positions[index];
-                        let glyph_info = glyphs_infos[index];
-                        let matrix = Matrix4::from_translation(Vector3::new(
-                            glyph_total_x_advance + data.screen_offset.x + (-width / 2.0),
-                            -height - data.screen_offset.y,
-                            0.0,
-                        )) * scale_m;
-
-                        glyph_total_x_advance += position.x_advance as f32 * scale;
-
-                        let item = GlyphData {
-                            glyph_id: GlyphId(glyph_info.glyph_id as u16),
-                            alpha: data.alpha,
-                            position: (initial_position.x as f32, initial_position.y as f32),
-                            matrix,
-                            screen_space: data.screen_space,
-                        };
-                        glyphs_to_draw.push((stub_rect, item));
-                    }
-                }
-            }
-        }
-
-        for (_, mut item) in glyphs_to_draw {
-            item.alpha = data.alpha;
-            self.glyph_data
-                .entry(item.glyph_id)
-                .and_modify(|list| {
-                    if data.alpha > 0.0 {
-                        list.push(item.clone());
-                    }
-                })
-                .or_insert(vec![item.clone()]);
-        }
+    pub fn insert(&mut self, key: &str, data: Vec<TextData>) {
+        self.data_tx.send((key.to_string(), data)).unwrap();
     }
 
-    fn update_attrs(&mut self, global_context: &GlobalContext) {
+    fn update_attrs(
+        &mut self,
+        global_context: &GlobalContext,
+        glyph_data: &FxHashMap<GlyphId, Vec<GlyphData>>,
+    ) {
         let cs_offset = global_context.view_projection.cs_offset;
         let device = global_context.device();
         let queue = global_context.queue();
-        self.glyph_data.iter().for_each(|(key, list)| {
+        glyph_data.iter().for_each(|(key, list)| {
             let mut attrs = vec![];
             list.iter().for_each(|glyph_data| {
                 let mut position = Vector3::new(glyph_data.position.0, glyph_data.position.1, 0.0);
@@ -279,7 +81,8 @@ impl TextRenderer {
                 attrs.push(instance_input);
             });
 
-            let instance_buffer = self.instance_buffer_map
+            let instance_buffer = self
+                .instance_buffer_map
                 .entry(*key)
                 .or_insert(InstanceBuffer::default());
             instance_buffer.update("TextInstanceBuffer", device, queue, &attrs);
@@ -287,11 +90,14 @@ impl TextRenderer {
     }
 
     pub fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
-        self.id_to_alpha_map.clear();
-        self.update_attrs(global_context);
+        let Ok(glyph_data) = self.result_rx.try_recv() else {
+            return;
+        };
 
-        if !self.instance_buffer_map.is_empty() && !self.glyph_data.is_empty() {
-            self.glyph_data.iter().for_each(|(glyph_id, list)| {
+        self.update_attrs(global_context, &glyph_data);
+
+        if !self.instance_buffer_map.is_empty() && !glyph_data.is_empty() {
+            glyph_data.iter().for_each(|(glyph_id, list)| {
                 if let Some(mesh) = self.default_face.glyph_mesh_map.get(glyph_id) {
                     let v_buf = mesh.vertex_buf.get(0).unwrap();
                     let i_buf = mesh.index_buf.get(0).unwrap();
@@ -307,7 +113,255 @@ impl TextRenderer {
                 }
             });
         }
+    }
+}
 
-        self.glyph_data.clear();
+struct TextRendererCollisionHandler {
+    id_to_alpha_map: HashMap<u64, f32>,
+    default_face: Arc<DefaultFaceWrapper>,
+    render_data_holder: RenderDataHolder<TextData>,
+    data_rx: Arc<Mutex<Receiver<(String, Vec<TextData>)>>>,
+    result_tx: Sender<FxHashMap<GlyphId, Vec<GlyphData>>>,
+}
+
+impl TextRendererCollisionHandler {
+    const FADE_ANIM_SPEED: f32 = 0.05;
+    pub fn new(
+        default_face: Arc<DefaultFaceWrapper>,
+        data_receiver: Receiver<(String, Vec<TextData>)>,
+        result_tx: Sender<FxHashMap<GlyphId, Vec<GlyphData>>>,
+    ) -> Self {
+        TextRendererCollisionHandler {
+            id_to_alpha_map: HashMap::new(),
+            default_face,
+            render_data_holder: RenderDataHolder::new(),
+            data_rx: Arc::new(Mutex::new(data_receiver)),
+            result_tx,
+        }
+    }
+}
+
+impl ColliderTask for TextRendererCollisionHandler {
+    fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler) {
+        while let Ok(data) = self.data_rx.lock().unwrap().try_recv() {
+            let key = data.0;
+            data.1.into_iter().for_each(|td| {
+                self.render_data_holder.add(key.clone(), td);
+            })
+        }
+        let mut glyph_data: FxHashMap<GlyphId, Vec<GlyphData>> = FxHashMap::default();
+
+        self.render_data_holder.run_mut_action(|data| {
+            let glyph_buffer = data
+                .glyph_buffer
+                .get_or_insert_with(|| self.default_face.shape(data.text.as_str()));
+
+            let glyphs_positions = glyph_buffer.glyph_positions();
+            let glyphs_infos = glyph_buffer.glyph_infos();
+
+            let (scale_m, width, height, scale) =
+                self.default_face.get_text_params(&glyph_buffer, data.size);
+
+            let mut glyphs_to_draw = vec![];
+
+            let middle_point_index = data.positions.len() / 2;
+            let initial_position: Vector3<f64> = *data
+                .positions
+                .get(middle_point_index)
+                .unwrap();
+            let origin = view_projection.screen_position(&initial_position)
+                + coord! { x: data.screen_offset.x as f64, y: data.screen_offset.y as f64};
+
+            if data.positions.len() > 1 {
+                let line_positions = &data.positions;
+
+                let middle_point_index = line_positions.len() / 2;
+                let mut prev: Option<Vector3<f32>> = None;
+                let mut glyph_index = 0;
+                let glyphs_len = glyph_buffer.len();
+                let segments_count = line_positions.len();
+
+                let mut segments_len = 0.0;
+                let mut segments_vector = Vector3::new(0.0, 0.0, 0.0);
+
+                let mut backward = false;
+
+                let flip_rot_m = Matrix4::from_angle_z(Deg(180.0));
+                let half_height_translation =
+                    Matrix4::from_translation(Vector3::new(0.0, -height / 2.0, 0.0));
+
+                for (index, current) in line_positions[middle_point_index..].iter().enumerate() {
+                    if glyph_index >= glyphs_len {
+                        break;
+                    }
+
+                    let current = view_projection.screen_position(&current) - origin;
+                    let current = Vector3::new(current.x as f32, current.y as f32, 0.0);
+
+                    // skip if two point are the same
+                    if let Some(prev) = prev
+                        && prev != current
+                    {
+                        // check if we need to render text backward to
+                        if index == 1 {
+                            if current.x < prev.x {
+                                backward = true;
+                            }
+                        }
+                        let seg_vector = current - prev;
+                        segments_len += seg_vector.magnitude();
+
+                        let seg_rotation: Quaternion<f32> =
+                            Rotation::between_vectors(seg_vector.normalize(), Vector3::unit_x());
+
+                        let rot_m: Matrix4<f32> = seg_rotation.into();
+                        let scale_rot_height_m = scale_m * rot_m * half_height_translation;
+
+                        while glyph_index < glyphs_len {
+                            if index < segments_count - 1 && segments_vector.magnitude() > segments_len
+                            {
+                                break;
+                            }
+
+                            let real_glyph_index = if backward {
+                                glyphs_len - glyph_index - 1
+                            } else {
+                                glyph_index
+                            };
+
+                            let position = glyphs_positions[real_glyph_index];
+                            let glyph_info = glyphs_infos[real_glyph_index];
+
+                            let x_advance = position.x_advance as f32 * scale;
+                            let x_advance_vector = Vector3::new(x_advance, 0.0, 0.0);
+                            let rotated_glyph_vector = seg_rotation.rotate_vector(x_advance_vector);
+
+                            let matrix = if backward {
+                                let x_advance_translation =
+                                    Matrix4::from_translation(-x_advance_vector);
+                                Matrix4::from_translation(segments_vector)
+                                    * flip_rot_m
+                                    * scale_rot_height_m
+                                    * x_advance_translation
+                            } else {
+                                Matrix4::from_translation(segments_vector) * scale_rot_height_m
+                            };
+
+                            // note: segments_vector.y goes negative so we should diff y-axis!
+                            let glyph_rect = Rectangle::from_corners(
+                                point! { x: origin.x as f32 + segments_vector.x - height, y: origin.y as f32 - segments_vector.y - height },
+                                point! { x: origin.x as f32 + segments_vector.x + height, y: origin.y as f32 - segments_vector.y + height},
+                            );
+
+                            segments_vector += rotated_glyph_vector;
+
+                            let item = GlyphData {
+                                glyph_id: GlyphId(glyph_info.glyph_id as u16),
+                                alpha: 1.0,
+                                position: (initial_position.x as f32, initial_position.y as f32),
+                                matrix,
+                                screen_space: data.screen_space,
+                            };
+                            glyphs_to_draw.push((glyph_rect, item));
+
+                            glyph_index += 1;
+                        }
+                    }
+
+                    prev = Some(current);
+                }
+
+                // render only completed text
+                if glyph_index >= glyphs_len {
+                    let contains = self.id_to_alpha_map.contains_key(&data.id);
+                    let mut alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
+                    if contains {
+                        data.alpha = alpha;
+                        return;
+                    }
+
+                    let rects = glyphs_to_draw
+                        .iter()
+                        .map(|(rect, _)| rect.clone())
+                        .collect();
+                    if collision_handler.insert_rectangles(rects) {
+                        alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                    } else {
+                        alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                    };
+                    data.alpha = alpha;
+                } else {
+                    glyphs_to_draw.clear();
+                }
+            } else {
+                let origin = origin + coord! { x: (-width/2.0) as f64, y: 0.0 };
+
+                let mut glyph_total_x_advance = 0.0;
+
+                let section_rect = Rectangle::from_corners(
+                    point! { x: origin.x as f32, y: origin.y as f32 },
+                    point! { x: origin.x as f32 + width, y: origin.y as f32 + height },
+                );
+
+                let within_screen = collision_handler.within_screen(section_rect);
+                if data.screen_space || within_screen {
+                    let contains = self.id_to_alpha_map.contains_key(&data.id);
+                    let mut alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
+                    if contains {
+                        data.alpha = alpha;
+                        return;
+                    }
+
+                    // calc only for non screen space
+                    if !data.screen_space {
+                        if collision_handler.insert(section_rect) {
+                            alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                        } else {
+                            alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                        }
+                    }
+                    data.alpha = alpha;
+                    if data.alpha > 0.0 {
+                        let stub_rect =
+                            Rectangle::from_corners(point!(x: 0.0, y: 0.0), point!(x: 0.0, y: 0.0));
+                        for index in 0..glyph_buffer.len() {
+                            let position = glyphs_positions[index];
+                            let glyph_info = glyphs_infos[index];
+                            let matrix = Matrix4::from_translation(Vector3::new(
+                                glyph_total_x_advance + data.screen_offset.x + (-width / 2.0),
+                                -height - data.screen_offset.y,
+                                0.0,
+                            )) * scale_m;
+
+                            glyph_total_x_advance += position.x_advance as f32 * scale;
+
+                            let item = GlyphData {
+                                glyph_id: GlyphId(glyph_info.glyph_id as u16),
+                                alpha: data.alpha,
+                                position: (initial_position.x as f32, initial_position.y as f32),
+                                matrix,
+                                screen_space: data.screen_space,
+                            };
+                            glyphs_to_draw.push((stub_rect, item));
+                        }
+                    }
+                }
+            }
+
+            for (_, mut item) in glyphs_to_draw {
+                item.alpha = data.alpha;
+                glyph_data
+                    .entry(item.glyph_id)
+                    .and_modify(|list| {
+                        if data.alpha > 0.0 {
+                            list.push(item.clone());
+                        }
+                    })
+                    .or_insert(vec![item.clone()]);
+            }
+        });
+
+        self.id_to_alpha_map.clear();
+        self.result_tx.send(glyph_data).unwrap();
     }
 }
