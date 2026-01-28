@@ -244,7 +244,7 @@ impl ShashlikRenderer {
             });
 
             let fps = format!("FPS {}", self.fps_counter.update() as i32);
-            self.layers.text_layer.run_mut_action_with_key("fps_info", |item| {
+            self.layers.text_layer.run_mut_action_with_key("fps_info", move |item| {
                 item.update_text(fps.as_str(), 1.0);
             });
 

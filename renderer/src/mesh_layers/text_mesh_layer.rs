@@ -25,23 +25,27 @@ impl<P: RenderPipeline> TextMeshLayer<P> {
         }
     }
 
-    pub fn add(&mut self, key: String, mut text_data: Vec<TextData>, spatial_data: SpatialData) {
-        text_data.iter_mut().for_each(|item| {
-            item.alpha = 0.0;
-            item.positions = item
-                .positions
-                .iter()
-                .map(|pos| pos + spatial_data.transform.cast().unwrap())
-                .collect();
+    pub fn add(&mut self, key: String, text_data: Vec<TextData>, spatial_data: SpatialData) {
+        self.text_renderer.update_data(move |holder| {
+            text_data.into_iter().for_each(|mut item| {
+                item.alpha = 0.0;
+                item.positions = item
+                    .positions
+                    .iter()
+                    .map(|pos| pos + spatial_data.transform.cast().unwrap())
+                    .collect();
+                holder.add(key.clone(), item);
+            });
         });
-        self.text_renderer.insert(key.as_str(), text_data);
     }
 
     pub fn run_mut_action_with_key<F>(&mut self, key: &str, block: F)
     where
-        F: FnMut(&mut TextData),
+        F: FnMut(&mut TextData) + Send + 'static,
     {
-        // self.render_data_holder.run_mut_action_with_key(key, block)
+        let key = key.to_string();
+        self.text_renderer
+            .update_data(move |holder| holder.run_mut_action_with_key(key.as_str(), block));
     }
 }
 
@@ -51,10 +55,8 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
     }
 
-    fn update(&mut self, global_context: &mut GlobalContext) {
-        // self.render_data_holder.run_mut_action(|item| {
-        //     self.text_renderer.insert(item, global_context);
-        // });
+    fn update(&mut self, _global_context: &mut GlobalContext) {
+        // no-op
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
@@ -67,6 +69,9 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
     }
 
     fn clear_by_key(&mut self, key: &str) {
-        // self.render_data_holder.remove(key);
+        let key = key.to_string();
+        self.text_renderer.update_data(move |holder| {
+            holder.remove(key.as_str());
+        });
     }
 }
