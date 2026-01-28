@@ -29,7 +29,8 @@ impl Layers {
             feature_layers,
             mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context)),
             shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, false)),
-            screen_shape_layer: ScreenMeshLayer::new(ShapePipeline::new(global_context, true)),
+            screen_shape_layer: ScreenMeshLayer::new(ShapePipeline::new(global_context, true),
+                                                     global_context),
             text_layer: TextMeshLayer::new(
                 TextPipeline::new(global_context),
                 global_context,

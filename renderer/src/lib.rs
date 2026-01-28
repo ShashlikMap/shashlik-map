@@ -182,7 +182,6 @@ impl ShashlikRenderer {
                 }
                 RendererMessage::ClearGroups(keys) => {
                     keys.into_iter().for_each(|key| {
-                        self.global_context.collider.clear_by_key(&*key);
                         self.layers.clear_by_key(&*key);
                     });
                 }
@@ -190,8 +189,6 @@ impl ShashlikRenderer {
         }
 
         self.layers.update(&mut self.global_context);
-
-        self.global_context.collision_handler.clear();
     }
 
     fn render(&mut self) -> Result<(), SurfaceError> {
