@@ -1,4 +1,4 @@
-use crate::collider::ColliderTask;
+use crate::collider::{ColliderTask, CollisionTaskController, CollisionTaskWrapper};
 use crate::collision_handler::CollisionHandler;
 use crate::draw_commands::mesh2d_draw_command::Mesh2dDrawCommand;
 use crate::global_context::GlobalContext;
@@ -6,7 +6,6 @@ use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::mesh_layers::BaseMeshLayer;
-use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::modifier::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use crate::view_projection::ViewProjection;
@@ -16,8 +15,6 @@ use geo_types::point;
 use rstar::primitives::Rectangle;
 use std::collections::HashMap;
 use std::mem;
-use std::sync::mpsc::{Receiver, Sender, channel};
-use std::sync::{Arc, Mutex};
 use wgpu::RenderPass;
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
@@ -25,25 +22,22 @@ pub(crate) struct ScreenMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
     pipeline: Option<wgpu::RenderPipeline>,
     meshes: HashMap<String, (Mesh, InstanceBuffer<P::InstanceInputType>)>,
-    data_tx: Sender<
-        Box<dyn FnOnce(&mut RenderDataHolder<(Vector3<f64>, f32, String)>) + Send + 'static>,
+    collision_task_controller: CollisionTaskController<
+        (Vector3<f64>, f32, String),
+        HashMap<String, Vec<(Vector3<f64>, f32)>>,
     >,
-    result_rx: Receiver<HashMap<String, Vec<(Vector3<f64>, f32)>>>,
 }
 
 impl<P: RenderPipeline> ScreenMeshLayer<P> {
     pub fn new(render_pipeline: P, global_context: &mut GlobalContext) -> Self {
-        let (data_tx, data_rx) = channel();
-        let (result_tx, result_rx) = channel();
-
-        let task = ScreenMeshCollisionHandler::new(data_rx, result_tx);
+        let (task_wrapper, collision_task_controller) = CollisionTaskWrapper::new();
+        let task = ScreenMeshCollisionHandler::new(task_wrapper);
         global_context.collider.register_task(Box::new(task));
         ScreenMeshLayer {
             render_pipeline,
             pipeline: None,
             meshes: HashMap::new(),
-            data_tx,
-            result_rx,
+            collision_task_controller,
         }
     }
 
@@ -74,14 +68,9 @@ impl<P: RenderPipeline> ScreenMeshLayer<P> {
         instance_positions.into_iter().for_each(|item| {
             let key = key.to_string();
             let instance_key = instance_key.clone();
-            self.data_tx
-                .send(Box::new(move |holder| {
-                    holder.add(
-                        key.clone(),
-                        (item + spatial_data.transform, 0.0f32, instance_key.clone()),
-                    )
-                }))
-                .unwrap();
+            self.collision_task_controller.update_data(move |holder| {
+                holder.add(key, (item + spatial_data.transform, 0.0f32, instance_key.clone()));
+            });
         });
     }
 }
@@ -93,7 +82,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenMeshLayer<P> {
     }
 
     fn update(&mut self, global_context: &mut GlobalContext) {
-        let Ok(hm) = self.result_rx.try_recv() else {
+        let Ok(hm) = self.collision_task_controller.receiver.try_recv() else {
             return;
         };
         let cs_offset = global_context.view_projection.cs_offset;
@@ -133,73 +122,58 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenMeshLayer<P> {
     }
 
     fn clear_by_key(&mut self, key: &str) {
-        let key = key.to_string();
-        self.data_tx
-            .send(Box::new(move |holder| {
-                holder.remove(key.as_str())
-            }))
-            .unwrap();
+        self.collision_task_controller.clear_by_key(key);
     }
 }
 
 struct ScreenMeshCollisionHandler {
-    render_data_holder: RenderDataHolder<(Vector3<f64>, f32, String)>,
-    data_rx: Arc<
-        Mutex<
-            Receiver<
-                Box<
-                    dyn FnOnce(&mut RenderDataHolder<(Vector3<f64>, f32, String)>) + Send + 'static,
-                >,
-            >,
-        >,
+    collision_task_wrapper: CollisionTaskWrapper<
+        (Vector3<f64>, f32, String),
+        HashMap<String, Vec<(Vector3<f64>, f32)>>,
     >,
-    result_tx: Sender<HashMap<String, Vec<(Vector3<f64>, f32)>>>,
 }
 
 impl ScreenMeshCollisionHandler {
     const FADE_ANIM_SPEED: f32 = 0.05;
     pub fn new(
-        data_receiver: Receiver<
-            Box<dyn FnOnce(&mut RenderDataHolder<(Vector3<f64>, f32, String)>) + Send + 'static>,
+        collision_task_wrapper: CollisionTaskWrapper<
+            (Vector3<f64>, f32, String),
+            HashMap<String, Vec<(Vector3<f64>, f32)>>,
         >,
-        result_tx: Sender<HashMap<String, Vec<(Vector3<f64>, f32)>>>,
     ) -> Self {
         ScreenMeshCollisionHandler {
-            render_data_holder: RenderDataHolder::new(),
-            data_rx: Arc::new(Mutex::new(data_receiver)),
-            result_tx,
+            collision_task_wrapper,
         }
     }
 }
 
 impl ColliderTask for ScreenMeshCollisionHandler {
     fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler) {
-        while let Ok(data) = self.data_rx.lock().unwrap().try_recv() {
-            data(&mut self.render_data_holder);
-        }
+        let render_data_holder = self.collision_task_wrapper.update_holder();
 
         let mut hm: HashMap<String, Vec<(Vector3<f64>, f32)>> = HashMap::new();
-        self.render_data_holder.run_mut_action(|(pos, alpha, key)| {
-            let screen_pos = view_projection.screen_position(&pos);
-            // TODO Bounds for svg?
-            // no need to use f64 for collision detection
-            let bounds = Rectangle::from_corners(
-                point! { x: screen_pos.x as f32 - 20.0, y: screen_pos.y as f32 - 20.0},
-                point! { x: screen_pos.x as f32 + 20.0, y: screen_pos.y as f32 + 20.0},
-            );
+        render_data_holder
+            .run_mut_action(|(pos, alpha, key)| {
+                let screen_pos = view_projection.screen_position(&pos);
+                // TODO Bounds for svg?
+                // no need to use f64 for collision detection
+                let bounds = Rectangle::from_corners(
+                    point! { x: screen_pos.x as f32 - 20.0, y: screen_pos.y as f32 - 20.0},
+                    point! { x: screen_pos.x as f32 + 20.0, y: screen_pos.y as f32 + 20.0},
+                );
 
-            let within_screen = collision_handler.within_screen(bounds);
-            if within_screen {
-                if collision_handler.insert(bounds) {
-                    *alpha = clamp(*alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
-                } else {
-                    *alpha = clamp(*alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                let within_screen = collision_handler.within_screen(bounds);
+                if within_screen {
+                    if collision_handler.insert(bounds) {
+                        *alpha = clamp(*alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                    } else {
+                        *alpha = clamp(*alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                    }
                 }
-            }
 
-            hm.entry(key.clone()).or_default().push((*pos, *alpha));
-        });
+                hm.entry(key.clone()).or_default().push((*pos, *alpha));
+            });
 
-        self.result_tx.send(hm).unwrap();
+        self.collision_task_wrapper.send_result(hm);
     }
 }

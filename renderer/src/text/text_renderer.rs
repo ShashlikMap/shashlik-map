@@ -1,4 +1,4 @@
-use crate::collider::ColliderTask;
+use crate::collider::{ColliderTask, CollisionTaskController, CollisionTaskWrapper};
 use crate::collision_handler::CollisionHandler;
 use crate::geometry_data::TextData;
 use crate::global_context::GlobalContext;
@@ -8,14 +8,13 @@ use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::vertex_attrs::TextInstanceInput;
 use crate::view_projection::ViewProjection;
 use cgmath::num_traits::clamp;
-use cgmath::{Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector3, vec3};
+use cgmath::{vec3, Deg, InnerSpace, Matrix4, Quaternion, Rotation, Vector3};
 use geo_types::{coord, point};
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
 use std::collections::HashMap;
-use std::sync::mpsc::{Receiver, Sender, channel};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use wgpu::RenderPass;
 
 #[derive(Clone)]
@@ -29,8 +28,7 @@ pub struct GlyphData {
 
 pub struct TextRenderer {
     default_face: Arc<DefaultFaceWrapper>,
-    data_tx: Sender<Box<dyn FnOnce(&mut RenderDataHolder<TextData>) + Send + 'static>>,
-    result_rx: Receiver<FxHashMap<GlyphId, Vec<GlyphData>>>,
+    collision_task_controller: CollisionTaskController<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
     instance_buffer_map: FxHashMap<GlyphId, InstanceBuffer<TextInstanceInput>>,
 }
 
@@ -41,14 +39,13 @@ impl TextRenderer {
     ) -> TextRenderer {
         let device = global_context.device();
         let default_face = Arc::new(DefaultFaceWrapper::new(device, font));
-        let (data_tx, data_rx) = channel();
-        let (result_tx, result_rx) = channel();
-        let task = TextRendererCollisionHandler::new(Arc::clone(&default_face), data_rx, result_tx);
+        let (task_wrapper, collision_task_controller) = CollisionTaskWrapper::new();
+        
+        let task = TextRendererCollisionHandler::new(Arc::clone(&default_face), task_wrapper);
         global_context.collider.register_task(Box::new(task));
         TextRenderer {
             default_face,
-            data_tx,
-            result_rx,
+            collision_task_controller,
             instance_buffer_map: FxHashMap::default(),
         }
     }
@@ -57,7 +54,7 @@ impl TextRenderer {
         &self,
         updater: F,
     ) {
-        self.data_tx.send(Box::new(updater)).unwrap();
+        self.collision_task_controller.update_data(updater);
     }
 
     fn update_attrs(
@@ -93,7 +90,7 @@ impl TextRenderer {
     }
 
     pub fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
-        let Ok(glyph_data) = self.result_rx.try_recv() else {
+        let Ok(glyph_data) = self.collision_task_controller.receiver.try_recv() else {
             return;
         };
 
@@ -122,37 +119,30 @@ impl TextRenderer {
 struct TextRendererCollisionHandler {
     id_to_alpha_map: HashMap<u64, f32>,
     default_face: Arc<DefaultFaceWrapper>,
-    render_data_holder: RenderDataHolder<TextData>,
-    data_rx:
-        Arc<Mutex<Receiver<Box<dyn FnOnce(&mut RenderDataHolder<TextData>) + Send + 'static>>>>,
-    result_tx: Sender<FxHashMap<GlyphId, Vec<GlyphData>>>,
+    task_wrapper: CollisionTaskWrapper<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>
 }
 
 impl TextRendererCollisionHandler {
     const FADE_ANIM_SPEED: f32 = 0.05;
     pub fn new(
         default_face: Arc<DefaultFaceWrapper>,
-        data_receiver: Receiver<Box<dyn FnOnce(&mut RenderDataHolder<TextData>) + Send + 'static>>,
-        result_tx: Sender<FxHashMap<GlyphId, Vec<GlyphData>>>,
+        task_wrapper: CollisionTaskWrapper<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>
     ) -> Self {
         TextRendererCollisionHandler {
             id_to_alpha_map: HashMap::new(),
             default_face,
-            render_data_holder: RenderDataHolder::new(),
-            data_rx: Arc::new(Mutex::new(data_receiver)),
-            result_tx,
+            task_wrapper
         }
     }
 }
 
 impl ColliderTask for TextRendererCollisionHandler {
     fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler) {
-        while let Ok(data) = self.data_rx.lock().unwrap().try_recv() {
-            data(&mut self.render_data_holder);
-        }
+        let render_data_holder = self.task_wrapper.update_holder();
+        
 
         let mut glyph_data: FxHashMap<GlyphId, Vec<GlyphData>> = FxHashMap::default();
-        self.render_data_holder.run_mut_action(|data| {
+        render_data_holder.run_mut_action(|data| {
             let glyph_buffer = data
                 .glyph_buffer
                 .get_or_insert_with(|| self.default_face.shape(data.text.as_str()));
@@ -363,6 +353,6 @@ impl ColliderTask for TextRendererCollisionHandler {
         });
 
         self.id_to_alpha_map.clear();
-        self.result_tx.send(glyph_data).unwrap();
+        self.task_wrapper.send_result(glyph_data);
     }
 }

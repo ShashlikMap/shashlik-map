@@ -1,7 +1,8 @@
 use crate::collision_handler::CollisionHandler;
+use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::view_projection::ViewProjection;
-use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread::spawn;
 
 enum ColliderMsg {
@@ -57,5 +58,61 @@ impl Collider {
         self.sender
             .send(ColliderMsg::ViewProj(view_projection.clone()))
             .unwrap();
+    }
+}
+
+pub struct CollisionTaskController<T, R> {
+    pub sender: Sender<Box<dyn FnOnce(&mut RenderDataHolder<T>) + Send + 'static>>,
+    pub receiver: Receiver<R>,
+}
+
+impl<T: Send + 'static, R> CollisionTaskController<T, R> {
+    pub(crate) fn update_data<F: FnOnce(&mut RenderDataHolder<T>) + Send + 'static>(
+        &self,
+        updater: F,
+    ) {
+        self.sender.send(Box::new(updater)).unwrap();
+    }
+    pub(crate) fn clear_by_key(&mut self, key: &str) {
+        let key = key.to_string();
+        self.sender
+            .send(Box::new(move |holder| holder.remove(key.as_str())))
+            .unwrap();
+    }
+}
+
+pub struct CollisionTaskWrapper<T, R> {
+    render_data_holder: RenderDataHolder<T>,
+    data_rx: Arc<Mutex<Receiver<Box<dyn FnOnce(&mut RenderDataHolder<T>) + Send + 'static>>>>,
+    result_tx: Sender<R>,
+}
+
+impl<T, R> CollisionTaskWrapper<T, R> {
+    pub fn new() -> (Self, CollisionTaskController<T, R>) {
+        let (data_tx, data_rx) = channel();
+        let (result_tx, result_rx) = channel();
+
+        (
+            Self {
+                render_data_holder: RenderDataHolder::new(),
+                data_rx: Arc::new(Mutex::new(data_rx)),
+                result_tx,
+            },
+            CollisionTaskController {
+                sender: data_tx,
+                receiver: result_rx,
+            },
+        )
+    }
+
+    pub fn update_holder(&mut self) -> &mut RenderDataHolder<T> {
+        while let Ok(data) = self.data_rx.lock().unwrap().try_recv() {
+            data(&mut self.render_data_holder);
+        }
+        &mut self.render_data_holder
+    }
+
+    pub fn send_result(&self, result: R) {
+        self.result_tx.send(result).unwrap();
     }
 }
