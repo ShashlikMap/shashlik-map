@@ -21,7 +21,7 @@ pub(crate) struct Layers {
 impl Layers {
     pub fn new(
         feature_tags: &[String],
-        global_context: &GlobalContext,
+        global_context: &mut GlobalContext,
         font: &'static ttf_parser::Face<'static>,
     ) -> Layers {
         let feature_layers = FeatureLayers::new(feature_tags, global_context);
@@ -29,7 +29,8 @@ impl Layers {
             feature_layers,
             mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context)),
             shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, false)),
-            screen_shape_layer: ScreenMeshLayer::new(ShapePipeline::new(global_context, true)),
+            screen_shape_layer: ScreenMeshLayer::new(ShapePipeline::new(global_context, true),
+                                                     global_context),
             text_layer: TextMeshLayer::new(
                 TextPipeline::new(global_context),
                 global_context,

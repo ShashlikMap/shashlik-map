@@ -48,6 +48,7 @@ pub mod mesh_layers;
 pub mod pipelines;
 mod utils;
 mod global_context;
+mod collider;
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
@@ -78,7 +79,7 @@ impl ShashlikRenderer {
         let depth_texture = DepthTexture::new(&global_context);
         let msaa_texture = MultisampledTexture::new(&global_context);
         
-        let mut layers = Layers::new(feature_tags, &global_context, font);
+        let mut layers = Layers::new(feature_tags, &mut global_context, font);
 
         layers.text_layer.add("fps_info".to_string(), vec![TextData {
             id: 0,
@@ -174,11 +175,10 @@ impl ShashlikRenderer {
     fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
         self.global_context.update(view_proj_matrix, cs_offset);
 
-        let device = self.global_context.device();
         if let Ok(message) = self.renderer_rx.try_recv() {
             match message {
                 RendererMessage::Draw(mut draw_commands) => {
-                    draw_commands.execute(&device, &mut self.layers);
+                    draw_commands.execute(&mut self.global_context, &mut self.layers);
                 }
                 RendererMessage::ClearGroups(keys) => {
                     keys.into_iter().for_each(|key| {
@@ -189,8 +189,6 @@ impl ShashlikRenderer {
         }
 
         self.layers.update(&mut self.global_context);
-
-        self.global_context.collision_handler.clear();
     }
 
     fn render(&mut self) -> Result<(), SurfaceError> {
@@ -243,7 +241,7 @@ impl ShashlikRenderer {
             });
 
             let fps = format!("FPS {}", self.fps_counter.update() as i32);
-            self.layers.text_layer.run_mut_action_with_key("fps_info", |item| {
+            self.layers.text_layer.run_mut_action_with_key("fps_info", move |item| {
                 item.update_text(fps.as_str(), 1.0);
             });
 

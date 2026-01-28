@@ -7,6 +7,7 @@ use crate::vertex_attrs::ShapeVertex;
 use lyon::tessellation::VertexBuffers;
 use std::mem;
 use std::ops::Range;
+use crate::global_context::GlobalContext;
 
 #[derive(Clone)]
 pub(crate) struct Mesh2dDrawCommand {
@@ -20,12 +21,13 @@ pub(crate) struct Mesh2dDrawCommand {
 impl DrawCommand for Mesh2dDrawCommand {
     fn execute(
         &mut self,
-        device: &wgpu::Device,
+        global_context: &mut GlobalContext,
         key: String,
         spatial_data: SpatialData,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         layers: &mut Layers,
     ) {
+        let device = global_context.device();
         if let Some(feature_layer) = self
             .feature_layer_tag
             .as_ref()
@@ -42,7 +44,7 @@ impl DrawCommand for Mesh2dDrawCommand {
         } else if self.is_screen {
             layers
                 .screen_shape_layer
-                .submit(key.as_str(), spatial_data, device, self);
+                .submit(key.as_str(), spatial_data, global_context, self);
         } else {
             let mesh =
                 Mesh::create_layered(&device, &self.mesh, mem::take(&mut self.layers_indices));

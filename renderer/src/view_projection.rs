@@ -25,10 +25,11 @@ pub(crate) struct ViewProjUniform {
     inv_screen_size: [f32; 2],
 }
 
+#[derive(Clone)]
 pub struct ViewProjection {
     uniform: ViewProjUniform,
     pub cs_offset: Vector3<f64>,
-    screen_size: (f64, f64),
+    pub screen_size: (f64, f64),
     inv_view_proj_matrix: Matrix4<f64>,
     pub uniform_buffer: Buffer
 }
