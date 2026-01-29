@@ -8,6 +8,7 @@ use crate::pipelines::shape_pipeline::ShapePipeline;
 use crate::pipelines::text_pipeline::TextPipeline;
 use rustybuzz::ttf_parser;
 use wgpu::RenderPass;
+use crate::mesh_layers::ortho_mesh_layer::OrthoMeshLayer;
 use crate::mesh_layers::screen_mesh_layer::ScreenMeshLayer;
 
 pub(crate) struct Layers {
@@ -17,6 +18,7 @@ pub(crate) struct Layers {
     pub mesh_layer: GeneralMeshLayer<MeshPipeline>,
     pub screen_shape_layer: ScreenMeshLayer<ShapePipeline>,
     pub text_layer: TextMeshLayer<TextPipeline>,
+    pub ortho_mesh_layer: OrthoMeshLayer<TextPipeline>,
 }
 
 impl Layers {
@@ -38,6 +40,7 @@ impl Layers {
                 global_context,
                 font,
             ),
+            ortho_mesh_layer: OrthoMeshLayer::new(TextPipeline::new(global_context), global_context),
         }
     }
 
@@ -54,6 +57,7 @@ impl BaseMeshLayer for Layers {
         self.screen_shape_layer.prepare(global_context);
         self.text_layer.prepare(global_context);
         self.feature_layers.prepare(global_context);
+        self.ortho_mesh_layer.prepare(global_context);
     }
 
     fn update(&mut self, global_context: &mut GlobalContext) {
@@ -62,6 +66,7 @@ impl BaseMeshLayer for Layers {
         self.screen_shape_layer.update(global_context);
         self.text_layer.update(global_context);
         self.feature_layers.update(global_context);
+        self.ortho_mesh_layer.update(global_context);
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
@@ -73,6 +78,9 @@ impl BaseMeshLayer for Layers {
             self.text_layer.render(render_pass, global_context);
         }
         self.feature_layers.render(render_pass, global_context);
+        if !self.is_preview {
+            self.ortho_mesh_layer.render(render_pass, global_context);
+        }
     }
 
     fn clear_by_key(&mut self, key: &str) {
@@ -81,5 +89,6 @@ impl BaseMeshLayer for Layers {
         self.screen_shape_layer.clear_by_key(key);
         self.text_layer.clear_by_key(key);
         self.feature_layers.clear_by_key(key);
+        self.ortho_mesh_layer.clear_by_key(key);
     }
 }

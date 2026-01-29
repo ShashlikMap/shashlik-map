@@ -78,9 +78,9 @@ impl OutlineBuilder for GlyphTesselator {
     }
 }
 
-struct GlyphVertexConstructor {
-    offset: Vector2<f32>,
-    color: Color,
+pub struct GlyphVertexConstructor {
+    pub offset: Vector2<f32>,
+    pub color: Color,
 }
 
 impl FillVertexConstructor<MeshVertex> for GlyphVertexConstructor {
