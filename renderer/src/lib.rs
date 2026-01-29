@@ -85,7 +85,7 @@ impl ShashlikRenderer {
         let msaa_texture2 = MultisampledTexture::new(&global_context);
         let rt_texture = RtTexture::new(&global_context);
         
-        let mut layers = Layers::new(feature_tags, &mut global_context, font);
+        let mut layers = Layers::new(feature_tags, &mut global_context, Some(&rt_texture.view), font);
 
         layers.text_layer.add("fps_info".to_string(), vec![TextData {
             id: 0,
@@ -253,7 +253,7 @@ impl ShashlikRenderer {
                 timestamp_writes: None,
                 multiview_mask: None,
             });
-
+        
             self.layers.is_preview = true;
             self.layers
                 .render(&mut render_pass, &mut self.global_context);

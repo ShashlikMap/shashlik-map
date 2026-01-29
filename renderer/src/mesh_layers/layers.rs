@@ -7,7 +7,7 @@ use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use crate::pipelines::text_pipeline::TextPipeline;
 use rustybuzz::ttf_parser;
-use wgpu::RenderPass;
+use wgpu::{RenderPass, TextureView};
 use crate::mesh_layers::ortho_mesh_layer::OrthoMeshLayer;
 use crate::mesh_layers::screen_mesh_layer::ScreenMeshLayer;
 
@@ -25,6 +25,7 @@ impl Layers {
     pub fn new(
         feature_tags: &[String],
         global_context: &mut GlobalContext,
+        rt_texture_view: Option<&TextureView>,
         font: &'static ttf_parser::Face<'static>,
     ) -> Layers {
         let feature_layers = FeatureLayers::new(feature_tags, global_context);
@@ -36,11 +37,11 @@ impl Layers {
             screen_shape_layer: ScreenMeshLayer::new(ShapePipeline::new(global_context, true),
                                                      global_context),
             text_layer: TextMeshLayer::new(
-                TextPipeline::new(global_context),
+                TextPipeline::new(global_context, rt_texture_view),
                 global_context,
                 font,
             ),
-            ortho_mesh_layer: OrthoMeshLayer::new(TextPipeline::new(global_context), global_context),
+            ortho_mesh_layer: OrthoMeshLayer::new(TextPipeline::new(global_context, rt_texture_view), global_context),
         }
     }
 

@@ -33,6 +33,7 @@ impl<P: RenderPipeline> OrthoMeshLayer<P> {
         let vertex_constructor = GlyphVertexConstructor {
             offset: Vector2::new(0.0, 0.0),
             color: Color::BLACK,
+            with_uv: true
         };
         FillTessellator::new()
             .tessellate(

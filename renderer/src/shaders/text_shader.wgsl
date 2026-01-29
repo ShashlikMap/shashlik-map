@@ -25,6 +25,7 @@ struct InstanceInput {
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) color_alpha: f32,
+    @location(1) normal: vec3<f32>,
 }
 
 @vertex
@@ -54,13 +55,24 @@ fn vs_main(
         coord.y *= camera.inv_screen_size.y;
         coord.y = 2.0*(coord.y - 0.5) * -1.0;
     }
-
+    out.normal = model.normal;
     out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
     return out;
 }
 
 // Fragment shader
+@group(1) @binding(0)
+var t_diffuse: texture_2d<f32>;
+@group(1) @binding(1)
+var s_diffuse: sampler;
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return vec4(0.0, 0.0, 0.0, in.color_alpha);
+    let normal = in.normal;
+    if normal.z < 0.5 {
+        return vec4(0.0, 0.0, 0.0, in.color_alpha);
+    } else {
+//        return vec4(1.0, 0.0, 0.0, in.color_alpha);
+        return textureSample(t_diffuse, s_diffuse, in.normal.xy);
+    }
 }
