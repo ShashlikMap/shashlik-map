@@ -11,6 +11,7 @@ use wgpu::RenderPass;
 use crate::mesh_layers::screen_mesh_layer::ScreenMeshLayer;
 
 pub(crate) struct Layers {
+    pub is_preview: bool,
     feature_layers: FeatureLayers,
     pub shape_layer: GeneralMeshLayer<ShapePipeline>,
     pub mesh_layer: GeneralMeshLayer<MeshPipeline>,
@@ -26,6 +27,7 @@ impl Layers {
     ) -> Layers {
         let feature_layers = FeatureLayers::new(feature_tags, global_context);
         Layers {
+            is_preview: false,
             feature_layers,
             mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context)),
             shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, false)),
@@ -64,10 +66,12 @@ impl BaseMeshLayer for Layers {
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         self.shape_layer.render(render_pass, global_context);
-        self.mesh_layer.render(render_pass, global_context);
-        self.screen_shape_layer
-            .render(render_pass, global_context);
-        self.text_layer.render(render_pass, global_context);
+        if !self.is_preview {
+            self.mesh_layer.render(render_pass, global_context);
+            self.screen_shape_layer
+                .render(render_pass, global_context);
+            self.text_layer.render(render_pass, global_context);
+        }
         self.feature_layers.render(render_pass, global_context);
     }
 

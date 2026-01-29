@@ -24,6 +24,7 @@ use std::thread::spawn;
 use tokio::sync::broadcast;
 use wgpu::SurfaceError;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use crate::rt_texture::RtTexture;
 
 pub mod canvas_api;
 mod collision_handler;
@@ -49,6 +50,7 @@ pub mod pipelines;
 mod utils;
 mod global_context;
 mod collider;
+mod rt_texture;
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
@@ -60,6 +62,8 @@ pub struct ShashlikRenderer {
     layers: Layers,
     depth_texture: DepthTexture,
     msaa_texture: MultisampledTexture,
+    msaa_texture2: MultisampledTexture,
+    rt_texture: RtTexture,
     renderer_rx: Receiver<RendererMessage>,
     pub api: Arc<RendererApi>,
     fps_counter: FpsCounter<100>,
@@ -78,6 +82,8 @@ impl ShashlikRenderer {
 
         let depth_texture = DepthTexture::new(&global_context);
         let msaa_texture = MultisampledTexture::new(&global_context);
+        let msaa_texture2 = MultisampledTexture::new(&global_context);
+        let rt_texture = RtTexture::new(&global_context);
         
         let mut layers = Layers::new(feature_tags, &mut global_context, font);
 
@@ -105,6 +111,8 @@ impl ShashlikRenderer {
             layers,
             depth_texture,
             msaa_texture,
+            msaa_texture2,
+            rt_texture,
             renderer_rx,
             api,
             fps_counter: FpsCounter::new(),
@@ -169,6 +177,7 @@ impl ShashlikRenderer {
 
             self.depth_texture = DepthTexture::new(&self.global_context);
             self.msaa_texture = MultisampledTexture::new(&self.global_context);
+            self.msaa_texture2 = MultisampledTexture::new(&self.global_context);
         }
     }
 
@@ -210,11 +219,51 @@ impl ShashlikRenderer {
                     label: Some("Render Encoder"),
                 });
 
+        let fps = format!("FPS {}", self.fps_counter.update() as i32);
+        self.layers.text_layer.run_mut_action_with_key("fps_info", move |item| {
+            item.update_text(fps.as_str(), 1.0);
+        });
+
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &self.msaa_texture.view,
+                    resolve_target: Some(&self.rt_texture.view),
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.0,
+                            g: 0.741,
+                            b: 0.961,
+                            a: 1.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                    depth_slice: None,
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_texture.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+                multiview_mask: None,
+            });
+
+            self.layers.is_preview = true;
+            self.layers
+                .render(&mut render_pass, &mut self.global_context);
+        }
+
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Render Pass2"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &self.msaa_texture2.view,
                     resolve_target: Some(&view),
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -240,11 +289,7 @@ impl ShashlikRenderer {
                 multiview_mask: None,
             });
 
-            let fps = format!("FPS {}", self.fps_counter.update() as i32);
-            self.layers.text_layer.run_mut_action_with_key("fps_info", move |item| {
-                item.update_text(fps.as_str(), 1.0);
-            });
-
+            self.layers.is_preview = false;
             self.layers
                 .render(&mut render_pass, &mut self.global_context);
         }
