@@ -1,8 +1,9 @@
 use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
-use crate::vertex_attrs::{ShapeInstanceInput, TextInstanceInput, VertexAttrib, VertexNormal};
+use crate::vertex_attrs::{ShapeInstanceInput, TextInstanceInput, VertexAttrib};
 use wgpu::{include_wgsl, BindGroup, BindGroupLayout, CompareFunction, RenderPass, TextureView};
+use crate::draw_commands::MeshVertex;
 
 pub struct TextPipeline {
     mesh_pipeline: MeshPipeline,
@@ -116,7 +117,7 @@ impl RenderPipeline for TextPipeline {
 
         let vertex = &mut mesh_descriptor.vertex;
         vertex.module = shader_module.to_owned();
-        vertex.buffers = vec![VertexNormal::desc(), TextInstanceInput::desc()];
+        vertex.buffers = vec![MeshVertex::desc(), TextInstanceInput::desc()];
         let fragment = &mut mesh_descriptor.fragment.as_mut().unwrap();
         fragment.module = shader_module;
 

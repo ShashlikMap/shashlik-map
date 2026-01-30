@@ -2,12 +2,13 @@ use crate::msaa_texture::MultisampledTexture;
 use crate::pipelines::{
     OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline,
 };
-use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib, VertexNormal};
+use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
 use crate::global_context::GlobalContext;
 use wgpu::{
     include_wgsl, BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState
     , Face, RenderPass, TextureFormat,
 };
+use crate::draw_commands::MeshVertex;
 
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,
@@ -73,7 +74,7 @@ impl RenderPipeline for MeshPipeline {
             vertex: OwnedVertexState {
                 module: shader_module.to_owned(),
                 entry_point: Some("vs_main"),
-                buffers: vec![VertexNormal::desc(), GeneralInstanceInput::desc()],
+                buffers: vec![MeshVertex::desc(), GeneralInstanceInput::desc()],
                 compilation_options: Default::default(),
             },
             fragment: Some(OwnedFragmentState {
