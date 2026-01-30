@@ -12,20 +12,32 @@ use lyon::geom::euclid::Point2D;
 use lyon::lyon_tessellation::{BuffersBuilder, FillOptions, VertexBuffers};
 use lyon::path::{Path, Winding};
 use lyon::tessellation::FillTessellator;
-use wgpu::{Color, RenderPass};
+use wgpu::{Color, Device, RenderPass};
 
 pub struct OrthoMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
     pipeline: Option<wgpu::RenderPipeline>,
+    mesh_size: (f32, f32),
     mesh: Mesh,
     instance_buffer: InstanceBuffer<TextInstanceInput>,
 }
 
 impl<P: RenderPipeline> OrthoMeshLayer<P> {
     pub fn new(render_pipeline: P, global_context: &mut GlobalContext) -> Self {
+        let mesh_data = Self::create_temp_mesh(global_context.device(), 300.0, 300.0);
+        Self {
+            render_pipeline,
+            pipeline: None,
+            mesh_size: mesh_data.0,
+            mesh: mesh_data.1,
+            instance_buffer: InstanceBuffer::default(),
+        }
+    }
+
+    fn create_temp_mesh(device: &Device, width: f32, height: f32) -> ((f32,f32), Mesh) {
         let mut builder = Path::builder();
         builder.add_rectangle(
-            &Box2D::new(Point2D::new(0.0, 0.0), Point2D::new(300.0, 300.0)),
+            &Box2D::new(Point2D::new(0.0, 0.0), Point2D::new(width, height)),
             Winding::Positive,
         );
         let path = builder.build();
@@ -33,7 +45,7 @@ impl<P: RenderPipeline> OrthoMeshLayer<P> {
         let vertex_constructor = GlyphVertexConstructor {
             offset: Vector2::new(0.0, 0.0),
             color: Color::BLACK,
-            with_uv: true
+            uv_size: Some((width, height))
         };
         FillTessellator::new()
             .tessellate(
@@ -43,14 +55,8 @@ impl<P: RenderPipeline> OrthoMeshLayer<P> {
             )
             .unwrap();
 
-        let device = global_context.device();
         let mesh = Mesh::create(device, &geometry);
-        Self {
-            render_pipeline,
-            pipeline: None,
-            mesh,
-            instance_buffer: InstanceBuffer::default(),
-        }
+        ((width, height), mesh)
     }
 }
 
@@ -61,13 +67,19 @@ impl<P: RenderPipeline> BaseMeshLayer for OrthoMeshLayer<P> {
     }
 
     fn update(&mut self, global_context: &mut GlobalContext) {
-        if self.instance_buffer.buffer.is_none() {
-            let screen_size = global_context.view_projection.screen_size;
+        let screen_size = global_context.view_projection.screen_size;
+
+        let nw = (screen_size.0 / 4.0) as f32;
+        let nh = (screen_size.1 / 4.0) as f32;
+        if self.mesh_size.0 != nw || self.mesh_size.1 != nh {
+            let mesh_data = Self::create_temp_mesh(global_context.device(), nw, nh);
+            self.mesh_size = mesh_data.0;
+            self.mesh = mesh_data.1;
             let device = global_context.device();
             let queue = global_context.queue();
             let hh = TextInstanceInput {
                 position: [
-                    screen_size.0 as f32 - 400.0,
+                    screen_size.0 as f32 - nw - 100.0,
                     screen_size.1 as f32 - 100.0,
                     0.0,
                 ],

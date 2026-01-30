@@ -72,7 +72,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     if normal.z < 0.5 {
         return vec4(0.0, 0.0, 0.0, in.color_alpha);
     } else {
-//        return vec4(1.0, 0.0, 0.0, in.color_alpha);
+        if in.normal.x <= 0.02 || in.normal.x >= 0.98 || in.normal.y <= 0.02 || in.normal.y >= 0.98 {
+            return vec4(1.0, 0.0, 0.0, 1.0);
+        }
         return textureSample(t_diffuse, s_diffuse, in.normal.xy);
     }
 }

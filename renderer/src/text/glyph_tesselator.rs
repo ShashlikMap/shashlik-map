@@ -21,7 +21,7 @@ impl GlyphTesselator {
         color: Color,
     ) -> VertexBuffers<MeshVertex, u32> {
         let mut buffer = VertexBuffers::new();
-        let vertex_constructor = GlyphVertexConstructor { offset, color, with_uv: false };
+        let vertex_constructor = GlyphVertexConstructor { offset, color, uv_size: None };
         let mut tessellator = FillTessellator::new();
         if tessellator
             .tessellate(
@@ -81,13 +81,13 @@ impl OutlineBuilder for GlyphTesselator {
 pub struct GlyphVertexConstructor {
     pub offset: Vector2<f32>,
     pub color: Color,
-    pub with_uv: bool
+    pub uv_size: Option<(f32, f32)>
 }
 
 impl FillVertexConstructor<MeshVertex> for GlyphVertexConstructor {
     fn new_vertex(&mut self, vertex: FillVertex) -> MeshVertex {
-        let uv = if self.with_uv {
-            (vertex.position().x / 300.0, (300.0 - vertex.position().y) / 300.0, 1.0)
+        let uv = if let Some(uv_size) = self.uv_size {
+            (vertex.position().x / uv_size.0, (uv_size.1 - vertex.position().y) / uv_size.1, 1.0)
         } else {
             (0.0f32, 0.0f32, 0.0)
         };

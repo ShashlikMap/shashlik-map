@@ -178,6 +178,7 @@ impl ShashlikRenderer {
             self.depth_texture = DepthTexture::new(&self.global_context);
             self.msaa_texture = MultisampledTexture::new(&self.global_context);
             self.msaa_texture2 = MultisampledTexture::new(&self.global_context);
+            // TODO new rt texture?
         }
     }
 
