@@ -6,7 +6,23 @@ use lyon::lyon_tessellation::{
 };
 use lyon::path::{Builder, Path};
 use rustybuzz::ttf_parser::OutlineBuilder;
-use wgpu::Color;
+use wgpu::{Color, VertexAttribute, VertexStepMode};
+use crate::vertex_attrs::{VertexAttrib};
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct MeshVertexWithUV {
+    mesh_vertex: MeshVertex,
+    uv: [f32; 3],
+}
+
+impl VertexAttrib for MeshVertexWithUV {
+    const ATTRIBUTES: &[VertexAttribute] =
+        &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x3];
+
+    const STEP_MODE: VertexStepMode = wgpu::VertexStepMode::Vertex;
+}
+
 
 #[derive(Clone)]
 pub struct GlyphTesselator {
@@ -19,7 +35,7 @@ impl GlyphTesselator {
         self,
         offset: Vector2<f32>,
         color: Color,
-    ) -> VertexBuffers<MeshVertex, u32> {
+    ) -> VertexBuffers<MeshVertexWithUV, u32> {
         let mut buffer = VertexBuffers::new();
         let vertex_constructor = GlyphVertexConstructor { offset, color, uv_size: None };
         let mut tessellator = FillTessellator::new();
@@ -84,33 +100,40 @@ pub struct GlyphVertexConstructor {
     pub uv_size: Option<(f32, f32)>
 }
 
-impl FillVertexConstructor<MeshVertex> for GlyphVertexConstructor {
-    fn new_vertex(&mut self, vertex: FillVertex) -> MeshVertex {
+impl FillVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
+    fn new_vertex(&mut self, vertex: FillVertex) -> MeshVertexWithUV {
         let uv = if let Some(uv_size) = self.uv_size {
             (vertex.position().x / uv_size.0, (uv_size.1 - vertex.position().y) / uv_size.1, 1.0)
         } else {
             (0.0f32, 0.0f32, 0.0)
         };
-        MeshVertex {
-            position: [
-                vertex.position().x + self.offset.x,
-                vertex.position().y + self.offset.y,
-                0.0,
-            ],
-            normals: [uv.0, uv.1, uv.2],
+
+        MeshVertexWithUV {
+            mesh_vertex: MeshVertex {
+                position: [
+                    vertex.position().x + self.offset.x,
+                    vertex.position().y + self.offset.y,
+                    0.0,
+                ],
+                normals: [uv.0, uv.1, uv.2],
+            },
+            uv: [uv.0, uv.1, uv.2]
         }
     }
 }
 
-impl StrokeVertexConstructor<MeshVertex> for GlyphVertexConstructor {
-    fn new_vertex(&mut self, vertex: lyon::tessellation::StrokeVertex) -> MeshVertex {
-        MeshVertex {
-            position: [
-                vertex.position().x + self.offset.x,
-                vertex.position().y + self.offset.y,
-                0.0,
-            ],
-            normals: [0.0, 0.0, 0.0],
+impl StrokeVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
+    fn new_vertex(&mut self, vertex: lyon::tessellation::StrokeVertex) -> MeshVertexWithUV {
+        MeshVertexWithUV {
+            mesh_vertex: MeshVertex {
+                position: [
+                    vertex.position().x + self.offset.x,
+                    vertex.position().y + self.offset.y,
+                    0.0,
+                ],
+                normals: [0.0, 0.0, 0.0],
+            },
+            uv: [0.0, 0.0, 0.0],
         }
     }
 }

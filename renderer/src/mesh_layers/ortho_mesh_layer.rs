@@ -4,7 +4,7 @@ use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pipelines::RenderPipeline;
-use crate::text::glyph_tesselator::GlyphVertexConstructor;
+use crate::text::glyph_tesselator::{GlyphVertexConstructor, MeshVertexWithUV};
 use crate::vertex_attrs::TextInstanceInput;
 use cgmath::{Matrix4, SquareMatrix, Vector2};
 use lyon::geom::Box2D;
@@ -41,7 +41,7 @@ impl<P: RenderPipeline> OrthoMeshLayer<P> {
             Winding::Positive,
         );
         let path = builder.build();
-        let mut geometry: VertexBuffers<MeshVertex, u32> = VertexBuffers::new();
+        let mut geometry: VertexBuffers<MeshVertexWithUV, u32> = VertexBuffers::new();
         let vertex_constructor = GlyphVertexConstructor {
             offset: Vector2::new(0.0, 0.0),
             color: Color::BLACK,

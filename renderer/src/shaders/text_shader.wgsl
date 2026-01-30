@@ -10,6 +10,7 @@ var<uniform> camera: CameraUniform;
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
+    @location(2) uv: vec3<f32>,
 }
 
 struct InstanceInput {
@@ -25,7 +26,7 @@ struct InstanceInput {
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) color_alpha: f32,
-    @location(1) normal: vec3<f32>,
+    @location(1) uv: vec3<f32>,
 }
 
 @vertex
@@ -55,7 +56,7 @@ fn vs_main(
         coord.y *= camera.inv_screen_size.y;
         coord.y = 2.0*(coord.y - 0.5) * -1.0;
     }
-    out.normal = model.normal;
+    out.uv = model.uv;
     out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
     return out;
 }
@@ -68,13 +69,13 @@ var s_diffuse: sampler;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let normal = in.normal;
-    if normal.z < 0.5 {
+    let uv = in.uv;
+    if uv.z < 0.5 {
         return vec4(0.0, 0.0, 0.0, in.color_alpha);
     } else {
-        if in.normal.x <= 0.02 || in.normal.x >= 0.98 || in.normal.y <= 0.02 || in.normal.y >= 0.98 {
+        if in.uv.x <= 0.02 || in.uv.x >= 0.98 || in.uv.y <= 0.02 || in.uv.y >= 0.98 {
             return vec4(1.0, 0.0, 0.0, 1.0);
         }
-        return textureSample(t_diffuse, s_diffuse, in.normal.xy);
+        return textureSample(t_diffuse, s_diffuse, in.uv.xy);
     }
 }
