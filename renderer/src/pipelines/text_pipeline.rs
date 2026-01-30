@@ -116,9 +116,13 @@ impl RenderPipeline for TextPipeline {
         let vertex = &mut mesh_descriptor.vertex;
         vertex.module = shader_module.to_owned();
         vertex.buffers = vec![MeshVertexWithUV::desc(), TextInstanceInput::desc()];
-        let fragment = &mut mesh_descriptor.fragment.as_mut().unwrap();
-        fragment.module = shader_module;
 
+        let fragment = mesh_descriptor.fragment.as_mut().unwrap();
+        fragment.module = shader_module;
+        if self.texture_bind_group_layout.is_some() {
+            fragment.entry_point = Some("fs_main_textured");
+        }
+        
         mesh_descriptor.primitive.cull_mode = None;
 
         mesh_descriptor

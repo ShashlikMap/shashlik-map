@@ -37,7 +37,7 @@ impl Layers {
             screen_shape_layer: ScreenMeshLayer::new(ShapePipeline::new(global_context, true),
                                                      global_context),
             text_layer: TextMeshLayer::new(
-                TextPipeline::new(global_context, rt_texture_view),
+                TextPipeline::new(global_context, None),
                 global_context,
                 font,
             ),
