@@ -7,7 +7,7 @@ use wgpu::{ColorTargetState, DepthStencilState, Device, Label, MultisampleState,
 
 pub mod mesh_pipeline;
 pub mod shape_pipeline;
-pub mod text_pipeline;
+pub mod screen_mesh_pipeline;
 
 pub trait RenderPipeline {
     type InstanceInputType: MeshInstanceInput;

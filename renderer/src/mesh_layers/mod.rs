@@ -6,7 +6,7 @@ pub mod general_mesh_layer;
 pub mod text_mesh_layer;
 pub mod render_data_holder;
 pub mod layers;
-pub mod screen_mesh_layer;
+pub mod screen_shape_layer;
 pub mod ortho_mesh_layer;
 
 pub trait BaseMeshLayer {

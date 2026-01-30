@@ -4,13 +4,13 @@ use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::vertex_attrs::{MeshVertexWithUV, ShapeInstanceInput, TextInstanceInput, VertexAttrib};
 use wgpu::{include_wgsl, BindGroup, BindGroupLayout, CompareFunction, RenderPass, TextureView};
 
-pub struct TextPipeline {
+pub struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
     texture_bind_group_layout: Option<BindGroupLayout>,
     texture_bind_group: Option<BindGroup>,
 }
 
-impl TextPipeline {
+impl ScreenMeshPipeline {
     pub fn new(global_context: &GlobalContext, rt_texture_view: Option<&TextureView>) -> Self {
         let device = global_context.device();
 
@@ -82,7 +82,7 @@ impl TextPipeline {
     }
 }
 
-impl RenderPipeline for TextPipeline {
+impl RenderPipeline for ScreenMeshPipeline {
     type InstanceInputType = ShapeInstanceInput;
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
@@ -111,7 +111,7 @@ impl RenderPipeline for TextPipeline {
         mesh_descriptor.depth_stencil = Some(stencil);
 
         let shader_module =
-            device.create_shader_module(include_wgsl!("../shaders/text_shader.wgsl"));
+            device.create_shader_module(include_wgsl!("../shaders/screen_mesh_shader.wgsl"));
 
         let vertex = &mut mesh_descriptor.vertex;
         vertex.module = shader_module.to_owned();

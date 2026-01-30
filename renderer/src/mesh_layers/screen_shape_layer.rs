@@ -18,7 +18,7 @@ use std::mem;
 use wgpu::RenderPass;
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
-pub(crate) struct ScreenMeshLayer<P: RenderPipeline> {
+pub(crate) struct ScreenShapeLayer<P: RenderPipeline> {
     render_pipeline: P,
     pipeline: Option<wgpu::RenderPipeline>,
     meshes: HashMap<String, (Mesh, InstanceBuffer<P::InstanceInputType>)>,
@@ -28,12 +28,12 @@ pub(crate) struct ScreenMeshLayer<P: RenderPipeline> {
     >,
 }
 
-impl<P: RenderPipeline> ScreenMeshLayer<P> {
+impl<P: RenderPipeline> ScreenShapeLayer<P> {
     pub fn new(render_pipeline: P, global_context: &mut GlobalContext) -> Self {
         let (task_wrapper, collision_task_controller) = CollisionTaskWrapper::new();
         let task = ScreenMeshCollisionHandler::new(task_wrapper);
         global_context.collider.register_task(Box::new(task));
-        ScreenMeshLayer {
+        ScreenShapeLayer {
             render_pipeline,
             pipeline: None,
             meshes: HashMap::new(),
@@ -75,7 +75,7 @@ impl<P: RenderPipeline> ScreenMeshLayer<P> {
     }
 }
 
-impl<P: RenderPipeline> BaseMeshLayer for ScreenMeshLayer<P> {
+impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
     fn prepare(&mut self, global_context: &GlobalContext) {
         let descriptor = self.render_pipeline.prepare(global_context);
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
