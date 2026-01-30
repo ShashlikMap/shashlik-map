@@ -4,7 +4,9 @@ use log::error;
 use lyon::lyon_tessellation::VertexBuffers;
 use wgpu::{Buffer, Device, RenderPass};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
+use crate::draw_commands::MeshVertex;
 use crate::mesh::InstanceBuffer;
+use crate::text::glyph_tesselator::MeshVertexWithUV;
 
 pub struct Mesh {
     pub vertex_buf: Vec<Buffer>,
@@ -22,6 +24,47 @@ impl Mesh {
             index_buf: i_buf,
             layers_indices
         }
+    }
+
+    pub fn quad(device: &Device, width: f32, height: f32) -> Self {
+        let mut geometry_buffer: VertexBuffers<MeshVertexWithUV, u32> = VertexBuffers::new();
+        geometry_buffer.vertices.push(MeshVertexWithUV {
+            mesh_vertex: MeshVertex {
+                position: [0.0, 0.0, 0.0],
+                normals: [0.0, 0.0, 0.0],
+            },
+            uv: [0.0, 1.0, 1.0],
+        });
+        geometry_buffer.vertices.push(MeshVertexWithUV {
+            mesh_vertex: MeshVertex {
+                position: [width, 0.0, 0.0],
+                normals: [0.0, 0.0, 0.0],
+            },
+            uv: [1.0, 1.0, 1.0],
+        });
+        geometry_buffer.vertices.push(MeshVertexWithUV {
+            mesh_vertex: MeshVertex {
+                position: [0.0, height, 0.0],
+                normals: [0.0, 0.0, 0.0],
+            },
+            uv: [0.0, 0.0, 1.0],
+        });
+        geometry_buffer.vertices.push(MeshVertexWithUV {
+            mesh_vertex: MeshVertex {
+                position: [width, height, 0.0],
+                normals: [0.0, 0.0, 0.0],
+            },
+            uv: [1.0, 0.0, 1.0],
+        });
+
+        geometry_buffer.indices.push(0);
+        geometry_buffer.indices.push(2);
+        geometry_buffer.indices.push(3);
+
+        geometry_buffer.indices.push(1);
+        geometry_buffer.indices.push(0);
+        geometry_buffer.indices.push(3);
+        Self::create(device, &geometry_buffer)
     }
 
     pub fn create<T: NoUninit>(device: &Device,

@@ -68,7 +68,6 @@ impl TextPipeline {
                 }
             );
 
-            println!("KIOL1");
             Self {
                 mesh_pipeline: MeshPipeline::new(global_context),
                 texture_bind_group_layout: Some(texture_bind_group_layout),

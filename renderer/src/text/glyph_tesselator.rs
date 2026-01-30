@@ -1,4 +1,5 @@
 use crate::draw_commands::MeshVertex;
+use crate::vertex_attrs::VertexAttrib;
 use cgmath::Vector2;
 use lyon::lyon_tessellation::{
     BuffersBuilder, FillOptions, FillTessellator, FillVertex, FillVertexConstructor,
@@ -7,13 +8,12 @@ use lyon::lyon_tessellation::{
 use lyon::path::{Builder, Path};
 use rustybuzz::ttf_parser::OutlineBuilder;
 use wgpu::{Color, VertexAttribute, VertexStepMode};
-use crate::vertex_attrs::{VertexAttrib};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct MeshVertexWithUV {
-    mesh_vertex: MeshVertex,
-    uv: [f32; 3],
+    pub mesh_vertex: MeshVertex,
+    pub uv: [f32; 3],
 }
 
 impl VertexAttrib for MeshVertexWithUV {
@@ -22,7 +22,6 @@ impl VertexAttrib for MeshVertexWithUV {
 
     const STEP_MODE: VertexStepMode = wgpu::VertexStepMode::Vertex;
 }
-
 
 #[derive(Clone)]
 pub struct GlyphTesselator {
@@ -37,7 +36,7 @@ impl GlyphTesselator {
         color: Color,
     ) -> VertexBuffers<MeshVertexWithUV, u32> {
         let mut buffer = VertexBuffers::new();
-        let vertex_constructor = GlyphVertexConstructor { offset, color, uv_size: None };
+        let vertex_constructor = GlyphVertexConstructor { offset, color };
         let mut tessellator = FillTessellator::new();
         if tessellator
             .tessellate(
@@ -97,17 +96,10 @@ impl OutlineBuilder for GlyphTesselator {
 pub struct GlyphVertexConstructor {
     pub offset: Vector2<f32>,
     pub color: Color,
-    pub uv_size: Option<(f32, f32)>
 }
 
 impl FillVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
     fn new_vertex(&mut self, vertex: FillVertex) -> MeshVertexWithUV {
-        let uv = if let Some(uv_size) = self.uv_size {
-            (vertex.position().x / uv_size.0, (uv_size.1 - vertex.position().y) / uv_size.1, 1.0)
-        } else {
-            (0.0f32, 0.0f32, 0.0)
-        };
-
         MeshVertexWithUV {
             mesh_vertex: MeshVertex {
                 position: [
@@ -115,9 +107,9 @@ impl FillVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
                     vertex.position().y + self.offset.y,
                     0.0,
                 ],
-                normals: [uv.0, uv.1, uv.2],
+                normals: [0.0, 0.0, 0.0],
             },
-            uv: [uv.0, uv.1, uv.2]
+            uv: [0.0, 0.0, 0.0],
         }
     }
 }

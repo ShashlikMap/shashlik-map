@@ -1,18 +1,14 @@
-use crate::draw_commands::MeshVertex;
 use crate::global_context::GlobalContext;
-use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
+use crate::mesh::InstanceBuffer;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pipelines::RenderPipeline;
-use crate::text::glyph_tesselator::{GlyphVertexConstructor, MeshVertexWithUV};
 use crate::vertex_attrs::TextInstanceInput;
-use cgmath::{Matrix4, SquareMatrix, Vector2};
-use lyon::geom::Box2D;
+use cgmath::{Matrix4, SquareMatrix};
 use lyon::geom::euclid::Point2D;
-use lyon::lyon_tessellation::{BuffersBuilder, FillOptions, VertexBuffers};
+use lyon::geom::Box2D;
 use lyon::path::{Path, Winding};
-use lyon::tessellation::FillTessellator;
-use wgpu::{Color, Device, RenderPass};
+use wgpu::{Device, RenderPass};
 
 pub struct OrthoMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
@@ -40,22 +36,8 @@ impl<P: RenderPipeline> OrthoMeshLayer<P> {
             &Box2D::new(Point2D::new(0.0, 0.0), Point2D::new(width, height)),
             Winding::Positive,
         );
-        let path = builder.build();
-        let mut geometry: VertexBuffers<MeshVertexWithUV, u32> = VertexBuffers::new();
-        let vertex_constructor = GlyphVertexConstructor {
-            offset: Vector2::new(0.0, 0.0),
-            color: Color::BLACK,
-            uv_size: Some((width, height))
-        };
-        FillTessellator::new()
-            .tessellate(
-                &path,
-                &FillOptions::default(),
-                &mut BuffersBuilder::new(&mut geometry, vertex_constructor),
-            )
-            .unwrap();
 
-        let mesh = Mesh::create(device, &geometry);
+        let mesh = Mesh::quad(device, width, height);
         ((width, height), mesh)
     }
 }
