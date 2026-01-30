@@ -7,15 +7,22 @@ pub struct MultisampledTexture {
 
 impl MultisampledTexture {
     pub const SAMPLE_COUNT: u32 = 4;
-    pub fn new(global_context: &GlobalContext) -> Self {
+    pub fn new(global_context: &GlobalContext, is_rt: bool) -> Self {
         let device = global_context.device();
         let config = global_context.config();
-        
-        let multisampled_texture_extent = wgpu::Extent3d {
+
+        let mut multisampled_texture_extent = wgpu::Extent3d {
             width: config.width,
             height: config.height,
             depth_or_array_layers: 1,
         };
+        if is_rt {
+            multisampled_texture_extent = wgpu::Extent3d {
+                width: config.width / 4,
+                height: config.height / 4,
+                depth_or_array_layers: 1,
+            };
+        }
 
         let multisampled_frame_descriptor = &wgpu::TextureDescriptor {
             size: multisampled_texture_extent,

@@ -11,8 +11,8 @@ impl RtTexture {
         let config = global_context.config();
 
         let texture_extent = wgpu::Extent3d {
-            width: config.width,
-            height: config.height,
+            width: config.width / 4,
+            height: config.height / 4,
             depth_or_array_layers: 1,
         };
 

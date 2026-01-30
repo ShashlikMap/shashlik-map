@@ -61,8 +61,9 @@ pub trait Renderer {
 pub struct ShashlikRenderer {
     layers: Layers,
     depth_texture: DepthTexture,
-    msaa_texture: MultisampledTexture,
-    msaa_texture2: MultisampledTexture,
+    rt_depth_texture: DepthTexture,
+    rt_msaa_texture: MultisampledTexture,
+    main_msaa_texture: MultisampledTexture,
     rt_texture: RtTexture,
     renderer_rx: Receiver<RendererMessage>,
     pub api: Arc<RendererApi>,
@@ -80,9 +81,12 @@ impl ShashlikRenderer {
 
         let mut global_context = GlobalContext::new(canvas, &style_store);
 
-        let depth_texture = DepthTexture::new(&global_context);
-        let msaa_texture = MultisampledTexture::new(&global_context);
-        let msaa_texture2 = MultisampledTexture::new(&global_context);
+        let rt_depth_texture = DepthTexture::new(&global_context, true);
+        let depth_texture = DepthTexture::new(&global_context, false);
+
+        let rt_msaa_texture = MultisampledTexture::new(&global_context, true);
+        let main_msaa_texture = MultisampledTexture::new(&global_context, false);
+
         let rt_texture = RtTexture::new(&global_context);
         
         let mut layers = Layers::new(feature_tags, &mut global_context, Some(&rt_texture.view), font);
@@ -110,8 +114,9 @@ impl ShashlikRenderer {
         Ok(Self {
             layers,
             depth_texture,
-            msaa_texture,
-            msaa_texture2,
+            rt_depth_texture,
+            rt_msaa_texture,
+            main_msaa_texture,
             rt_texture,
             renderer_rx,
             api,
@@ -175,9 +180,10 @@ impl ShashlikRenderer {
         if width > 0 && height > 0 {
             self.global_context.resize(width, height);
 
-            self.depth_texture = DepthTexture::new(&self.global_context);
-            self.msaa_texture = MultisampledTexture::new(&self.global_context);
-            self.msaa_texture2 = MultisampledTexture::new(&self.global_context);
+            self.depth_texture = DepthTexture::new(&self.global_context, false);
+            self.rt_depth_texture = DepthTexture::new(&self.global_context, true);
+            self.rt_msaa_texture = MultisampledTexture::new(&self.global_context, true);
+            self.main_msaa_texture = MultisampledTexture::new(&self.global_context, false);
             // TODO new rt texture?
         }
     }
@@ -229,7 +235,7 @@ impl ShashlikRenderer {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &self.msaa_texture.view,
+                    view: &self.rt_msaa_texture.view,
                     resolve_target: Some(&self.rt_texture.view),
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -243,7 +249,7 @@ impl ShashlikRenderer {
                     depth_slice: None,
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth_texture.view,
+                    view: &self.rt_depth_texture.view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
                         store: wgpu::StoreOp::Store,
@@ -264,7 +270,7 @@ impl ShashlikRenderer {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass2"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &self.msaa_texture2.view,
+                    view: &self.main_msaa_texture.view,
                     resolve_target: Some(&view),
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
