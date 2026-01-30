@@ -1,8 +1,7 @@
 use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
-use crate::text::glyph_tesselator::MeshVertexWithUV;
-use crate::vertex_attrs::{ShapeInstanceInput, TextInstanceInput, VertexAttrib};
+use crate::vertex_attrs::{MeshVertexWithUV, ShapeInstanceInput, TextInstanceInput, VertexAttrib};
 use wgpu::{include_wgsl, BindGroup, BindGroupLayout, CompareFunction, RenderPass, TextureView};
 
 pub struct TextPipeline {

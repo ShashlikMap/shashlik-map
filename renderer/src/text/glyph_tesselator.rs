@@ -1,5 +1,5 @@
 use crate::draw_commands::MeshVertex;
-use crate::vertex_attrs::VertexAttrib;
+use crate::vertex_attrs::MeshVertexWithUV;
 use cgmath::Vector2;
 use lyon::lyon_tessellation::{
     BuffersBuilder, FillOptions, FillTessellator, FillVertex, FillVertexConstructor,
@@ -7,22 +7,7 @@ use lyon::lyon_tessellation::{
 };
 use lyon::path::{Builder, Path};
 use rustybuzz::ttf_parser::OutlineBuilder;
-use wgpu::{Color, VertexAttribute, VertexStepMode};
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct MeshVertexWithUV {
-    pub mesh_vertex: MeshVertex,
-    pub uv: [f32; 3],
-}
-
-impl VertexAttrib for MeshVertexWithUV {
-    const ATTRIBUTES: &[VertexAttribute] =
-        &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x3];
-
-    const STEP_MODE: VertexStepMode = wgpu::VertexStepMode::Vertex;
-}
-
+use wgpu::Color;
 #[derive(Clone)]
 pub struct GlyphTesselator {
     builder: Builder,
