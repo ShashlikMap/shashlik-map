@@ -1,13 +1,13 @@
 extern crate core;
 
-use crate::depth_texture::DepthTexture;
+use textures::depth_texture::DepthTexture;
 use crate::fps::FpsCounter;
 use crate::geometry_data::TextData;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
 use crate::modifier::render_modifier::SpatialData;
-use crate::msaa_texture::MultisampledTexture;
-use crate::rt_texture::RtTexture;
+use textures::msaa_texture::MultisampledTexture;
+use textures::rt_texture::RtTexture;
 use crate::styles::style_store::StyleStore;
 use canvas_api::CanvasApi;
 use cgmath::{vec2, vec3, Matrix4, Vector2, Vector3};
@@ -29,14 +29,12 @@ use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 pub mod canvas_api;
 mod collision_handler;
 mod consts;
-mod depth_texture;
 pub mod draw_commands;
 mod fps;
 pub mod geometry_data;
 mod mesh;
 pub mod messages;
 pub mod modifier;
-mod msaa_texture;
 pub mod render_group;
 pub mod renderer_api;
 pub mod styles;
@@ -50,7 +48,7 @@ pub mod pipelines;
 mod utils;
 mod global_context;
 mod collider;
-mod rt_texture;
+mod textures;
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);

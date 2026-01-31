@@ -16,7 +16,7 @@ impl RtTexture {
             depth_or_array_layers: 1,
         };
 
-        let frame_descriptor = &wgpu::TextureDescriptor {
+        let texture_descriptor = &wgpu::TextureDescriptor {
             size: texture_extent,
             mip_level_count: 1,
             sample_count: 1,
@@ -26,7 +26,7 @@ impl RtTexture {
             label: None,
             view_formats: &[],
         };
-        let texture = device.create_texture(frame_descriptor);
+        let texture = device.create_texture(texture_descriptor);
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         Self { view }

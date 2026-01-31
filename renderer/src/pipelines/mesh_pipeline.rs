@@ -1,4 +1,4 @@
-use crate::msaa_texture::MultisampledTexture;
+use crate::textures::msaa_texture::MultisampledTexture;
 use crate::pipelines::{
     OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline,
 };
