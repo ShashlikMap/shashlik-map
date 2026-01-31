@@ -27,19 +27,21 @@ with Android/iOS mobile apps(Android is priority for now)
 ### Completed
 - [x] Create a baseline POC with initial architecture
 - [x] Complete README and examples
+- [x] Initial rendering to texture 
 ### Now
-- [ ] Implement an initial geometric Map-matching POC
 - [ ] _In progress_ General Renderer refactoring
-- - [ ] Support a texture as a render target to improve CI and integration with [SlintUI](https://slint.dev/blog/slint-1.12-released)
-- [ ] CI for KMP mobile SDK
+- [ ] _In progress_ Better integration with [SlintUI](https://slint.dev/blog/slint-1.12-released)
+- [ ] "Circles" line style
 ### Next
-- [ ] Software Dead-reckoning
-- [ ] Move TextRenderer to the separate repo
-- [ ] Support Mapbox [tilesets](https://docs.mapbox.com/data/tilesets/guides/vector-tiles-standards/)
-- [ ] Complete iOS counter-part
+- [ ] SSAO(Screen Space Ambient Occlusion)
+- [ ] Implement an initial geometric Map-matching POC
+- [ ] CI for KMP mobile SDK + Screenshot rendering
 - [ ] Integrate a simple search
 ### Later
-- TBD
+- [ ] Support Mapbox [tilesets](https://docs.mapbox.com/data/tilesets/guides/vector-tiles-standards/)
+- [ ] Software Dead-reckoning
+- [ ] Complete iOS counter-part
+- [ ] Move TextRenderer to the separate repo
 
 ## Running examples
 ### macOS
