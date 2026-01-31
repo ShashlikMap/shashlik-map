@@ -7,6 +7,7 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
 use crate::modifier::render_modifier::SpatialData;
 use crate::msaa_texture::MultisampledTexture;
+use crate::rt_texture::RtTexture;
 use crate::styles::style_store::StyleStore;
 use canvas_api::CanvasApi;
 use cgmath::{vec2, vec3, Matrix4, Vector2, Vector3};
@@ -24,7 +25,6 @@ use std::thread::spawn;
 use tokio::sync::broadcast;
 use wgpu::SurfaceError;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use crate::rt_texture::RtTexture;
 
 pub mod canvas_api;
 mod collision_handler;
@@ -89,7 +89,7 @@ impl ShashlikRenderer {
 
         let rt_texture = RtTexture::new(&global_context);
         
-        let mut layers = Layers::new(feature_tags, &mut global_context, Some(&rt_texture.view), font);
+        let mut layers = Layers::new(feature_tags, &mut global_context, font);
 
         layers.text_layer.add("fps_info".to_string(), vec![TextData {
             id: 0,
@@ -184,7 +184,9 @@ impl ShashlikRenderer {
             self.rt_depth_texture = DepthTexture::new(&self.global_context, true);
             self.rt_msaa_texture = MultisampledTexture::new(&self.global_context, true);
             self.main_msaa_texture = MultisampledTexture::new(&self.global_context, false);
-            // TODO new rt texture?
+            self.rt_texture = RtTexture::new(&self.global_context);
+
+            self.layers.ortho_mesh_layer.set_texture(&self.rt_texture.view, &self.global_context);
         }
     }
 

@@ -72,10 +72,14 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     return vec4(0.0, 0.0, 0.0, in.color_alpha);
 }
 
+const tex_border_x: f32 = 0.02;
+
 @fragment
 fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
     let uv = in.uv;
-    if in.uv.x <= 0.02 || in.uv.x >= 0.98 || in.uv.y <= 0.02 || in.uv.y >= 0.98 {
+    let tex_size = textureDimensions(t_diffuse);
+    let tex_border_y = (tex_border_x * (f32(tex_size.x) / f32(tex_size.y)));
+    if in.uv.x <= tex_border_x || in.uv.x >= 1.0 - tex_border_x || in.uv.y <= tex_border_y || in.uv.y >= 1.0 - tex_border_y {
          return vec4(1.0, 0.0, 0.0, 1.0);
     }
     return textureSample(t_diffuse, s_diffuse, in.uv.xy);
