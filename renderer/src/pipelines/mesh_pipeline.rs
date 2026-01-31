@@ -1,4 +1,3 @@
-use crate::textures::msaa_texture::MultisampledTexture;
 use crate::pipelines::{
     OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline,
 };
@@ -9,6 +8,7 @@ use wgpu::{
     , Face, RenderPass, TextureFormat,
 };
 use crate::draw_commands::MeshVertex;
+use crate::textures::SAMPLE_COUNT;
 
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,
@@ -104,7 +104,7 @@ impl RenderPipeline for MeshPipeline {
                 }
             }),
             multisample: wgpu::MultisampleState {
-                count: MultisampledTexture::SAMPLE_COUNT,
+                count: SAMPLE_COUNT,
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },

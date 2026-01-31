@@ -169,7 +169,7 @@ impl ShashlikRenderer {
 
     fn config_pass_nodes(&mut self) {
         let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
-        self.layers.ortho_mesh_layer.set_texture(&rt_node.rt_texture.view, &self.global_context);
+        self.layers.ortho_mesh_layer.set_texture(&rt_node.rt_texture_view, &self.global_context);
 
         let main_node = MainPassNode::new(&mut self.global_context);
         self.pass_nodes = vec![Box::new(rt_node), Box::new(main_node)];
