@@ -1,37 +1,82 @@
-use std::ops::Range;
+use crate::draw_commands::MeshVertex;
+use crate::mesh::InstanceBuffer;
+use crate::vertex_attrs::MeshVertexWithUV;
 use bytemuck::{NoUninit, Pod};
 use log::error;
 use lyon::lyon_tessellation::VertexBuffers;
-use wgpu::{Buffer, Device, RenderPass};
+use std::ops::Range;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use crate::mesh::InstanceBuffer;
+use wgpu::{Buffer, Device, RenderPass};
 
 pub struct Mesh {
     pub vertex_buf: Vec<Buffer>,
     pub index_buf: Vec<(Buffer, usize)>,
     pub layers_indices: Vec<Range<usize>>,
-
 }
 
 impl Mesh {
-    pub fn new(v_buf: Vec<Buffer>,
-               i_buf: Vec<(Buffer, usize)>,
-               layers_indices: Vec<Range<usize>>) -> Self {
+    pub fn new(
+        v_buf: Vec<Buffer>,
+        i_buf: Vec<(Buffer, usize)>,
+        layers_indices: Vec<Range<usize>>,
+    ) -> Self {
         Self {
             vertex_buf: v_buf,
             index_buf: i_buf,
-            layers_indices
+            layers_indices,
         }
     }
 
-    pub fn create<T: NoUninit>(device: &Device,
-                               geometry: &VertexBuffers<T, u32>) -> Self {
+    pub fn quad(device: &Device, width: f32, height: f32) -> Self {
+        let mut geometry_buffer: VertexBuffers<MeshVertexWithUV, u32> = VertexBuffers::new();
+        geometry_buffer.vertices.push(MeshVertexWithUV {
+            mesh_vertex: MeshVertex {
+                position: [0.0, 0.0, 0.0],
+                normals: [0.0, 0.0, 0.0],
+            },
+            uv: [0.0, 1.0, 1.0],
+        });
+        geometry_buffer.vertices.push(MeshVertexWithUV {
+            mesh_vertex: MeshVertex {
+                position: [width, 0.0, 0.0],
+                normals: [0.0, 0.0, 0.0],
+            },
+            uv: [1.0, 1.0, 1.0],
+        });
+        geometry_buffer.vertices.push(MeshVertexWithUV {
+            mesh_vertex: MeshVertex {
+                position: [0.0, height, 0.0],
+                normals: [0.0, 0.0, 0.0],
+            },
+            uv: [0.0, 0.0, 1.0],
+        });
+        geometry_buffer.vertices.push(MeshVertexWithUV {
+            mesh_vertex: MeshVertex {
+                position: [width, height, 0.0],
+                normals: [0.0, 0.0, 0.0],
+            },
+            uv: [1.0, 0.0, 1.0],
+        });
+
+        geometry_buffer.indices.push(0);
+        geometry_buffer.indices.push(2);
+        geometry_buffer.indices.push(3);
+
+        geometry_buffer.indices.push(1);
+        geometry_buffer.indices.push(0);
+        geometry_buffer.indices.push(3);
+        Self::create(device, &geometry_buffer)
+    }
+
+    pub fn create<T: NoUninit>(device: &Device, geometry: &VertexBuffers<T, u32>) -> Self {
         Self::create_layered(device, geometry, vec![0..geometry.indices.len()])
     }
 
-    pub fn create_layered<T: NoUninit>(device: &Device,
-                                       geometry: &VertexBuffers<T, u32>,
-                                       layers_indices: Vec<Range<usize>>) -> Self {
+    pub fn create_layered<T: NoUninit>(
+        device: &Device,
+        geometry: &VertexBuffers<T, u32>,
+        layers_indices: Vec<Range<usize>>,
+    ) -> Self {
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(geometry.vertices.as_slice()),
@@ -51,8 +96,15 @@ impl Mesh {
         )
     }
 
-    pub fn render_instanced<T: Pod>(&self, slot: u32, render_pass: &mut RenderPass, instance_buffer: &InstanceBuffer<T>) {
-        if instance_buffer.length > 0 && let Some(buffer) = instance_buffer.buffer.as_ref() {
+    pub fn render_instanced<T: Pod>(
+        &self,
+        slot: u32,
+        render_pass: &mut RenderPass,
+        instance_buffer: &InstanceBuffer<T>,
+    ) {
+        if instance_buffer.length > 0
+            && let Some(buffer) = instance_buffer.buffer.as_ref()
+        {
             render_pass.set_vertex_buffer(slot, buffer.slice(..));
             let range = 0u32..instance_buffer.length as u32;
             self.render(render_pass, &range);

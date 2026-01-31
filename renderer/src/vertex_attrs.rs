@@ -1,5 +1,6 @@
 use std::mem;
 use wgpu::{BufferAddress, VertexAttribute, VertexStepMode};
+use crate::draw_commands::MeshVertex;
 
 pub trait VertexAttrib: Sized {
     const ATTRIBUTES: &[VertexAttribute];
@@ -23,6 +24,21 @@ pub struct ShapeVertex {
     pub style_index: u32,
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct MeshVertexWithUV {
+    pub mesh_vertex: MeshVertex,
+    pub uv: [f32; 3],
+}
+
+impl VertexAttrib for MeshVertexWithUV {
+    const ATTRIBUTES: &[VertexAttribute] =
+        &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x3];
+
+    const STEP_MODE: VertexStepMode = wgpu::VertexStepMode::Vertex;
+}
+
+
 impl VertexAttrib for ShapeVertex {
     const ATTRIBUTES: &[VertexAttribute] =
         &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32, 3 => Uint32];
@@ -30,14 +46,7 @@ impl VertexAttrib for ShapeVertex {
     const STEP_MODE: VertexStepMode = wgpu::VertexStepMode::Vertex;
 }
 
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct VertexNormal {
-    pub(crate) position: [f32; 3],
-    pub(crate) normals: [f32; 3],
-}
-
-impl VertexAttrib for VertexNormal {
+impl VertexAttrib for MeshVertex {
     const ATTRIBUTES: &[VertexAttribute] =
         &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3];
 

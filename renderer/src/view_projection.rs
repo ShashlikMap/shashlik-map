@@ -90,6 +90,10 @@ impl ViewProjection {
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
+        // early update of the screen size, otherwise it will come with config but later
+        // it may cause incorrect texture sizes and so on
+
+        self.screen_size = (width as f64, height as f64);
         self.uniform.inv_screen_size = [1.0 / width as f32, 1.0 / height as f32];
     }
     

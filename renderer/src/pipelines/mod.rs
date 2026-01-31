@@ -3,11 +3,11 @@ use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::modifier::render_modifier::SpatialData;
-use wgpu::{ColorTargetState, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, VertexBufferLayout};
+use wgpu::{BindGroup, ColorTargetState, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, TextureView, VertexBufferLayout};
 
 pub mod mesh_pipeline;
 pub mod shape_pipeline;
-pub mod text_pipeline;
+pub mod screen_mesh_pipeline;
 
 pub trait RenderPipeline {
     type InstanceInputType: MeshInstanceInput;
@@ -20,6 +20,10 @@ pub trait RenderPipeline {
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext);
     fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_>;
+}
+
+pub trait WithTexture {
+    fn create_texture_bind_group(&mut self, texture_view: &TextureView, global_context: &GlobalContext) -> BindGroup;
 }
 
 #[derive(Clone, Debug)]
@@ -36,6 +40,7 @@ pub struct OwnedRenderPipelineDescriptor<'a> {
 impl OwnedRenderPipelineDescriptor<'_> {
     pub fn to_render_pipeline(self, device: &Device) -> wgpu::RenderPipeline {
         let descriptor = self;
+        let owned_fragment_state = descriptor.fragment.as_ref().unwrap();
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: descriptor.layout.as_ref(),
@@ -46,10 +51,10 @@ impl OwnedRenderPipelineDescriptor<'_> {
                 compilation_options: Default::default(),
             },
             fragment: Some(wgpu::FragmentState {
-                module: &descriptor.vertex.module,
-                entry_point: Some("fs_main"),
-                targets: &*descriptor.fragment.unwrap().targets,
-                compilation_options: Default::default(),
+                module: &owned_fragment_state.module,
+                entry_point: owned_fragment_state.entry_point,
+                targets: &*owned_fragment_state.targets.clone(),
+                compilation_options: owned_fragment_state.compilation_options.clone(),
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
