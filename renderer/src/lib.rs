@@ -1,13 +1,13 @@
 extern crate core;
 
-use textures::depth_texture::DepthTexture;
 use crate::fps::FpsCounter;
 use crate::geometry_data::TextData;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
 use crate::modifier::render_modifier::SpatialData;
-use textures::msaa_texture::MultisampledTexture;
-use textures::rt_texture::RtTexture;
+use crate::pass_nodes::main_pass_node::MainPassNode;
+use crate::pass_nodes::render_to_texture_pass_node::RenderToTexturePassNode;
+use crate::pass_nodes::PassNode;
 use crate::styles::style_store::StyleStore;
 use canvas_api::CanvasApi;
 use cgmath::{vec2, vec3, Matrix4, Vector2, Vector3};
@@ -49,6 +49,7 @@ mod utils;
 mod global_context;
 mod collider;
 mod textures;
+mod pass_nodes;
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
@@ -58,11 +59,7 @@ pub trait Renderer {
 
 pub struct ShashlikRenderer {
     layers: Layers,
-    depth_texture: DepthTexture,
-    rt_depth_texture: DepthTexture,
-    rt_msaa_texture: MultisampledTexture,
-    main_msaa_texture: MultisampledTexture,
-    rt_texture: RtTexture,
+    pass_nodes: Vec<Box<dyn PassNode>>,
     renderer_rx: Receiver<RendererMessage>,
     pub api: Arc<RendererApi>,
     fps_counter: FpsCounter<100>,
@@ -79,14 +76,6 @@ impl ShashlikRenderer {
 
         let mut global_context = GlobalContext::new(canvas, &style_store);
 
-        let rt_depth_texture = DepthTexture::new(&global_context, true);
-        let depth_texture = DepthTexture::new(&global_context, false);
-
-        let rt_msaa_texture = MultisampledTexture::new(&global_context, true);
-        let main_msaa_texture = MultisampledTexture::new(&global_context, false);
-
-        let rt_texture = RtTexture::new(&global_context);
-        
         let mut layers = Layers::new(feature_tags, &mut global_context, font);
 
         layers.text_layer.add("fps_info".to_string(), vec![TextData {
@@ -111,11 +100,7 @@ impl ShashlikRenderer {
 
         Ok(Self {
             layers,
-            depth_texture,
-            rt_depth_texture,
-            rt_msaa_texture,
-            main_msaa_texture,
-            rt_texture,
+            pass_nodes: vec![],
             renderer_rx,
             api,
             fps_counter: FpsCounter::new(),
@@ -178,14 +163,17 @@ impl ShashlikRenderer {
         if width > 0 && height > 0 {
             self.global_context.resize(width, height);
 
-            self.depth_texture = DepthTexture::new(&self.global_context, false);
-            self.rt_depth_texture = DepthTexture::new(&self.global_context, true);
-            self.rt_msaa_texture = MultisampledTexture::new(&self.global_context, true);
-            self.main_msaa_texture = MultisampledTexture::new(&self.global_context, false);
-            self.rt_texture = RtTexture::new(&self.global_context);
-
-            self.layers.ortho_mesh_layer.set_texture(&self.rt_texture.view, &self.global_context);
+            self.config_pass_nodes();
         }
+    }
+
+    fn config_pass_nodes(&mut self) {
+        let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
+        self.layers.ortho_mesh_layer.set_texture(&rt_node.rt_texture.view, &self.global_context);
+
+        let main_node = MainPassNode::new(&mut self.global_context);
+        self.pass_nodes = vec![Box::new(rt_node), Box::new(main_node)];
+
     }
 
     fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
@@ -215,7 +203,7 @@ impl ShashlikRenderer {
         // }
 
         let output = self.global_context.canvas.get_current_texture()?;
-        let view = output
+        let output_view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
@@ -231,75 +219,9 @@ impl ShashlikRenderer {
             item.update_text(fps.as_str(), 1.0);
         });
 
-        {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &self.rt_msaa_texture.view,
-                    resolve_target: Some(&self.rt_texture.view),
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.0,
-                            g: 0.741,
-                            b: 0.961,
-                            a: 1.0,
-                        }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                    depth_slice: None,
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.rt_depth_texture.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-                occlusion_query_set: None,
-                timestamp_writes: None,
-                multiview_mask: None,
-            });
-        
-            self.layers.is_preview = true;
-            self.layers
-                .render(&mut render_pass, &mut self.global_context);
-        }
-
-        {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass2"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &self.main_msaa_texture.view,
-                    resolve_target: Some(&view),
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.0,
-                            g: 0.741,
-                            b: 0.961,
-                            a: 1.0,
-                        }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                    depth_slice: None,
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth_texture.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-                occlusion_query_set: None,
-                timestamp_writes: None,
-                multiview_mask: None,
-            });
-
-            self.layers.is_preview = false;
-            self.layers
-                .render(&mut render_pass, &mut self.global_context);
-        }
+        self.pass_nodes.iter_mut().for_each(|node| {
+            node.render(&mut encoder, &output_view, &mut self.layers, &mut self.global_context);
+        });
 
         self.global_context
             .queue()
