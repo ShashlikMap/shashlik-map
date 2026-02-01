@@ -248,12 +248,8 @@ impl CanvasApi {
             .indices_by_layers
             .entry(data.index_layer_level)
             .or_insert(Vec::new());
-        if let Some(last) = ranges.last_mut() {
-            if last.end == initial_index {
-                last.end = last_index;
-            } else {
-                ranges.push(initial_index..last_index);
-            }
+        if let Some(last) = ranges.last_mut() && last.end == initial_index {
+            last.end = last_index;
         } else {
             ranges.push(initial_index..last_index);
         }
