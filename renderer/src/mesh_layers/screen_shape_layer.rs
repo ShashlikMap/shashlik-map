@@ -49,28 +49,35 @@ impl<P: RenderPipeline> ScreenShapeLayer<P> {
         command: &mut Mesh2dDrawCommand,
     ) {
         let device = global_context.device();
-        let instance_key = command.mesh_info.instance_key.to_string();
 
-        self.meshes.entry(instance_key.clone()).or_insert({
-            (
-                Mesh::create_layered(
-                    &device,
-                    &command.mesh,
-                    mem::take(&mut command.layers_indices),
-                ),
-                InstanceBuffer::default(),
-            )
+        let mut data = vec![];
+        command.batches.iter_mut().for_each(|batch| {
+            let instance_key = batch.mesh_info.instance_key.to_string();
+
+            self.meshes.entry(instance_key.clone()).or_insert({
+                (
+                    Mesh::create_layered(
+                        &device,
+                        &batch.mesh,
+                        mem::take(&mut batch.layers_indices),
+                    ),
+                    InstanceBuffer::default(),
+                )
+            });
+
+            let instance_positions =
+                mem::take(&mut batch.mesh_info.instance_positions).unwrap_or_default();
+
+            let batch_data: Vec<_> = instance_positions.into_iter().map(|item| {
+                (item + spatial_data.transform, 0.0f32, instance_key.clone())
+            }).collect();
+
+            data.extend(batch_data)
         });
 
-        let instance_positions =
-            mem::take(&mut command.mesh_info.instance_positions).unwrap_or_default();
-
-        instance_positions.into_iter().for_each(|item| {
-            let key = key.to_string();
-            let instance_key = instance_key.clone();
-            self.collision_task_controller.update_data(move |holder| {
-                holder.add(key, (item + spatial_data.transform, 0.0f32, instance_key.clone()));
-            });
+        let key = key.to_string();
+        self.collision_task_controller.update_data(move |holder| {
+            holder.set(key, data)
         });
     }
 }

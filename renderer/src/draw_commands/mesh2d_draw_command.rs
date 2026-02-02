@@ -9,10 +9,15 @@ use lyon::tessellation::VertexBuffers;
 use std::mem;
 
 #[derive(Clone)]
-pub(crate) struct Mesh2dDrawCommand {
+pub(crate) struct Mesh2dCommandBatch {
     pub mesh: VertexBuffers<ShapeVertex, u32>,
     pub layers_indices: Vec<StyledRange>,
     pub mesh_info: MeshInfo,
+}
+
+#[derive(Clone)]
+pub(crate) struct Mesh2dDrawCommand {
+    pub batches: Vec<Mesh2dCommandBatch>,
     pub is_screen: bool,
     pub feature_layer_tag: Option<String>,
 }
@@ -32,27 +37,29 @@ impl DrawCommand for Mesh2dDrawCommand {
             .as_ref()
             .and_then(|tag| layers.feature_layers(tag))
         {
-            let mesh =
-                Mesh::create_layered(&device, &self.mesh, mem::take(&mut self.layers_indices));
-            feature_layer.add(
-                key,
-                spatial_rx,
-                !self.is_screen,
-                mesh,
-            );
+            if let Some(first_batch) = self.batches.first_mut() {
+                let mesh = Mesh::create_layered(
+                    &device,
+                    &first_batch.mesh,
+                    mem::take(&mut first_batch.layers_indices),
+                );
+                feature_layer.add(key.clone(), spatial_rx, !self.is_screen, mesh);
+            }
         } else if self.is_screen {
             layers
                 .screen_shape_layer
                 .submit(key.as_str(), spatial_data, global_context, self);
         } else {
-            let mesh =
-                Mesh::create_layered(&device, &self.mesh, mem::take(&mut self.layers_indices));
-            layers.shape_layer.add(
-                key,
-                spatial_rx,
-                !self.is_screen,
-                mesh,
-            );
+            if let Some(first_batch) = self.batches.first_mut() {
+                let mesh = Mesh::create_layered(
+                    &device,
+                    &first_batch.mesh,
+                    mem::take(&mut first_batch.layers_indices),
+                );
+                layers
+                    .shape_layer
+                    .add(key, spatial_rx, !self.is_screen, mesh);
+            }
         };
     }
 }

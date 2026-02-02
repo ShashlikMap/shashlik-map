@@ -1,4 +1,4 @@
-use crate::draw_commands::mesh2d_draw_command::Mesh2dDrawCommand;
+use crate::draw_commands::mesh2d_draw_command::{Mesh2dCommandBatch, Mesh2dDrawCommand};
 use crate::draw_commands::mesh3d_draw_command::Mesh3dDrawCommand;
 use crate::draw_commands::text_draw_command::TextDrawCommand;
 use crate::draw_commands::{DrawCommand, DrawCommands, GeometryType, MeshVertex, PolylineOptions};
@@ -23,7 +23,7 @@ use std::mem;
 pub struct MeshInfo {
     pub instance_positions: Option<Vec<Vector3<f64>>>,
     pub with_collision: bool,
-    pub instance_key: String
+    pub instance_key: String,
 }
 
 pub struct CanvasApi {
@@ -105,9 +105,14 @@ impl CanvasApi {
             let mesh_info = MeshInfo {
                 instance_positions: None,
                 with_collision: false,
-                instance_key: "".to_string()
+                instance_key: "".to_string(),
             };
-            self.mesh2d_with_positions(mesh, flatten_ranges, mesh_info, false);
+            let batch = Mesh2dCommandBatch {
+                mesh,
+                layers_indices: flatten_ranges,
+                mesh_info,
+            };
+            self.mesh2d_with_positions(vec![batch], false);
         }
     }
 
@@ -115,15 +120,21 @@ impl CanvasApi {
         if self.mesh_info_cache.is_empty() {
             return;
         }
-        let data: Vec<_> = self
+        let batches = self
             .mesh_info_cache
             .iter()
             .map(|(_, (mesh, positions))| (mesh.clone(), positions.clone()))
+            .map(|(mesh, mesh_info)| {
+                let styled_range = StyledRange(0..mesh.indices.len(), StyledRangeInfo(0, ""));
+                Mesh2dCommandBatch {
+                    mesh,
+                    layers_indices: vec![styled_range],
+                    mesh_info,
+                }
+            })
             .collect();
-        for (mesh, mesh_info) in data {
-            let styled_range = StyledRange(0..mesh.indices.len(), StyledRangeInfo(0, ""));
-            self.mesh2d_with_positions(mesh, vec![styled_range], mesh_info, true);
-        }
+
+        self.mesh2d_with_positions(batches, true);
     }
 
     fn prepare_text_command(&mut self) {
@@ -135,17 +146,9 @@ impl CanvasApi {
         }));
     }
 
-    fn mesh2d_with_positions(
-        &mut self,
-        mesh: VertexBuffers<ShapeVertex, u32>,
-        layers_indices: Vec<StyledRange>,
-        mesh_info: MeshInfo,
-        is_screen: bool,
-    ) {
+    fn mesh2d_with_positions(&mut self, batches: Vec<Mesh2dCommandBatch>, is_screen: bool) {
         self.draw_commands.push(Box::new(Mesh2dDrawCommand {
-            mesh,
-            layers_indices,
-            mesh_info,
+            batches,
             is_screen,
             feature_layer_tag: self.feature_layer_tag.clone(),
         }));
@@ -248,10 +251,15 @@ impl CanvasApi {
             .indices_by_layers
             .entry(data.index_layer_level)
             .or_insert(Vec::new());
-        if let Some(last) = ranges.last_mut() && last.0.end == initial_index {
+        if let Some(last) = ranges.last_mut()
+            && last.0.end == initial_index
+        {
             last.0.end = last_index;
         } else {
-            ranges.push(StyledRange(initial_index..last_index, data.styled_range_info));
+            ranges.push(StyledRange(
+                initial_index..last_index,
+                data.styled_range_info,
+            ));
         }
     }
 
@@ -259,7 +267,10 @@ impl CanvasApi {
         self.mesh_info_cache
             .entry(data.icon.0)
             .and_modify(|(_, mesh_info)| {
-                mesh_info.instance_positions.get_or_insert_default().push(data.position);
+                mesh_info
+                    .instance_positions
+                    .get_or_insert_default()
+                    .push(data.position);
                 mesh_info.with_collision = data.with_collision
             })
             .or_insert_with(|| {
@@ -270,7 +281,7 @@ impl CanvasApi {
                     MeshInfo {
                         instance_positions: Some(vec![data.position]),
                         with_collision: data.with_collision,
-                        instance_key: data.icon.0.to_string()
+                        instance_key: data.icon.0.to_string(),
                     },
                 )
             });

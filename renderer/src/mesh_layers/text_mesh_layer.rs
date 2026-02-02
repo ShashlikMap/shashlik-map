@@ -25,17 +25,17 @@ impl<P: RenderPipeline> TextMeshLayer<P> {
         }
     }
 
-    pub fn add(&mut self, key: String, text_data: Vec<TextData>, spatial_data: SpatialData) {
+    pub fn add(&mut self, key: String, mut text_data: Vec<TextData>, spatial_data: SpatialData) {
         self.text_renderer.update_data(move |holder| {
-            text_data.into_iter().for_each(|mut item| {
+            text_data.iter_mut().for_each(|item| {
                 item.alpha = 0.0;
                 item.positions = item
                     .positions
                     .iter()
                     .map(|pos| pos + spatial_data.transform.cast().unwrap())
                     .collect();
-                holder.add(key.clone(), item);
             });
+            holder.set(key.clone(), text_data)
         });
     }
 
