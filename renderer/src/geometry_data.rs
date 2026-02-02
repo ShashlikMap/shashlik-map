@@ -17,6 +17,7 @@ pub struct ShapeData {
     pub geometry_type: GeometryType,
     pub style_id: StyleId,
     pub index_layer_level: i8,
+    pub double_style: bool
 }
 
 pub struct ExtrudedPolygonData {

@@ -16,6 +16,7 @@ impl RenderGroup for SimplePuck {
                 geometry_type: GeometryType::Polygon,
                 style_id: StyleId("puck_style"),
                 index_layer_level: 0,
+                double_style: true
             },
         ));
     }

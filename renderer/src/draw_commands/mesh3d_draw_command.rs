@@ -19,7 +19,7 @@ impl DrawCommand for Mesh3dDrawCommand {
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         layers: &mut Layers,
     ) {
-        let mesh = Mesh::create(&global_context.device(), &self.mesh);
+        let mesh = Mesh::create(&global_context.device(), &self.mesh, 0);
         layers.mesh_layer.add(key, spatial_rx, false, mesh);
     }
 }

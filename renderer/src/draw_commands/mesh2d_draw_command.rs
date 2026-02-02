@@ -1,18 +1,17 @@
 use crate::canvas_api::MeshInfo;
 use crate::draw_commands::DrawCommand;
-use crate::mesh::mesh::Mesh;
+use crate::global_context::GlobalContext;
+use crate::mesh::mesh::{Mesh, StyledRange};
 use crate::mesh_layers::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
 use crate::vertex_attrs::ShapeVertex;
 use lyon::tessellation::VertexBuffers;
 use std::mem;
-use std::ops::Range;
-use crate::global_context::GlobalContext;
 
 #[derive(Clone)]
 pub(crate) struct Mesh2dDrawCommand {
     pub mesh: VertexBuffers<ShapeVertex, u32>,
-    pub layers_indices: Vec<Range<usize>>,
+    pub layers_indices: Vec<StyledRange>,
     pub mesh_info: MeshInfo,
     pub is_screen: bool,
     pub feature_layer_tag: Option<String>,

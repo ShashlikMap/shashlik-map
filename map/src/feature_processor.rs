@@ -223,11 +223,17 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         height: level as f32 / 2.0,
                     }));
                 } else {
+                    let double_style = match &kind {
+                        MapGeomObjectKind::Nature(_) |
+                        MapGeomObjectKind::Building(_) => { false },
+                        _ => { zoom_level < 1 }
+                    };
                     geometry_data.push(GeometryData::Shape(ShapeData {
                         path: path_builder.build(),
                         geometry_type,
                         style_id,
                         index_layer_level: layer_level as i8,
+                        double_style,
                     }));
                 }
 
