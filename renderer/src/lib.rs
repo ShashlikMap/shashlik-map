@@ -32,7 +32,7 @@ mod consts;
 pub mod draw_commands;
 mod fps;
 pub mod geometry_data;
-mod mesh;
+pub mod mesh;
 pub mod messages;
 pub mod modifier;
 pub mod render_group;

@@ -4,6 +4,7 @@ use cgmath::{Vector2, Vector3};
 use lyon::lyon_tessellation::VertexBuffers;
 use lyon::path::Path;
 use rustybuzz::GlyphBuffer;
+use crate::mesh::mesh::StyledRangeInfo;
 
 pub enum GeometryData {
     Shape(ShapeData),
@@ -17,7 +18,7 @@ pub struct ShapeData {
     pub geometry_type: GeometryType,
     pub style_id: StyleId,
     pub index_layer_level: i8,
-    pub double_style: bool
+    pub styled_range_info: StyledRangeInfo
 }
 
 pub struct ExtrudedPolygonData {

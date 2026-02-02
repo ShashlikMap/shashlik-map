@@ -70,6 +70,7 @@ impl BaseMeshLayer for Layers {
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
+        self.shape_layer.disable_skip_mesh_feature = self.is_preview;
         self.shape_layer.render(render_pass, global_context);
         if !self.is_preview {
             self.mesh_layer.render(render_pass, global_context);

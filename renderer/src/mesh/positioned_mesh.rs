@@ -76,7 +76,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         }
     }
 
-    pub fn render(&mut self, render_pass: &mut RenderPass) {
-        self.mesh.render_instanced(1, render_pass, &self.instance_buffer);
+    pub fn render(&mut self, render_pass: &mut RenderPass, disable_skip_mesh_feature: bool) {
+        self.mesh.render_instanced(1, render_pass, &self.instance_buffer, disable_skip_mesh_feature);
     }
 }

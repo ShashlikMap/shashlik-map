@@ -85,7 +85,7 @@ impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
                 render_pass.set_bind_group(1, texture_bind_group, &[]);
             }
 
-            mesh.render_instanced(1, render_pass, &self.instance_buffer);
+            mesh.render_instanced(1, render_pass, &self.instance_buffer, false);
         }
     }
 

@@ -13,6 +13,7 @@ use renderer::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgD
 use renderer::styles::style_id::StyleId;
 use seahash::hash;
 use std::collections::HashMap;
+use renderer::mesh::mesh::StyledRangeInfo;
 
 pub struct ShashlikFeatureProcessor {}
 
@@ -206,7 +207,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     Some((style_id, -100, GeometryType::Polygon, None))
                 }
                 MapGeomObjectKind::Building(_) => {
-                    Some((StyleId("building"), -100, GeometryType::Polygon, None))
+                    Some((StyleId("building"), -99, GeometryType::Polygon, None))
                 }
                 _ => None,
             } {
@@ -228,12 +229,17 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         MapGeomObjectKind::Building(_) => { false },
                         _ => { zoom_level < 1 }
                     };
+                    let tag = match &kind {
+                        MapGeomObjectKind::Building(_) => { "skip" },
+                        _ => { "" }
+                    };
+
                     geometry_data.push(GeometryData::Shape(ShapeData {
                         path: path_builder.build(),
                         geometry_type,
                         style_id,
                         index_layer_level: layer_level as i8,
-                        double_style,
+                        styled_range_info: StyledRangeInfo(if double_style { 0 } else { 1 }, tag),
                     }));
                 }
 

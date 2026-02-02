@@ -6,6 +6,7 @@ use lyon::path::Path;
 use renderer::canvas_api::CanvasApi;
 use renderer::draw_commands::{GeometryType, PolylineOptions};
 use renderer::geometry_data::{GeometryData, ShapeData};
+use renderer::mesh::mesh::StyledRangeInfo;
 use renderer::render_group::RenderGroup;
 use renderer::styles::style_id::StyleId;
 use crate::route::RouteCosting;
@@ -57,7 +58,7 @@ impl RenderGroup for RouteGroup {
             geometry_type: GeometryType::Polyline(options),
             style_id,
             index_layer_level: 0,
-            double_style: true
+            styled_range_info: StyledRangeInfo(0, "")
         }));
     }
 }

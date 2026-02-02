@@ -3,7 +3,7 @@ use crate::draw_commands::mesh3d_draw_command::Mesh3dDrawCommand;
 use crate::draw_commands::text_draw_command::TextDrawCommand;
 use crate::draw_commands::{DrawCommand, DrawCommands, GeometryType, MeshVertex, PolylineOptions};
 use crate::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData, TextData};
-use crate::mesh::mesh::StyledRange;
+use crate::mesh::mesh::{StyledRange, StyledRangeInfo};
 use crate::modifier::render_modifier::SpatialData;
 use crate::styles::render_style::RenderStyle;
 use crate::styles::style_id::StyleId;
@@ -121,7 +121,7 @@ impl CanvasApi {
             .map(|(_, (mesh, positions))| (mesh.clone(), positions.clone()))
             .collect();
         for (mesh, mesh_info) in data {
-            let styled_range = StyledRange(0..mesh.indices.len(), 0);
+            let styled_range = StyledRange(0..mesh.indices.len(), StyledRangeInfo(0, ""));
             self.mesh2d_with_positions(mesh, vec![styled_range], mesh_info, true);
         }
     }
@@ -251,8 +251,7 @@ impl CanvasApi {
         if let Some(last) = ranges.last_mut() && last.0.end == initial_index {
             last.0.end = last_index;
         } else {
-            let skip_instances = if data.double_style { 0 } else { 1 };
-            ranges.push(StyledRange(initial_index..last_index, skip_instances));
+            ranges.push(StyledRange(initial_index..last_index, data.styled_range_info));
         }
     }
 

@@ -1,5 +1,5 @@
 use crate::draw_commands::{DrawCommand, MeshVertex};
-use crate::mesh::mesh::Mesh;
+use crate::mesh::mesh::{Mesh, StyledRangeInfo};
 use crate::mesh_layers::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
 use lyon::lyon_tessellation::VertexBuffers;
@@ -19,7 +19,8 @@ impl DrawCommand for Mesh3dDrawCommand {
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         layers: &mut Layers,
     ) {
-        let mesh = Mesh::create(&global_context.device(), &self.mesh, 0);
+
+        let mesh = Mesh::create(&global_context.device(), &self.mesh, StyledRangeInfo(0, ""));
         layers.mesh_layer.add(key, spatial_rx, false, mesh);
     }
 }
