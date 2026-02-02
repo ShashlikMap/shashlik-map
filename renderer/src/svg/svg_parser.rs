@@ -108,7 +108,7 @@ fn collect_geom(
                 fill_tess
                     .tessellate(
                         convert_path(p),
-                        &FillOptions::tolerance(0.01),
+                        &FillOptions::tolerance(0.5),
                         &mut BuffersBuilder::new(
                             mesh,
                             VertexCtor {
@@ -130,7 +130,7 @@ fn collect_geom(
                 ));
                 let _ = stroke_tess.tessellate(
                     convert_path(p),
-                    &stroke_opts.with_tolerance(0.01),
+                    &stroke_opts.with_tolerance(0.5),
                     &mut BuffersBuilder::new(
                         mesh,
                         VertexCtor {
@@ -168,7 +168,7 @@ fn convert_stroke(s: &usvg::Stroke) -> (usvg::Color, StrokeOptions) {
         usvg::LineJoin::Round => tessellation::LineJoin::Round,
     };
 
-    let opt = StrokeOptions::tolerance(0.01)
+    let opt = StrokeOptions::tolerance(0.5)
         .with_line_width(s.width().get())
         .with_line_cap(linecap)
         .with_line_join(linejoin);

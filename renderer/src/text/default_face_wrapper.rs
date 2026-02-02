@@ -1,4 +1,4 @@
-use crate::mesh::mesh::Mesh;
+use crate::mesh::mesh::{Mesh, StyledRangeInfo};
 use crate::text::glyph_tesselator::GlyphTesselator;
 use cgmath::{Matrix4, Vector2};
 use log::error;
@@ -43,7 +43,7 @@ impl DefaultFaceWrapper {
             let glyph_buf = path_builder.tessellate_fill(Vector2::new(0.0, 0.0f32), Color::RED);
             glyph_mesh_map.insert(
                 GlyphId(glyph_info.glyph_id as u16),
-                Mesh::create(&device, &glyph_buf),
+                Mesh::create(&device, &glyph_buf, StyledRangeInfo(0, "")),
             );
         }
 

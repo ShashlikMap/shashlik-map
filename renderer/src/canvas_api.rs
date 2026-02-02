@@ -3,6 +3,7 @@ use crate::draw_commands::mesh3d_draw_command::Mesh3dDrawCommand;
 use crate::draw_commands::text_draw_command::TextDrawCommand;
 use crate::draw_commands::{DrawCommand, DrawCommands, GeometryType, MeshVertex, PolylineOptions};
 use crate::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData, TextData};
+use crate::mesh::mesh::{StyledRange, StyledRangeInfo};
 use crate::modifier::render_modifier::SpatialData;
 use crate::styles::render_style::RenderStyle;
 use crate::styles::style_id::StyleId;
@@ -17,7 +18,6 @@ use lyon::lyon_tessellation::{
 use lyon::path::Path;
 use std::collections::{BTreeMap, HashMap};
 use std::mem;
-use std::ops::Range;
 
 #[derive(Clone)]
 pub struct MeshInfo {
@@ -31,7 +31,7 @@ pub struct CanvasApi {
     flushed: bool,
     draw_commands: Vec<Box<dyn DrawCommand>>,
     geometry: VertexBuffers<ShapeVertex, u32>,
-    indices_by_layers: BTreeMap<i8, Vec<Range<usize>>>,
+    indices_by_layers: BTreeMap<i8, Vec<StyledRange>>,
     geometry3d: VertexBuffers<MeshVertex, u32>,
     text_vec: Vec<TextData>,
     mesh_info_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, MeshInfo)>,
@@ -121,8 +121,8 @@ impl CanvasApi {
             .map(|(_, (mesh, positions))| (mesh.clone(), positions.clone()))
             .collect();
         for (mesh, mesh_info) in data {
-            let layers_indices = vec![0..mesh.indices.len()];
-            self.mesh2d_with_positions(mesh, layers_indices, mesh_info, true);
+            let styled_range = StyledRange(0..mesh.indices.len(), StyledRangeInfo(0, ""));
+            self.mesh2d_with_positions(mesh, vec![styled_range], mesh_info, true);
         }
     }
 
@@ -138,7 +138,7 @@ impl CanvasApi {
     fn mesh2d_with_positions(
         &mut self,
         mesh: VertexBuffers<ShapeVertex, u32>,
-        layers_indices: Vec<Range<usize>>,
+        layers_indices: Vec<StyledRange>,
         mesh_info: MeshInfo,
         is_screen: bool,
     ) {
@@ -248,10 +248,10 @@ impl CanvasApi {
             .indices_by_layers
             .entry(data.index_layer_level)
             .or_insert(Vec::new());
-        if let Some(last) = ranges.last_mut() && last.end == initial_index {
-            last.end = last_index;
+        if let Some(last) = ranges.last_mut() && last.0.end == initial_index {
+            last.0.end = last_index;
         } else {
-            ranges.push(initial_index..last_index);
+            ranges.push(StyledRange(initial_index..last_index, data.styled_range_info));
         }
     }
 

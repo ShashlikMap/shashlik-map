@@ -8,17 +8,22 @@ use std::ops::Range;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{Buffer, Device, RenderPass};
 
+#[derive(Clone)]
+pub struct StyledRangeInfo(pub u8, pub &'static str);
+#[derive(Clone)]
+pub struct StyledRange(pub Range<usize>, pub StyledRangeInfo);
+
 pub struct Mesh {
     pub vertex_buf: Vec<Buffer>,
     pub index_buf: Vec<(Buffer, usize)>,
-    pub layers_indices: Vec<Range<usize>>,
+    pub layers_indices: Vec<StyledRange>,
 }
 
 impl Mesh {
     pub fn new(
         v_buf: Vec<Buffer>,
         i_buf: Vec<(Buffer, usize)>,
-        layers_indices: Vec<Range<usize>>,
+        layers_indices: Vec<StyledRange>,
     ) -> Self {
         Self {
             vertex_buf: v_buf,
@@ -65,17 +70,17 @@ impl Mesh {
         geometry_buffer.indices.push(1);
         geometry_buffer.indices.push(0);
         geometry_buffer.indices.push(3);
-        Self::create(device, &geometry_buffer)
+        Self::create(device, &geometry_buffer, StyledRangeInfo(0, ""))
     }
 
-    pub fn create<T: NoUninit>(device: &Device, geometry: &VertexBuffers<T, u32>) -> Self {
-        Self::create_layered(device, geometry, vec![0..geometry.indices.len()])
+    pub fn create<T: NoUninit>(device: &Device, geometry: &VertexBuffers<T, u32>, styled_range_info: StyledRangeInfo) -> Self {
+        Self::create_layered(device, geometry, vec![StyledRange(0..geometry.indices.len(), styled_range_info)])
     }
 
     pub fn create_layered<T: NoUninit>(
         device: &Device,
         geometry: &VertexBuffers<T, u32>,
-        layers_indices: Vec<Range<usize>>,
+        layers_indices: Vec<StyledRange>,
     ) -> Self {
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -101,27 +106,34 @@ impl Mesh {
         slot: u32,
         render_pass: &mut RenderPass,
         instance_buffer: &InstanceBuffer<T>,
+        disable_skip_mesh_feature: bool
     ) {
         if instance_buffer.length > 0
             && let Some(buffer) = instance_buffer.buffer.as_ref()
         {
             render_pass.set_vertex_buffer(slot, buffer.slice(..));
-            let range = 0u32..instance_buffer.length as u32;
-            self.render(render_pass, &range);
+            let range = 0..instance_buffer.length as u32;
+            self.render(render_pass, &range, disable_skip_mesh_feature);
         }
     }
 
-    pub fn render(&self, render_pass: &mut RenderPass, instances: &Range<u32>) {
+    fn render(&self, render_pass: &mut RenderPass, instances: &Range<u32>, disable_skip_mesh_feature: bool) {
         self.vertex_buf.iter().enumerate().for_each(|(i, v_buf)| {
             let (i_buf, _) = self.index_buf.get(i).unwrap();
             if v_buf.size() > 0 && i_buf.size() > 0 {
                 render_pass.set_vertex_buffer(0, v_buf.slice(..));
                 render_pass.set_index_buffer(i_buf.slice(..), wgpu::IndexFormat::Uint32);
                 for range in &self.layers_indices {
-                    let start = range.start;
-                    let end = range.end;
-                    // draw two instances, outlined and normal
-                    render_pass.draw_indexed(start as u32..end as u32, 0, instances.clone());
+                    let styled_range_info = &range.1;
+                    if disable_skip_mesh_feature && styled_range_info.1 == "skip" {
+                        continue;
+                    }
+                    let start = range.0.start;
+                    let end = range.0.end;
+
+                    // draw instances
+                    let instances_range = instances.start + styled_range_info.0 as u32..instances.end;
+                    render_pass.draw_indexed(start as u32..end as u32, 0, instances_range);
                 }
             } else {
                 error!("Vertex/Index buffer are empty");

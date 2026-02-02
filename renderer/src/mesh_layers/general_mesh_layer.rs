@@ -11,6 +11,7 @@ pub struct GeneralMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
     pipeline: Option<wgpu::RenderPipeline>,
     render_data_holder: RenderDataHolder<PositionedMesh<P::InstanceInputType>>,
+    pub disable_skip_mesh_feature: bool
 }
 
 impl<P: RenderPipeline> GeneralMeshLayer<P> {
@@ -19,6 +20,7 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
             render_pipeline,
             pipeline: None,
             render_data_holder: RenderDataHolder::new(),
+            disable_skip_mesh_feature: false
         }
     }
     pub fn add(
@@ -56,7 +58,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
             self.render_pipeline.render(render_pass, global_context);
 
             self.render_data_holder.run_mut_action(|mesh| {
-                mesh.render(render_pass);
+                mesh.render(render_pass, self.disable_skip_mesh_feature);
             });
         }
     }

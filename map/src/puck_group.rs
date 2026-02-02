@@ -2,6 +2,7 @@ use renderer::canvas_api::CanvasApi;
 use crate::mesh_loader::MeshLoader;
 use renderer::geometry_data::{GeometryData, ShapeData};
 use renderer::draw_commands::GeometryType;
+use renderer::mesh::mesh::StyledRangeInfo;
 use renderer::render_group::RenderGroup;
 use renderer::styles::style_id::StyleId;
 
@@ -16,6 +17,7 @@ impl RenderGroup for SimplePuck {
                 geometry_type: GeometryType::Polygon,
                 style_id: StyleId("puck_style"),
                 index_layer_level: 0,
+                styled_range_info: StyledRangeInfo(0, "")
             },
         ));
     }
