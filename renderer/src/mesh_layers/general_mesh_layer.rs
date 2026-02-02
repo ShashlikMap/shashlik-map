@@ -35,7 +35,7 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
             double_style,
             mesh,
         );
-        self.render_data_holder.add(key, mesh);
+        self.render_data_holder.set(key, vec![mesh]);
     }
 }
 

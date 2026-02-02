@@ -12,10 +12,10 @@ impl<T> RenderDataHolder<T> {
         }
     }
 
-    pub fn add(&mut self, key: String, data: T) {
-        self.holder.entry(key).or_default().push(data);
+    pub fn set(&mut self, key: String, data: Vec<T>) {
+        self.holder.insert(key, data);
     }
-
+    
     pub fn remove(&mut self, key: &str) {
         self.holder.remove(&key.to_string());
     }
