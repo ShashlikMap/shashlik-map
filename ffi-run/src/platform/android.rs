@@ -6,7 +6,7 @@ use jni::JNIEnv;
 use jni_fn::jni_fn;
 use map::ShashlikMap;
 use std::sync::{Arc, RwLock};
-use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture};
+use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture, Texture};
 use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
 use osm::source::reqwest_source::ReqwestSource;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
@@ -42,6 +42,11 @@ impl WgpuCanvas for AndroidSurfaceAppSurface {
     fn get_current_texture(&self) -> Result<SurfaceTexture, SurfaceError> {
         self.app_surface.surface.get_current_texture()
     }
+
+    fn get_current_texture2(&self) -> &Texture {
+        todo!()
+    }
+
 
     fn on_resize(&mut self) {
         self.app_surface.resize_surface();

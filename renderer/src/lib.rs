@@ -23,7 +23,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread::spawn;
 use tokio::sync::broadcast;
-use wgpu::SurfaceError;
+use wgpu::{SurfaceError, Texture};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 pub mod canvas_api;
@@ -54,7 +54,7 @@ mod pass_nodes;
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
     fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>);
-    fn render(&mut self) -> Result<(), SurfaceError>;
+    fn render(&mut self) -> Result<Texture, SurfaceError>;
 }
 
 pub struct ShashlikRenderer {
@@ -196,17 +196,20 @@ impl ShashlikRenderer {
         self.layers.update(&mut self.global_context);
     }
 
-    fn render(&mut self) -> Result<(), SurfaceError> {
+    fn render(&mut self) -> Result<Texture, SurfaceError> {
         self.global_context.canvas.on_pre_render();
         // // We can't render unless the surface is configured
         // if !self.is_surface_configured {
         //     return Ok(());
         // }
 
-        let output = self.global_context.canvas.get_current_texture()?;
-        let output_view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
+        // let output = self.global_context.canvas.get_current_texture()?;
+        // let output_view = output
+        //     .texture
+        //     .create_view(&wgpu::TextureViewDescriptor::default());
+
+        let tt = self.global_context.canvas.get_current_texture2().clone();
+        let output_view = tt.create_view(&wgpu::TextureViewDescriptor::default());
 
         let mut encoder =
             self.global_context
@@ -227,11 +230,11 @@ impl ShashlikRenderer {
         self.global_context
             .queue()
             .submit(iter::once(encoder.finish()));
-        output.present();
+        // output.present();
 
         self.global_context.canvas.on_post_render();
 
-        Ok(())
+        Ok(tt)
     }
 }
 
@@ -244,7 +247,7 @@ impl Renderer for ShashlikRenderer {
         self.update(view_proj_matrix, cs_offset);
     }
 
-    fn render(&mut self) -> Result<(), SurfaceError> {
+    fn render(&mut self) -> Result<Texture, SurfaceError> {
         self.render()
     }
 }

@@ -19,8 +19,9 @@ app-surface = { workspace = true, features = ["winit"] }
 futures-lite = "2.6.1"
 native-dialog = "0.9.3"
 
-slint = "1.13.1"
-i-slint-backend-winit = "1.13.1"
+slint = { git = "https://github.com/slint-ui/slint.git", branch = "pre-release/1.15", features = ["unstable-wgpu-28"]}
+i-slint-backend-winit = { git = "https://github.com/slint-ui/slint.git", branch = "pre-release/1.15" }
+bytemuck = "1.25.0"
 
 [build-dependencies]
-slint-build = "1.13.1"
+slint-build = { git = "https://github.com/slint-ui/slint.git", branch = "pre-release/1.15" }

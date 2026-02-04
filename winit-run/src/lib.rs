@@ -5,7 +5,7 @@ use map::ShashlikMap;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
-use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture};
+use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture, Texture};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use winit::dpi::PhysicalPosition;
 use winit::event::{KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
@@ -58,6 +58,10 @@ impl WgpuCanvas for WinitAppSurface {
 
     fn get_current_texture(&self) -> Result<SurfaceTexture, SurfaceError> {
         self.app_surface.surface.get_current_texture()
+    }
+
+    fn get_current_texture2(&self) -> &Texture {
+        todo!()
     }
 
     fn on_resize(&mut self) {

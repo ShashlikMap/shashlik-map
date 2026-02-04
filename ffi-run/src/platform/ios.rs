@@ -1,5 +1,5 @@
 use app_surface::{AppSurface, IOSViewObj};
-use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture};
+use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture, Texture};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use crate::ShashlikMapApi;
 use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
@@ -45,6 +45,11 @@ impl WgpuCanvas for IOSPlatformAppSurface {
 	fn get_current_texture(&self) -> Result<SurfaceTexture, SurfaceError> {
 		self.app_surface.surface.get_current_texture()
 	}
+
+	fn get_current_texture2(&self) -> &Texture {
+		todo!()
+	}
+	
 	fn on_resize(&mut self) {
 		self.app_surface.resize_surface();
 	}
