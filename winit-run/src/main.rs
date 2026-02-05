@@ -13,7 +13,7 @@ use wgpu::{
     TextureFormat, TextureUsages,
 };
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use winit_run::App;
+use winit_run::PinchWorkaroundHandler;
 
 slint::include_modules!();
 
@@ -23,6 +23,7 @@ enum SlintMapEvent {
     Pan(f32, f32),
     Pinch(f32, f32, f32),
     VerticalScroll(f32),
+    FollowMode(bool),
 }
 
 impl WgpuCanvas for SlintWgpuCanvas {
@@ -55,14 +56,12 @@ impl WgpuCanvas for SlintWgpuCanvas {
 fn main() {
     env_logger::init();
 
-    let (sender, receiver) = mpsc::channel();
-
     let (slint_map_event_sender, slint_map_event_receiver) = mpsc::channel();
 
     let pointer_pos = Rc::new(Cell::new((0f32, 0f32)));
     let pointer_pos2 = Rc::clone(&pointer_pos);
     let slint_map_event_sender_internal = slint_map_event_sender.clone();
-    let app = App::new(receiver, move |delta| {
+    let app = PinchWorkaroundHandler::new(move |delta| {
         let pp = pointer_pos2.get();
         slint_map_event_sender_internal
             .send(SlintMapEvent::Pinch(delta * 100.0, pp.0, pp.1))
@@ -88,12 +87,7 @@ fn main() {
             let mut pressed = false;
             match state {
                 RenderingState::RenderingSetup => match graphics_api {
-                    GraphicsAPI::WGPU28 {
-                        instance,
-                        device,
-                        queue,
-                        ..
-                    } => {
+                    GraphicsAPI::WGPU28 { device, queue, .. } => {
                         let ttt = device.create_texture(&wgpu::TextureDescriptor {
                             label: None,
                             size: wgpu::Extent3d {
@@ -125,9 +119,6 @@ fn main() {
                             ShashlikFeatureProcessor::new(),
                             1.0,
                         );
-                        let hh =
-                            pollster::block_on(ShashlikMap::new(Box::new(canvas), tiles_provider))
-                                .unwrap();
 
                         if let Some(ui_weak) = ui_weak.upgrade() {
                             let slint_map_event_sender_internal = slint_map_event_sender.clone();
@@ -155,12 +146,20 @@ fn main() {
                                     .send(SlintMapEvent::VerticalScroll(delta_y / 5.0))
                                     .unwrap();
                             });
+
+                            let slint_map_event_sender_internal = slint_map_event_sender.clone();
+                            ui_weak.on_follow_mode(move |enabled| {
+                                slint_map_event_sender_internal
+                                    .send(SlintMapEvent::FollowMode(enabled))
+                                    .unwrap();
+                            });
                         }
 
-                        shashlik_map = Some(hh);
-
-                        shashlik_map.as_mut().unwrap().resize(1600, 1200);
-                        shashlik_map.as_mut().unwrap().set_camera_follow_mode(false);
+                        let mut map =
+                            pollster::block_on(ShashlikMap::new(Box::new(canvas), tiles_provider))
+                                .unwrap();
+                        map.resize(1600, 1200);
+                        shashlik_map = Some(map);
                     }
                     _ => {}
                 },
@@ -178,6 +177,9 @@ fn main() {
                                 }
                                 SlintMapEvent::Pinch(delta, x, y) => {
                                     shashlik_map.zoom_delta(delta, (x, y));
+                                }
+                                SlintMapEvent::FollowMode(enabled) => {
+                                    shashlik_map.set_camera_follow_mode(enabled);
                                 }
                             };
                         }

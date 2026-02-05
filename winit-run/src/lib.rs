@@ -1,103 +1,25 @@
-use app_surface::{AppSurface, SurfaceFrame};
 use i_slint_backend_winit::{CustomApplicationHandler, EventResult};
-use map::tiles::tiles_provider::TilesProvider;
-use map::ShashlikMap;
-use std::path::PathBuf;
-use std::sync::mpsc::Receiver;
-use std::sync::Arc;
-use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture, Texture};
-use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use winit::dpi::PhysicalPosition;
-use winit::event::{KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
+use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
-use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
-use map::route::RouteCosting;
 
-pub struct App {
-    pub receiver: Receiver<CustomUIEvent>,
-    // pub get_tiles_provider: Box<dyn Fn() -> T>,
-    // pub shashlik_map: Option<ShashlikMap<T>>,
-    pub cursor_active: bool,
-    pub last_cursor_position: PhysicalPosition<f64>,
-    pub fake_bearing: f32,
-    pub pinch_cb: Box<dyn FnMut(f32)>
+pub struct PinchWorkaroundHandler {
+    pub pinch_cb: Box<dyn FnMut(f32)>,
 }
 
-pub enum CustomUIEvent {
-    KMLPath(PathBuf),
-}
+// pub enum CustomUIEvent {
+//     KMLPath(PathBuf),
+// }
 
-impl App {
-    pub fn new<F: FnMut(f32) + 'static>(receiver: Receiver<CustomUIEvent>, pinch_cb: F) -> Self {
+impl PinchWorkaroundHandler {
+    pub fn new<F: FnMut(f32) + 'static>(pinch_cb: F) -> Self {
         Self {
-            receiver,
-            // get_tiles_provider,
-            // shashlik_map: None,
-            cursor_active: false,
-            last_cursor_position: PhysicalPosition::new(0.0, 0.0),
-            fake_bearing: 0.0,
-            pinch_cb: Box::new(pinch_cb)
+            pinch_cb: Box::new(pinch_cb),
         }
     }
 }
-
-pub struct WinitAppSurface {
-    pub app_surface: AppSurface,
-}
-impl WgpuCanvas for WinitAppSurface {
-    fn queue(&self) -> &Queue {
-        &self.app_surface.queue
-    }
-
-    fn config(&self) -> &SurfaceConfiguration {
-        &self.app_surface.config
-    }
-
-    fn device(&self) -> &Device {
-        &self.app_surface.device
-    }
-
-    fn get_current_texture(&self) -> Result<SurfaceTexture, SurfaceError> {
-        self.app_surface.surface.get_current_texture()
-    }
-
-    fn get_current_texture2(&self) -> &Texture {
-        todo!()
-    }
-
-    fn on_resize(&mut self) {
-        self.app_surface.resize_surface();
-    }
-
-    fn on_pre_render(&self) {
-        self.app_surface.pre_present_notify();
-    }
-
-    fn on_post_render(&self) {
-        self.app_surface.request_redraw();
-    }
-}
-
-impl CustomApplicationHandler for App {
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) -> EventResult {
-        #[allow(unused_mut)]
-        // let mut window_attributes = Window::default_attributes();
-
-        // let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
-
-        // let app_view = futures_lite::future::block_on(AppSurface::new(window));
-        // let winit_surface = WinitAppSurface {
-        //     app_surface: app_view,
-        // };
-
-        // let tiles_provider = (self.get_tiles_provider)();
-        // let wgpu_state = pollster::block_on(ShashlikMap::new(
-        //     Box::new(winit_surface),
-        //     tiles_provider
-        // ))
-        // .unwrap();
-        // self.shashlik_map = Some(wgpu_state);
+impl CustomApplicationHandler for PinchWorkaroundHandler {
+    fn resumed(&mut self, _event_loop: &ActiveEventLoop) -> EventResult {
         EventResult::Propagate
     }
 
@@ -105,108 +27,57 @@ impl CustomApplicationHandler for App {
         &mut self,
         event_loop: &ActiveEventLoop,
         _window_id: WindowId,
-        winit_window: Option<&Window>,
+        _winit_window: Option<&Window>,
         _slint_window: Option<&slint::Window>,
         event: &WindowEvent,
     ) -> EventResult {
-        // if self.shashlik_map.is_none() {
-        //     return EventResult::Propagate;
-        // }
-
-        // let map = self.shashlik_map.as_mut().unwrap();
-
-        if let Ok(event) = self.receiver.try_recv() {
-            match event {
-                CustomUIEvent::KMLPath(path) => {
-                    // map.load_kml_path(path);
-                }
-            }
-        }
-        
         match event {
             WindowEvent::CloseRequested => {
                 // drop(self.shashlik_map.take());
                 event_loop.exit();
             }
-            WindowEvent::Resized(size) => {
-                // FIXME Don't resize map if the window present(this is Slint window with incorrect size)
-                // Need to divide handlers?!
-                if winit_window.is_none() {
-                    // map.resize(size.width, size.height);
-                }
-            }
-            WindowEvent::RedrawRequested => {
-                // map.update_and_render();
-            }
-            WindowEvent::MouseInput { state, button, .. } => match (button, state.is_pressed()) {
-                (MouseButton::Left, true) => {
-                    self.cursor_active = true;
-                }
-                (MouseButton::Left, false) => {
-                    self.cursor_active = false;
-                }
-                _ => {}
-            },
-            WindowEvent::CursorMoved { position, .. } => {
-                if self.cursor_active {
-                    let delta_x = -(position.x - self.last_cursor_position.x) / 10.0;
-                    let delta_y = -(position.y - self.last_cursor_position.y) / 10.0;
-                    // self.shashlik_map.as_mut().unwrap().pan_delta(delta_x as f32, delta_y as f32)
-                }
-                self.last_cursor_position = position.clone();
-            },
             WindowEvent::PinchGesture { delta, .. } => {
                 (self.pinch_cb)(*delta as f32);
-                // self.shashlik_map.as_mut().unwrap().zoom_delta((delta * 100.0) as f32, self.last_cursor_position.cast::<f32>().into());
-            },
-            WindowEvent::MouseWheel { delta, .. } => {
-                match delta {
-                    MouseScrollDelta::LineDelta(_, _) => {}
-                    MouseScrollDelta::PixelDelta(delta_xy) => {
-                        // map.pitch_delta((delta_xy.y / 5.0) as f32)
-                    }
-                }
             }
-            WindowEvent::KeyboardInput {
-                event:
-                    KeyEvent {
-                        physical_key: PhysicalKey::Code(code),
-                        state: key_state,
-                        ..
-                    },
-                ..
-            } => {
-                let is_pressed = key_state.is_pressed();
-                if *code == KeyCode::Escape && is_pressed {
-                    event_loop.exit();
-                } else {
-                    match code {
-                        KeyCode::KeyN => {
-                            if is_pressed {
-                                // map.set_camera_follow_mode(!map.get_camera_follow_mode());
-                            }
-                        }
-                        KeyCode::KeyB => {
-                            if is_pressed {
-                                // RouteCosting::Motorbike for winit by default
-                                // map.create_route_to_from_screen_center(RouteCosting::Motorbike);
-                            }
-                        }
-                        KeyCode::KeyM => {
-                            if is_pressed {
-                                self.fake_bearing += 30.0;
-                                //DM office 139.74777078320227 35.62298925839326
-                                //Ugusuidani office 139.7769298 35.7248164
-
-                                // map.set_lon_lat_bearing( 139.74777078320227, 35.62298925839326, Some(self.fake_bearing));
-
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            }
-
+            // WindowEvent::KeyboardInput {
+            //     event:
+            //         KeyEvent {
+            //             physical_key: PhysicalKey::Code(code),
+            //             state: key_state,
+            //             ..
+            //         },
+            //     ..
+            // } => {
+            //     let is_pressed = key_state.is_pressed();
+            //     if *code == KeyCode::Escape && is_pressed {
+            //         event_loop.exit();
+            //     } else {
+            //         match code {
+            //             KeyCode::KeyN => {
+            //                 if is_pressed {
+            //                     // map.set_camera_follow_mode(!map.get_camera_follow_mode());
+            //                 }
+            //             }
+            //             KeyCode::KeyB => {
+            //                 if is_pressed {
+            //                     // RouteCosting::Motorbike for winit by default
+            //                     // map.create_route_to_from_screen_center(RouteCosting::Motorbike);
+            //                 }
+            //             }
+            //             KeyCode::KeyM => {
+            //                 if is_pressed {
+            //                     self.fake_bearing += 30.0;
+            //                     //DM office 139.74777078320227 35.62298925839326
+            //                     //Ugusuidani office 139.7769298 35.7248164
+            //
+            //                     // map.set_lon_lat_bearing( 139.74777078320227, 35.62298925839326, Some(self.fake_bearing));
+            //
+            //                 }
+            //             }
+            //             _ => {}
+            //         }
+            //     }
+            // }
             _ => {}
         }
         EventResult::Propagate
