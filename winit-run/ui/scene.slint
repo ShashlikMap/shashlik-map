@@ -14,6 +14,7 @@ export component AppKiol inherits Window {
     out property <int> requested-texture-width: image.width / 1phx;
     out property <int> requested-texture-height: image.height / 1phx;
     callback pointer_event(PointerEvent, float, float);
+    callback vert_scroll(float);
     title: "ShashlikMap";
 
     HorizontalBox {
@@ -30,6 +31,10 @@ export component AppKiol inherits Window {
                 height: parent.height;
                 pointer-event(event) => {
                     pointer_event(event, self.mouse-x / 1phx, self.mouse-y / 1phx)
+                }
+                scroll-event(event) => {
+                    vert_scroll(event.delta-y / 1phx);
+                    accept;
                 }
             }
         }
