@@ -175,7 +175,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.screen_params.height = height;
     }
 
-    pub fn update_and_render(&mut self) -> Texture {
+    pub fn update_and_render(&mut self) -> Option<Texture> {
         self.camera_controller.update_camera(&mut self.camera);
 
         self.update_entities();
@@ -187,7 +187,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         self.fetch_tiles();
 
-        self.renderer.render().unwrap()
+        self.renderer.render()
     }
 
     fn fetch_tiles(&mut self) {

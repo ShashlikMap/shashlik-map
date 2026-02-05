@@ -21,9 +21,8 @@ export component AppKiol inherits Window {
 
     HorizontalBox {
         image := Image {
-            preferred-width: 1600phx;
-            preferred-height: 1200phx;
-            height: 100%;
+            width: 1600phx;
+            height: 1200phx;
 
             image_overlay := TouchArea {
                 width: parent.width;
@@ -39,7 +38,7 @@ export component AppKiol inherits Window {
         }
 
         VerticalBox {
-            width: 200phx;
+            width: 300phx;
             CheckBox {
                 text: "Follow mode";
                 checked: true;

@@ -1,6 +1,6 @@
-use map::ShashlikMap;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
+use map::ShashlikMap;
 use osm::source::reqwest_source::ReqwestSource;
 use slint::private_unstable_api::re_exports::PointerEventKind;
 use slint::wgpu_28::{WGPUConfiguration, WGPUSettings};
@@ -8,10 +8,15 @@ use slint::{GraphicsAPI, RenderingState};
 use std::cell::Cell;
 use std::rc::Rc;
 use std::sync::mpsc;
-use wgpu::{
-    Device, Limits, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture, Texture,
-    TextureFormat, TextureUsages,
-};
+use wgpu::wgt::TextureViewDescriptor;
+use wgpu::Device;
+use wgpu::Limits;
+use wgpu::Queue;
+use wgpu::SurfaceConfiguration;
+use wgpu::Texture;
+use wgpu::TextureFormat;
+use wgpu::TextureUsages;
+use wgpu::TextureView;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use winit_run::PinchWorkaroundHandler;
 
@@ -39,19 +44,16 @@ impl WgpuCanvas for SlintWgpuCanvas {
         &self.1
     }
 
-    fn get_current_texture(&self) -> Result<SurfaceTexture, SurfaceError> {
-        todo!()
+    fn create_texture_view(&mut self) -> TextureView {
+        self.3.create_view(&TextureViewDescriptor::default())
     }
 
-    fn get_current_texture2(&self) -> &Texture {
-        &self.3
+    fn present(&mut self) -> Option<Texture> {
+        Some(self.3.clone())
     }
+
 
     fn on_resize(&mut self) {}
-
-    fn on_pre_render(&self) {}
-
-    fn on_post_render(&self) {}
 }
 fn main() {
     env_logger::init();
@@ -184,7 +186,7 @@ fn main() {
                             };
                         }
                         let target_texture = shashlik_map.update_and_render();
-                        app.set_texture(slint::Image::try_from(target_texture).unwrap());
+                        app.set_texture(slint::Image::try_from(target_texture.unwrap()).unwrap());
                         app.window().request_redraw();
                     }
                 }
@@ -194,19 +196,6 @@ fn main() {
             }
         })
         .expect("Can't set Slint rendering_notifier");
-
-    // let sender_clone = sender.clone();
-    // ui.on_open_kml_button_click(move || {
-    //     let path = DialogBuilder::file()
-    //         .set_location("~/Desktop")
-    //         .add_filter("KML", ["kml"])
-    //         .open_single_file()
-    //         .show()
-    //         .unwrap();
-    //     if let Some(path) = path {
-    //         sender_clone.send(CustomUIEvent::KMLPath(path)).unwrap();
-    //     }
-    // });
 
     ui.run().unwrap();
 }

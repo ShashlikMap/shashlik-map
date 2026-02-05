@@ -1,13 +1,10 @@
-use wgpu::{SurfaceError, SurfaceTexture, Texture};
+use wgpu::{Texture, TextureView};
 
 pub trait WgpuCanvas: Send + Sync {
     fn queue(&self) -> &wgpu::Queue;
     fn config(&self) -> &wgpu::SurfaceConfiguration;
     fn device(&self) -> &wgpu::Device;
-    fn get_current_texture(&self) -> Result<SurfaceTexture, SurfaceError>;
-    fn get_current_texture2(&self) -> &Texture;
-
+    fn create_texture_view(&mut self) -> TextureView;
+    fn present(&mut self) -> Option<Texture>;
     fn on_resize(&mut self);
-    fn on_pre_render(&self);
-    fn on_post_render(&self);
 }

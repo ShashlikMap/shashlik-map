@@ -5,12 +5,12 @@ use crate::geometry_data::TextData;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
 use crate::modifier::render_modifier::SpatialData;
+use crate::pass_nodes::PassNode;
 use crate::pass_nodes::main_pass_node::MainPassNode;
 use crate::pass_nodes::render_to_texture_pass_node::RenderToTexturePassNode;
-use crate::pass_nodes::PassNode;
 use crate::styles::style_store::StyleStore;
 use canvas_api::CanvasApi;
-use cgmath::{vec2, vec3, Matrix4, Vector2, Vector3};
+use cgmath::{Matrix4, Vector2, Vector3, vec2, vec3};
 use geo_types::Coord;
 use global_context::GlobalContext;
 use mesh_layers::layers::Layers;
@@ -19,11 +19,11 @@ use renderer_api::RendererApi;
 use rustybuzz::ttf_parser;
 use std::collections::HashMap;
 use std::iter;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
 use tokio::sync::broadcast;
-use wgpu::{SurfaceError, Texture};
+use wgpu::Texture;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 pub mod canvas_api;
@@ -43,18 +43,18 @@ mod text;
 pub mod vertex_attrs;
 mod view_projection;
 
-pub mod mesh_layers;
-pub mod pipelines;
-mod utils;
-mod global_context;
 mod collider;
-mod textures;
+mod global_context;
+pub mod mesh_layers;
 mod pass_nodes;
+pub mod pipelines;
+mod textures;
+mod utils;
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
     fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>);
-    fn render(&mut self) -> Result<Texture, SurfaceError>;
+    fn render(&mut self) -> Option<Texture>;
 }
 
 pub struct ShashlikRenderer {
@@ -78,16 +78,20 @@ impl ShashlikRenderer {
 
         let mut layers = Layers::new(feature_tags, &mut global_context, font);
 
-        layers.text_layer.add("fps_info".to_string(), vec![TextData {
-            id: 0,
-            text: "FPS 0".to_string(),
-            size: 40.0,
-            alpha: 1.0,
-            positions: vec![vec3(100.0, 120.0, 0.0)],
-            screen_offset: vec2(0.0, 0.0),
-            screen_space: true,
-            glyph_buffer: None,
-        }], SpatialData::new());
+        layers.text_layer.add(
+            "fps_info".to_string(),
+            vec![TextData {
+                id: 0,
+                text: "FPS 0".to_string(),
+                size: 40.0,
+                alpha: 1.0,
+                positions: vec![vec3(100.0, 120.0, 0.0)],
+                screen_offset: vec2(0.0, 0.0),
+                screen_space: true,
+                glyph_buffer: None,
+            }],
+            SpatialData::new(),
+        );
 
         let (renderer_api_tx, renderer_api_rx) = channel();
 
@@ -169,11 +173,12 @@ impl ShashlikRenderer {
 
     fn config_pass_nodes(&mut self) {
         let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
-        self.layers.ortho_mesh_layer.set_texture(&rt_node.rt_texture_view, &self.global_context);
+        self.layers
+            .ortho_mesh_layer
+            .set_texture(&rt_node.rt_texture_view, &self.global_context);
 
         let main_node = MainPassNode::new(&mut self.global_context);
         self.pass_nodes = vec![Box::new(rt_node), Box::new(main_node)];
-
     }
 
     fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
@@ -196,20 +201,13 @@ impl ShashlikRenderer {
         self.layers.update(&mut self.global_context);
     }
 
-    fn render(&mut self) -> Result<Texture, SurfaceError> {
-        self.global_context.canvas.on_pre_render();
+    fn render(&mut self) -> Option<Texture> {
         // // We can't render unless the surface is configured
         // if !self.is_surface_configured {
         //     return Ok(());
         // }
 
-        // let output = self.global_context.canvas.get_current_texture()?;
-        // let output_view = output
-        //     .texture
-        //     .create_view(&wgpu::TextureViewDescriptor::default());
-
-        let tt = self.global_context.canvas.get_current_texture2().clone();
-        let output_view = tt.create_view(&wgpu::TextureViewDescriptor::default());
+        let output_view = self.global_context.canvas.create_texture_view();
 
         let mut encoder =
             self.global_context
@@ -219,22 +217,26 @@ impl ShashlikRenderer {
                 });
 
         let fps = format!("FPS {}", self.fps_counter.update() as i32);
-        self.layers.text_layer.run_mut_action_with_key("fps_info", move |item| {
-            item.update_text(fps.as_str(), 1.0);
-        });
+        self.layers
+            .text_layer
+            .run_mut_action_with_key("fps_info", move |item| {
+                item.update_text(fps.as_str(), 1.0);
+            });
 
         self.pass_nodes.iter_mut().for_each(|node| {
-            node.render(&mut encoder, &output_view, &mut self.layers, &mut self.global_context);
+            node.render(
+                &mut encoder,
+                &output_view,
+                &mut self.layers,
+                &mut self.global_context,
+            );
         });
 
         self.global_context
             .queue()
             .submit(iter::once(encoder.finish()));
-        // output.present();
 
-        self.global_context.canvas.on_post_render();
-
-        Ok(tt)
+        self.global_context.canvas.present()
     }
 }
 
@@ -247,7 +249,7 @@ impl Renderer for ShashlikRenderer {
         self.update(view_proj_matrix, cs_offset);
     }
 
-    fn render(&mut self) -> Result<Texture, SurfaceError> {
+    fn render(&mut self) -> Option<Texture> {
         self.render()
     }
 }

@@ -1,5 +1,5 @@
 use app_surface::{AppSurface, IOSViewObj};
-use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture, Texture};
+use wgpu::{Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture, Texture, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use crate::ShashlikMapApi;
 use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
@@ -7,6 +7,7 @@ use osm::source::reqwest_source::ReqwestSource;
 use map::ShashlikMap;
 use std::sync::RwLock;
 use std::ffi::c_void;
+use std::mem;
 use objc::runtime::Object;
 use app_surface::SurfaceFrame;
 use map::feature_processor::ShashlikFeatureProcessor;
@@ -22,7 +23,7 @@ pub fn create_shashlik_map_api_for_ios(view: u64, metal_layer: u64, maximum_fram
 		callback_to_swift: ios_callback_stub,
 	};
 	let app_surface = AppSurface::new(ios_view_obj);
-	let wrapper = IOSPlatformAppSurface { app_surface };
+	let wrapper = IOSPlatformAppSurface { app_surface, surface_texture: None };
 	let reqwest_source = ReqwestSource::new();
 	let feature_processor = ShashlikFeatureProcessor::new();
 	// TODO DPI from iOS
@@ -32,6 +33,7 @@ pub fn create_shashlik_map_api_for_ios(view: u64, metal_layer: u64, maximum_fram
 
 pub struct IOSPlatformAppSurface {
 	pub app_surface: AppSurface,
+	surface_texture: Option<SurfaceTexture>,
 }
 
 // SAFETY: Under iOS we ensure AppSurface only used on main thread for rendering operations.
@@ -42,17 +44,23 @@ impl WgpuCanvas for IOSPlatformAppSurface {
 	fn queue(&self) -> &Queue { &self.app_surface.queue }
 	fn config(&self) -> &SurfaceConfiguration { &self.app_surface.config }
 	fn device(&self) -> &Device { &self.app_surface.device }
-	fn get_current_texture(&self) -> Result<SurfaceTexture, SurfaceError> {
-		self.app_surface.surface.get_current_texture()
+	fn create_texture_view(&mut self) -> TextureView {
+		let surface_texture = self.app_surface.surface.get_current_texture().unwrap();
+		let texture_view = surface_texture
+			.texture
+			.create_view(&wgpu::TextureViewDescriptor::default());
+		self.surface_texture = Some(surface_texture);
+		texture_view
 	}
 
-	fn get_current_texture2(&self) -> &Texture {
-		todo!()
+	fn present(&mut self) -> Option<Texture> {
+		if let Some(surface_texture) = mem::take(&mut self.surface_texture) {
+			surface_texture.present();
+		}
+		None
 	}
 	
 	fn on_resize(&mut self) {
 		self.app_surface.resize_surface();
 	}
-	fn on_pre_render(&self) {}
-	fn on_post_render(&self) {}
 }
