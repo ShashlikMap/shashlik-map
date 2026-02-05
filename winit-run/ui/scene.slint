@@ -1,30 +1,47 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: MIT
 
-import { Slider, GroupBox, HorizontalBox, VerticalBox, GridBox } from "std-widgets.slint";
+import {
+    Slider,
+    GroupBox,
+    HorizontalBox,
+    VerticalBox,
+    GridBox,
+} from "std-widgets.slint";
 
 export component AppKiol inherits Window {
     in property <image> texture <=> image.source;
     out property <int> requested-texture-width: image.width / 1phx;
     out property <int> requested-texture-height: image.height / 1phx;
+    callback pointer_event(PointerEvent, float, float);
+    title: "ShashlikMap";
 
-    preferred-width: 1600px;
-    preferred-height: 1200px;
-    title: "Slint WGPU Texture Example";
+    HorizontalBox {
+        image := Image {
+            preferred-width: 1600phx;
+            preferred-height: 1200phx;
+//            min-width: 64px;
+//            min-height: 64px;
+//            width: 100%;
+            height: 100%;
 
-    VerticalBox {
-        Text {
-            text: "This text is rendered using Slint. The rotating cube below is rendered into an WGPU texture.";
-            wrap: word-wrap;
+            image_overlay := TouchArea {
+                width: parent.width;
+                height: parent.height;
+                pointer-event(event) => {
+                    pointer_event(event, self.mouse-x / 1phx, self.mouse-y / 1phx)
+                }
+            }
         }
 
-        image := Image {
-            preferred-width: 1600px;
-            preferred-height: 1200px;
-            min-width: 64px;
-            min-height: 64px;
-            width: 100%;
-            //height: 100%;
+        VerticalBox {
+            width: 200phx;
+            height: 100%;
+
+            Text {
+                text: "This text is rendered using Slint. The rotating cube below is rendered into an WGPU texture.";
+                wrap: word-wrap;
+            }
         }
     }
 }

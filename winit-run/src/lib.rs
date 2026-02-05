@@ -14,28 +14,30 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
 use map::route::RouteCosting;
 
-pub struct App<T: TilesProvider> {
+pub struct App {
     pub receiver: Receiver<CustomUIEvent>,
-    pub get_tiles_provider: Box<dyn Fn() -> T>,
-    pub shashlik_map: Option<ShashlikMap<T>>,
+    // pub get_tiles_provider: Box<dyn Fn() -> T>,
+    // pub shashlik_map: Option<ShashlikMap<T>>,
     pub cursor_active: bool,
     pub last_cursor_position: PhysicalPosition<f64>,
-    pub fake_bearing: f32
+    pub fake_bearing: f32,
+    pub pinch_cb: Box<dyn FnMut(f32)>
 }
 
 pub enum CustomUIEvent {
     KMLPath(PathBuf),
 }
 
-impl<T: TilesProvider> App<T> {
-    pub fn new(get_tiles_provider: Box<dyn Fn() -> T>, receiver: Receiver<CustomUIEvent>) -> Self {
+impl App {
+    pub fn new<F: FnMut(f32) + 'static>(receiver: Receiver<CustomUIEvent>, pinch_cb: F) -> Self {
         Self {
             receiver,
-            get_tiles_provider,
-            shashlik_map: None,
+            // get_tiles_provider,
+            // shashlik_map: None,
             cursor_active: false,
             last_cursor_position: PhysicalPosition::new(0.0, 0.0),
-            fake_bearing: 0.0
+            fake_bearing: 0.0,
+            pinch_cb: Box::new(pinch_cb)
         }
     }
 }
@@ -77,25 +79,25 @@ impl WgpuCanvas for WinitAppSurface {
     }
 }
 
-impl<T: TilesProvider> CustomApplicationHandler for App<T> {
+impl CustomApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) -> EventResult {
         #[allow(unused_mut)]
-        let mut window_attributes = Window::default_attributes();
+        // let mut window_attributes = Window::default_attributes();
 
-        let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+        // let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
-        let app_view = futures_lite::future::block_on(AppSurface::new(window));
-        let winit_surface = WinitAppSurface {
-            app_surface: app_view,
-        };
+        // let app_view = futures_lite::future::block_on(AppSurface::new(window));
+        // let winit_surface = WinitAppSurface {
+        //     app_surface: app_view,
+        // };
 
-        let tiles_provider = (self.get_tiles_provider)();
-        let wgpu_state = pollster::block_on(ShashlikMap::new(
-            Box::new(winit_surface),
-            tiles_provider
-        ))
-        .unwrap();
-        self.shashlik_map = Some(wgpu_state);
+        // let tiles_provider = (self.get_tiles_provider)();
+        // let wgpu_state = pollster::block_on(ShashlikMap::new(
+        //     Box::new(winit_surface),
+        //     tiles_provider
+        // ))
+        // .unwrap();
+        // self.shashlik_map = Some(wgpu_state);
         EventResult::Propagate
     }
 
@@ -107,34 +109,34 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
         _slint_window: Option<&slint::Window>,
         event: &WindowEvent,
     ) -> EventResult {
-        if self.shashlik_map.is_none() {
-            return EventResult::Propagate;
-        }
+        // if self.shashlik_map.is_none() {
+        //     return EventResult::Propagate;
+        // }
 
-        let map = self.shashlik_map.as_mut().unwrap();
+        // let map = self.shashlik_map.as_mut().unwrap();
 
         if let Ok(event) = self.receiver.try_recv() {
             match event {
                 CustomUIEvent::KMLPath(path) => {
-                    map.load_kml_path(path);
+                    // map.load_kml_path(path);
                 }
             }
         }
-
+        
         match event {
             WindowEvent::CloseRequested => {
-                drop(self.shashlik_map.take());
+                // drop(self.shashlik_map.take());
                 event_loop.exit();
             }
             WindowEvent::Resized(size) => {
                 // FIXME Don't resize map if the window present(this is Slint window with incorrect size)
                 // Need to divide handlers?!
                 if winit_window.is_none() {
-                    map.resize(size.width, size.height);
+                    // map.resize(size.width, size.height);
                 }
             }
             WindowEvent::RedrawRequested => {
-                map.update_and_render();
+                // map.update_and_render();
             }
             WindowEvent::MouseInput { state, button, .. } => match (button, state.is_pressed()) {
                 (MouseButton::Left, true) => {
@@ -149,18 +151,19 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                 if self.cursor_active {
                     let delta_x = -(position.x - self.last_cursor_position.x) / 10.0;
                     let delta_y = -(position.y - self.last_cursor_position.y) / 10.0;
-                    self.shashlik_map.as_mut().unwrap().pan_delta(delta_x as f32, delta_y as f32)
+                    // self.shashlik_map.as_mut().unwrap().pan_delta(delta_x as f32, delta_y as f32)
                 }
                 self.last_cursor_position = position.clone();
             },
             WindowEvent::PinchGesture { delta, .. } => {
-                self.shashlik_map.as_mut().unwrap().zoom_delta((delta * 100.0) as f32, self.last_cursor_position.cast::<f32>().into());
+                (self.pinch_cb)(*delta as f32);
+                // self.shashlik_map.as_mut().unwrap().zoom_delta((delta * 100.0) as f32, self.last_cursor_position.cast::<f32>().into());
             },
             WindowEvent::MouseWheel { delta, .. } => {
                 match delta {
                     MouseScrollDelta::LineDelta(_, _) => {}
                     MouseScrollDelta::PixelDelta(delta_xy) => {
-                        map.pitch_delta((delta_xy.y / 5.0) as f32)
+                        // map.pitch_delta((delta_xy.y / 5.0) as f32)
                     }
                 }
             }
@@ -180,13 +183,13 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                     match code {
                         KeyCode::KeyN => {
                             if is_pressed {
-                                map.set_camera_follow_mode(!map.get_camera_follow_mode());
+                                // map.set_camera_follow_mode(!map.get_camera_follow_mode());
                             }
                         }
                         KeyCode::KeyB => {
                             if is_pressed {
                                 // RouteCosting::Motorbike for winit by default
-                                map.create_route_to_from_screen_center(RouteCosting::Motorbike);
+                                // map.create_route_to_from_screen_center(RouteCosting::Motorbike);
                             }
                         }
                         KeyCode::KeyM => {
@@ -195,7 +198,7 @@ impl<T: TilesProvider> CustomApplicationHandler for App<T> {
                                 //DM office 139.74777078320227 35.62298925839326
                                 //Ugusuidani office 139.7769298 35.7248164
 
-                                map.set_lon_lat_bearing( 139.74777078320227, 35.62298925839326, Some(self.fake_bearing));
+                                // map.set_lon_lat_bearing( 139.74777078320227, 35.62298925839326, Some(self.fake_bearing));
 
                             }
                         }
