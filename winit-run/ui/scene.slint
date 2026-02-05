@@ -8,6 +8,7 @@ import {
     VerticalBox,
     GridBox,
     CheckBox,
+    Button,
 } from "std-widgets.slint";
 
 export component AppKiol inherits Window {
@@ -45,6 +46,21 @@ export component AppKiol inherits Window {
                 toggled => {
                     follow_mode(self.checked)
                 }
+            }
+
+            Button {
+                text: "DM Office";
+                height: 48px;
+            }
+
+            Button {
+                text: "Route to center";
+                height: 48px;
+            }
+
+            Button {
+                text: "Open KML";
+                height: 48px;
             }
         }
     }
