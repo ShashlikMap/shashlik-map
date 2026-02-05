@@ -17,6 +17,7 @@ use wgpu::Texture;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::TextureView;
+use map::route::RouteCosting;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use winit_run::PinchWorkaroundHandler;
 
@@ -29,6 +30,7 @@ enum SlintMapEvent {
     Pinch(f32, f32, f32),
     VerticalScroll(f32),
     FollowMode(bool),
+    BtnAction(Action),
 }
 
 impl WgpuCanvas for SlintWgpuCanvas {
@@ -155,6 +157,12 @@ fn main() {
                                     .send(SlintMapEvent::FollowMode(enabled))
                                     .unwrap();
                             });
+
+                            let slint_map_event_sender_internal = slint_map_event_sender.clone();
+                            ui_weak.on_btn_click(move |action| {
+                                println!("click {:?}",action);
+                                slint_map_event_sender_internal.send(SlintMapEvent::BtnAction(action)).unwrap()
+                            });
                         }
 
                         let mut map =
@@ -182,6 +190,18 @@ fn main() {
                                 }
                                 SlintMapEvent::FollowMode(enabled) => {
                                     shashlik_map.set_camera_follow_mode(enabled);
+                                },
+                                SlintMapEvent::BtnAction(action) => {
+                                    println!("clicked {:?}",action);
+                                    match action {
+                                        Action::DmOffice => {
+                                            shashlik_map.set_lon_lat_bearing( 139.74777078320227, 35.62298925839326, Some(0f32));
+                                        },
+                                        Action::Route => {
+                                            shashlik_map.create_route_to_from_screen_center(RouteCosting::Motorbike);
+                                        },
+                                        Action::KML => {},
+                                    }
                                 }
                             };
                         }

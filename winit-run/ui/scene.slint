@@ -11,6 +11,12 @@ import {
     Button,
 } from "std-widgets.slint";
 
+export enum Action {
+    DmOffice,
+    Route,
+    KML,
+}
+
 export component AppKiol inherits Window {
     in property <image> texture <=> image.source;
     out property <int> requested-texture-width: image.width / 1phx;
@@ -18,6 +24,7 @@ export component AppKiol inherits Window {
     callback pointer_event(PointerEvent, float, float);
     callback vert_scroll(float);
     callback follow_mode(bool);
+    callback btn_click(Action);
     title: "ShashlikMap";
 
     HorizontalBox {
@@ -51,16 +58,25 @@ export component AppKiol inherits Window {
             Button {
                 text: "DM Office";
                 height: 48px;
+                clicked => {
+                    btn_click(Action.DmOffice)
+                }
             }
 
             Button {
                 text: "Route to center";
                 height: 48px;
+                clicked => {
+                    btn_click(Action.Route)
+                }
             }
 
             Button {
                 text: "Open KML";
                 height: 48px;
+                clicked => {
+                    btn_click(Action.KML)
+                }
             }
         }
     }
