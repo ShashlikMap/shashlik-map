@@ -125,6 +125,7 @@ impl CanvasApi {
             .iter()
             .map(|(_, (mesh, positions))| (mesh.clone(), positions.clone()))
             .flat_map(|(mesh, mesh_info)| {
+                // mesh_info_cache is always present but there is no positions then we skip command
                 if mesh_info.instance_positions.is_none() {
                     return None;
                 }

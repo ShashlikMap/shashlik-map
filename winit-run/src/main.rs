@@ -137,7 +137,6 @@ fn main() {
 
                             let slint_map_event_sender_internal = slint_map_event_sender.clone();
                             ui_weak.on_btn_click(move |action| {
-                                println!("click {:?}", action);
                                 slint_map_event_sender_internal
                                     .send(SlintMapEvent::BtnAction(action))
                                     .unwrap()
