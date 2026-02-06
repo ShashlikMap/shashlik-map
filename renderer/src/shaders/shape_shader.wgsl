@@ -176,20 +176,16 @@ fn dashed_style(outline_flag: u32, dist: f32, params: array<f32, PARAMS_COUNT>) 
         discard;
     }
     
-    return dash(4.0, 0.2*dist, dash_color, fill_color);
+    return dash(dist, dash_color, fill_color);
 }
 
-fn dash(freq: f32, dist: f32, extra_color: vec4f, main_color: vec4f) -> vec4f {
-    let koef = 1.0 / freq;
-    let lineUMod = (dist - (koef)*floor(dist/(koef))) * freq;
-    let dash = smoothstep(koef, koef, length(lineUMod-0.5));
-
-    var dashed_color = vec4(0.0, 0.0, 0.0, 0.0);
+const freq = 0.5; // the less the longer dashes
+fn dash(dist: f32, extra_color: vec4f, main_color: vec4f) -> vec4f {
+    let dash = step(0.5, fract(dist * freq));
 
     if(dash <= 0.0) {
-        dashed_color = extra_color;
+        return extra_color;
     } else {
-        dashed_color = main_color;
+        return main_color;
     }
-    return dashed_color;
 }
