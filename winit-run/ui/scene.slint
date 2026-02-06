@@ -1,0 +1,83 @@
+// Copyright © SixtyFPS GmbH <info@slint.dev>
+// SPDX-License-Identifier: MIT
+
+import {
+    Slider,
+    GroupBox,
+    HorizontalBox,
+    VerticalBox,
+    GridBox,
+    CheckBox,
+    Button,
+} from "std-widgets.slint";
+
+export enum Action {
+    DmOffice,
+    Route,
+    KML,
+}
+
+export component ShashlikUI inherits Window {
+    in property <image> texture <=> image.source;
+    out property <int> requested-texture-width: image.width / 1phx;
+    out property <int> requested-texture-height: image.height / 1phx;
+    callback pointer_event(PointerEvent, float, float);
+    callback vert_scroll(float);
+    callback follow_mode(bool);
+    callback btn_click(Action);
+    title: "ShashlikMap";
+
+    HorizontalBox {
+        image := Image {
+            width: 1600phx;
+            height: 1200phx;
+
+            image_overlay := TouchArea {
+                width: parent.width;
+                height: parent.height;
+                pointer-event(event) => {
+                    pointer_event(event, self.mouse-x / 1phx, self.mouse-y / 1phx)
+                }
+                scroll-event(event) => {
+                    vert_scroll(event.delta-y / 1phx);
+                    accept;
+                }
+            }
+        }
+
+        VerticalBox {
+            width: 300phx;
+            CheckBox {
+                text: "Follow mode";
+                checked: true;
+                toggled => {
+                    follow_mode(self.checked)
+                }
+            }
+
+            Button {
+                text: "DM Office";
+                height: 48px;
+                clicked => {
+                    btn_click(Action.DmOffice)
+                }
+            }
+
+            Button {
+                text: "Route to center";
+                height: 48px;
+                clicked => {
+                    btn_click(Action.Route)
+                }
+            }
+
+            Button {
+                text: "Open KML";
+                height: 48px;
+                clicked => {
+                    btn_click(Action.KML)
+                }
+            }
+        }
+    }
+}

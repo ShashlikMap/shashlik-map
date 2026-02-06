@@ -124,13 +124,17 @@ impl CanvasApi {
             .mesh_info_cache
             .iter()
             .map(|(_, (mesh, positions))| (mesh.clone(), positions.clone()))
-            .map(|(mesh, mesh_info)| {
+            .flat_map(|(mesh, mesh_info)| {
+                // mesh_info_cache is always present but there is no positions then we skip command
+                if mesh_info.instance_positions.is_none() {
+                    return None;
+                }
                 let styled_range = StyledRange(0..mesh.indices.len(), StyledRangeInfo(0, ""));
-                Mesh2dCommandBatch {
+                Some(Mesh2dCommandBatch {
                     mesh,
                     layers_indices: vec![styled_range],
                     mesh_info,
-                }
+                })
             })
             .collect();
 
