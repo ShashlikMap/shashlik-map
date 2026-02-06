@@ -7,9 +7,9 @@ with focus on Navigation features(including DeadReckoning and Map-matching)
 ## Showcases
 Running on macOS, Android and iOS
 
-<img width="400" alt="Screenshot 2025-12-24 at 11 21 52" src="https://github.com/user-attachments/assets/ce9b5ea2-9cbc-40e1-b8cf-455c80f47b22" />
-<img width="150" height="1872" alt="Screenshot_20251224-112013" src="https://github.com/user-attachments/assets/2f3c26a2-5ffc-46a1-9616-eefc59df12a0" />
-<img width="150" height="2622" alt="Simulator Screenshot - iPhone 16 Pro - 2025-12-24 at 11 46 18" src="https://github.com/user-attachments/assets/ed5a0121-1402-40a6-ab26-eb0c39853708" />
+<img width="450" alt="Screenshot 2026-02-06 at 08 56 25" src="https://github.com/user-attachments/assets/b9a734d5-38f6-494c-8793-799376d392e7" />
+<img width="130" height="1872" alt="Screenshot_20260206_085918" src="https://github.com/user-attachments/assets/eabb3468-6206-4dc9-b243-73bc34ce0dff" />
+<img width="130" height="2622" alt="Simulator Screenshot - iPhone 16 Pro - 2025-12-24 at 11 46 18" src="https://github.com/user-attachments/assets/ed5a0121-1402-40a6-ab26-eb0c39853708" />
 
 ## Tech stack
 The stack leverages the following approaches and libraries:
@@ -27,11 +27,11 @@ with Android/iOS mobile apps(Android is priority for now)
 ### Completed
 - [x] Create a baseline POC with initial architecture
 - [x] Complete README and examples
-- [x] Initial rendering to texture 
+- [x] Initial rendering to texture
+- [x] Better integration with [SlintUI](https://slint.dev/blog/slint-1.12-released)
 ### Now
 - [ ] _In progress_ General Renderer refactoring
-- [ ] _In progress_ Better integration with [SlintUI](https://slint.dev/blog/slint-1.12-released)
-- [ ] "Circles" line style
+- [ ] _In progress_ "Circles" line style
 ### Next
 - [ ] SSAO(Screen Space Ambient Occlusion)
 - [ ] Implement an initial geometric Map-matching POC
