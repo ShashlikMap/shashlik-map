@@ -23,7 +23,7 @@ use std::mem;
 use std::path::PathBuf;
 use std::sync::{Arc, LazyLock};
 use std::thread::spawn;
-use osm::styles::RenderStyle;
+use osm::styles::{DashStyle, RenderStyle};
 use osm::styles::style_loader::StyleLoader;
 use ttf_parser::Face;
 use wgpu::Texture;
@@ -218,7 +218,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.renderer
             .api
             .update_spatial_data("route".to_string(), move |spatial_data| {
-                spatial_data.normal_scale = (cam_zoom / 2.5).max(0.75);
+                spatial_data.normal_scale = (cam_zoom / 1.5).max(0.75);
             });
 
         self.renderer
@@ -353,8 +353,12 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 RenderStyle::Border(color, percent) => {
                     renderer::styles::render_style::RenderStyle::border(color.as_array(), percent)
                 }
-                RenderStyle::Dashed(color1, color2) => {
-                    renderer::styles::render_style::RenderStyle::dashed(color1.as_array(), color2.as_array())
+                RenderStyle::Dashed(color1, color2, dash_style) => {
+                    let dash_style_value = match dash_style {
+                        DashStyle::Solid => 0,
+                        DashStyle::Circles => 1
+                    };
+                    renderer::styles::render_style::RenderStyle::dashed(color1.as_array(), color2.as_array(), dash_style_value)
                 }
             };
             self.renderer.api.update_style(style_id, move |style| *style = actual_render_style);

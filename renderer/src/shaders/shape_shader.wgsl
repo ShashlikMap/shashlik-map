@@ -44,6 +44,7 @@ struct VertexOutput {
     @location(3) vertex_pos_xy: vec2<f32>,
     @location(4) bbox: vec4<f32>,
     @location(5) dist: f32,
+    @location(6) normal: vec2<f32>,
 }
 
 // TODO pass as a parameter
@@ -78,7 +79,8 @@ fn vs_main(
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
-    out.dist = model.dist;
+    out.normal = normalize(model.normal.xy);
+    out.dist = model.dist / (pos.normal_scale * min(2.0, pos.normal_scale) * 0.88);
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
@@ -141,12 +143,12 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     } else if(style_type == 1) {
         res_color = border_style(in.outline_flag, style_params);
     } else if(style_type == 2) {
-        res_color = dashed_style(in.outline_flag, in.dist, style_params);
+        res_color = dashed_style(in.outline_flag, in.dist, in.normal, style_params);
     } else {
         res_color = vec4(0.0, 0.0, 0.0, 1.0);
     }
 
-     res_color.a = in.color_alpha;
+     res_color.a *= in.color_alpha;
 
      return res_color;
 }
@@ -168,19 +170,41 @@ fn border_style(outline_flag: u32, params: array<f32, PARAMS_COUNT>) -> vec4<f32
     return fill_color;
 }
 
-fn dashed_style(outline_flag: u32, dist: f32, params: array<f32, PARAMS_COUNT>) -> vec4<f32> {
-    let fill_color = vec4(params[1], params[2], params[3], params[4]);
-    let dash_color = vec4(params[5], params[6], params[7], params[8]);
+fn dashed_style(outline_flag: u32, dist: f32, normal: vec2f, params: array<f32, PARAMS_COUNT>) -> vec4<f32> {
     if(outline_flag == 0) {
         // TODO Border + Dashed later
         discard;
     }
-    
-    return dash(dist, dash_color, fill_color);
+
+    let fill_color = vec4(params[1], params[2], params[3], params[4]);
+    let dash_color = vec4(params[5], params[6], params[7], params[8]);
+    let dash_style = params[9];
+    if(dash_style == 0.0) {
+        return dash_solid(dist, dash_color, fill_color);
+    } else {
+        return circle_pattern_style(dist, fill_color, normal);
+    }
+}
+
+fn circle_pattern_style(dist: f32, main_color: vec4f, normal: vec2f) -> vec4<f32> {
+    let mm = modf(dist);
+    if(mm.whole % 3.0 == 0) {
+        let width = length(normal);
+        let circle_color = circle(vec2f(width * 0.5, mm.fract), 1.0);
+        return vec4f(main_color.rgb, circle_color);
+    }
+    return vec4(0.0, 0.0, 0.0, 0.0);
+}
+
+fn circle(st: vec2f, radius: f32) -> f32 {
+    let dist = vec2f(st.x , st.y - 0.5);
+	return 1.0 - smoothstep(radius-(radius*0.01),
+                         radius+(radius*0.01),
+                         dot(dist,dist)*4.0);
 }
 
 const freq = 0.5; // the less the longer dashes
-fn dash(dist: f32, extra_color: vec4f, main_color: vec4f) -> vec4f {
+fn dash_solid(dist: f32, extra_color: vec4f, main_color: vec4f) -> vec4f {
     let dash = step(0.5, fract(dist * freq));
 
     if(dash <= 0.0) {
