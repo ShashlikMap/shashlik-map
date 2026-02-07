@@ -218,7 +218,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.renderer
             .api
             .update_spatial_data("route".to_string(), move |spatial_data| {
-                spatial_data.normal_scale = (cam_zoom / 2.5).max(0.75);
+                spatial_data.normal_scale = (cam_zoom / 1.5).max(0.75);
             });
 
         self.renderer
