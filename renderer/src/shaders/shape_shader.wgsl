@@ -169,18 +169,27 @@ fn border_style(outline_flag: u32, params: array<f32, PARAMS_COUNT>) -> vec4<f32
 }
 
 fn dashed_style(outline_flag: u32, dist: f32, params: array<f32, PARAMS_COUNT>) -> vec4<f32> {
-    let fill_color = vec4(params[1], params[2], params[3], params[4]);
-    let dash_color = vec4(params[5], params[6], params[7], params[8]);
     if(outline_flag == 0) {
         // TODO Border + Dashed later
         discard;
     }
-    
-    return dash(dist, dash_color, fill_color);
+
+    let fill_color = vec4(params[1], params[2], params[3], params[4]);
+    let dash_color = vec4(params[5], params[6], params[7], params[8]);
+    let dash_style = params[9];
+    if(dash_style == 0.0) {
+        return dash_solid(dist, dash_color, fill_color);
+    } else {
+        return circle_pattern_style(dist, fill_color);
+    }
+}
+
+fn circle_pattern_style(dist: f32, main_color: vec4f) -> vec4<f32> {
+    return main_color;
 }
 
 const freq = 0.5; // the less the longer dashes
-fn dash(dist: f32, extra_color: vec4f, main_color: vec4f) -> vec4f {
+fn dash_solid(dist: f32, extra_color: vec4f, main_color: vec4f) -> vec4f {
     let dash = step(0.5, fract(dist * freq));
 
     if(dash <= 0.0) {

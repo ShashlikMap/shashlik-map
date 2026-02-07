@@ -1,3 +1,4 @@
+use cgmath::num_traits::ToPrimitive;
 use crate::consts::STYLE_SHADER_PARAMS_COUNT;
 
 #[derive(Clone, Copy, Debug)]
@@ -36,15 +37,16 @@ impl RenderStyle {
         style
     }
 
-    pub fn dashed(fill_color: [f32; 4], dash_color: [f32; 4]) -> RenderStyle {
+    pub fn dashed(fill_color: [f32; 4], dash_color: [f32; 4], dash_style: u8) -> RenderStyle {
         let mut style = RenderStyle::fill(fill_color);
 
         style.container[0] = 2.0;
         style.container[5..dash_color.len() + 5].copy_from_slice(&dash_color);
+        style.container[9] = dash_style.to_f32().unwrap();
 
         style
     }
-
+    
     pub(crate) fn params(&self) -> [f32; STYLE_SHADER_PARAMS_COUNT] {
         self.container
     }
