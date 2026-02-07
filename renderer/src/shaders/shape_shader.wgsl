@@ -79,7 +79,7 @@ fn vs_main(
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
-    out.normal = model.normal.xy;
+    out.normal = normalize(model.normal.xy);
     out.dist = model.dist / (pos.normal_scale * min(2.0, pos.normal_scale) * 0.88);
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
@@ -187,11 +187,13 @@ fn dashed_style(outline_flag: u32, dist: f32, normal: vec2f, params: array<f32, 
 }
 
 fn circle_pattern_style(dist: f32, main_color: vec4f, normal: vec2f) -> vec4<f32> {
-    let dist_y = dist - 4.0*floor(dist / 4.0);
-    let width = length(normal);
-    let circle_color = circle(vec2f(width * 0.5, dist_y), 1.0);
-    return vec4f(main_color.rgb, circle_color);
-    return main_color;
+    let mm = modf(dist);
+    if(mm.whole % 3.0 == 0) {
+        let width = length(normal);
+        let circle_color = circle(vec2f(width * 0.5, mm.fract), 1.0);
+        return vec4f(main_color.rgb, circle_color);
+    }
+    return vec4(0.0, 0.0, 0.0, 0.0);
 }
 
 fn circle(st: vec2f, radius: f32) -> f32 {
