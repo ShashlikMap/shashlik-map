@@ -25,7 +25,7 @@ enum SlintMapEvent {
     Pinch(f32, f32, f32),
     VerticalScroll(f32),
     FollowMode(bool),
-    BtnAction(Action),
+    BtnAction(Action, i32),
 }
 
 fn main() {
@@ -136,9 +136,9 @@ fn main() {
                             });
 
                             let slint_map_event_sender_internal = slint_map_event_sender.clone();
-                            ui_weak.on_btn_click(move |action| {
+                            ui_weak.on_btn_click(move |action, cost_index| {
                                 slint_map_event_sender_internal
-                                    .send(SlintMapEvent::BtnAction(action))
+                                    .send(SlintMapEvent::BtnAction(action, cost_index))
                                     .unwrap()
                             });
                         }
@@ -169,7 +169,7 @@ fn main() {
                                 SlintMapEvent::FollowMode(enabled) => {
                                     shashlik_map.set_camera_follow_mode(enabled);
                                 }
-                                SlintMapEvent::BtnAction(action) => match action {
+                                SlintMapEvent::BtnAction(action, cost_index) => match action {
                                     Action::DmOffice => {
                                         shashlik_map.set_lon_lat_bearing(
                                             139.74777078320227,
@@ -178,8 +178,14 @@ fn main() {
                                         );
                                     }
                                     Action::Route => {
+                                        let route_costing = match cost_index {
+                                            0 => RouteCosting::Pedestrian,
+                                            1 => RouteCosting::Auto,
+                                            2 => RouteCosting::Motorbike,
+                                            _ => panic!("{cost_index} cost index not supported")
+                                        };
                                         shashlik_map.create_route_to_from_screen_center(
-                                            RouteCosting::Motorbike,
+                                            route_costing,
                                         );
                                     }
                                     Action::KML => {

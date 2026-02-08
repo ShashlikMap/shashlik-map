@@ -8,7 +8,7 @@ import {
     VerticalBox,
     GridBox,
     CheckBox,
-    Button,
+    Button, ComboBox,
 } from "std-widgets.slint";
 
 export enum Action {
@@ -24,7 +24,7 @@ export component ShashlikUI inherits Window {
     callback pointer_event(PointerEvent, float, float);
     callback vert_scroll(float);
     callback follow_mode(bool);
-    callback btn_click(Action);
+    callback btn_click(Action, int);
     title: "ShashlikMap";
 
     HorizontalBox {
@@ -59,15 +59,21 @@ export component ShashlikUI inherits Window {
                 text: "DM Office";
                 height: 48px;
                 clicked => {
-                    btn_click(Action.DmOffice)
+                    btn_click(Action.DmOffice, cost.current-index)
                 }
+            }
+
+            cost := ComboBox {
+                height: 48px;
+                model: ["pedestrian", "auto", "motorbike"];
+                current-index: 0;
             }
 
             Button {
                 text: "Route to center";
                 height: 48px;
                 clicked => {
-                    btn_click(Action.Route)
+                    btn_click(Action.Route, cost.current-index)
                 }
             }
 
@@ -75,7 +81,7 @@ export component ShashlikUI inherits Window {
                 text: "Open KML";
                 height: 48px;
                 clicked => {
-                    btn_click(Action.KML)
+                    btn_click(Action.KML, cost.current-index)
                 }
             }
         }
