@@ -51,7 +51,7 @@ impl RenderGroup for RouteGroup {
         match self.route_costing {
             RouteCosting::Pedestrian => {
                 options.line_cap = LineCap::Butt;
-                options.line_join = LineJoin::Bevel;
+                options.tolerance = 0.00001f32;
             }
             _ => {}
         }
