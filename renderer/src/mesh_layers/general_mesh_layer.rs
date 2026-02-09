@@ -1,3 +1,4 @@
+use crate::draw_commands::mesh2d_draw_command::Mesh2dCommandBatch;
 use crate::global_context::GlobalContext;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::positioned_mesh::PositionedMesh;
@@ -5,9 +6,10 @@ use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::modifier::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
+use std::mem;
 use wgpu::RenderPass;
 
-pub struct GeneralMeshLayer<P: RenderPipeline> {
+pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
     pipeline: Option<wgpu::RenderPipeline>,
     render_data_holder: RenderDataHolder<PositionedMesh<P::InstanceInputType>>,
@@ -30,12 +32,42 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
         double_style: bool,
         mesh: Mesh,
     ) {
+
         let mesh = P::create_positioned_mesh(
             spatial_rx,
             double_style,
+            None,
             mesh,
         );
         self.render_data_holder.set(key, vec![mesh]);
+    }
+
+    pub fn submit_batch(
+        &mut self,
+        key: &str,
+        spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
+        global_context: &mut GlobalContext,
+        batch: &mut Mesh2dCommandBatch,
+    ) {
+        let device = global_context.device();
+        let mesh = Mesh::create_layered(
+            &device,
+            &batch.mesh,
+            mem::take(&mut batch.layers_indices),
+        );
+
+        let instance_positions =
+            mem::take(&mut batch.mesh_info.instance_positions).map(|pos_items| pos_items.into_iter().map(|item| {
+                (item, 1f32)
+            }).collect());
+
+        let mesh = P::create_positioned_mesh(
+            spatial_rx,
+            true,
+            instance_positions,
+            mesh,
+        );
+        self.render_data_holder.set(key.to_string(), vec![mesh]);
     }
 }
 

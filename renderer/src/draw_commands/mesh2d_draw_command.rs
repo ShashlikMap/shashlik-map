@@ -38,12 +38,7 @@ impl DrawCommand for Mesh2dDrawCommand {
             .and_then(|tag| layers.feature_layers(tag))
         {
             if let Some(first_batch) = self.batches.first_mut() {
-                let mesh = Mesh::create_layered(
-                    &device,
-                    &first_batch.mesh,
-                    mem::take(&mut first_batch.layers_indices),
-                );
-                feature_layer.add(key.clone(), spatial_rx, !self.is_screen, mesh);
+                feature_layer.submit_batch(key.as_str(), spatial_rx, global_context, first_batch)
             }
         } else if self.is_screen {
             layers

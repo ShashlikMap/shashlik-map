@@ -10,6 +10,7 @@ use slint::{GraphicsAPI, RenderingState};
 use std::cell::Cell;
 use std::rc::Rc;
 use std::sync::mpsc;
+use native_dialog::DialogBuilder;
 use wgpu::Limits;
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
@@ -189,7 +190,15 @@ fn main() {
                                         );
                                     }
                                     Action::KML => {
-                                        // TODO Fix KML loading after fixing georust KML
+                                        let path = DialogBuilder::file()
+                                            .set_location("~/Desktop")
+                                            .add_filter("KML", ["kml"])
+                                            .open_single_file()
+                                            .show()
+                                            .unwrap();
+                                        if let Some(path) = path {
+                                            shashlik_map.load_kml_path(path)
+                                        }
                                     }
                                 },
                             };

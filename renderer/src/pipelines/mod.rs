@@ -1,3 +1,4 @@
+use cgmath::Vector3;
 use crate::global_context::GlobalContext;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
@@ -14,8 +15,9 @@ pub trait RenderPipeline {
 
     fn create_positioned_mesh(spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
                               double_style: bool,
+                              instance_positions_alpha: Option<Vec<(Vector3<f64>, f32)>>,
                               mesh: Mesh) -> PositionedMesh<Self::InstanceInputType> {
-        mesh.to_positioned::<Self::InstanceInputType>(spatial_rx, double_style)
+        mesh.to_positioned::<Self::InstanceInputType>(spatial_rx, double_style, instance_positions_alpha)
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext);
