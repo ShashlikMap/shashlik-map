@@ -14,7 +14,7 @@ env_logger = { workspace = true }
 pollster = { workspace = true }
 wgpu = { workspace = true}
 winit = { workspace = true }
-app-surface = { workspace = true, features = ["winit"] }
+native-dialog = "0.9.3"
 
 slint = { version = "1.15.0", features = ["unstable-wgpu-28", "unstable-winit-030"]}
 i-slint-backend-winit = "1.15.0"

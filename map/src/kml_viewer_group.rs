@@ -50,7 +50,7 @@ impl KmlGroup {
                 geometry_data.push(GeometryData::Svg(SvgData {
                     icon: ("kml", Self::CIRCLE_SVG),
                     position: Vector3::new(point.x(), point.y(), 0.0).cast().unwrap(),
-                    size: 20.0,
+                    size: 2.0,
                     style_id: StyleId("kml_dots"),
                     with_collision: false,
                 }));
@@ -67,6 +67,7 @@ impl KmlGroup {
 
 impl RenderGroup for KmlGroup {
     fn content(&mut self, canvas: &mut CanvasApi) {
+        canvas.set_feature_layer_tag(Some("kml_layer".to_string()));
         let mut geometry_data = vec![];
         Self::populate_geometry(&self.collection, &mut geometry_data);
         geometry_data.into_iter().for_each(|data| {

@@ -86,7 +86,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     ) -> anyhow::Result<ShashlikMap<T>> {
         let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
 
-        let renderer = ShashlikRenderer::new(&["route_layer".to_string(), "puck_layer".to_string()], canvas, &DEFAULT_FONT).await?;
+        let renderer = ShashlikRenderer::new(&["kml_layer".to_string(), "route_layer".to_string(), "puck_layer".to_string()], canvas, &DEFAULT_FONT).await?;
         let tiles_stream = tiles_provider.tiles();
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
@@ -367,13 +367,15 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     pub fn load_kml_path(&self, path_buf: PathBuf) {
         println!("Loading KML from {:?}", path_buf);
+        let kml_group = KmlGroup::new(
+            path_buf,
+            self.create_location_coord_converter(),
+        );
+        
         self.renderer.api.add_render_group(
             "kml_data".to_string(),
             SpatialData::transform(Vector3::new(0.0, 0.0, 0.0)),
-            Box::new(KmlGroup::new(
-                path_buf,
-                self.create_location_coord_converter(),
-            )),
+            Box::new(kml_group),
         );
     }
 }
