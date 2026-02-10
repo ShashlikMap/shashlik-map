@@ -14,7 +14,25 @@ pub trait MeshInstanceInput: Sized + Pod {
         attrs.clear();
         let matrix = spatial_data.scale_rot_matrix();
         for i in 0..original_positions_alpha.len() {
-            let item = original_positions_alpha[i];
+
+            let mut item = original_positions_alpha[i];
+            if spatial_data.sk >= 0 {
+                if i % (spatial_data.sk as usize) != 0 {
+                    continue;
+                }
+
+                if i % (spatial_data.sk as usize * 2) != 0 {
+                    if spatial_data.sk == 1 {
+                        item.1 = (1.0 - spatial_data.scale as f32)*2.0;
+                        // item.1 = 0.5f32;
+                    } else {
+                        let ll = spatial_data.sk as f32 * 0.5f32;
+                        let a_koef = (spatial_data.sk as f32 - spatial_data.scale as f32) / ll;
+                        item.1 = a_koef;
+                    }
+                    // item.1 = 0.5;
+                }
+            }
             if item.1 <= 0.0 {
                 continue;
             }

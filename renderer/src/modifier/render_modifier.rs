@@ -8,6 +8,7 @@ pub struct SpatialData {
     pub yaw: f64,
     pub size: (f64, f64),
     pub normal_scale: f64,
+    pub sk: i32
 }
 
 impl SpatialData {
@@ -17,12 +18,13 @@ impl SpatialData {
             scale: 1.0,
             yaw: 0.0,
             size: (0.0, 0.0),
-            normal_scale: 1.0
+            normal_scale: 1.0,
+            sk: -1
         }
     }
 
     pub fn transform(transform: Vector3<f64>) -> SpatialData {
-        SpatialData { transform, scale: 1.0, yaw: 0.0, size: (0.0, 0.0), normal_scale: 1.0 }
+        SpatialData { transform, scale: 1.0, yaw: 0.0, size: (0.0, 0.0), normal_scale: 1.0, sk: -1 }
     }
 
     pub fn size(mut self, size: (f64, f64)) -> SpatialData {
