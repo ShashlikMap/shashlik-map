@@ -83,6 +83,8 @@ fn vs_main(
     return out;
 }
 
+// TODO pass as a parameter
+const route_inflate_factor: f32 = 1.3;
 @vertex
 fn vs_main_route(
     model: VertexInput,
@@ -97,14 +99,15 @@ fn vs_main_route(
 
     var out: VertexOutput;
     var model_position = model_matrix * vec4(model.position.xyz, 1.0);
-    let camera_scale = max(camera.scale, 0.25);
     let with_normal = model.normal.x != 0.0 || model.normal.y != 0.0;
+
+    let camera_scale = max(camera.scale, 0.25);
 
     if(!with_normal) {
         var scale_m = mat4x4(camera_scale, 0.0, 0.0, 0.0, 0.0, camera_scale, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
         if(model.instance_index % 2 == 0) {
-            scale_m[0][0] *= 1.3;
-            scale_m[1][1] *= 1.3;
+            scale_m[0][0] *= route_inflate_factor;
+            scale_m[1][1] *= route_inflate_factor;
         }
         model_position = scale_m * model_position;
     }
@@ -139,13 +142,18 @@ fn vs_main_route(
         }
     }
 
-    // only two components for normal
-    var normal_scale = vec3((model.normal.xy * camera_scale) - model.normal.xy, 0.0);
-    if(model.instance_index % 2 == 0) {
-        normal_scale += vec3(model.normal.xy * inflate_factor, 0.0);
+    var pointPos = modelpos.xyz;
+    if(with_normal) {
+        var normal_scale = max(camera_scale, 0.75) - 1.0;
+        if(model.instance_index % 2 == 0) {
+            if(normal_scale < 0.0) {
+                normal_scale /= route_inflate_factor;
+            } else {
+                normal_scale *= route_inflate_factor;
+            }
+        }
+        pointPos += normalize(model.normal) * normal_scale;
     }
-
-    let pointPos = modelpos.xyz + normal_scale.xyz;
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
