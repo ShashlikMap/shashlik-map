@@ -30,7 +30,6 @@ pub trait MeshInstanceInput: Sized + Pod {
                     spatial_data.size.0.round() as f32,
                     spatial_data.size.1.round() as f32,
                 ],
-                spatial_data.normal_scale as f32,
             );
             attrs.push(instance_input);
             if double_style {
@@ -44,7 +43,6 @@ pub trait MeshInstanceInput: Sized + Pod {
         color_alpha: f32,
         matrix: [[f32; 4]; 4],
         bbox: [f32; 4],
-        normal_scale: f32,
     ) -> Self;
 }
 
@@ -54,7 +52,6 @@ impl MeshInstanceInput for GeneralInstanceInput {
         color_alpha: f32,
         matrix: [[f32; 4]; 4],
         _bbox: [f32; 4],
-        _normal_scale: f32,
     ) -> Self {
         GeneralInstanceInput {
             position,
@@ -70,14 +67,12 @@ impl MeshInstanceInput for ShapeInstanceInput {
         color_alpha: f32,
         matrix: [[f32; 4]; 4],
         bbox: [f32; 4],
-        normal_scale: f32,
     ) -> Self {
         ShapeInstanceInput {
             position,
             color_alpha,
             matrix,
             bbox,
-            normal_scale,
         }
     }
 }

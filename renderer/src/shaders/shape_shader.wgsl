@@ -4,6 +4,7 @@ const PARAMS_COUNT : i32 = 12;
 struct CameraUniform {
     view_proj: mat4x4<f32>,
     inv_screen_size: vec2<f32>,
+    scale: f32
 };
 
 struct StyleUniform {
@@ -33,7 +34,6 @@ struct InstanceInput {
     @location(8) model_matrix_2: vec4<f32>,
     @location(9) model_matrix_3: vec4<f32>,
     @location(10) bbox: vec4<f32>,
-    @location(11) normal_scale: f32,
 }
 
 struct VertexOutput {
@@ -70,9 +70,9 @@ fn vs_main(
     out.color_alpha = pos.color_alpha;
 
     // only two components for normal
-    var normal_scale =  vec3((model.normal.xy * pos.normal_scale) - model.normal.xy, 0.0);
+    var normal_scale = vec3f(0.0, 0.0, 0.0);
     if(model.instance_index % 2 == 0) {
-        normal_scale += vec3(model.normal.xy * inflate_factor, 0.0);
+        normal_scale = vec3(model.normal.xy * inflate_factor, 0.0);
     }
 
     let pointPos = modelpos.xyz + normal_scale.xyz;
@@ -80,7 +80,7 @@ fn vs_main(
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
     out.normal = normalize(model.normal.xy);
-    out.dist = model.dist / (pos.normal_scale * min(2.0, pos.normal_scale) * 0.88);
+    out.dist = model.dist;
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
@@ -96,22 +96,27 @@ fn vs_main_route(
             pos.model_matrix_2,
             pos.model_matrix_3,
     );
+
     var out: VertexOutput;
     var model_position = model_matrix * vec4(model.position.xyz, 1.0);
+    let camera_scale = max(camera.scale, 0.25);
+    var scale_m = mat4x4(camera_scale, 0.0, 0.0, 0.0, 0.0, camera_scale, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
     if(model.instance_index % 2 == 0 && model.normal.x == 0.0 && model.normal.y == 0.0) {
-        let scale_m = mat4x4(1.3, 0.0, 0.0, 0.0, 0.0, 1.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
-        model_position = scale_m * model_position;
+        scale_m[0][0] *= 1.3;
+        scale_m[1][1] *= 1.3;
     }
+    model_position = scale_m * model_position;
+
     var modelpos = model_position.xyz + pos.position;
 
     out.style_index = model.style_index;
     out.outline_flag = model.instance_index % 2;
     out.color_alpha = pos.color_alpha;
 
-    if(pos.normal_scale >= 0.0) {
+    if(camera_scale >= 0.0) {
         var sk = 1.0;
         loop {
-            if sk > pos.normal_scale {
+            if sk > camera_scale {
                 break;
             }
             sk *= 2.0;
@@ -124,16 +129,16 @@ fn vs_main_route(
         }
         if(i % (u32(sk) * 2) != 0) {
             if(u32(sk) == 1) {
-                out.color_alpha = (1.0 - pos.normal_scale) * 2.0;
+                out.color_alpha = (1.0 - camera_scale) * 2.0;
             } else {
                 let ll = sk * 0.5;
-                out.color_alpha = (sk - pos.normal_scale) / ll;
+                out.color_alpha = (sk - camera_scale) / ll;
             }
         }
     }
 
     // only two components for normal
-    var normal_scale =  vec3((model.normal.xy * pos.normal_scale) - model.normal.xy, 0.0);
+    var normal_scale =  vec3((model.normal.xy * camera_scale) - model.normal.xy, 0.0);
     if(model.instance_index % 2 == 0) {
         normal_scale += vec3(model.normal.xy * inflate_factor, 0.0);
     }
@@ -143,7 +148,7 @@ fn vs_main_route(
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
     out.normal = normalize(model.normal.xy);
-    out.dist = model.dist / (pos.normal_scale * min(2.0, pos.normal_scale) * 0.88);
+    out.dist = model.dist;
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
@@ -244,22 +249,7 @@ fn dashed_style(outline_flag: u32, dist: f32, normal: vec2f, params: array<f32, 
 
     let fill_color = vec4(params[1], params[2], params[3], params[4]);
     let dash_color = vec4(params[5], params[6], params[7], params[8]);
-    let dash_style = params[9];
-    if(dash_style == 0.0) {
-        return dash_solid(dist, dash_color, fill_color);
-    } else {
-        return circle_pattern_style(dist, fill_color, normal);
-    }
-}
-
-fn circle_pattern_style(dist: f32, main_color: vec4f, normal: vec2f) -> vec4<f32> {
-    let mm = modf(dist);
-    if(mm.whole % 3.0 == 0) {
-        let width = length(normal);
-        let circle_color = circle(vec2f(width * 0.5, mm.fract), 1.0);
-        return vec4f(main_color.rgb, circle_color);
-    }
-    return vec4(0.0, 0.0, 0.0, 0.0);
+    return dash_solid(dist, dash_color, fill_color);
 }
 
 fn circle(st: vec2f, radius: f32) -> f32 {

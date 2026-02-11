@@ -183,6 +183,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.renderer.update(
             self.camera.build_view_projection_matrix(),
             self.camera.offset,
+            self.camera.scale()
         );
 
         self.fetch_tiles();
@@ -214,13 +215,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let bearing = self.current_bearing;
 
         let cam_zoom = self.camera_controller.forward_len / 100.0;
-
-        self.renderer
-            .api
-            .update_spatial_data("route".to_string(), move |spatial_data| {
-                spatial_data.normal_scale = cam_zoom.max(0.5);
-                spatial_data.scale = cam_zoom.max(0.5);
-            });
 
         self.renderer
             .api
