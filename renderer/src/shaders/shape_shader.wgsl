@@ -44,7 +44,6 @@ struct VertexOutput {
     @location(3) vertex_pos_xy: vec2<f32>,
     @location(4) bbox: vec4<f32>,
     @location(5) dist: f32,
-    @location(6) normal: vec2<f32>,
 }
 
 // TODO pass as a parameter
@@ -79,7 +78,6 @@ fn vs_main(
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
-    out.normal = normalize(model.normal.xy);
     out.dist = model.dist;
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
@@ -100,12 +98,16 @@ fn vs_main_route(
     var out: VertexOutput;
     var model_position = model_matrix * vec4(model.position.xyz, 1.0);
     let camera_scale = max(camera.scale, 0.25);
-    var scale_m = mat4x4(camera_scale, 0.0, 0.0, 0.0, 0.0, camera_scale, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
-    if(model.instance_index % 2 == 0 && model.normal.x == 0.0 && model.normal.y == 0.0) {
-        scale_m[0][0] *= 1.3;
-        scale_m[1][1] *= 1.3;
+    let with_normal = model.normal.x != 0.0 || model.normal.y != 0.0;
+
+    if(!with_normal) {
+        var scale_m = mat4x4(camera_scale, 0.0, 0.0, 0.0, 0.0, camera_scale, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+        if(model.instance_index % 2 == 0) {
+            scale_m[0][0] *= 1.3;
+            scale_m[1][1] *= 1.3;
+        }
+        model_position = scale_m * model_position;
     }
-    model_position = scale_m * model_position;
 
     var modelpos = model_position.xyz + pos.position;
 
@@ -113,7 +115,7 @@ fn vs_main_route(
     out.outline_flag = model.instance_index % 2;
     out.color_alpha = pos.color_alpha;
 
-    if(camera_scale >= 0.0) {
+    if(!with_normal && camera_scale >= 0.0) {
         var sk = 1.0;
         loop {
             if sk > camera_scale {
@@ -138,7 +140,7 @@ fn vs_main_route(
     }
 
     // only two components for normal
-    var normal_scale =  vec3((model.normal.xy * camera_scale) - model.normal.xy, 0.0);
+    var normal_scale = vec3((model.normal.xy * camera_scale) - model.normal.xy, 0.0);
     if(model.instance_index % 2 == 0) {
         normal_scale += vec3(model.normal.xy * inflate_factor, 0.0);
     }
@@ -147,7 +149,6 @@ fn vs_main_route(
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
-    out.normal = normalize(model.normal.xy);
     out.dist = model.dist;
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
@@ -214,7 +215,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     } else if(style_type == 1) {
         res_color = border_style(in.outline_flag, style_params);
     } else if(style_type == 2) {
-        res_color = dashed_style(in.outline_flag, in.dist, in.normal, style_params);
+        res_color = dashed_style(in.outline_flag, in.dist, style_params);
     } else {
         res_color = vec4(0.0, 0.0, 0.0, 1.0);
     }
@@ -241,7 +242,7 @@ fn border_style(outline_flag: u32, params: array<f32, PARAMS_COUNT>) -> vec4<f32
     return fill_color;
 }
 
-fn dashed_style(outline_flag: u32, dist: f32, normal: vec2f, params: array<f32, PARAMS_COUNT>) -> vec4<f32> {
+fn dashed_style(outline_flag: u32, dist: f32, params: array<f32, PARAMS_COUNT>) -> vec4<f32> {
     if(outline_flag == 0) {
         // TODO Border + Dashed later
         discard;
@@ -250,13 +251,6 @@ fn dashed_style(outline_flag: u32, dist: f32, normal: vec2f, params: array<f32, 
     let fill_color = vec4(params[1], params[2], params[3], params[4]);
     let dash_color = vec4(params[5], params[6], params[7], params[8]);
     return dash_solid(dist, dash_color, fill_color);
-}
-
-fn circle(st: vec2f, radius: f32) -> f32 {
-    let dist = vec2f(st.x , st.y - 0.5);
-	return 1.0 - smoothstep(radius-(radius*0.01),
-                         radius+(radius*0.01),
-                         dot(dist,dist)*4.0);
 }
 
 const freq = 0.5; // the less the longer dashes
