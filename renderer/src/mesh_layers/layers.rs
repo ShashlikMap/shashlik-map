@@ -32,8 +32,8 @@ impl Layers {
             is_preview: false,
             feature_layers,
             mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context)),
-            shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, false)),
-            screen_shape_layer: ScreenShapeLayer::new(ShapePipeline::new(global_context, true),
+            shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, None)),
+            screen_shape_layer: ScreenShapeLayer::new(ShapePipeline::new(global_context, Some("vs_main_screen")),
                                                       global_context),
             text_layer: TextMeshLayer::new(
                 ScreenMeshPipeline::new(global_context, false),

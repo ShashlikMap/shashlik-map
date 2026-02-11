@@ -63,6 +63,41 @@ fn vs_main(
     );
     var out: VertexOutput;
     var model_position = model_matrix * vec4(model.position.xyz, 1.0);
+    var modelpos = model_position.xyz + pos.position;
+
+    out.style_index = model.style_index;
+    out.outline_flag = model.instance_index % 2;
+    out.color_alpha = pos.color_alpha;
+
+    // only two components for normal
+    var normal_scale =  vec3((model.normal.xy * pos.normal_scale) - model.normal.xy, 0.0);
+    if(model.instance_index % 2 == 0) {
+        normal_scale += vec3(model.normal.xy * inflate_factor, 0.0);
+    }
+
+    let pointPos = modelpos.xyz + normal_scale.xyz;
+
+    out.vertex_pos_xy = pointPos.xy;
+    out.bbox = pos.bbox;
+    out.normal = normalize(model.normal.xy);
+    out.dist = model.dist / (pos.normal_scale * min(2.0, pos.normal_scale) * 0.88);
+    out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
+    return out;
+}
+
+@vertex
+fn vs_main_route(
+    model: VertexInput,
+    pos: InstanceInput
+) -> VertexOutput {
+    let model_matrix = mat4x4<f32>(
+            pos.model_matrix_0,
+            pos.model_matrix_1,
+            pos.model_matrix_2,
+            pos.model_matrix_3,
+    );
+    var out: VertexOutput;
+    var model_position = model_matrix * vec4(model.position.xyz, 1.0);
     if(model.instance_index % 2 == 0 && model.normal.x == 0.0 && model.normal.y == 0.0) {
         let scale_m = mat4x4(1.3, 0.0, 0.0, 0.0, 0.0, 1.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
         model_position = scale_m * model_position;
@@ -72,6 +107,30 @@ fn vs_main(
     out.style_index = model.style_index;
     out.outline_flag = model.instance_index % 2;
     out.color_alpha = pos.color_alpha;
+
+    if(pos.normal_scale >= 0.0) {
+        var sk = 1.0;
+        loop {
+            if sk > pos.normal_scale {
+                break;
+            }
+            sk *= 2.0;
+        }
+
+        let i = (model.instance_index / 2);
+        if(i % u32(sk) != 0) {
+            out.color_alpha = 0.0;
+            return out;
+        }
+        if(i % (u32(sk) * 2) != 0) {
+            if(u32(sk) == 1) {
+                out.color_alpha = (1.0 - pos.normal_scale) * 2.0;
+            } else {
+                let ll = sk * 0.5;
+                out.color_alpha = (sk - pos.normal_scale) / ll;
+            }
+        }
+    }
 
     // only two components for normal
     var normal_scale =  vec3((model.normal.xy * pos.normal_scale) - model.normal.xy, 0.0);
@@ -127,6 +186,9 @@ fn vs_main_screen(
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    if(in.color_alpha == 0.0) {
+        discard;
+    }
     // ignore if both are zero
     if in.bbox.z > 0.0 || in.bbox.w > 0.0 {
         if in.vertex_pos_xy.x < in.bbox.x || in.vertex_pos_xy.x > in.bbox.x + in.bbox.z {

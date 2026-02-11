@@ -16,7 +16,13 @@ impl FeatureLayers {
         };
 
         tags.into_iter().for_each(|tag| {
-            let layer = GeneralMeshLayer::new(ShapePipeline::new(global_context, false));
+            // FIXME!!
+            let vs_name = if tag.contains("route") {
+                Some("vs_main_route")
+            } else {
+                None
+            };
+            let layer = GeneralMeshLayer::new(ShapePipeline::new(global_context, vs_name));
             layers.shape_layers.insert(tag.clone(), layer);
         });
 

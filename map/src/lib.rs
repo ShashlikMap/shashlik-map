@@ -218,26 +218,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.renderer
             .api
             .update_spatial_data("route".to_string(), move |spatial_data| {
-                // spatial_data.normal_scale = (cam_zoom / 1.5).max(0.75);
+                spatial_data.normal_scale = cam_zoom.max(0.5);
                 spatial_data.scale = cam_zoom.max(0.5);
-                // println!("cam_zoom = {cam_zoom}");
-
-                if cam_zoom >= 1.0 {
-                    let mut p2 = 1;
-                    loop {
-                        if 2_i32.pow(p2) as f64 > cam_zoom {
-                            break;
-                        }
-                        p2 += 1;
-                    }
-                    spatial_data.sk = 2_i32.pow(p2);
-                } else {
-                    if cam_zoom >= 0.0 {
-                        spatial_data.sk = 1;
-                    } else {
-                        spatial_data.sk = -1;
-                    }
-                }
             });
 
         self.renderer
