@@ -14,7 +14,6 @@ pub trait MeshInstanceInput: Sized + Pod {
         attrs.clear();
         let matrix = spatial_data.scale_rot_matrix();
         for i in 0..original_positions_alpha.len() {
-
             let item = original_positions_alpha[i];
             if item.1 <= 0.0 {
                 continue;

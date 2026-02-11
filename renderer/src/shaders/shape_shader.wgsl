@@ -62,7 +62,7 @@ fn vs_main(
             pos.model_matrix_3,
     );
     var out: VertexOutput;
-    var model_position = model_matrix * vec4(model.position.xyz, 1.0);
+    let model_position = model_matrix * vec4(model.position.xyz, 1.0);
     var modelpos = model_position.xyz + pos.position;
 
     out.style_index = model.style_index;
