@@ -17,7 +17,7 @@ impl SpatialData {
             scale: 1.0,
             yaw: 0.0,
             size: (0.0, 0.0),
-            normal_scale: 1.0,
+            normal_scale: 1.0
         }
     }
 
