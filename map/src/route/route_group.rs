@@ -99,7 +99,7 @@ impl RenderGroup for RouteGroup {
                     )
                         .cast()
                         .unwrap(),
-                    size: 2.8,
+                    size: 2.0,
                     style_id: StyleId("route_dots"),
                     with_collision: false,
                 }));
