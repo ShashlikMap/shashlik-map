@@ -25,6 +25,7 @@ use std::thread::spawn;
 use tokio::sync::broadcast;
 use wgpu::Texture;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use crate::mesh_layers::feature_layers::FeatureLayerTag;
 
 pub mod canvas_api;
 mod collision_handler;
@@ -53,7 +54,7 @@ mod utils;
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
-    fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>);
+    fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32);
     fn render(&mut self) -> Option<Texture>;
 }
 
@@ -68,7 +69,7 @@ pub struct ShashlikRenderer {
 
 impl ShashlikRenderer {
     pub async fn new(
-        feature_tags: &[String],
+        feature_tags: Vec<FeatureLayerTag>,
         canvas: Box<dyn WgpuCanvas>,
         font: &'static ttf_parser::Face<'static>,
     ) -> anyhow::Result<ShashlikRenderer> {
@@ -181,8 +182,8 @@ impl ShashlikRenderer {
         self.pass_nodes = vec![Box::new(rt_node), Box::new(main_node)];
     }
 
-    fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
-        self.global_context.update(view_proj_matrix, cs_offset);
+    fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32) {
+        self.global_context.update(view_proj_matrix, cs_offset, scale);
 
         // read all messages between renders
         for message in self.renderer_rx.try_iter() {
@@ -245,8 +246,8 @@ impl Renderer for ShashlikRenderer {
         self.resize(width, height);
     }
 
-    fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
-        self.update(view_proj_matrix, cs_offset);
+    fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32) {
+        self.update(view_proj_matrix, cs_offset, scale);
     }
 
     fn render(&mut self) -> Option<Texture> {

@@ -4,6 +4,7 @@ const PARAMS_COUNT : i32 = 12;
 struct CameraUniform {
     view_proj: mat4x4<f32>,
     inv_screen_size: vec2<f32>,
+    scale: f32
 };
 
 struct StyleUniform {
@@ -33,7 +34,6 @@ struct InstanceInput {
     @location(8) model_matrix_2: vec4<f32>,
     @location(9) model_matrix_3: vec4<f32>,
     @location(10) bbox: vec4<f32>,
-    @location(11) normal_scale: f32,
 }
 
 struct VertexOutput {
@@ -44,7 +44,6 @@ struct VertexOutput {
     @location(3) vertex_pos_xy: vec2<f32>,
     @location(4) bbox: vec4<f32>,
     @location(5) dist: f32,
-    @location(6) normal: vec2<f32>,
 }
 
 // TODO pass as a parameter
@@ -70,17 +69,97 @@ fn vs_main(
     out.color_alpha = pos.color_alpha;
 
     // only two components for normal
-    var normal_scale =  vec3((model.normal.xy * pos.normal_scale) - model.normal.xy, 0.0);
+    var normal_scale = vec3f(0.0, 0.0, 0.0);
     if(model.instance_index % 2 == 0) {
-        normal_scale += vec3(model.normal.xy * inflate_factor, 0.0);
+        normal_scale = vec3(model.normal.xy * inflate_factor, 0.0);
     }
 
     let pointPos = modelpos.xyz + normal_scale.xyz;
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
-    out.normal = normalize(model.normal.xy);
-    out.dist = model.dist / (pos.normal_scale * min(2.0, pos.normal_scale) * 0.88);
+    out.dist = model.dist;
+    out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
+    return out;
+}
+
+// TODO pass as a parameter
+const route_inflate_factor: f32 = 1.3;
+@vertex
+fn vs_main_route(
+    model: VertexInput,
+    pos: InstanceInput
+) -> VertexOutput {
+    let model_matrix = mat4x4<f32>(
+            pos.model_matrix_0,
+            pos.model_matrix_1,
+            pos.model_matrix_2,
+            pos.model_matrix_3,
+    );
+
+    var out: VertexOutput;
+    let with_normal = model.normal.x != 0.0 || model.normal.y != 0.0;
+
+    let camera_scale = max(camera.scale, 0.25);
+
+    out.color_alpha = pos.color_alpha;
+
+    if(!with_normal && camera_scale >= 0.0) {
+        var sk = 1.0;
+        loop {
+            if sk > camera_scale {
+                break;
+            }
+            sk *= 2.0;
+        }
+
+        let i = (model.instance_index / 2);
+        if(i % u32(sk) != 0) {
+            out.clip_position = vec4f(0.0, 0.0, 0.0, 0.0);
+            return out;
+        }
+        if(i % (u32(sk) * 2) != 0) {
+            if(u32(sk) == 1) {
+                out.color_alpha = (1.0 - camera_scale) * 2.0;
+            } else {
+                let ll = sk * 0.5;
+                out.color_alpha = (sk - camera_scale) / ll;
+            }
+        }
+    }
+
+    var model_position = model_matrix * vec4(model.position.xyz, 1.0);
+
+    if(!with_normal) {
+        var scale_m = mat4x4(camera_scale, 0.0, 0.0, 0.0, 0.0, camera_scale, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+        if(model.instance_index % 2 == 0) {
+            scale_m[0][0] *= route_inflate_factor;
+            scale_m[1][1] *= route_inflate_factor;
+        }
+        model_position = scale_m * model_position;
+    }
+
+    var modelpos = model_position.xyz + pos.position;
+
+    out.style_index = model.style_index;
+    out.outline_flag = model.instance_index % 2;
+
+    var pointPos = modelpos.xyz;
+    if(with_normal) {
+        var normal_scale = max(camera_scale, 0.75) - 1.0;
+        if(model.instance_index % 2 == 0) {
+            if(normal_scale < 0.0) {
+                normal_scale /= route_inflate_factor;
+            } else {
+                normal_scale *= route_inflate_factor;
+            }
+        }
+        pointPos += normalize(model.normal) * normal_scale;
+    }
+
+    out.vertex_pos_xy = pointPos.xy;
+    out.bbox = pos.bbox;
+    out.dist = model.dist;
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
@@ -143,7 +222,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     } else if(style_type == 1) {
         res_color = border_style(in.outline_flag, style_params);
     } else if(style_type == 2) {
-        res_color = dashed_style(in.outline_flag, in.dist, in.normal, style_params);
+        res_color = dashed_style(in.outline_flag, in.dist, style_params);
     } else {
         res_color = vec4(0.0, 0.0, 0.0, 1.0);
     }
@@ -170,7 +249,7 @@ fn border_style(outline_flag: u32, params: array<f32, PARAMS_COUNT>) -> vec4<f32
     return fill_color;
 }
 
-fn dashed_style(outline_flag: u32, dist: f32, normal: vec2f, params: array<f32, PARAMS_COUNT>) -> vec4<f32> {
+fn dashed_style(outline_flag: u32, dist: f32, params: array<f32, PARAMS_COUNT>) -> vec4<f32> {
     if(outline_flag == 0) {
         // TODO Border + Dashed later
         discard;
@@ -178,29 +257,7 @@ fn dashed_style(outline_flag: u32, dist: f32, normal: vec2f, params: array<f32, 
 
     let fill_color = vec4(params[1], params[2], params[3], params[4]);
     let dash_color = vec4(params[5], params[6], params[7], params[8]);
-    let dash_style = params[9];
-    if(dash_style == 0.0) {
-        return dash_solid(dist, dash_color, fill_color);
-    } else {
-        return circle_pattern_style(dist, fill_color, normal);
-    }
-}
-
-fn circle_pattern_style(dist: f32, main_color: vec4f, normal: vec2f) -> vec4<f32> {
-    let mm = modf(dist);
-    if(mm.whole % 3.0 == 0) {
-        let width = length(normal);
-        let circle_color = circle(vec2f(width * 0.5, mm.fract), 1.0);
-        return vec4f(main_color.rgb, circle_color);
-    }
-    return vec4(0.0, 0.0, 0.0, 0.0);
-}
-
-fn circle(st: vec2f, radius: f32) -> f32 {
-    let dist = vec2f(st.x , st.y - 0.5);
-	return 1.0 - smoothstep(radius-(radius*0.01),
-                         radius+(radius*0.01),
-                         dot(dist,dist)*4.0);
+    return dash_solid(dist, dash_color, fill_color);
 }
 
 const freq = 0.5; // the less the longer dashes

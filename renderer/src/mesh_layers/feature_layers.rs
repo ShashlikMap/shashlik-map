@@ -9,15 +9,20 @@ pub struct FeatureLayers {
     shape_layers: LinkedHashMap<String, GeneralMeshLayer<ShapePipeline>>,
 }
 
+pub struct FeatureLayerTag {
+    pub name: &'static str,
+    pub vertex_shader: Option<&'static str>
+}
+
 impl FeatureLayers {
-    pub fn new(tags: &[String], global_context: &GlobalContext) -> FeatureLayers {
+    pub fn new(tags: Vec<FeatureLayerTag>, global_context: &GlobalContext) -> FeatureLayers {
         let mut layers = FeatureLayers {
             shape_layers: LinkedHashMap::new(),
         };
 
         tags.into_iter().for_each(|tag| {
-            let layer = GeneralMeshLayer::new(ShapePipeline::new(global_context, false));
-            layers.shape_layers.insert(tag.clone(), layer);
+            let layer = GeneralMeshLayer::new(ShapePipeline::new(global_context, tag.vertex_shader));
+            layers.shape_layers.insert(tag.name.to_string(), layer);
         });
 
         layers

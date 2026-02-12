@@ -23,6 +23,7 @@ const FLIP_Y: Matrix4<f64> = Matrix4::new(
 pub(crate) struct ViewProjUniform {
     view_proj: [[f32; 4]; 4],
     inv_screen_size: [f32; 2],
+    scale: f32
 }
 
 #[derive(Clone)]
@@ -52,6 +53,7 @@ impl ViewProjection {
             uniform: ViewProjUniform {
                 view_proj: Matrix4::identity().into(),
                 inv_screen_size: [0.0, 0.0],
+                scale: 0.0
             },
             screen_size: (0.0, 0.0),
             cs_offset: Vector3::new(0.0, 0.0, 0.0),
@@ -60,11 +62,16 @@ impl ViewProjection {
         }
     }
 
-    pub fn update(&mut self, queue: &Queue, config: &SurfaceConfiguration, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>) {
+    pub fn update(&mut self, queue: &Queue, 
+                  config: &SurfaceConfiguration, 
+                  view_proj_matrix: Matrix4<f64>, 
+                  cs_offset: Vector3<f64>,
+                  scale: f32) {
         self.uniform.view_proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * view_proj_matrix)
             .cast()
             .unwrap()
             .into();
+        self.uniform.scale = scale;
         self.cs_offset = cs_offset;
         self.inv_view_proj_matrix = view_proj_matrix.inverse_transform().unwrap();
         self.screen_size = (config.width as f64, config.height as f64);

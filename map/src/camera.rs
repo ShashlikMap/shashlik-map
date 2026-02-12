@@ -15,9 +15,10 @@ pub struct Camera {
 }
 
 impl Camera {
+    const INITIAL_Z: f64 = 200.0;
     pub fn new(initial_world: Vector3<f64>) -> Self {
         Camera {
-            eye: (initial_world.x, initial_world.y, 200.0).into(),
+            eye: (initial_world.x, initial_world.y, Self::INITIAL_Z).into(),
             target: (initial_world.x, initial_world.y, 0.0).into(),
             up: cgmath::Vector3::unit_y(),
             fovy: 45.0,
@@ -37,6 +38,10 @@ impl Camera {
             self.up,
         );
         self.perspective_matrix * view
+    }
+    
+    pub fn scale(&self) -> f32 {
+        (self.eye.z / Self::INITIAL_Z) as f32
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {

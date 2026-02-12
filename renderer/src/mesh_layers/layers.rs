@@ -1,5 +1,5 @@
 use crate::global_context::GlobalContext;
-use crate::mesh_layers::feature_layers::FeatureLayers;
+use crate::mesh_layers::feature_layers::{FeatureLayerTag, FeatureLayers};
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
 use crate::mesh_layers::ortho_mesh_layer::OrthoMeshLayer;
 use crate::mesh_layers::screen_shape_layer::ScreenShapeLayer;
@@ -23,7 +23,7 @@ pub(crate) struct Layers {
 
 impl Layers {
     pub fn new(
-        feature_tags: &[String],
+        feature_tags: Vec<FeatureLayerTag>,
         global_context: &mut GlobalContext,
         font: &'static ttf_parser::Face<'static>,
     ) -> Layers {
@@ -32,8 +32,8 @@ impl Layers {
             is_preview: false,
             feature_layers,
             mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context)),
-            shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, false)),
-            screen_shape_layer: ScreenShapeLayer::new(ShapePipeline::new(global_context, true),
+            shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, None)),
+            screen_shape_layer: ScreenShapeLayer::new(ShapePipeline::new(global_context, Some("vs_main_screen")),
                                                       global_context),
             text_layer: TextMeshLayer::new(
                 ScreenMeshPipeline::new(global_context, false),

@@ -27,6 +27,7 @@ use osm::styles::{DashStyle, RenderStyle};
 use osm::styles::style_loader::StyleLoader;
 use ttf_parser::Face;
 use wgpu::Texture;
+use renderer::mesh_layers::feature_layers::FeatureLayerTag;
 use renderer::styles::style_id::StyleId;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
@@ -86,7 +87,17 @@ impl<T: TilesProvider> ShashlikMap<T> {
     ) -> anyhow::Result<ShashlikMap<T>> {
         let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
 
-        let renderer = ShashlikRenderer::new(&["kml_layer".to_string(), "route_layer".to_string(), "puck_layer".to_string()], canvas, &DEFAULT_FONT).await?;
+        let feature_layer_tags = vec![FeatureLayerTag {
+            name: "kml_layer",
+            vertex_shader: None
+        }, FeatureLayerTag {
+            name: "route_layer",
+            vertex_shader: Some("vs_main_route")
+        }, FeatureLayerTag {
+            name: "puck_layer",
+            vertex_shader: None
+        }];
+        let renderer = ShashlikRenderer::new(feature_layer_tags, canvas, &DEFAULT_FONT).await?;
         let tiles_stream = tiles_provider.tiles();
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
@@ -183,6 +194,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.renderer.update(
             self.camera.build_view_projection_matrix(),
             self.camera.offset,
+            self.camera.scale()
         );
 
         self.fetch_tiles();
@@ -214,12 +226,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let bearing = self.current_bearing;
 
         let cam_zoom = self.camera_controller.forward_len / 100.0;
-
-        self.renderer
-            .api
-            .update_spatial_data("route".to_string(), move |spatial_data| {
-                spatial_data.normal_scale = (cam_zoom / 1.5).max(0.75);
-            });
 
         self.renderer
             .api
@@ -343,7 +349,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     fn load_styles(&self) {
-
         StyleLoader::load().into_iter().for_each(|style| {
             let style_id = StyleId(Box::leak(style.id.into_boxed_str()));
             let actual_render_style = match style.render_style {
@@ -356,7 +361,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 RenderStyle::Dashed(color1, color2, dash_style) => {
                     let dash_style_value = match dash_style {
                         DashStyle::Solid => 0,
-                        DashStyle::Circles => 1
+                        DashStyle::Circles => panic!("DashStyle::Circles is not supported in this moment!")
                     };
                     renderer::styles::render_style::RenderStyle::dashed(color1.as_array(), color2.as_array(), dash_style_value)
                 }

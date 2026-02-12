@@ -19,9 +19,9 @@ impl MeshLoader {
         path
     }
 
-    pub fn load_simple_circle_puck() -> Path {
+    pub fn load_simple_circle(radius: f32) -> Path {
         let mut builder = Path::builder();
-        builder.add_circle(Point2D::new(0.0, 0.0), 1.5, Winding::Positive);
+        builder.add_circle(Point2D::new(0.0, 0.0), radius, Winding::Positive);
         let path = builder.build();
         path
     }

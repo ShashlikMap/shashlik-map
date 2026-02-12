@@ -6,16 +6,16 @@ use wgpu::{CompareFunction, RenderPass, include_wgsl};
 
 pub struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
-    is_screen: bool,
+    vs_func_name: Option<&'static str>
 }
 
 impl ShapePipeline {
     const SHADER_STYLE_GROUP_INDEX: u32 = 1;
 
-    pub fn new(global_context: &GlobalContext, is_screen: bool) -> Self {
+    pub fn new(global_context: &GlobalContext, vs_func_name: Option<&'static str>) -> Self {
         Self {
             mesh_pipeline: MeshPipeline::new(global_context),
-            is_screen,
+            vs_func_name,
         }
     }
 }
@@ -51,9 +51,8 @@ impl RenderPipeline for ShapePipeline {
             device.create_shader_module(include_wgsl!("../shaders/shape_shader.wgsl"));
 
         let vertex = &mut mesh_descriptor.vertex;
-        if self.is_screen {
-            vertex.entry_point = Some("vs_main_screen");
-        }
+        vertex.entry_point = self.vs_func_name.or(vertex.entry_point);
+        
         vertex.module = shader_module.to_owned();
         vertex.buffers = vec![ShapeVertex::desc(), ShapeInstanceInput::desc()];
         let fragment = &mut mesh_descriptor.fragment.as_mut().unwrap();
