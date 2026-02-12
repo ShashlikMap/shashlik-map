@@ -25,6 +25,7 @@ use std::thread::spawn;
 use tokio::sync::broadcast;
 use wgpu::Texture;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use crate::mesh_layers::feature_layers::FeatureLayerTag;
 
 pub mod canvas_api;
 mod collision_handler;
@@ -68,7 +69,7 @@ pub struct ShashlikRenderer {
 
 impl ShashlikRenderer {
     pub async fn new(
-        feature_tags: &[String],
+        feature_tags: Vec<FeatureLayerTag>,
         canvas: Box<dyn WgpuCanvas>,
         font: &'static ttf_parser::Face<'static>,
     ) -> anyhow::Result<ShashlikRenderer> {

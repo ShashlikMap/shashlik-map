@@ -42,7 +42,7 @@ impl RenderGroup for RouteGroup {
         let first_route_point = self.route[0];
 
         let style_id = match self.route_costing {
-            RouteCosting::Pedestrian => StyleId("route_pedestrian"),
+            RouteCosting::Pedestrian => StyleId("route_pedestrian_dots"),
             RouteCosting::Auto | RouteCosting::Motorbike => StyleId("route_motorbike"),
         };
 
@@ -55,8 +55,8 @@ impl RenderGroup for RouteGroup {
             loop {
                 while !self.route.is_empty() && dist > sum_route_dist {
                     let new_point = self.route.remove(0);
-                    let hh = new_point - point;
-                    vect = Some(Vector2::new(hh.x() as f32, hh.y() as f32));
+                    let vect_point = new_point - point;
+                    vect = Some(Vector2::new(vect_point.x() as f32, vect_point.y() as f32));
                     let d = Euclidean.distance(point, new_point);
                     prev_point = point;
                     point = new_point;
@@ -65,8 +65,10 @@ impl RenderGroup for RouteGroup {
                 if let Some(vect) = vect {
                     let koef = (dist - (sum_route_dist - vect.magnitude())) / vect.magnitude();
                     let pos = vect * koef;
+
                     canvas.geometry_data(GeometryData::Svg(SvgData {
-                        icon: ("kml", Self::CIRCLE_SVG),
+                        // TODO shape instead of SVG
+                        icon: ("route_dot", Self::CIRCLE_SVG),
                         position: Vector3::new(
                             (prev_point.x() - first_route_point.x()) as f32 + pos.x,
                             (prev_point.y() - first_route_point.y()) as f32 + pos.y,
@@ -75,7 +77,7 @@ impl RenderGroup for RouteGroup {
                         .cast()
                         .unwrap(),
                         size: 2.5,
-                        style_id: StyleId("route_dots"),
+                        style_id: style_id.clone(),
                         with_collision: false,
                     }));
                 }
