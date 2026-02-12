@@ -98,10 +98,37 @@ fn vs_main_route(
     );
 
     var out: VertexOutput;
-    var model_position = model_matrix * vec4(model.position.xyz, 1.0);
     let with_normal = model.normal.x != 0.0 || model.normal.y != 0.0;
 
     let camera_scale = max(camera.scale, 0.25);
+
+    out.color_alpha = pos.color_alpha;
+
+    if(!with_normal && camera_scale >= 0.0) {
+        var sk = 1.0;
+        loop {
+            if sk > camera_scale {
+                break;
+            }
+            sk *= 2.0;
+        }
+
+        let i = (model.instance_index / 2);
+        if(i % u32(sk) != 0) {
+            out.clip_position = vec4f(0.0, 0.0, 0.0, 0.0);
+            return out;
+        }
+        if(i % (u32(sk) * 2) != 0) {
+            if(u32(sk) == 1) {
+                out.color_alpha = (1.0 - camera_scale) * 2.0;
+            } else {
+                let ll = sk * 0.5;
+                out.color_alpha = (sk - camera_scale) / ll;
+            }
+        }
+    }
+
+    var model_position = model_matrix * vec4(model.position.xyz, 1.0);
 
     if(!with_normal) {
         var scale_m = mat4x4(camera_scale, 0.0, 0.0, 0.0, 0.0, camera_scale, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
@@ -116,31 +143,6 @@ fn vs_main_route(
 
     out.style_index = model.style_index;
     out.outline_flag = model.instance_index % 2;
-    out.color_alpha = pos.color_alpha;
-
-    if(!with_normal && camera_scale >= 0.0) {
-        var sk = 1.0;
-        loop {
-            if sk > camera_scale {
-                break;
-            }
-            sk *= 2.0;
-        }
-
-        let i = (model.instance_index / 2);
-        if(i % u32(sk) != 0) {
-            out.color_alpha = 0.0;
-            return out;
-        }
-        if(i % (u32(sk) * 2) != 0) {
-            if(u32(sk) == 1) {
-                out.color_alpha = (1.0 - camera_scale) * 2.0;
-            } else {
-                let ll = sk * 0.5;
-                out.color_alpha = (sk - camera_scale) / ll;
-            }
-        }
-    }
 
     var pointPos = modelpos.xyz;
     if(with_normal) {
@@ -200,9 +202,6 @@ fn vs_main_screen(
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    if(in.color_alpha == 0.0) {
-        discard;
-    }
     // ignore if both are zero
     if in.bbox.z > 0.0 || in.bbox.w > 0.0 {
         if in.vertex_pos_xy.x < in.bbox.x || in.vertex_pos_xy.x > in.bbox.x + in.bbox.z {
