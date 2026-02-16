@@ -85,6 +85,7 @@ fn vs_main(
 
 // TODO pass as a parameter
 const route_inflate_factor: f32 = 1.3;
+const zero_position = vec4f(0.0, 0.0, 0.0, 0.0);
 @vertex
 fn vs_main_route(
     model: VertexInput,
@@ -105,25 +106,22 @@ fn vs_main_route(
     out.color_alpha = pos.color_alpha;
 
     if(!with_normal && camera_scale >= 0.0) {
-        var sk = 1.0;
-        loop {
-            if sk > camera_scale {
-                break;
-            }
-            sk *= 2.0;
+        var p2_scale = 1.0;
+        let p2 = u32(ceil(log2(camera_scale)));
+        if(p2 >= 1) {
+            p2_scale = f32(2 << (p2 - 1));
         }
 
         let i = (model.instance_index / 2);
-        if(i % u32(sk) != 0) {
-            out.clip_position = vec4f(0.0, 0.0, 0.0, 0.0);
+        if(i % u32(p2_scale) != 0) {
+            out.clip_position = zero_position;
             return out;
         }
-        if(i % (u32(sk) * 2) != 0) {
-            if(u32(sk) == 1) {
-                out.color_alpha = (1.0 - camera_scale) * 2.0;
+        if(i % (u32(p2_scale) * 2) != 0) {
+            if(u32(p2_scale) == 1) {
+                out.color_alpha = 2.0 * (1.0 - camera_scale);
             } else {
-                let ll = sk * 0.5;
-                out.color_alpha = (sk - camera_scale) / ll;
+                out.color_alpha = 2.0 * (p2_scale - camera_scale) / p2_scale;
             }
         }
     }
