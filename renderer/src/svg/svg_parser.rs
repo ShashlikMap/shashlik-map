@@ -325,7 +325,7 @@ impl VertexCtor {
                 0.0,
             ],
             normals: [normal.x, normal.y, 0.0],
-            dist: 0.0, // TODO If we want to have dashed style for SVG
+            uv_dist: [position.x / self.original_size.width(), position.y / self.original_size.height(), 0.0],
             style_index: self.style_index,
         }
     }

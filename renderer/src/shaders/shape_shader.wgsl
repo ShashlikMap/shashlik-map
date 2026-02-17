@@ -22,7 +22,7 @@ struct VertexInput {
     @builtin(instance_index) instance_index : u32,
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
-    @location(2) dist: f32,
+    @location(2) uv_dist: vec3<f32>,
     @location(3) style_index: u32,
 }
 
@@ -78,7 +78,7 @@ fn vs_main(
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
-    out.dist = model.dist;
+    out.dist = model.uv_dist.z; // .z is a distance
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
@@ -157,7 +157,7 @@ fn vs_main_route(
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
-    out.dist = model.dist;
+    out.dist = model.uv_dist.z; // .z is a distance
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
