@@ -361,7 +361,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 RenderStyle::Dashed(color1, color2, dash_style) => {
                     let dash_style_value = match dash_style {
                         DashStyle::Solid => 0,
-                        DashStyle::Circles => panic!("DashStyle::Circles is not supported in this moment!")
+                        DashStyle::Circles => 1
                     };
                     renderer::styles::render_style::RenderStyle::dashed(color1.as_array(), color2.as_array(), dash_style_value)
                 }

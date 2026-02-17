@@ -220,8 +220,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     } else if(style_type == 1) {
         res_color = border_style(in.outline_flag, style_params);
     } else if(style_type == 2) {
-        //  in.uv_dist.z - is a distance
-        res_color = dashed_style(in.outline_flag, in.uv_dist.z, style_params);
+        res_color = dashed_style(in.outline_flag, in.uv_dist, style_params);
     } else {
         res_color = vec4(0.0, 0.0, 0.0, 1.0);
     }
@@ -229,6 +228,13 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
      res_color.a *= in.color_alpha;
 
      return res_color;
+}
+
+fn circle(st: vec2f, radius: f32) -> f32 {
+    let dist = vec2f(st.x - 0.5, st.y - 0.5);
+	return 1.0 - smoothstep(radius-(radius*0.01),
+                         radius+(radius*0.01),
+                         dot(dist,dist)*4.0);
 }
 
 fn solid_style(outline_flag: u32, params: array<f32, PARAMS_COUNT>) -> vec4<f32> {
@@ -248,15 +254,27 @@ fn border_style(outline_flag: u32, params: array<f32, PARAMS_COUNT>) -> vec4<f32
     return fill_color;
 }
 
-fn dashed_style(outline_flag: u32, dist: f32, params: array<f32, PARAMS_COUNT>) -> vec4<f32> {
-    if(outline_flag == 0) {
+fn dashed_style(outline_flag: u32, uv_dist: vec3f, params: array<f32, PARAMS_COUNT>) -> vec4<f32> {
+    let dash_style = u32(params[9]); // 0: solid, 1: circle
+    if(outline_flag == 0 && dash_style == 0) {
         // TODO Border + Dashed later
         discard;
     }
 
     let fill_color = vec4(params[1], params[2], params[3], params[4]);
     let dash_color = vec4(params[5], params[6], params[7], params[8]);
-    return dash_solid(dist, dash_color, fill_color);
+
+    if(dash_style == 1) {
+        let cirlce_alpha = circle(uv_dist.xy, 0.75);
+        if(outline_flag == 0) {
+            return vec4(fill_color.rgb, cirlce_alpha);
+        } else {
+            return vec4(dash_color.rgb, cirlce_alpha);
+        }
+    } else {
+        // uv_dist.z - is a distance
+        return dash_solid(uv_dist.z, dash_color, fill_color);
+    }
 }
 
 const freq = 0.5; // the less the longer dashes

@@ -18,7 +18,7 @@ pub struct RouteGroup {
 }
 
 impl RouteGroup {
-    pub const CIRCLE_SVG: &'static [u8] = include_bytes!("../../svg/just_circle.svg");
+    pub const SQUARE_SVG: &'static [u8] = include_bytes!("../../svg/just_square.svg");
     pub fn new(
         route: Vec<Point>,
         route_costing: RouteCosting,
@@ -42,7 +42,7 @@ impl RenderGroup for RouteGroup {
         let first_route_point = self.route[0];
 
         let style_id = match self.route_costing {
-            RouteCosting::Pedestrian => StyleId("route_pedestrian_dots"),
+            RouteCosting::Pedestrian => StyleId("route_pedestrian"),
             RouteCosting::Auto | RouteCosting::Motorbike => StyleId("route_motorbike"),
         };
 
@@ -68,7 +68,7 @@ impl RenderGroup for RouteGroup {
 
                     canvas.geometry_data(GeometryData::Svg(SvgData {
                         // TODO shape instead of SVG
-                        icon: ("route_dot", Self::CIRCLE_SVG),
+                        icon: ("route_dot", Self::SQUARE_SVG),
                         position: Vector3::new(
                             (prev_point.x() - first_route_point.x()) as f32 + pos.x,
                             (prev_point.y() - first_route_point.y()) as f32 + pos.y,
