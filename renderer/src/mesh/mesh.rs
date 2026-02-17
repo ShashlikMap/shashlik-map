@@ -39,28 +39,28 @@ impl Mesh {
                 position: [0.0, 0.0, 0.0],
                 normals: [0.0, 0.0, 0.0],
             },
-            uv: [0.0, 1.0, 1.0],
+            uv: [0.0, 1.0],
         });
         geometry_buffer.vertices.push(MeshVertexWithUV {
             mesh_vertex: MeshVertex {
                 position: [width, 0.0, 0.0],
                 normals: [0.0, 0.0, 0.0],
             },
-            uv: [1.0, 1.0, 1.0],
+            uv: [1.0, 1.0],
         });
         geometry_buffer.vertices.push(MeshVertexWithUV {
             mesh_vertex: MeshVertex {
                 position: [0.0, height, 0.0],
                 normals: [0.0, 0.0, 0.0],
             },
-            uv: [0.0, 0.0, 1.0],
+            uv: [0.0, 0.0],
         });
         geometry_buffer.vertices.push(MeshVertexWithUV {
             mesh_vertex: MeshVertex {
                 position: [width, height, 0.0],
                 normals: [0.0, 0.0, 0.0],
             },
-            uv: [1.0, 0.0, 1.0],
+            uv: [1.0, 0.0],
         });
 
         geometry_buffer.indices.push(0);

@@ -22,7 +22,7 @@ struct VertexInput {
     @builtin(instance_index) instance_index : u32,
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
-    @location(2) dist: f32,
+    @location(2) uv_dist: vec3<f32>,
     @location(3) style_index: u32,
 }
 
@@ -43,7 +43,7 @@ struct VertexOutput {
     @location(2) color_alpha: f32,
     @location(3) vertex_pos_xy: vec2<f32>,
     @location(4) bbox: vec4<f32>,
-    @location(5) dist: f32,
+    @location(5) uv_dist: vec3<f32>,
 }
 
 // TODO pass as a parameter
@@ -78,7 +78,7 @@ fn vs_main(
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
-    out.dist = model.dist;
+    out.uv_dist = model.uv_dist;
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
@@ -157,7 +157,7 @@ fn vs_main_route(
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
-    out.dist = model.dist;
+    out.uv_dist = model.uv_dist;
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
@@ -220,7 +220,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     } else if(style_type == 1) {
         res_color = border_style(in.outline_flag, style_params);
     } else if(style_type == 2) {
-        res_color = dashed_style(in.outline_flag, in.dist, style_params);
+        //  in.uv_dist.z - is a distance
+        res_color = dashed_style(in.outline_flag, in.uv_dist.z, style_params);
     } else {
         res_color = vec4(0.0, 0.0, 0.0, 1.0);
     }

@@ -236,7 +236,7 @@ impl CanvasApi {
                 self.tessellate_stroke_path(&data.path, options, |vertex| ShapeVertex {
                     position: [vertex.position().x, vertex.position().y, 0.0f32],
                     normals: [vertex.normal().x, vertex.normal().y, 0.0],
-                    dist: vertex.advancement(),
+                    uv_dist: [0.0, 0.0, vertex.advancement()],
                     style_index: style_index as u32,
                 });
             }
@@ -244,7 +244,7 @@ impl CanvasApi {
                 Self::tessellate_fill_path(&data.path, &mut self.geometry, |vertex| ShapeVertex {
                     position: [vertex.position().x, vertex.position().y, 0.0f32],
                     normals: [0.0, 0.0, 0.0],
-                    dist: 0.0, // fill doesn't have length
+                    uv_dist: [0.0, 0.0, 0.0],// fill doesn't have length
                     style_index: style_index as u32,
                 });
             }
