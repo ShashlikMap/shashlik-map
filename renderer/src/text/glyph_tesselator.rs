@@ -94,7 +94,7 @@ impl FillVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
                 ],
                 normals: [0.0, 0.0, 0.0],
             },
-            uv: [0.0, 0.0, 0.0],
+            uv: [0.0, 0.0],
         }
     }
 }
@@ -110,7 +110,7 @@ impl StrokeVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
                 ],
                 normals: [0.0, 0.0, 0.0],
             },
-            uv: [0.0, 0.0, 0.0],
+            uv: [0.0, 0.0],
         }
     }
 }
