@@ -112,7 +112,7 @@ fn vs_main_route(
             p2_scale = f32(2 << (p2 - 1));
         }
 
-        let i = (model.instance_index / 2);
+        let i = model.instance_index;
         if(i % u32(p2_scale) != 0) {
             out.clip_position = zero_position;
             return out;
@@ -129,18 +129,17 @@ fn vs_main_route(
     var model_position = model_matrix * vec4(model.position.xyz, 1.0);
 
     if(!with_normal) {
-        var scale_m = mat4x4(camera_scale, 0.0, 0.0, 0.0, 0.0, camera_scale, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
-        if(model.instance_index % 2 == 0) {
-            scale_m[0][0] *= route_inflate_factor;
-            scale_m[1][1] *= route_inflate_factor;
-        }
+        let scale_m = mat4x4(camera_scale, 0.0, 0.0, 0.0, 0.0, camera_scale, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
         model_position = scale_m * model_position;
     }
 
     var modelpos = model_position.xyz + pos.position;
 
     out.style_index = model.style_index;
-    out.outline_flag = model.instance_index % 2;
+    out.outline_flag = 1;
+    if(with_normal) {
+        out.outline_flag = model.instance_index % 2;
+    }
 
     var pointPos = modelpos.xyz;
     if(with_normal) {
@@ -232,8 +231,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
 fn circle(st: vec2f, radius: f32) -> f32 {
     let dist = vec2f(st.x - 0.5, st.y - 0.5);
-	return 1.0 - smoothstep(radius-(radius*0.01),
-                         radius+(radius*0.01),
+	return 1.0 - smoothstep(radius-(radius*0.04),
+                         radius+(radius*0.04),
                          dot(dist,dist)*4.0);
 }
 
@@ -256,7 +255,7 @@ fn border_style(outline_flag: u32, params: array<f32, PARAMS_COUNT>) -> vec4<f32
 
 fn dashed_style(outline_flag: u32, uv_dist: vec3f, params: array<f32, PARAMS_COUNT>) -> vec4<f32> {
     let dash_style = u32(params[9]); // 0: solid, 1: circle
-    if(outline_flag == 0 && dash_style == 0) {
+    if(outline_flag == 0) {
         // TODO Border + Dashed later
         discard;
     }
@@ -265,12 +264,9 @@ fn dashed_style(outline_flag: u32, uv_dist: vec3f, params: array<f32, PARAMS_COU
     let dash_color = vec4(params[5], params[6], params[7], params[8]);
 
     if(dash_style == 1) {
-        let cirlce_alpha = circle(uv_dist.xy, 0.75);
-        if(outline_flag == 0) {
-            return vec4(fill_color.rgb, cirlce_alpha);
-        } else {
-            return vec4(dash_color.rgb, cirlce_alpha);
-        }
+        let cirlce_alpha0 = circle(uv_dist.xy, 0.85);
+        let cirlce_alpha1 = circle(uv_dist.xy, 0.45);
+        return mix(vec4(fill_color.rgb, cirlce_alpha0), vec4(dash_color.rgb, cirlce_alpha1), cirlce_alpha1);
     } else {
         // uv_dist.z - is a distance
         return dash_solid(uv_dist.z, dash_color, fill_color);

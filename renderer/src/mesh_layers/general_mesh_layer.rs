@@ -63,7 +63,7 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
 
         let mesh = P::create_positioned_mesh(
             spatial_rx,
-            true,
+            batch.mesh_info.double_style,
             instance_positions,
             mesh,
         );
