@@ -24,6 +24,7 @@ pub struct MeshInfo {
     pub instance_positions: Option<Vec<Vector3<f64>>>,
     pub with_collision: bool,
     pub instance_key: String,
+    pub double_style: bool
 }
 
 pub struct CanvasApi {
@@ -106,6 +107,7 @@ impl CanvasApi {
                 instance_positions: None,
                 with_collision: false,
                 instance_key: "".to_string(),
+                double_style: true
             };
             let batch = Mesh2dCommandBatch {
                 mesh,
@@ -286,6 +288,7 @@ impl CanvasApi {
                         instance_positions: Some(vec![data.position]),
                         with_collision: data.with_collision,
                         instance_key: data.icon.0.to_string(),
+                        double_style: false
                     },
                 )
             });
