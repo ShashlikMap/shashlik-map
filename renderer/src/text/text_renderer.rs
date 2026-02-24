@@ -99,16 +99,16 @@ impl TextRenderer {
         if !self.instance_buffer_map.is_empty() && !glyph_data.is_empty() {
             glyph_data.iter().for_each(|(glyph_id, list)| {
                 if let Some(mesh) = self.default_face.glyph_mesh_map.get(glyph_id) {
-                    let v_buf = mesh.vertex_buf.get(0).unwrap();
-                    let i_buf = mesh.index_buf.get(0).unwrap();
+                    let v_buf = &mesh.vertex_buf;
+                    let (i_buf, i_buf_len) = &mesh.index_buf;
                     let instance_buffer = self.instance_buffer_map.get(glyph_id).unwrap();
                     if let Some(instance_buffer) = instance_buffer.buffer.as_ref() {
                         render_pass.set_vertex_buffer(0, v_buf.slice(..));
-                        render_pass.set_index_buffer(i_buf.0.slice(..), wgpu::IndexFormat::Uint32);
+                        render_pass.set_index_buffer(i_buf.slice(..), wgpu::IndexFormat::Uint32);
 
                         render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
 
-                        render_pass.draw_indexed(0..i_buf.1 as u32, 0, 0..list.len() as u32);
+                        render_pass.draw_indexed(0..*i_buf_len as u32, 0, 0..list.len() as u32);
                     }
                 }
             });

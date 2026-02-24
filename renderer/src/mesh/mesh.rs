@@ -14,15 +14,15 @@ pub struct StyledRangeInfo(pub u8, pub &'static str);
 pub struct StyledRange(pub Range<usize>, pub StyledRangeInfo);
 
 pub struct Mesh {
-    pub vertex_buf: Vec<Buffer>,
-    pub index_buf: Vec<(Buffer, usize)>,
+    pub vertex_buf: Buffer,
+    pub index_buf: (Buffer, usize),
     pub layers_indices: Vec<StyledRange>,
 }
 
 impl Mesh {
     pub fn new(
-        v_buf: Vec<Buffer>,
-        i_buf: Vec<(Buffer, usize)>,
+        v_buf: Buffer,
+        i_buf: (Buffer, usize),
         layers_indices: Vec<StyledRange>,
     ) -> Self {
         Self {
@@ -95,8 +95,8 @@ impl Mesh {
         let num_indices = geometry.indices.len() as u32;
 
         Mesh::new(
-            vec![vertex_buffer],
-            vec![(index_buffer, num_indices as usize)],
+            vertex_buffer,
+            (index_buffer, num_indices as usize),
             layers_indices,
         )
     }
@@ -118,26 +118,25 @@ impl Mesh {
     }
 
     fn render(&self, render_pass: &mut RenderPass, instances: &Range<u32>, disable_skip_mesh_feature: bool) {
-        self.vertex_buf.iter().enumerate().for_each(|(i, v_buf)| {
-            let (i_buf, _) = self.index_buf.get(i).unwrap();
-            if v_buf.size() > 0 && i_buf.size() > 0 {
-                render_pass.set_vertex_buffer(0, v_buf.slice(..));
-                render_pass.set_index_buffer(i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                for range in &self.layers_indices {
-                    let styled_range_info = &range.1;
-                    if disable_skip_mesh_feature && styled_range_info.1 == "skip" {
-                        continue;
-                    }
-                    let start = range.0.start;
-                    let end = range.0.end;
-
-                    // draw instances
-                    let instances_range = instances.start + styled_range_info.0 as u32..instances.end;
-                    render_pass.draw_indexed(start as u32..end as u32, 0, instances_range);
+        let v_buf = &self.vertex_buf;
+        let i_buf = &self.index_buf.0;
+        if v_buf.size() > 0 && i_buf.size() > 0 {
+            render_pass.set_vertex_buffer(0, v_buf.slice(..));
+            render_pass.set_index_buffer(i_buf.slice(..), wgpu::IndexFormat::Uint32);
+            for range in &self.layers_indices {
+                let styled_range_info = &range.1;
+                if disable_skip_mesh_feature && styled_range_info.1 == "skip" {
+                    continue;
                 }
-            } else {
-                error!("Vertex/Index buffer are empty");
+                let start = range.0.start;
+                let end = range.0.end;
+
+                // draw instances
+                let instances_range = instances.start + styled_range_info.0 as u32..instances.end;
+                render_pass.draw_indexed(start as u32..end as u32, 0, instances_range);
             }
-        });
+        } else {
+            error!("Vertex/Index buffer are empty");
+        }
     }
 }
