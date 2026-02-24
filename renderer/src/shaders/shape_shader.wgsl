@@ -4,7 +4,8 @@ const PARAMS_COUNT : i32 = 12;
 struct CameraUniform {
     view_proj: mat4x4<f32>,
     inv_screen_size: vec2<f32>,
-    scale: f32
+    scale: f32,
+    p2_scale: f32
 };
 
 struct StyleUniform {
@@ -109,11 +110,7 @@ fn vs_main_route(
     out.color_alpha = pos.color_alpha;
 
     if(!with_normal && camera_scale >= 0.0) {
-        var p2_scale = 1.0;
-        let p2 = u32(ceil(log2(camera_scale)));
-        if(p2 >= 1) {
-            p2_scale = f32(2 << (p2 - 1));
-        }
+        let p2_scale = camera.p2_scale;
 
         let i = model.instance_index;
         if(i % u32(p2_scale) != 0) {

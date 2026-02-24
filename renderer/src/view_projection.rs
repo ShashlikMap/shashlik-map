@@ -23,7 +23,8 @@ const FLIP_Y: Matrix4<f64> = Matrix4::new(
 pub(crate) struct ViewProjUniform {
     view_proj: [[f32; 4]; 4],
     inv_screen_size: [f32; 2],
-    scale: f32
+    scale: f32,
+    p2_scale: f32
 }
 
 #[derive(Clone)]
@@ -53,7 +54,8 @@ impl ViewProjection {
             uniform: ViewProjUniform {
                 view_proj: Matrix4::identity().into(),
                 inv_screen_size: [0.0, 0.0],
-                scale: 0.0
+                scale: 0.0,
+                p2_scale: 1.0
             },
             screen_size: (0.0, 0.0),
             cs_offset: Vector3::new(0.0, 0.0, 0.0),
@@ -72,6 +74,7 @@ impl ViewProjection {
             .unwrap()
             .into();
         self.uniform.scale = scale;
+        self.uniform.p2_scale = self.p2_scale(scale);
         self.cs_offset = cs_offset;
         self.inv_view_proj_matrix = view_proj_matrix.inverse_transform().unwrap();
         self.screen_size = (config.width as f64, config.height as f64);
@@ -83,7 +86,16 @@ impl ViewProjection {
         );
     }
 
-    pub fn screen_position(&self, world_position: &Vector3<f64>) -> Coord<f64> {
+    fn p2_scale(&mut self, scale: f32) -> f32 {
+        let p2 = scale.log2().ceil() as u32;
+        let mut p2_scale = 1u32;
+        if p2 >= 1 {
+            p2_scale = 2 << (p2 - 1);
+        }
+        p2_scale as f32
+    }
+
+pub fn screen_position(&self, world_position: &Vector3<f64>) -> Coord<f64> {
         let matrix: Matrix4<f32> = self.uniform.view_proj.into();
         let world_position = world_position - self.cs_offset;
         let pos = matrix.cast().unwrap() * Vector4::new(world_position.x, world_position.y, 0.0, 1.0);
