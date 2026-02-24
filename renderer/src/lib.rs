@@ -23,7 +23,7 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
 use tokio::sync::broadcast;
-use wgpu::Texture;
+use wgpu::{include_wgsl, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, Texture};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use crate::mesh_layers::feature_layers::FeatureLayerTag;
 
@@ -223,6 +223,33 @@ impl ShashlikRenderer {
             .run_mut_action_with_key("fps_info", move |item| {
                 item.update_text(fps.as_str(), 1.0);
             });
+
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("compute_pass"),
+                timestamp_writes: None,
+            });
+
+            let sh_m = self.global_context.device().create_shader_module(include_wgsl!("shaders/compute_test.wgsl"));
+
+            let pipeline_layout = self.global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Compute Pipeline Layout"),
+                bind_group_layouts: &[&self.global_context.kiol_data.2],
+                ..Default::default()
+            });
+
+            let c_p = self.global_context.device().create_compute_pipeline(&ComputePipelineDescriptor {
+                label: Some("compute_pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &sh_m,
+                entry_point: None,
+                compilation_options: Default::default(),
+                cache: None,
+            });
+            compute_pass.set_pipeline(&c_p);
+            compute_pass.set_bind_group(0, &self.global_context.kiol_data.3, &[]);
+            compute_pass.dispatch_workgroups(1, 1, 1);
+        }
 
         self.pass_nodes.iter_mut().for_each(|node| {
             node.render(

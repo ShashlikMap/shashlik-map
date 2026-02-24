@@ -18,6 +18,9 @@ var<uniform> camera: CameraUniform;
 @group(1) @binding(0)
 var<storage, read> styles: array<StyleUniform>;
 
+@group(2) @binding(0)
+var<storage, read> kiol_abc: vec4f;
+
 struct VertexInput {
     @builtin(instance_index) instance_index : u32,
     @location(0) position: vec3<f32>,
@@ -216,6 +219,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var res_color = vec4(0.0, 0.0, 0.0, 1.0);
     if(style_type == 0) {
         res_color = solid_style(in.outline_flag, style_params);
+        if(kiol_abc.y == 4.0)  {
+            res_color.r = 1.0;
+        }
     } else if(style_type == 1) {
         res_color = border_style(in.outline_flag, style_params);
     } else if(style_type == 2) {

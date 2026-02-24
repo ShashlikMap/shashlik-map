@@ -27,6 +27,7 @@ impl RenderPipeline for ShapePipeline {
         self.mesh_pipeline.render(render_pass, global_context);
         if let Some(bind_group) = global_context.style_bind_group.as_ref() {
             render_pass.set_bind_group(Self::SHADER_STYLE_GROUP_INDEX, bind_group, &[]);
+            render_pass.set_bind_group(2, &global_context.kiol_data.1, &[]);
         }
     }
 
@@ -42,6 +43,7 @@ impl RenderPipeline for ShapePipeline {
             bind_group_layouts: &[
                 &self.mesh_pipeline.bind_group_layout,
                 &global_context.styles_bind_group_layout,
+                &global_context.kiol_data.0,
             ],
             ..Default::default()
         });
