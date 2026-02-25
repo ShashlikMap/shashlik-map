@@ -232,9 +232,11 @@ impl ShashlikRenderer {
 
             let sh_m = self.global_context.device().create_shader_module(include_wgsl!("shaders/compute_test.wgsl"));
 
+
+
             let pipeline_layout = self.global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Compute Pipeline Layout"),
-                bind_group_layouts: &[&self.global_context.kiol_data.2],
+                bind_group_layouts: &[&self.global_context.kiol_data.4, &self.global_context.kiol_data.2],
                 ..Default::default()
             });
 
@@ -247,7 +249,8 @@ impl ShashlikRenderer {
                 cache: None,
             });
             compute_pass.set_pipeline(&c_p);
-            compute_pass.set_bind_group(0, &self.global_context.kiol_data.3, &[]);
+            compute_pass.set_bind_group(0, &self.global_context.kiol_data.5, &[]);
+            compute_pass.set_bind_group(1, &self.global_context.kiol_data.3, &[]);
             compute_pass.dispatch_workgroups(1, 1, 1);
         }
 

@@ -216,9 +216,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var res_color = vec4(0.0, 0.0, 0.0, 1.0);
     if(style_type == 0) {
         res_color = solid_style(in.outline_flag, style_params);
-        if(kiol_abc.y == 4.0)  {
-            res_color.r = 1.0;
-        }
+        res_color.r *= kiol_abc.y;
     } else if(style_type == 1) {
         res_color = border_style(in.outline_flag, style_params);
     } else if(style_type == 2) {

@@ -14,7 +14,7 @@ pub struct GlobalContext {
     pub collider: Collider,
     pub styles_bind_group_layout: BindGroupLayout,
     pub style_bind_group: Option<BindGroup>,
-    pub kiol_data: (BindGroupLayout, BindGroup, BindGroupLayout, BindGroup),
+    pub kiol_data: (BindGroupLayout, BindGroup, BindGroupLayout, BindGroup, BindGroupLayout, BindGroup),
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
 }
 
@@ -24,7 +24,7 @@ impl GlobalContext {
         let view_projection = ViewProjection::new(device);
         let collider = Collider::new();
         let styles_bind_group_layout = Self::create_style_bind_group_layout(device);
-        let kiol_data = Self::create_kiol(&device);
+        let kiol_data = Self::create_kiol(&device, &view_projection);
         GlobalContext {
             canvas,
             view_projection,
@@ -36,7 +36,7 @@ impl GlobalContext {
         }
     }
 
-    fn create_style_bind_group_layout(device: &Device) -> BindGroupLayout {
+    fn create_style_bind_group_layout(device: &Device, ) -> BindGroupLayout {
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -52,7 +52,7 @@ impl GlobalContext {
         })
     }
 
-    fn create_kiol(device: &Device) -> (BindGroupLayout, BindGroup, BindGroupLayout, BindGroup) {
+    fn create_kiol(device: &Device, vp: &ViewProjection) -> (BindGroupLayout, BindGroup, BindGroupLayout, BindGroup, BindGroupLayout, BindGroup) {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("kiol compute Buffer"),
             contents: bytemuck::cast_slice(&[0.0, 0.0, 0.0, 0.0]),
@@ -85,6 +85,20 @@ impl GlobalContext {
             }],
             label: Some("compute_bind_group_layout2"),
         });
+        let layout3 = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("compute_bind_group_layout2"),
+        });
+
         let bind_group1 = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &layout1,
             entries: &[wgpu::BindGroupEntry {
@@ -101,7 +115,17 @@ impl GlobalContext {
             }],
             label: Some("styles_bind_group2"),
         });
-        (layout1, bind_group1, layout2, bind_group2 )
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &layout3,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: vp
+                    .uniform_buffer
+                    .as_entire_binding(),
+            }],
+            label: Some("camera_bind_group_compute"),
+        });
+        (layout1, bind_group1, layout2, bind_group2, layout3, bind_group )
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
