@@ -43,10 +43,10 @@ impl RenderGroup for RouteGroup {
 
         let style_id = match self.route_costing {
             RouteCosting::Pedestrian => StyleId("route_pedestrian"),
-            RouteCosting::Auto | RouteCosting::Motorbike => StyleId("route_motorbike"),
+            RouteCosting::Auto | RouteCosting::Motorbike => StyleId("route_pedestrian"),
         };
 
-        if matches!(self.route_costing, RouteCosting::Pedestrian) {
+        if matches!(self.route_costing, RouteCosting::Auto) {
             let mut dist = 0f32;
             let mut sum_route_dist = 0f32;
             let mut point = self.route.remove(0);

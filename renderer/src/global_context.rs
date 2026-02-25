@@ -15,6 +15,7 @@ pub struct GlobalContext {
     pub styles_bind_group_layout: BindGroupLayout,
     pub style_bind_group: Option<BindGroup>,
     pub kiol_data: (BindGroupLayout, BindGroup, BindGroupLayout, BindGroup, BindGroupLayout, BindGroup),
+    pub dots: usize,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
 }
 
@@ -32,6 +33,7 @@ impl GlobalContext {
             styles_bind_group_layout,
             style_bind_group: None,
             kiol_data,
+            dots: 0,
             style_uniform_rx: style_store.subscribe(),
         }
     }
@@ -135,6 +137,36 @@ impl GlobalContext {
 
             self.view_projection.resize(config.width, config.height);
         }
+    }
+
+    pub fn set_route_dots(&mut self, count: usize) {
+        println!("kiol count = {count}");
+        let device = self.device();
+        let buffer = self.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("kiol compute Buffer"),
+            contents: bytemuck::cast_slice(&vec![0.0; count]),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let bind_group1 = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: & self.kiol_data.0,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buffer.as_entire_binding(),
+            }],
+            label: Some("kiol_styles_bind_group1"),
+        });
+        let bind_group2 = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: & self.kiol_data.2,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buffer.as_entire_binding(),
+            }],
+            label: Some("kiol_styles_bind_group2"),
+        });
+        self.kiol_data.1 = bind_group1;
+        self.kiol_data.3 = bind_group2;
+        self.dots = count;
     }
 
     pub fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32) {

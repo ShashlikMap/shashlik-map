@@ -22,8 +22,10 @@ use std::iter;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
+use lyon::geom::euclid::num::Ceil;
 use tokio::sync::broadcast;
 use wgpu::{include_wgsl, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, Texture};
+use wgpu::naga::Expression::Math;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use crate::mesh_layers::feature_layers::FeatureLayerTag;
 
@@ -232,8 +234,6 @@ impl ShashlikRenderer {
 
             let sh_m = self.global_context.device().create_shader_module(include_wgsl!("shaders/compute_test.wgsl"));
 
-
-
             let pipeline_layout = self.global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Compute Pipeline Layout"),
                 bind_group_layouts: &[&self.global_context.kiol_data.4, &self.global_context.kiol_data.2],
@@ -248,10 +248,11 @@ impl ShashlikRenderer {
                 compilation_options: Default::default(),
                 cache: None,
             });
+
             compute_pass.set_pipeline(&c_p);
             compute_pass.set_bind_group(0, &self.global_context.kiol_data.5, &[]);
             compute_pass.set_bind_group(1, &self.global_context.kiol_data.3, &[]);
-            compute_pass.dispatch_workgroups(1, 1, 1);
+            compute_pass.dispatch_workgroups(self.global_context.dots as u32 / 64, 1, 1);
         }
 
         self.pass_nodes.iter_mut().for_each(|node| {

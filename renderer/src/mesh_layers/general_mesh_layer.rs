@@ -56,11 +56,15 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
             mem::take(&mut batch.layers_indices),
         );
 
+        let mut hh = 0;
         let instance_positions =
             mem::take(&mut batch.mesh_info.instance_positions).map(|pos_items| pos_items.into_iter().map(|item| {
+                hh += 1;
                 (item, 1f32)
             }).collect());
 
+        // let dots = batch.mesh_info.instance_positions.as_ref().unwrap_or(&vec![]).len();
+        // let dots = &instance_positions.unwrap().len();
         let mesh = P::create_positioned_mesh(
             spatial_rx,
             batch.mesh_info.double_style,
@@ -68,6 +72,11 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
             mesh,
         );
         self.render_data_holder.set(key.to_string(), vec![mesh]);
+
+        if key.contains("route") {
+            println!("dots kiol = {hh}");
+            global_context.set_route_dots(hh as usize);
+        }
     }
 }
 
