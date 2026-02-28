@@ -4,6 +4,8 @@ A WIP map engine written in Rust using WGPU.
 The initial goal of the project is to learn a new cross-platform tech stack to build a mobile-ready MapEngine
 with focus on Navigation features(including DeadReckoning and Map-matching)
 
+I'm writing about the tech I've learned [here](https://hackmd.io/@agent10)
+
 ## Showcases
 Running on macOS, Android and iOS
 
@@ -20,7 +22,7 @@ with [RustyBuzz](https://github.com/harfbuzz/rustybuzz) support as a vector font
 with Android/iOS mobile apps(Android is priority for now)
 - [Rust Valhalla client](https://github.com/jelmer/valhalla-client-rs) is used a routing clieng/engine
 
-### The important component diagram:
+### The component diagram:
 <img width="500" alt="ShashlikDiagram" src="https://github.com/user-attachments/assets/c0e6d330-2e97-4f77-acba-e7b186fcb194" />
 
 ## Roadmap
@@ -29,11 +31,13 @@ with Android/iOS mobile apps(Android is priority for now)
 - [x] Complete README and examples
 - [x] Initial rendering to texture
 - [x] Better integration with [SlintUI](https://slint.dev/blog/slint-1.12-released)
+- [x] A dotted line style
 ### Now
 - [ ] _In progress_ General Renderer refactoring
-- [ ] _In progress_ "Circles" line style
+- [ ] _In progress_ A GPU-driven dotted line rendering
 ### Next
 - [ ] SSAO(Screen Space Ambient Occlusion)
+- [ ] Running on pure Linux with Compose multiplatform support
 - [ ] Implement an initial geometric Map-matching POC
 - [ ] CI for KMP mobile SDK + Screenshot rendering
 - [ ] Integrate a simple search
