@@ -7,6 +7,7 @@ use cgmath::{Matrix4, Vector3};
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Device};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use crate::mesh::mesh_instance_input::MeshInstanceInput;
 
 pub struct GlobalContext {
     pub canvas: Box<dyn WgpuCanvas>,
@@ -146,15 +147,19 @@ impl GlobalContext {
         }
     }
 
-    pub fn set_route_dots(&mut self, count: usize) {
+    pub fn set_route_dots<T: MeshInstanceInput>(&mut self, positions: &Vec<T>) {
+        let dot_input_vec: Vec<_> = positions.iter().map(|item| {
+            DotInput {
+                position: item.position(),
+                color_alpha: 0.0,
+            }
+        }).collect();
+        let count = positions.len();
         println!("kiol count = {count}");
         let device = self.device();
         let buffer = self.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("kiol compute Buffer"),
-            contents: bytemuck::cast_slice(&vec![DotInput {
-                position: [0.0, 0.0, 0.0],
-                color_alpha: 0.0,
-            }; count]),
+            contents: bytemuck::cast_slice(dot_input_vec.as_slice()),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         });
 

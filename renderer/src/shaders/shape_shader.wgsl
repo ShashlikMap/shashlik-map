@@ -25,7 +25,7 @@ struct DotInput {
 }
 
 @group(2) @binding(0)
-var<storage, read> kiol_abc: array<DotInput>;
+var<storage, read> route: array<DotInput>;
 
 struct VertexInput {
     @builtin(instance_index) instance_index : u32,
@@ -118,7 +118,7 @@ fn vs_main_route(
         let p2_scale = camera.p2_scale;
 
         let i = model.instance_index;
-        out.color_alpha = kiol_abc[i].color_alpha;
+        out.color_alpha = route[i].color_alpha;
         if(out.color_alpha <= 0.0) {
             out.clip_position = zero_position;
             return out;
@@ -132,7 +132,7 @@ fn vs_main_route(
         model_position = scale_m * model_position;
     }
 
-    var modelpos = model_position.xyz + pos.position;
+    var modelpos = model_position.xyz + route[model.instance_index].position;
 
     out.style_index = model.style_index;
     out.outline_flag = 1;

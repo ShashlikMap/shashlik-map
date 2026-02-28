@@ -74,7 +74,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             );
 
             if self.route {
-                global_context.set_route_dots(self.attrs.len());
+                global_context.set_route_dots(&self.attrs);
             }
 
             self.instance_buffer.update(
