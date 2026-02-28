@@ -8,6 +8,14 @@ struct CameraUniform {
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 
+struct IndirectArgs {
+    drawCount: u32,
+    instanceCount: atomic<u32>,
+    reserved0: u32,
+    reserved1: u32,
+    reserved2: u32,
+}
+
 struct DotInput {
     position: vec3<f32>,
     color_alpha: f32,
@@ -15,6 +23,9 @@ struct DotInput {
 
 @group(1) @binding(0)
 var<storage, read_write> dots: array<DotInput>;
+
+@group(1) @binding(1)
+var<storage, read_write> culled: array<DotInput>;
 
 @compute @workgroup_size(64)
 fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -43,4 +54,6 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
             dots[i].color_alpha = 2.0 * (p2_scale - camera_scale) / p2_scale;
         }
     }
+
+//    culled[i] = DotInput(dots[i].position, 0.5);
 }
