@@ -44,6 +44,8 @@ pub trait MeshInstanceInput: Sized + Pod {
         matrix: [[f32; 4]; 4],
         bbox: [f32; 4],
     ) -> Self;
+
+    fn position(&self) -> [f32; 3];
 }
 
 impl MeshInstanceInput for GeneralInstanceInput {
@@ -58,6 +60,10 @@ impl MeshInstanceInput for GeneralInstanceInput {
             color_alpha,
             matrix,
         }
+    }
+
+    fn position(&self) -> [f32; 3] {
+        self.position
     }
 }
 
@@ -74,5 +80,9 @@ impl MeshInstanceInput for ShapeInstanceInput {
             matrix,
             bbox,
         }
+    }
+
+    fn position(&self) -> [f32; 3] {
+        self.position
     }
 }

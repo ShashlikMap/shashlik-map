@@ -19,8 +19,13 @@ var<uniform> camera: CameraUniform;
 @group(1) @binding(0)
 var<storage, read> styles: array<StyleUniform>;
 
+struct DotInput {
+    position: vec3<f32>,
+    color_alpha: f32,
+}
+
 @group(2) @binding(0)
-var<storage, read> kiol_abc: array<f32>;
+var<storage, read> kiol_abc: array<DotInput>;
 
 struct VertexInput {
     @builtin(instance_index) instance_index : u32,
@@ -113,22 +118,11 @@ fn vs_main_route(
         let p2_scale = camera.p2_scale;
 
         let i = model.instance_index;
-        out.color_alpha = kiol_abc[i];
+        out.color_alpha = kiol_abc[i].color_alpha;
         if(out.color_alpha <= 0.0) {
             out.clip_position = zero_position;
             return out;
         }
-//        if(i % u32(p2_scale) != 0) {
-//            out.clip_position = zero_position;
-//            return out;
-//        }
-//        if(i % (u32(p2_scale) * 2) != 0) {
-//            if(u32(p2_scale) == 1) {
-//                out.color_alpha = 2.0 * (1.0 - camera_scale);
-//            } else {
-//                out.color_alpha = 2.0 * (p2_scale - camera_scale) / p2_scale;
-//            }
-//        }
     }
 
     var model_position = model_matrix * vec4(model.position.xyz, 1.0);

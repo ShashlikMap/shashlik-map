@@ -17,6 +17,7 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
     original_instance_positions_alpha: Vec<(Vector3<f64>, f32)>,
+    route: bool
 }
 
 impl Mesh {
@@ -25,8 +26,9 @@ impl Mesh {
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,
         instance_positions_alpha: Option<Vec<(Vector3<f64>, f32)>>,
+        route: bool
     ) -> PositionedMesh<T> {
-        PositionedMesh::new(self, spatial_rx, double_style, instance_positions_alpha)
+        PositionedMesh::new(self, spatial_rx, double_style, instance_positions_alpha, route)
     }
 }
 
@@ -36,6 +38,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,
         instance_positions_alpha: Option<Vec<(Vector3<f64>, f32)>>,
+        route: bool
     ) -> Self {
         Self {
             mesh,
@@ -47,6 +50,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             original_spatial_data: SpatialData::new(),
             original_instance_positions_alpha: instance_positions_alpha
                 .unwrap_or(vec![(Vector3::new(0.0, 0.0, 0.0), 1f32)]),
+            route
         }
     }
 
@@ -68,6 +72,11 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 &self.original_spatial_data,
                 self.double_style,
             );
+
+            if self.route {
+                global_context.set_route_dots(self.attrs.len());
+            }
+
             self.instance_buffer.update(
                 "PositionedInstanceBuffer",
                 global_context.device(),

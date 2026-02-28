@@ -19,6 +19,13 @@ pub struct GlobalContext {
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct DotInput {
+    pub position: [f32; 3],
+    pub color_alpha: f32,
+}
+
 impl GlobalContext {
     pub fn new(canvas: Box<dyn WgpuCanvas>, style_store: &StyleStore) -> Self {
         let device = canvas.device();
@@ -144,7 +151,10 @@ impl GlobalContext {
         let device = self.device();
         let buffer = self.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("kiol compute Buffer"),
-            contents: bytemuck::cast_slice(&vec![0.0; count]),
+            contents: bytemuck::cast_slice(&vec![DotInput {
+                position: [0.0, 0.0, 0.0],
+                color_alpha: 0.0,
+            }; count]),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         });
 
