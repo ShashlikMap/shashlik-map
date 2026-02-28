@@ -22,10 +22,20 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let p2_scale = camera.p2_scale;
 
     let i = id.x;
+    dots[i].color_alpha = 1.0;
+
     if(i % u32(p2_scale) != 0) {
         dots[i].color_alpha = 0.0;
         return;
     }
+
+    let qqw = camera.view_proj * vec4f(dots[i].position, 1.0);
+    let qq = qqw.xy / qqw.w;
+    if qq.x < -0.8 || qq.x > 0.8 || qq.y < -0.8 || qq.y > 0.8 {
+        dots[i].color_alpha = 0.0;
+        return;
+    }
+
     if(i % (u32(p2_scale) * 2) != 0) {
         if(u32(p2_scale) == 1) {
             dots[i].color_alpha = 2.0 * (1.0 - camera_scale);

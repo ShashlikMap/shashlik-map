@@ -115,8 +115,6 @@ fn vs_main_route(
     out.color_alpha = pos.color_alpha;
 
     if(!with_normal && camera_scale >= 0.0) {
-        let p2_scale = camera.p2_scale;
-
         let i = model.instance_index;
         out.color_alpha = route[i].color_alpha;
         if(out.color_alpha <= 0.0) {
