@@ -247,7 +247,7 @@ impl ShashlikRenderer {
             encoder.clear_buffer(&self.global_context.indirect_args, 0, None);
 
             let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("compute_pass3"),
+                label: Some("compute_pass8"),
                 timestamp_writes: None,
             });
 

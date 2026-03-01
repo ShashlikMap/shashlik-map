@@ -36,29 +36,28 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let p2_scale = camera.p2_scale;
 
     let i = id.x;
-    dots[i].color_alpha = 1.0;
 
     if(i % u32(p2_scale) != 0) {
-        dots[i].color_alpha = 0.0;
         return;
     }
 
     let qqw = camera.view_proj * vec4f(dots[i].position, 1.0);
     let qq = qqw.xy / qqw.w;
     if qq.x < -1.0 || qq.x > 1.0 || qq.y < -1.0 || qq.y > 1.0 {
-        dots[i].color_alpha = 0.0;
         return;
     }
 
+    var ca = 1.0;
     if(i % (u32(p2_scale) * 2) != 0) {
         if(u32(p2_scale) == 1) {
-            dots[i].color_alpha = 2.0 * (1.0 - camera_scale);
+            ca = 2.0 * (1.0 - camera_scale);
         } else {
-            dots[i].color_alpha = 2.0 * (p2_scale - camera_scale) / p2_scale;
+            ca = 2.0 * (p2_scale - camera_scale) / p2_scale;
         }
     }
 
-    if dots[i].color_alpha > 0.0 {
+    if ca > 0.0 {
+        dots[i].color_alpha = ca;
         args.vertexCount = 6;
         let culledIndex = atomicAdd(&args.instanceCount, 1u);
         culled[culledIndex] = i;
