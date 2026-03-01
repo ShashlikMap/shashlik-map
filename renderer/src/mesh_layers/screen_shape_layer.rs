@@ -123,7 +123,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
             self.render_pipeline.render(render_pass, global_context);
 
             self.meshes.iter().for_each(|(_, (mesh, instance_buf))| {
-                mesh.render_instanced(1, render_pass, instance_buf, false);
+                mesh.render_instanced(1, render_pass, instance_buf, false, None);
             });
         }
     }

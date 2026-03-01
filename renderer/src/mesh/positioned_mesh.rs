@@ -86,12 +86,13 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         }
     }
 
-    pub fn render(&mut self, render_pass: &mut RenderPass, disable_skip_mesh_feature: bool) {
+    pub fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext, disable_skip_mesh_feature: bool) {
         self.mesh.render_instanced(
             1,
             render_pass,
             &self.instance_buffer,
             disable_skip_mesh_feature,
+            if self.route { Some(&global_context.indirect_args) } else { None },
         );
     }
 }

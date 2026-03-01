@@ -94,7 +94,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
             self.render_pipeline.render(render_pass, global_context);
 
             self.render_data_holder.run_mut_action(|mesh| {
-                mesh.render(render_pass, self.disable_skip_mesh_feature);
+                mesh.render(render_pass, global_context, self.disable_skip_mesh_feature);
             });
         }
     }

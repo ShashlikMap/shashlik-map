@@ -45,7 +45,7 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     let qqw = camera.view_proj * vec4f(dots[i].position, 1.0);
     let qq = qqw.xy / qqw.w;
-    if qq.x < -0.8 || qq.x > 0.8 || qq.y < -0.8 || qq.y > 0.8 {
+    if qq.x < -1.0 || qq.x > 1.0 || qq.y < -1.0 || qq.y > 1.0 {
         dots[i].color_alpha = 0.0;
         return;
     }
@@ -59,6 +59,7 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     }
 
     if dots[i].color_alpha > 0.0 {
+        args.vertexCount = 6;
         let culledIndex = atomicAdd(&args.instanceCount, 1u);
         culled[culledIndex] = i;
     }

@@ -24,6 +24,12 @@ impl RouteGroup {
         route_costing: RouteCosting,
         converter: Box<dyn Fn(&Point) -> Point>,
     ) -> RouteGroup {
+        let route = vec![Point::new(139.757196, 35.688013999999995),
+                         Point::new(20.757196, 45.688013999999995),
+                         Point::new(100.757196, 65.688013999999995),
+                         Point::new(99.757196, 55.688013999999995),
+                         Point::new(79.757196, 50.688013999999995),
+                         Point::new(139.757196, 35.688013999999995)];
         let route: Vec<Point> = route.iter().map(|p| converter(p)).collect();
         RouteGroup {
             route,

@@ -27,6 +27,9 @@ struct DotInput {
 @group(2) @binding(0)
 var<storage, read> route: array<DotInput>;
 
+@group(2) @binding(1)
+var<storage, read> culled: array<u32>;
+
 struct VertexInput {
     @builtin(instance_index) instance_index : u32,
     @location(0) position: vec3<f32>,
@@ -114,9 +117,10 @@ fn vs_main_route(
 
     out.color_alpha = pos.color_alpha;
 
+    let route_index = culled[model.instance_index];
+
     if(!with_normal && camera_scale >= 0.0) {
-        let i = model.instance_index;
-        out.color_alpha = route[i].color_alpha;
+        out.color_alpha = route[route_index].color_alpha;
         if(out.color_alpha <= 0.0) {
             out.clip_position = zero_position;
             return out;
@@ -130,7 +134,7 @@ fn vs_main_route(
         model_position = scale_m * model_position;
     }
 
-    var modelpos = model_position.xyz + route[model.instance_index].position;
+    var modelpos = model_position.xyz + route[route_index].position;
 
     out.style_index = model.style_index;
     out.outline_flag = 1;

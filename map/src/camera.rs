@@ -101,8 +101,8 @@ impl CameraController {
             - Vector3::new(camera.target.x, camera.target.y, camera.target.z))
         .magnitude();
         if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {
-            println!("Origin rebase!");
-            camera.offset = Vector3::new(camera.target.x, camera.target.y, camera.target.z);
+            // println!("Origin rebase!");
+            // camera.offset = Vector3::new(camera.target.x, camera.target.y, camera.target.z);
         }
 
         let rotation_matrix = Basis3::from_angle_z(Deg(self.yaw));

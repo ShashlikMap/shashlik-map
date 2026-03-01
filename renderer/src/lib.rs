@@ -24,7 +24,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread::spawn;
 use tokio::sync::broadcast;
-use wgpu::{include_wgsl, ComputePassDescriptor, ComputePipelineDescriptor, Texture};
+use wgpu::{include_wgsl, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, Texture};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 pub mod canvas_api;
@@ -65,6 +65,7 @@ pub struct ShashlikRenderer {
     pub api: Arc<RendererApi>,
     fps_counter: FpsCounter<100>,
     global_context: GlobalContext,
+    route_compute_pipeline: ComputePipeline
 }
 
 impl ShashlikRenderer {
@@ -103,6 +104,23 @@ impl ShashlikRenderer {
 
         layers.prepare(&mut global_context);
 
+        let sh_m = global_context.device().create_shader_module(include_wgsl!("shaders/compute_test.wgsl"));
+
+        let pipeline_layout = global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Compute Pipeline Layout"),
+            bind_group_layouts: &[&global_context.kiol_data.4, &global_context.kiol_data.2],
+            ..Default::default()
+        });
+
+        let route_compute_pipeline = global_context.device().create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("compute_pipeline"),
+            layout: Some(&pipeline_layout),
+            module: &sh_m,
+            entry_point: None,
+            compilation_options: Default::default(),
+            cache: None,
+        });
+
         Ok(Self {
             layers,
             pass_nodes: vec![],
@@ -110,6 +128,7 @@ impl ShashlikRenderer {
             api,
             fps_counter: FpsCounter::new(),
             global_context,
+            route_compute_pipeline
         })
     }
 
@@ -225,29 +244,14 @@ impl ShashlikRenderer {
             });
 
         {
+            encoder.clear_buffer(&self.global_context.indirect_args, 0, None);
+
             let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("compute_pass"),
+                label: Some("compute_pass3"),
                 timestamp_writes: None,
             });
 
-            let sh_m = self.global_context.device().create_shader_module(include_wgsl!("shaders/compute_test.wgsl"));
-
-            let pipeline_layout = self.global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Compute Pipeline Layout"),
-                bind_group_layouts: &[&self.global_context.kiol_data.4, &self.global_context.kiol_data.2],
-                ..Default::default()
-            });
-
-            let c_p = self.global_context.device().create_compute_pipeline(&ComputePipelineDescriptor {
-                label: Some("compute_pipeline"),
-                layout: Some(&pipeline_layout),
-                module: &sh_m,
-                entry_point: None,
-                compilation_options: Default::default(),
-                cache: None,
-            });
-
-            compute_pass.set_pipeline(&c_p);
+            compute_pass.set_pipeline(&self.route_compute_pipeline);
             compute_pass.set_bind_group(0, &self.global_context.kiol_data.5, &[]);
             compute_pass.set_bind_group(1, &self.global_context.kiol_data.3, &[]);
             compute_pass.dispatch_workgroups(self.global_context.dots as u32 / 64, 1, 1);

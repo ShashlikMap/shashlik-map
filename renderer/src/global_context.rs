@@ -102,7 +102,17 @@ impl GlobalContext {
                     min_binding_size: None,
                 },
                 count: None,
-            }],
+            },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
             label: Some("compute_bind_group_layout1"),
         });
         let layout2 = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -155,7 +165,11 @@ impl GlobalContext {
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: buffer.as_entire_binding(),
-            }],
+            },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: culled_buffer.as_entire_binding(),
+                }],
             label: Some("styles_bind_group1"),
         });
         let bind_group2 = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -197,6 +211,7 @@ impl GlobalContext {
     }
 
     pub fn set_route_dots<T: MeshInstanceInput>(&mut self, positions: &Vec<T>) {
+        println!("kiol set_route_dots");
         let dot_input_vec: Vec<_> = positions.iter().map(|item| {
             DotInput {
                 position: item.position(),
@@ -219,15 +234,19 @@ impl GlobalContext {
         });
 
         let bind_group1 = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: & self.kiol_data.0,
+            layout: &self.kiol_data.0,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: buffer.as_entire_binding(),
-            }],
+            },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: culled_buffer.as_entire_binding(),
+                }, ],
             label: Some("kiol_styles_bind_group1"),
         });
         let bind_group2 = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: & self.kiol_data.2,
+            layout: &self.kiol_data.2,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: buffer.as_entire_binding(),
