@@ -4,8 +4,8 @@ use crate::styles::style_store::StyleStore;
 use crate::utils::ReceiverExt;
 use crate::view_projection::ViewProjection;
 use cgmath::{Matrix4, Vector3};
-use wgpu::util::DeviceExt;
-use wgpu::{BindGroup, BindGroupLayout, Device};
+use wgpu::util::{DeviceExt, DrawIndexedIndirectArgs};
+use wgpu::{BindGroup, BindGroupLayout, Buffer, Device};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
 
@@ -17,6 +17,7 @@ pub struct GlobalContext {
     pub style_bind_group: Option<BindGroup>,
     pub kiol_data: (BindGroupLayout, BindGroup, BindGroupLayout, BindGroup, BindGroupLayout, BindGroup),
     pub dots: usize,
+    pub indirect_args: Buffer,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
 }
 
@@ -33,7 +34,22 @@ impl GlobalContext {
         let view_projection = ViewProjection::new(device);
         let collider = Collider::new();
         let styles_bind_group_layout = Self::create_style_bind_group_layout(device);
-        let kiol_data = Self::create_kiol(&device, &view_projection);
+
+        let indirect_args_struct = DrawIndexedIndirectArgs {
+            index_count: 6,
+            instance_count: 0,
+            first_index: 0,
+            base_vertex: 0,
+            first_instance: 0,
+        };
+        let indirect_args = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("indirect args"),
+            contents: indirect_args_struct.as_bytes(),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT |wgpu::BufferUsages::COPY_DST,
+        });
+
+        let kiol_data = Self::create_route_render_data(&device, &view_projection, &indirect_args);
+
         GlobalContext {
             canvas,
             view_projection,
@@ -42,6 +58,7 @@ impl GlobalContext {
             style_bind_group: None,
             kiol_data,
             dots: 0,
+            indirect_args,
             style_uniform_rx: style_store.subscribe(),
         }
     }
@@ -62,10 +79,16 @@ impl GlobalContext {
         })
     }
 
-    fn create_kiol(device: &Device, vp: &ViewProjection) -> (BindGroupLayout, BindGroup, BindGroupLayout, BindGroup, BindGroupLayout, BindGroup) {
+    fn create_route_render_data(device: &Device, vp: &ViewProjection, indirect_args: &Buffer) -> (BindGroupLayout, BindGroup, BindGroupLayout, BindGroup, BindGroupLayout, BindGroup) {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("kiol compute Buffer"),
             contents: bytemuck::cast_slice(&[0.0, 0.0, 0.0, 0.0]),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let culled_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("kiol culled Buffer"),
+            contents: bytemuck::cast_slice(&[0]),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -94,6 +117,15 @@ impl GlobalContext {
                 count: None,
             }, wgpu::BindGroupLayoutEntry {
                 binding: 1,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }, wgpu::BindGroupLayoutEntry {
+                binding: 2,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Storage { read_only: false },
@@ -134,7 +166,11 @@ impl GlobalContext {
             },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: buffer.as_entire_binding(),
+                    resource: culled_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: indirect_args.as_entire_binding(),
                 }],
             label: Some("styles_bind_group2"),
         });
@@ -176,6 +212,12 @@ impl GlobalContext {
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         });
 
+        let culled_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("kiol culled Buffer"),
+            contents: bytemuck::cast_slice(&vec![0; dot_input_vec.len()]),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
+
         let bind_group1 = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: & self.kiol_data.0,
             entries: &[wgpu::BindGroupEntry {
@@ -192,7 +234,11 @@ impl GlobalContext {
             },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: buffer.as_entire_binding(),
+                    resource: culled_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.indirect_args.as_entire_binding(),
                 }],
             label: Some("kiol_styles_bind_group2"),
         });
