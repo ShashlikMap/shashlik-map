@@ -2,20 +2,20 @@ use crate::collider::{ColliderTask, CollisionTaskController, CollisionTaskWrappe
 use crate::collision_handler::CollisionHandler;
 use crate::draw_commands::mesh2d_draw_command::Mesh2dDrawCommand;
 use crate::global_context::GlobalContext;
-use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh::InstanceBuffer;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::modifier::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use crate::view_projection::ViewProjection;
-use cgmath::Vector3;
 use cgmath::num_traits::clamp;
+use cgmath::Vector3;
 use geo_types::point;
 use rstar::primitives::Rectangle;
 use std::collections::HashMap;
 use std::mem;
-use wgpu::RenderPass;
+use wgpu::{CommandEncoder, RenderPass};
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
 pub(crate) struct ScreenShapeLayer<P: RenderPipeline> {
@@ -87,6 +87,9 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
         let descriptor = self.render_pipeline.prepare(global_context);
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
     }
+
+    fn compute(&mut self, _encoder: &mut CommandEncoder,_global_context: &mut GlobalContext) {}
+
 
     fn update(&mut self, global_context: &mut GlobalContext) {
         let Ok(hm) = self.collision_task_controller.receiver.try_recv() else {

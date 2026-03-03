@@ -6,7 +6,7 @@ use crate::pipelines::{RenderPipeline, WithTexture};
 use crate::vertex_attrs::TextInstanceInput;
 use cgmath::{Matrix4, SquareMatrix};
 use log::error;
-use wgpu::{BindGroup, RenderPass, TextureView};
+use wgpu::{BindGroup, CommandEncoder, RenderPass, TextureView};
 
 pub struct OrthoMeshLayer<P: RenderPipeline + WithTexture> {
     render_pipeline: P,
@@ -75,6 +75,9 @@ impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
     }
 
     fn update(&mut self, _global_context: &mut GlobalContext) {}
+
+    fn compute(&mut self, _encoder: &mut CommandEncoder, _global_context: &mut GlobalContext) {}
+
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         if let (Some(render_pipeline), Some(mesh)) = (self.pipeline.as_ref(), self.mesh.as_ref()) {

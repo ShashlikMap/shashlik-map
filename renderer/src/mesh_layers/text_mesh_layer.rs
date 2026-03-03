@@ -4,7 +4,7 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::modifier::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use crate::text::text_renderer::TextRenderer;
-use wgpu::RenderPass;
+use wgpu::{CommandEncoder, RenderPass};
 
 pub struct TextMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
@@ -58,6 +58,9 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
     fn update(&mut self, _global_context: &mut GlobalContext) {
         // no-op
     }
+
+    fn compute(&mut self, _encoder: &mut CommandEncoder, _global_context: &mut GlobalContext) {}
+
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         if let Some(render_pipeline) = self.pipeline.as_ref() {

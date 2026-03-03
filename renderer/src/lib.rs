@@ -26,6 +26,7 @@ use tokio::sync::broadcast;
 use wgpu::Texture;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use crate::mesh_layers::feature_layers::FeatureLayerTag;
+use crate::pass_nodes::prepass_node::PrepassNode;
 
 pub mod canvas_api;
 mod collision_handler;
@@ -173,13 +174,15 @@ impl ShashlikRenderer {
     }
 
     fn config_pass_nodes(&mut self) {
+        let pre_pass_node = PrepassNode::new();
+
         let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
         self.layers
             .ortho_mesh_layer
             .set_texture(&rt_node.rt_texture_view, &self.global_context);
 
         let main_node = MainPassNode::new(&mut self.global_context);
-        self.pass_nodes = vec![Box::new(rt_node), Box::new(main_node)];
+        self.pass_nodes = vec![Box::new(pre_pass_node), Box::new(rt_node), Box::new(main_node)];
     }
 
     fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32) {
@@ -225,6 +228,10 @@ impl ShashlikRenderer {
             });
 
         self.pass_nodes.iter_mut().for_each(|node| {
+            node.compute(&mut encoder,
+                         &mut self.layers,
+                         &mut self.global_context);
+
             node.render(
                 &mut encoder,
                 &output_view,
