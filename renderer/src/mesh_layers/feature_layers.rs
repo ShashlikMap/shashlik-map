@@ -1,9 +1,9 @@
 use crate::global_context::GlobalContext;
-use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
+use crate::mesh_layers::BaseMeshLayer;
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use linked_hash_map::LinkedHashMap;
-use wgpu::RenderPass;
+use wgpu::{CommandEncoder, RenderPass};
 
 pub struct FeatureLayers {
     shape_layers: LinkedHashMap<String, GeneralMeshLayer<ShapePipeline>>,
@@ -43,6 +43,12 @@ impl BaseMeshLayer for FeatureLayers {
     fn update(&mut self, global_context: &mut GlobalContext) {
         self.shape_layers.iter_mut().for_each(|(_, layer)| {
             layer.update(global_context);
+        });
+    }
+
+    fn compute(&mut self, encoder: &mut CommandEncoder, global_context: &mut GlobalContext) {
+        self.shape_layers.iter_mut().for_each(|(_, layer)| {
+            layer.compute(encoder, global_context);
         });
     }
 

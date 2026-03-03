@@ -24,6 +24,11 @@ impl MainPassNode {
 }
 
 impl PassNode for MainPassNode {
+    fn compute(&mut self, _encoder: &mut CommandEncoder, _layers: &mut Layers, _global_context: &mut GlobalContext) {
+        // no special computes
+    }
+
+
     fn render(
         &mut self,
         encoder: &mut CommandEncoder,

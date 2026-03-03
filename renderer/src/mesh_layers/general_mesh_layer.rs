@@ -7,7 +7,7 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::modifier::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use std::mem;
-use wgpu::RenderPass;
+use wgpu::{CommandEncoder, RenderPass};
 
 pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
@@ -81,6 +81,10 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
         self.render_data_holder.run_mut_action(|mesh| {
             mesh.update(global_context);
         });
+    }
+
+    fn compute(&mut self, encoder: &mut CommandEncoder, global_context: &mut GlobalContext) {
+        // TODO
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {

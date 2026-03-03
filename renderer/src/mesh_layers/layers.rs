@@ -9,7 +9,7 @@ use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::screen_mesh_pipeline::ScreenMeshPipeline;
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use rustybuzz::ttf_parser;
-use wgpu::RenderPass;
+use wgpu::{CommandEncoder, RenderPass};
 
 pub(crate) struct Layers {
     pub is_preview: bool,
@@ -68,6 +68,12 @@ impl BaseMeshLayer for Layers {
         self.feature_layers.update(global_context);
         self.ortho_mesh_layer.update(global_context);
     }
+
+    fn compute(&mut self, encoder: &mut CommandEncoder, global_context: &mut GlobalContext) {
+        // only feature layer for now
+        self.feature_layers.compute(encoder, global_context);
+    }
+
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         self.shape_layer.disable_skip_mesh_feature = self.is_preview;
