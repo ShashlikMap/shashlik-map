@@ -1,14 +1,14 @@
+use crate::draw_commands::MeshVertex;
+use crate::global_context::GlobalContext;
 use crate::pipelines::{
     OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline,
 };
+use crate::textures::SAMPLE_COUNT;
 use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
-use crate::global_context::GlobalContext;
 use wgpu::{
     include_wgsl, BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState
     , Face, RenderPass, TextureFormat,
 };
-use crate::draw_commands::MeshVertex;
-use crate::textures::SAMPLE_COUNT;
 
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,
@@ -57,7 +57,7 @@ impl RenderPipeline for MeshPipeline {
         render_pass.set_bind_group(0, &self.bind_group, &[]);
     }
 
-    fn prepare(&'_ self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
+    fn prepare(&mut self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
         let device = global_context.device();
         let config = global_context.config();
 
@@ -109,5 +109,12 @@ impl RenderPipeline for MeshPipeline {
                 alpha_to_coverage_enabled: false,
             },
         }
+    }
+
+    fn set_instance_bind_group(&mut self, _render_pass: &mut RenderPass, _instance_bind_group: &BindGroup) {
+    }
+
+    fn get_instances_layout(&self) -> Option<&BindGroupLayout> {
+        None
     }
 }

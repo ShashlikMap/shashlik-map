@@ -89,13 +89,14 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         let feature_layer_tags = vec![FeatureLayerTag {
             name: "kml_layer",
-            vertex_shader: None
+            ..Default::default()
         }, FeatureLayerTag {
             name: "route_layer",
-            vertex_shader: Some("vs_main_route")
+            vertex_shader: Some("vs_main_route"),
+            indirect: true,
         }, FeatureLayerTag {
             name: "puck_layer",
-            vertex_shader: None
+            ..Default::default()
         }];
         let renderer = ShashlikRenderer::new(feature_layer_tags, canvas, &DEFAULT_FONT).await?;
         let tiles_stream = tiles_provider.tiles();

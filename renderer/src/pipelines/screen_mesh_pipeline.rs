@@ -54,13 +54,10 @@ impl RenderPipeline for ScreenMeshPipeline {
         self.mesh_pipeline.render(render_pass, global_context);
     }
 
-    fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
-        let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context);
-
+    fn prepare(&mut self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
         let device = global_context.device();
-
-        if self.use_texture {
-            mesh_descriptor.layout = Some(device.create_pipeline_layout(
+        let texture_pipeline_layout = if self.use_texture {
+            Some(device.create_pipeline_layout(
                 &wgpu::PipelineLayoutDescriptor {
                     label: Some("Texture Render Pipeline Layout"),
                     bind_group_layouts: &[
@@ -69,9 +66,14 @@ impl RenderPipeline for ScreenMeshPipeline {
                     ],
                     ..Default::default()
                 },
-            ));
-        }
-
+            ))
+        } else {
+            None
+        };
+        
+        let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context);
+        mesh_descriptor.layout = texture_pipeline_layout;
+        
         let mut stencil = mesh_descriptor.depth_stencil.unwrap();
         stencil.depth_compare = CompareFunction::Always;
         stencil.depth_write_enabled = false;
@@ -93,6 +95,13 @@ impl RenderPipeline for ScreenMeshPipeline {
         mesh_descriptor.primitive.cull_mode = None;
 
         mesh_descriptor
+    }
+
+    fn set_instance_bind_group(&mut self, _render_pass: &mut RenderPass, _instance_bind_group: &BindGroup) {
+    }
+
+    fn get_instances_layout(&self) -> Option<&BindGroupLayout> {
+        None
     }
 }
 

@@ -9,9 +9,11 @@ pub struct FeatureLayers {
     shape_layers: LinkedHashMap<String, GeneralMeshLayer<ShapePipeline>>,
 }
 
+#[derive(Default)]
 pub struct FeatureLayerTag {
     pub name: &'static str,
-    pub vertex_shader: Option<&'static str>
+    pub vertex_shader: Option<&'static str>,
+    pub indirect: bool
 }
 
 impl FeatureLayers {
@@ -21,7 +23,7 @@ impl FeatureLayers {
         };
 
         tags.into_iter().for_each(|tag| {
-            let layer = GeneralMeshLayer::new(ShapePipeline::new(global_context, tag.vertex_shader));
+            let layer = GeneralMeshLayer::new(ShapePipeline::new(global_context, tag.vertex_shader, tag.indirect));
             layers.shape_layers.insert(tag.name.to_string(), layer);
         });
 
