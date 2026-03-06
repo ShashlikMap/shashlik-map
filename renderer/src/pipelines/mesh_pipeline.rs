@@ -57,7 +57,7 @@ impl RenderPipeline for MeshPipeline {
         render_pass.set_bind_group(0, &self.bind_group, &[]);
     }
 
-    fn prepare(&mut self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
+    fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
         let device = global_context.device();
         let config = global_context.config();
 

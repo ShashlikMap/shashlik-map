@@ -43,7 +43,7 @@ impl<T: Pod> InstanceBuffer<T> {
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some(label),
                     contents: bytemuck::cast_slice(data.as_slice()),
-                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE |wgpu::BufferUsages::COPY_DST,
                 }),
             );
         }

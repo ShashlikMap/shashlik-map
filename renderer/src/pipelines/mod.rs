@@ -21,7 +21,7 @@ pub trait RenderPipeline {
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext);
-    fn prepare(&mut self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_>;
+    fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_>;
     fn set_instance_bind_group(&mut self, render_pass: &mut RenderPass, instance_bind_group: &BindGroup);
 
     fn get_instances_layout(&self) -> Option<&BindGroupLayout>;

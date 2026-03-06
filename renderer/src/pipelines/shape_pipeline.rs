@@ -48,7 +48,7 @@ impl RenderPipeline for ShapePipeline {
         }
     }
 
-    fn prepare(&mut self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
+    fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
         let device = global_context.device();
         let mut layouts = vec![
             &self.mesh_pipeline.bind_group_layout,
