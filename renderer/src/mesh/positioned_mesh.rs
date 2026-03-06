@@ -6,7 +6,7 @@ use crate::modifier::render_modifier::SpatialData;
 use crate::utils::ReceiverExt;
 use cgmath::Vector3;
 use tokio::sync::broadcast::Receiver;
-use wgpu::RenderPass;
+use wgpu::{BindGroup, BindGroupLayout, RenderPass};
 
 pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
@@ -17,6 +17,7 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
     original_instance_positions_alpha: Vec<(Vector3<f64>, f32)>,
+    pub instances_bind_group: Option<BindGroup>,
 }
 
 impl Mesh {
@@ -47,10 +48,15 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             original_spatial_data: SpatialData::new(),
             original_instance_positions_alpha: instance_positions_alpha
                 .unwrap_or(vec![(Vector3::new(0.0, 0.0, 0.0), 1f32)]),
+            instances_bind_group: None,
         }
     }
 
-    pub fn update(&mut self, global_context: &mut GlobalContext) {
+    pub fn update(
+        &mut self,
+        global_context: &mut GlobalContext,
+        instances_bind_group_layout: Option<&BindGroupLayout>,
+    ) {
         let cs_offset_updated = global_context.view_projection.cs_offset != self.cs_offset;
         self.cs_offset = global_context.view_projection.cs_offset;
         let mut update_attrs = cs_offset_updated;
@@ -74,12 +80,43 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 global_context.queue(),
                 &self.attrs,
             );
+
+            if let Some(instances_bind_group_layout) = instances_bind_group_layout {
+                self.instances_bind_group = Some(
+                    global_context
+                        .device()
+                        .create_bind_group(&wgpu::BindGroupDescriptor {
+                            layout: instances_bind_group_layout,
+                            entries: &[wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: self
+                                    .instance_buffer
+                                    .buffer
+                                    .as_ref()
+                                    .expect("Buffer should exist")
+                                    .as_entire_binding(),
+                            }],
+                            label: Some("instances_bind_group"),
+                        }),
+                );
+            } else {
+                self.instances_bind_group = None
+            }
         }
     }
 
-    pub fn render(&mut self, render_pass: &mut RenderPass, disable_skip_mesh_feature: bool) {
+    pub fn render_instanced(
+        &mut self,
+        render_pass: &mut RenderPass,
+        disable_skip_mesh_feature: bool,
+    ) {
+        let instances_vertex_slot = if self.instances_bind_group.is_some() {
+            None
+        } else {
+            Some(1)
+        };
         self.mesh.render_instanced(
-            1,
+            instances_vertex_slot,
             render_pass,
             &self.instance_buffer,
             disable_skip_mesh_feature,

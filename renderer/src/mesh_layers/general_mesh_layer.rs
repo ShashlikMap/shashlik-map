@@ -13,7 +13,7 @@ pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
     pipeline: Option<wgpu::RenderPipeline>,
     render_data_holder: RenderDataHolder<PositionedMesh<P::InstanceInputType>>,
-    pub disable_skip_mesh_feature: bool
+    pub disable_skip_mesh_feature: bool,
 }
 
 impl<P: RenderPipeline> GeneralMeshLayer<P> {
@@ -22,7 +22,7 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
             render_pipeline,
             pipeline: None,
             render_data_holder: RenderDataHolder::new(),
-            disable_skip_mesh_feature: false
+            disable_skip_mesh_feature: false,
         }
     }
     pub fn add(
@@ -79,11 +79,11 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
 
     fn update(&mut self, global_context: &mut GlobalContext) {
         self.render_data_holder.run_mut_action(|mesh| {
-            mesh.update(global_context);
+            mesh.update(global_context, self.render_pipeline.get_instances_layout());
         });
     }
 
-    fn compute(&mut self, encoder: &mut CommandEncoder, global_context: &mut GlobalContext) {
+    fn compute(&mut self, _encoder: &mut CommandEncoder, _global_context: &mut GlobalContext) {
         // TODO
     }
 
@@ -94,7 +94,10 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
             self.render_pipeline.render(render_pass, global_context);
 
             self.render_data_holder.run_mut_action(|mesh| {
-                mesh.render(render_pass, self.disable_skip_mesh_feature);
+                if let Some(instance_bind_group) = mesh.instances_bind_group.as_ref() {
+                    self.render_pipeline.set_instance_bind_group(render_pass, instance_bind_group);
+                }
+                mesh.render_instanced(render_pass, self.disable_skip_mesh_feature);
             });
         }
     }

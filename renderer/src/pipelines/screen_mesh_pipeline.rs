@@ -94,6 +94,13 @@ impl RenderPipeline for ScreenMeshPipeline {
 
         mesh_descriptor
     }
+
+    fn set_instance_bind_group(&mut self, _render_pass: &mut RenderPass, _instance_bind_group: &BindGroup) {
+    }
+
+    fn get_instances_layout(&self) -> Option<&BindGroupLayout> {
+        None
+    }
 }
 
 impl WithTexture for ScreenMeshPipeline {

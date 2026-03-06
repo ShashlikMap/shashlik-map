@@ -19,6 +19,9 @@ var<uniform> camera: CameraUniform;
 @group(1) @binding(0)
 var<storage, read> styles: array<StyleUniform>;
 
+@group(2) @binding(0)
+var<storage, read> indirect_instances: array<InstanceInput>;
+
 struct VertexInput {
     @builtin(instance_index) instance_index : u32,
     @location(0) position: vec3<f32>,
@@ -90,31 +93,24 @@ const zero_position = vec4f(0.0, 0.0, 0.0, 0.0);
 @vertex
 fn vs_main_route(
     model: VertexInput,
-    pos: InstanceInput
 ) -> VertexOutput {
-    let model_matrix = mat4x4<f32>(
-            pos.model_matrix_0,
-            pos.model_matrix_1,
-            pos.model_matrix_2,
-            pos.model_matrix_3,
-    );
-
     var out: VertexOutput;
     let with_normal = model.normal.x != 0.0 || model.normal.y != 0.0;
 
     let camera_scale = max(camera.scale, 0.25);
 
-    out.color_alpha = pos.color_alpha;
+    out.color_alpha = 1.0;
+
+    let instance_index = model.instance_index;
 
     if(!with_normal && camera_scale >= 0.0) {
         let p2_scale = camera.p2_scale;
 
-        let i = model.instance_index;
-        if(i % u32(p2_scale) != 0) {
+        if(instance_index % u32(p2_scale) != 0) {
             out.clip_position = zero_position;
             return out;
         }
-        if(i % (u32(p2_scale) * 2) != 0) {
+        if(instance_index % (u32(p2_scale) * 2) != 0) {
             if(u32(p2_scale) == 1) {
                 out.color_alpha = 2.0 * (1.0 - camera_scale);
             } else {
@@ -123,14 +119,14 @@ fn vs_main_route(
         }
     }
 
-    var model_position = model_matrix * vec4(model.position.xyz, 1.0);
+    var model_position = vec4(model.position.xyz, 1.0);
 
     if(!with_normal) {
         let scale_m = mat4x4(camera_scale, 0.0, 0.0, 0.0, 0.0, camera_scale, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
         model_position = scale_m * model_position;
     }
 
-    var modelpos = model_position.xyz + pos.position;
+    var modelpos = model_position.xyz + indirect_instances[instance_index].position;
 
     out.style_index = model.style_index;
     out.outline_flag = 1;
@@ -152,7 +148,6 @@ fn vs_main_route(
     }
 
     out.vertex_pos_xy = pointPos.xy;
-    out.bbox = pos.bbox;
     out.uv_dist = model.uv_dist;
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
