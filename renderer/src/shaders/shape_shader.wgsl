@@ -92,7 +92,6 @@ fn vs_main(
 
 // TODO pass as a parameter
 const route_inflate_factor: f32 = 1.3;
-const zero_position = vec4f(0.0, 0.0, 0.0, 0.0);
 @vertex
 fn vs_main_route(
     model: VertexInput,
@@ -111,10 +110,6 @@ fn vs_main_route(
 
     if(!with_normal && camera_scale >= 0.0) {
         out.color_alpha = indirect_instances[instance_index].color_alpha;
-        if(out.color_alpha <= 0.0) {
-            out.clip_position = zero_position;
-            return out;
-        }
     }
 
     var model_position = vec4(model.position.xyz, 1.0);

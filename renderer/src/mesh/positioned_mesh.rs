@@ -176,7 +176,12 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             };
             global_context.queue().write_buffer(instances_args_buffer, 0, indirect_args_struct.as_bytes());
             if instance_count == 0 {
-                compute_pass.dispatch_workgroups(self.instance_buffer.length as u32 / 64, 1, 1);
+                // workgroups are batches by 64/128
+                let mut x = self.instance_buffer.length as u32 / 64;
+                if self.instance_buffer.length as u32 % 64 != 0 {
+                    x += 64;
+                }
+                compute_pass.dispatch_workgroups(x, 1, 1);
             }
         }
     }
