@@ -37,17 +37,17 @@ var<storage, read_write> args: IndirectArgs;
 
 @compute @workgroup_size(64)
 fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
-    let p2_scale = camera.p2_scale;
-
     let i = id.x;
 
-    if(i % u32(p2_scale) != 0) {
+    let p2_scale = camera.p2_scale;
+
+    if(i % u32(p2_scale) != 0 || i >= arrayLength(&indirect_instances)) {
         return;
     }
 
-    let qqw = camera.view_proj * vec4f(indirect_instances[i].position, 1.0);
-    let qq = qqw.xy / qqw.w;
-    if qq.x < -1.0 || qq.x > 1.0 || qq.y < -1.0 || qq.y > 1.0 {
+    let screen_pos = camera.view_proj * vec4f(indirect_instances[i].position, 1.0);
+    let ndc = screen_pos.xy / screen_pos.w;
+    if ndc.x < -1.0 || ndc.x > 1.0 || ndc.y < -1.0 || ndc.y > 1.0 {
         return;
     }
 
