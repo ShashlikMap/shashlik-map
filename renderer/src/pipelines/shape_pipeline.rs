@@ -8,6 +8,7 @@ pub struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
     vs_func_name: Option<&'static str>,
     indirect_instances_layout: BindGroupLayout,
+    indirect_instances_args_layout: BindGroupLayout,
     culling_compute_pipeline: ComputePipeline,
     indirect: bool
 
@@ -41,13 +42,27 @@ impl ShapePipeline {
             label: Some("shape_indirect_buffer_layout"),
         });
 
+        let indirect_instances_args_layout = global_context.device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("shape_indirect_args_layout"),
+        });
+
         let mesh_pipeline = MeshPipeline::new(global_context);
 
         let compute_cull_shader = global_context.device().create_shader_module(include_wgsl!("../shaders/shape_culling.wgsl"));
 
         let culling_pipeline_layout = global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shape Compute Pipeline Layout"),
-            bind_group_layouts: &[&mesh_pipeline.bind_group_layout, &indirect_instances_layout],
+            bind_group_layouts: &[&mesh_pipeline.bind_group_layout, &indirect_instances_layout, &indirect_instances_args_layout],
             ..Default::default()
         });
 
@@ -64,6 +79,7 @@ impl ShapePipeline {
             mesh_pipeline,
             vs_func_name,
             indirect_instances_layout,
+            indirect_instances_args_layout,
             culling_compute_pipeline,
             indirect
         }
@@ -129,9 +145,9 @@ impl RenderPipeline for ShapePipeline {
         mesh_descriptor
     }
 
-    fn set_instance_bind_group_compute(&mut self, compute_pass: &mut ComputePass, instance_bind_group: &BindGroup) {
-        // index 1 in shape pipeline for compute!
+    fn set_instance_bind_group_compute(&mut self, compute_pass: &mut ComputePass, instance_bind_group: &BindGroup, instance_args_bind_group: &BindGroup) {
         compute_pass.set_bind_group(1, instance_bind_group, &[]);
+        compute_pass.set_bind_group(2, instance_args_bind_group, &[]);
     }
 
     fn set_instance_bind_group_render(&mut self, render_pass: &mut RenderPass, instance_bind_group: &BindGroup) {
@@ -139,9 +155,9 @@ impl RenderPipeline for ShapePipeline {
         render_pass.set_bind_group(2, instance_bind_group, &[]);
     }
 
-    fn get_instances_layout(&self) -> Option<&BindGroupLayout> {
+    fn get_instances_layouts(&self) -> Option<(&BindGroupLayout, &BindGroupLayout)> {
         if self.indirect {
-            Some(&self.indirect_instances_layout)
+            Some((&self.indirect_instances_layout, &self.indirect_instances_args_layout))
         } else {
             None
         }

@@ -106,7 +106,8 @@ impl Mesh {
         slot: Option<u32>,
         render_pass: &mut RenderPass,
         instance_buffer: &InstanceBuffer<T>,
-        disable_skip_mesh_feature: bool
+        disable_skip_mesh_feature: bool,
+        indirect_args: Option<&Buffer>
     ) {
         if instance_buffer.length > 0
             && let Some(buffer) = instance_buffer.buffer.as_ref()
@@ -115,11 +116,11 @@ impl Mesh {
                 render_pass.set_vertex_buffer(slot, buffer.slice(..));
             }
             let range = 0..instance_buffer.length as u32;
-            self.render(render_pass, &range, disable_skip_mesh_feature);
+            self.render(render_pass, &range, disable_skip_mesh_feature, indirect_args);
         }
     }
 
-    fn render(&self, render_pass: &mut RenderPass, instances: &Range<u32>, disable_skip_mesh_feature: bool) {
+    fn render(&self, render_pass: &mut RenderPass, instances: &Range<u32>, disable_skip_mesh_feature: bool, indirect_args: Option<&Buffer>) {
         let v_buf = &self.vertex_buf;
         let i_buf = &self.index_buf.0;
         if v_buf.size() > 0 && i_buf.size() > 0 {
@@ -135,7 +136,11 @@ impl Mesh {
 
                 // draw instances
                 let instances_range = instances.start + styled_range_info.0 as u32..instances.end;
-                render_pass.draw_indexed(start as u32..end as u32, 0, instances_range);
+                if let Some(indirect_args) = indirect_args {
+                    render_pass.draw_indexed_indirect(indirect_args, 0);
+                } else {
+                    render_pass.draw_indexed(start as u32..end as u32, 0, instances_range);
+                }
             }
         } else {
             error!("Vertex/Index buffer are empty");

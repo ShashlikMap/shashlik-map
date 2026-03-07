@@ -6,8 +6,8 @@ use crate::modifier::render_modifier::SpatialData;
 use crate::utils::ReceiverExt;
 use cgmath::Vector3;
 use tokio::sync::broadcast::Receiver;
-use wgpu::{BindGroup, BindGroupLayout, ComputePass, RenderPass};
-use wgpu::util::DeviceExt;
+use wgpu::{BindGroup, BindGroupLayout, Buffer, ComputePass, RenderPass};
+use wgpu::util::{DeviceExt, DrawIndexedIndirectArgs};
 
 pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
@@ -18,7 +18,9 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
     original_instance_positions_alpha: Vec<(Vector3<f64>, f32)>,
+    pub instances_args_buffer: Option<Buffer>,
     pub instances_bind_group: Option<BindGroup>,
+    pub instances_args_bind_group: Option<BindGroup>,
 }
 
 impl Mesh {
@@ -49,14 +51,16 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             original_spatial_data: SpatialData::new(),
             original_instance_positions_alpha: instance_positions_alpha
                 .unwrap_or(vec![(Vector3::new(0.0, 0.0, 0.0), 1f32)]),
+            instances_args_buffer: None,
             instances_bind_group: None,
+            instances_args_bind_group: None
         }
     }
 
     pub fn update(
         &mut self,
         global_context: &mut GlobalContext,
-        instances_bind_group_layout: Option<&BindGroupLayout>,
+        instances_bind_group_layout: Option<(&BindGroupLayout, &BindGroupLayout)>,
     ) {
         let cs_offset_updated = global_context.view_projection.cs_offset != self.cs_offset;
         self.cs_offset = global_context.view_projection.cs_offset;
@@ -94,7 +98,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                     global_context
                         .device()
                         .create_bind_group(&wgpu::BindGroupDescriptor {
-                            layout: instances_bind_group_layout,
+                            layout: instances_bind_group_layout.0,
                             entries: &[wgpu::BindGroupEntry {
                                 binding: 0,
                                 resource: self
@@ -111,8 +115,37 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                             label: Some("instances_bind_group"),
                         }),
                 );
+
+                let indirect_args_struct = DrawIndexedIndirectArgs {
+                    index_count: 0,
+                    instance_count: 0,
+                    first_index: 0,
+                    base_vertex: 0,
+                    first_instance: 0,
+                };
+                let indirect_args = global_context.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("indirect args"),
+                    contents: indirect_args_struct.as_bytes(),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT |wgpu::BufferUsages::COPY_DST,
+                });
+
+                self.instances_args_bind_group = Some(
+                    global_context
+                        .device()
+                        .create_bind_group(&wgpu::BindGroupDescriptor {
+                            layout: instances_bind_group_layout.1,
+                            entries: &[wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: indirect_args
+                                    .as_entire_binding(),
+                            }],
+                            label: Some("instances_bind_args_group"),
+                        }),
+                );
+                self.instances_args_buffer = Some(indirect_args);
             } else {
-                self.instances_bind_group = None
+                self.instances_bind_group = None;
+                self.instances_args_bind_group = None;
             }
         }
     }
@@ -120,8 +153,32 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
     pub fn compute_instanced(
         &mut self,
         compute_pass: &mut ComputePass,
+        global_context: &mut GlobalContext,
     ) {
-        compute_pass.dispatch_workgroups(self.instance_buffer.length as u32 / 64, 1, 1);
+        if let Some(instances_args_buffer) = self.instances_args_buffer.as_ref() {
+            let instance_count = if self.attrs.len() <= 2 {
+                self.attrs.len()
+            } else {
+                0
+            };
+            let index_count = if instance_count == 0 {
+                6
+            } else {
+                self.mesh.index_buf.1
+            };
+            // instances_args_buffer has to be reset before computing
+            let indirect_args_struct = DrawIndexedIndirectArgs {
+                index_count: index_count as u32,
+                instance_count: instance_count as u32,
+                first_index: 0,
+                base_vertex: 0,
+                first_instance: 0,
+            };
+            global_context.queue().write_buffer(instances_args_buffer, 0, indirect_args_struct.as_bytes());
+            if instance_count == 0 {
+                compute_pass.dispatch_workgroups(self.instance_buffer.length as u32 / 64, 1, 1);
+            }
+        }
     }
 
     pub fn render_instanced(
@@ -139,6 +196,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             render_pass,
             &self.instance_buffer,
             disable_skip_mesh_feature,
+            self.instances_args_buffer.as_ref()
         );
     }
 }
