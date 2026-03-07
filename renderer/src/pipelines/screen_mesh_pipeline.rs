@@ -2,7 +2,7 @@ use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline, WithTexture};
 use crate::vertex_attrs::{MeshVertexWithUV, ShapeInstanceInput, TextInstanceInput, VertexAttrib};
-use wgpu::{include_wgsl, BindGroup, BindGroupLayout, CompareFunction, RenderPass, TextureView};
+use wgpu::{include_wgsl, BindGroup, BindGroupLayout, CompareFunction, ComputePass, RenderPass, TextureView};
 
 pub struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
@@ -50,6 +50,9 @@ impl ScreenMeshPipeline {
 impl RenderPipeline for ScreenMeshPipeline {
     type InstanceInputType = ShapeInstanceInput;
 
+    fn compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {
+    }
+
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         self.mesh_pipeline.render(render_pass, global_context);
     }
@@ -95,11 +98,18 @@ impl RenderPipeline for ScreenMeshPipeline {
         mesh_descriptor
     }
 
-    fn set_instance_bind_group(&mut self, _render_pass: &mut RenderPass, _instance_bind_group: &BindGroup) {
+    fn set_instance_bind_group_compute(&mut self, _compute_pass: &mut ComputePass, _instance_bind_group: &BindGroup) {
+    }
+
+    fn set_instance_bind_group_render(&mut self, _render_pass: &mut RenderPass, _instance_bind_group: &BindGroup) {
     }
 
     fn get_instances_layout(&self) -> Option<&BindGroupLayout> {
         None
+    }
+
+    fn is_indirect(&self) -> bool {
+        false
     }
 }
 

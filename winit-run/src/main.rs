@@ -11,7 +11,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 use std::sync::mpsc;
 use native_dialog::DialogBuilder;
-use wgpu::Limits;
+use wgpu::{Features, Limits};
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
@@ -49,6 +49,7 @@ fn main() {
     });
 
     let mut wgpu_settings = WGPUSettings::default();
+    wgpu_settings.device_required_features = Features::VERTEX_WRITABLE_STORAGE;
     wgpu_settings.device_required_limits = Limits::downlevel_defaults();
 
     slint::BackendSelector::new()

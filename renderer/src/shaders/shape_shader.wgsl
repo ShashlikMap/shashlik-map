@@ -20,7 +20,10 @@ var<uniform> camera: CameraUniform;
 var<storage, read> styles: array<StyleUniform>;
 
 @group(2) @binding(0)
-var<storage, read> indirect_instances: array<InstanceInput>;
+var<storage, read_write> indirect_instances: array<InstanceInput>;
+
+@group(2) @binding(1)
+var<storage, read_write> culled: array<u32>;
 
 struct VertexInput {
     @builtin(instance_index) instance_index : u32,
