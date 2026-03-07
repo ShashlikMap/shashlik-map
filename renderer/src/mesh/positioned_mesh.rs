@@ -6,7 +6,8 @@ use crate::modifier::render_modifier::SpatialData;
 use crate::utils::ReceiverExt;
 use cgmath::Vector3;
 use tokio::sync::broadcast::Receiver;
-use wgpu::{BindGroup, BindGroupLayout, RenderPass};
+use wgpu::{BindGroup, BindGroupLayout, ComputePass, RenderPass};
+use wgpu::util::DeviceExt;
 
 pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
@@ -82,6 +83,13 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             );
 
             if let Some(instances_bind_group_layout) = instances_bind_group_layout {
+
+                let culled_buffer = global_context.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Culled Buffer"),
+                    contents: bytemuck::cast_slice(&vec![0;  self.instance_buffer.length]),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                });
+
                 self.instances_bind_group = Some(
                     global_context
                         .device()
@@ -95,7 +103,11 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                                     .as_ref()
                                     .expect("Buffer should exist")
                                     .as_entire_binding(),
-                            }],
+                            },
+                                wgpu::BindGroupEntry {
+                                    binding: 1,
+                                    resource: culled_buffer.as_entire_binding(),
+                                }],
                             label: Some("instances_bind_group"),
                         }),
                 );
@@ -103,6 +115,13 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 self.instances_bind_group = None
             }
         }
+    }
+
+    pub fn compute_instanced(
+        &mut self,
+        compute_pass: &mut ComputePass,
+    ) {
+        compute_pass.dispatch_workgroups(self.instance_buffer.length as u32 / 64, 1, 1);
     }
 
     pub fn render_instanced(

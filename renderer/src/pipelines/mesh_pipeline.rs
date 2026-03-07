@@ -5,14 +5,11 @@ use crate::pipelines::{
 };
 use crate::textures::SAMPLE_COUNT;
 use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
-use wgpu::{
-    include_wgsl, BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState
-    , Face, RenderPass, TextureFormat,
-};
+use wgpu::{include_wgsl, BindGroup, BindGroupLayout, BlendState, CompareFunction, ComputePass, DepthStencilState, Face, RenderPass, TextureFormat};
 
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,
-    bind_group: BindGroup,
+    pub bind_group: BindGroup,
 }
 
 impl MeshPipeline {
@@ -21,7 +18,7 @@ impl MeshPipeline {
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
+                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
@@ -52,6 +49,9 @@ impl MeshPipeline {
 
 impl RenderPipeline for MeshPipeline {
     type InstanceInputType = GeneralInstanceInput;
+
+    fn compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {
+    }
 
     fn render(&mut self, render_pass: &mut RenderPass, _global_context: &GlobalContext) {
         render_pass.set_bind_group(0, &self.bind_group, &[]);
@@ -111,10 +111,17 @@ impl RenderPipeline for MeshPipeline {
         }
     }
 
-    fn set_instance_bind_group(&mut self, _render_pass: &mut RenderPass, _instance_bind_group: &BindGroup) {
+    fn set_instance_bind_group_compute(&mut self, _compute_pass: &mut ComputePass, _instance_bind_group: &BindGroup) {
+    }
+    
+    fn set_instance_bind_group_render(&mut self, _render_pass: &mut RenderPass, _instance_bind_group: &BindGroup) {
     }
 
     fn get_instances_layout(&self) -> Option<&BindGroupLayout> {
         None
+    }
+
+    fn is_indirect(&self) -> bool {
+        false
     }
 }

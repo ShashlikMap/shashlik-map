@@ -7,7 +7,7 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::modifier::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use std::mem;
-use wgpu::{CommandEncoder, RenderPass};
+use wgpu::{CommandEncoder, ComputePassDescriptor, RenderPass};
 
 pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
@@ -83,8 +83,20 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
         });
     }
 
-    fn compute(&mut self, _encoder: &mut CommandEncoder, _global_context: &mut GlobalContext) {
-        // TODO
+    fn compute(&mut self, encoder: &mut CommandEncoder, global_context: &mut GlobalContext) {
+        if self.render_pipeline.is_indirect() {
+            let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("Indirect General Mesh Layer Compute Pass"),
+                timestamp_writes: None,
+            });
+            self.render_pipeline.compute(&mut compute_pass, global_context);
+            self.render_data_holder.run_mut_action(|mesh| {
+                if let Some(instance_bind_group) = mesh.instances_bind_group.as_ref() {
+                    self.render_pipeline.set_instance_bind_group_compute(&mut compute_pass, instance_bind_group);
+                    mesh.compute_instanced(&mut compute_pass);
+                }
+            });
+        }
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
@@ -95,7 +107,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
 
             self.render_data_holder.run_mut_action(|mesh| {
                 if let Some(instance_bind_group) = mesh.instances_bind_group.as_ref() {
-                    self.render_pipeline.set_instance_bind_group(render_pass, instance_bind_group);
+                    self.render_pipeline.set_instance_bind_group_render(render_pass, instance_bind_group);
                 }
                 mesh.render_instanced(render_pass, self.disable_skip_mesh_feature);
             });

@@ -4,7 +4,7 @@ use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::modifier::render_modifier::SpatialData;
 use cgmath::Vector3;
-use wgpu::{BindGroup, BindGroupLayout, ColorTargetState, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, TextureView, VertexBufferLayout};
+use wgpu::{BindGroup, BindGroupLayout, ColorTargetState, ComputePass, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, TextureView, VertexBufferLayout};
 
 pub mod mesh_pipeline;
 pub mod shape_pipeline;
@@ -20,11 +20,15 @@ pub trait RenderPipeline {
         mesh.to_positioned::<Self::InstanceInputType>(spatial_rx, double_style, instance_positions_alpha)
     }
 
+    fn compute(&mut self, compute_pass: &mut ComputePass, global_context: &GlobalContext);
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext);
     fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_>;
-    fn set_instance_bind_group(&mut self, render_pass: &mut RenderPass, instance_bind_group: &BindGroup);
+    fn set_instance_bind_group_compute(&mut self, compute_pass: &mut ComputePass, instance_bind_group: &BindGroup);
+    fn set_instance_bind_group_render(&mut self, render_pass: &mut RenderPass, instance_bind_group: &BindGroup);
 
     fn get_instances_layout(&self) -> Option<&BindGroupLayout>;
+
+    fn is_indirect(&self) -> bool;
 }
 
 pub trait WithTexture {
