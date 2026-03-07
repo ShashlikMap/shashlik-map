@@ -111,13 +111,13 @@ impl RenderPipeline for MeshPipeline {
         }
     }
 
-    fn set_instance_bind_group_compute(&mut self, _compute_pass: &mut ComputePass, _instance_bind_group: &BindGroup) {
+    fn set_instance_bind_group_compute(&mut self, _compute_pass: &mut ComputePass, _instance_bind_group: &BindGroup, _instance_args_bind_group: &BindGroup) {
     }
     
     fn set_instance_bind_group_render(&mut self, _render_pass: &mut RenderPass, _instance_bind_group: &BindGroup) {
     }
 
-    fn get_instances_layout(&self) -> Option<&BindGroupLayout> {
+    fn get_instances_layouts(&self) -> Option<(&BindGroupLayout, &BindGroupLayout)> {
         None
     }
 

@@ -104,21 +104,13 @@ fn vs_main_route(
 
     out.color_alpha = 1.0;
 
-    let instance_index = model.instance_index;
+    let instance_index = culled[model.instance_index];
 
     if(!with_normal && camera_scale >= 0.0) {
-        let p2_scale = camera.p2_scale;
-
-        if(instance_index % u32(p2_scale) != 0) {
+        out.color_alpha = indirect_instances[instance_index].color_alpha;
+        if(out.color_alpha <= 0.0) {
             out.clip_position = zero_position;
             return out;
-        }
-        if(instance_index % (u32(p2_scale) * 2) != 0) {
-            if(u32(p2_scale) == 1) {
-                out.color_alpha = 2.0 * (1.0 - camera_scale);
-            } else {
-                out.color_alpha = 2.0 * (p2_scale - camera_scale) / p2_scale;
-            }
         }
     }
 
