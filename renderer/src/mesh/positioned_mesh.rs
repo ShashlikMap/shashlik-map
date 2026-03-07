@@ -117,7 +117,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 );
 
                 let indirect_args_struct = DrawIndexedIndirectArgs {
-                    index_count: 6,
+                    index_count: 0,
                     instance_count: 0,
                     first_index: 0,
                     base_vertex: 0,
@@ -156,16 +156,28 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         global_context: &mut GlobalContext,
     ) {
         if let Some(instances_args_buffer) = self.instances_args_buffer.as_ref() {
+            let instance_count = if self.attrs.len() <= 2 {
+                self.attrs.len()
+            } else {
+                0
+            };
+            let index_count = if instance_count == 0 {
+                6
+            } else {
+                self.mesh.index_buf.1
+            };
             // instances_args_buffer has to be reset before computing
             let indirect_args_struct = DrawIndexedIndirectArgs {
-                index_count: 6,
-                instance_count: 0,
+                index_count: index_count as u32,
+                instance_count: instance_count as u32,
                 first_index: 0,
                 base_vertex: 0,
                 first_instance: 0,
             };
             global_context.queue().write_buffer(instances_args_buffer, 0, indirect_args_struct.as_bytes());
-            compute_pass.dispatch_workgroups(self.instance_buffer.length as u32 / 64, 1, 1);
+            if instance_count == 0 {
+                compute_pass.dispatch_workgroups(self.instance_buffer.length as u32 / 64, 1, 1);
+            }
         }
     }
 

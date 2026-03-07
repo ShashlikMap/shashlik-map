@@ -104,7 +104,10 @@ fn vs_main_route(
 
     out.color_alpha = 1.0;
 
-    let instance_index = culled[model.instance_index];
+    var instance_index = model.instance_index;
+    if(!with_normal) {
+        instance_index = culled[model.instance_index];
+    }
 
     if(!with_normal && camera_scale >= 0.0) {
         out.color_alpha = indirect_instances[instance_index].color_alpha;
