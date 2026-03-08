@@ -110,7 +110,8 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
             self.render_pipeline.render(render_pass, global_context);
 
             self.render_data_holder.run_mut_action(|mesh| {
-                if let Some(instance_bind_group) = mesh.instances_bind_group.as_ref() {
+                if self.render_pipeline.is_indirect()
+                    && let Some(instance_bind_group) = mesh.instances_bind_group.as_ref() {
                     self.render_pipeline.set_instance_bind_group_render(render_pass, instance_bind_group);
                 }
                 mesh.render_instanced(render_pass, self.disable_skip_mesh_feature);

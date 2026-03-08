@@ -63,8 +63,6 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     if ca > 0.0 {
         indirect_instances[i].color_alpha = ca;
-
-        args.indexCount = 6;
         let culledIndex = atomicAdd(&args.instanceCount, 1u);
         culled[culledIndex] = i;
     }

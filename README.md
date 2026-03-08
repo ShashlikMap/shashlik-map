@@ -31,12 +31,11 @@ with Android/iOS mobile apps(Android is priority for now)
 - [x] Complete README and examples
 - [x] Initial rendering to texture
 - [x] Better integration with [SlintUI](https://slint.dev/blog/slint-1.12-released)
-- [x] A dotted line style
+- [x] A GPU-driven dotted line rendering
 ### Now
 - [ ] _In progress_ General Renderer refactoring
-- [ ] _In progress_ A GPU-driven dotted line rendering
+- [ ] _In progress_ SSAO(Screen Space Ambient Occlusion)
 ### Next
-- [ ] SSAO(Screen Space Ambient Occlusion)
 - [ ] Running on pure Linux with Compose multiplatform support
 - [ ] Implement an initial geometric Map-matching POC
 - [ ] CI for KMP mobile SDK + Screenshot rendering
