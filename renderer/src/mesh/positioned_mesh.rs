@@ -19,6 +19,7 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     original_spatial_data: SpatialData,
     original_instance_positions_alpha: Vec<(Vector3<f64>, f32)>,
     pub instances_args_buffer: Option<Buffer>,
+    instances_args_buffer_data: Vec<u8>,
     pub instances_bind_group: Option<BindGroup>,
     pub instances_args_bind_group: Option<BindGroup>,
 }
@@ -52,6 +53,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             original_instance_positions_alpha: instance_positions_alpha
                 .unwrap_or(vec![(Vector3::new(0.0, 0.0, 0.0), 1f32)]),
             instances_args_buffer: None,
+            instances_args_buffer_data: vec![],
             instances_bind_group: None,
             instances_args_bind_group: None
         }
@@ -116,9 +118,20 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                         }),
                 );
 
+                let instance_count = if self.attrs.len() <= 2 {
+                    self.attrs.len()
+                } else {
+                    0
+                };
+                let index_count = if instance_count == 0 {
+                    6
+                } else {
+                    self.mesh.index_buf.1
+                };
+                // instances_args_buffer has to be reset before computing
                 let indirect_args_struct = DrawIndexedIndirectArgs {
-                    index_count: 0,
-                    instance_count: 0,
+                    index_count: index_count as u32,
+                    instance_count: instance_count as u32,
                     first_index: 0,
                     base_vertex: 0,
                     first_instance: 0,
@@ -142,6 +155,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                             label: Some("instances_bind_args_group"),
                         }),
                 );
+                self.instances_args_buffer_data = indirect_args_struct.as_bytes().to_vec();
                 self.instances_args_buffer = Some(indirect_args);
             } else {
                 self.instances_bind_group = None;
@@ -156,26 +170,11 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         global_context: &mut GlobalContext,
     ) {
         if let Some(instances_args_buffer) = self.instances_args_buffer.as_ref() {
-            let instance_count = if self.attrs.len() <= 2 {
-                self.attrs.len()
-            } else {
-                0
-            };
-            let index_count = if instance_count == 0 {
-                6
-            } else {
-                self.mesh.index_buf.1
-            };
-            // instances_args_buffer has to be reset before computing
-            let indirect_args_struct = DrawIndexedIndirectArgs {
-                index_count: index_count as u32,
-                instance_count: instance_count as u32,
-                first_index: 0,
-                base_vertex: 0,
-                first_instance: 0,
-            };
-            global_context.queue().write_buffer(instances_args_buffer, 0, indirect_args_struct.as_bytes());
-            if instance_count == 0 {
+            // TODO would it be faster to use encoder.clear_buffer?
+            global_context.queue().write_buffer(instances_args_buffer,
+                                                0,
+                                                bytemuck::cast_slice(self.instances_args_buffer_data.as_slice()));
+            if self.attrs.len() > 2 {
                 // workgroups are batches by 64/128
                 let mut x = self.instance_buffer.length as u32 / 64;
                 if self.instance_buffer.length as u32 % 64 != 0 {

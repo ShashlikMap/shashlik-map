@@ -131,14 +131,15 @@ impl Mesh {
                 if disable_skip_mesh_feature && styled_range_info.1 == "skip" {
                     continue;
                 }
-                let start = range.0.start;
-                let end = range.0.end;
 
-                // draw instances
-                let instances_range = instances.start + styled_range_info.0 as u32..instances.end;
                 if let Some(indirect_args) = indirect_args {
                     render_pass.draw_indexed_indirect(indirect_args, 0);
                 } else {
+                    let start = range.0.start;
+                    let end = range.0.end;
+
+                    // draw instances
+                    let instances_range = instances.start + styled_range_info.0 as u32..instances.end;
                     render_pass.draw_indexed(start as u32..end as u32, 0, instances_range);
                 }
             }
