@@ -84,6 +84,10 @@ impl RenderPipeline for MeshPipeline {
                     format: config.format,
                     blend: Some(BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
+                }), Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
                 })],
                 compilation_options: Default::default(),
             }),
