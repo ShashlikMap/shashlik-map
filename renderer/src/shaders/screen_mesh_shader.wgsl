@@ -31,6 +31,11 @@ struct VertexOutput {
     @location(1) uv: vec2<f32>,
 }
 
+struct GBuffer {
+    @location(0) colors: vec4<f32>,
+    @location(1) normal: vec4<f32>,
+}
+
 @vertex
 fn vs_main(
     model: VertexInput,
@@ -70,19 +75,19 @@ var t_diffuse: texture_2d<f32>;
 var s_diffuse: sampler;
 
 @fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return vec4(0.0, 0.0, 0.0, in.color_alpha);
+fn fs_main(in: VertexOutput) -> GBuffer {
+    return GBuffer(vec4(0.0, 0.0, 0.0, in.color_alpha), vec4f(0.0));
 }
 
 const tex_border_x: f32 = 0.02;
 
 @fragment
-fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
+fn fs_main_textured(in: VertexOutput) -> GBuffer {
     let uv = in.uv;
     let tex_size = textureDimensions(t_diffuse);
     let tex_border_y = (tex_border_x * (f32(tex_size.x) / f32(tex_size.y)));
     if in.uv.x <= tex_border_x || in.uv.x >= 1.0 - tex_border_x || in.uv.y <= tex_border_y || in.uv.y >= 1.0 - tex_border_y {
-         return vec4(1.0, 0.0, 0.0, 1.0);
+         return GBuffer(vec4(1.0, 0.0, 0.0, 1.0), vec4f(0.0));
     }
-    return textureSample(t_diffuse, s_diffuse, in.uv.xy);
+    return GBuffer(textureSample(t_diffuse, s_diffuse, in.uv.xy), vec4f(0.0));
 }

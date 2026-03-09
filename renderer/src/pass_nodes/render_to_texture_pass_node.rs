@@ -7,6 +7,7 @@ use wgpu::{CommandEncoder, TextureView};
 
 pub(crate) struct RenderToTexturePassNode {
     msaa_texture_view: TextureView,
+    msaa_texture_view2: TextureView,
     depth_texture_view: TextureView,
     pub rt_texture_view: TextureView,
 }
@@ -19,6 +20,7 @@ impl RenderToTexturePassNode {
         );
         Self {
             msaa_texture_view: create_msaa_texture(size, global_context),
+            msaa_texture_view2: create_msaa_texture(size, global_context),
             depth_texture_view: create_depth_texture(size, global_context),
             rt_texture_view: create_color_binding_texture(size, global_context),
         }
@@ -52,7 +54,21 @@ impl PassNode for RenderToTexturePassNode {
                     store: wgpu::StoreOp::Store,
                 },
                 depth_slice: None,
-            })],
+            }),
+                Some(wgpu::RenderPassColorAttachment {
+                    view: &self.msaa_texture_view2,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.0,
+                            g: 0.741,
+                            b: 0.961,
+                            a: 1.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                    depth_slice: None,
+                })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &self.depth_texture_view,
                 depth_ops: Some(wgpu::Operations {
