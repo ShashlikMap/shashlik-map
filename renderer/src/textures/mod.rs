@@ -25,11 +25,11 @@ pub fn create_color_binding_texture(
     )
 }
 
-pub fn create_msaa_texture(size: (u32, u32), global_context: &GlobalContext) -> TextureView {
+pub fn create_common_texture(size: (u32, u32), sample_count: u32, global_context: &GlobalContext) -> TextureView {
     let config = global_context.config();
     create_simple_texture(
         TextureData {
-            sample_count: SAMPLE_COUNT,
+            sample_count,
             size,
             usage: TextureUsages::RENDER_ATTACHMENT,
             format: config.format,
@@ -38,10 +38,10 @@ pub fn create_msaa_texture(size: (u32, u32), global_context: &GlobalContext) -> 
     )
 }
 
-pub fn create_depth_texture(size: (u32, u32), global_context: &GlobalContext) -> TextureView {
+pub fn create_depth_texture(size: (u32, u32), sample_count: u32, global_context: &GlobalContext) -> TextureView {
     create_simple_texture(
         TextureData {
-            sample_count: SAMPLE_COUNT,
+            sample_count,
             size,
             usage: TextureUsages::RENDER_ATTACHMENT,
             format: TextureFormat::Depth32Float,

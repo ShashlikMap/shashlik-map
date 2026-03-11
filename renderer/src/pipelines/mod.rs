@@ -51,7 +51,7 @@ impl OwnedRenderPipelineDescriptor<'_> {
         let descriptor = self;
         let owned_fragment_state = descriptor.fragment.as_ref().unwrap();
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Render Pipeline"),
+            label: descriptor.label,
             layout: descriptor.layout.as_ref(),
             vertex: wgpu::VertexState {
                 module: &descriptor.vertex.module,
