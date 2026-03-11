@@ -32,7 +32,8 @@ struct VertexOutput {
 
 struct GBuffer {
     @location(0) colors: vec4<f32>,
-    @location(1) normal: vec4<f32>,
+    @location(1) positions: vec4<f32>,
+    @location(2) normal: vec4<f32>,
 }
 
 @vertex
@@ -70,5 +71,5 @@ fn fs_main(in: VertexOutput) -> GBuffer {
 
     let result_color = (ambient_color + diffuse_color) * default_color;
 
-    return GBuffer(vec4(result_color.rgb * gradient_koef, in.color_alpha), vec4(in.world_normal.xyz, 1.0));
+    return GBuffer(vec4(result_color.rgb * gradient_koef, in.color_alpha), vec4(in.world_position.xyz, 1.0), vec4(in.world_normal.xyz, 1.0));
 }
