@@ -14,6 +14,8 @@ pub struct GlobalContext {
     pub collider: Collider,
     pub styles_bind_group_layout: BindGroupLayout,
     pub style_bind_group: Option<BindGroup>,
+    pub is_preview_render: bool,
+    pub is_g_buffer_render: bool,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
 }
 
@@ -29,6 +31,8 @@ impl GlobalContext {
             collider,
             styles_bind_group_layout,
             style_bind_group: None,
+            is_preview_render: false,
+            is_g_buffer_render: false,
             style_uniform_rx: style_store.subscribe(),
         }
     }

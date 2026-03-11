@@ -80,6 +80,9 @@ impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
 
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
+        if global_context.is_g_buffer_render {
+            return;
+        }
         if let (Some(render_pipeline), Some(mesh)) = (self.pipeline.as_ref(), self.mesh.as_ref()) {
             render_pass.set_pipeline(render_pipeline);
 

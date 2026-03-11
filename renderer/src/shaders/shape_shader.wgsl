@@ -53,11 +53,6 @@ struct VertexOutput {
     @location(5) uv_dist: vec3<f32>,
 }
 
-struct GBuffer {
-    @location(0) colors: vec4<f32>,
-    @location(1) normal: vec4<f32>,
-}
-
 // TODO pass as a parameter
 const inflate_factor: f32 = 0.06;
 
@@ -188,7 +183,7 @@ fn vs_main_screen(
 
 // Fragment shader
 @fragment
-fn fs_main(in: VertexOutput) -> GBuffer {
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // ignore if both are zero
     if in.bbox.z > 0.0 || in.bbox.w > 0.0 {
         if in.vertex_pos_xy.x < in.bbox.x || in.vertex_pos_xy.x > in.bbox.x + in.bbox.z {
@@ -216,7 +211,7 @@ fn fs_main(in: VertexOutput) -> GBuffer {
 
      res_color.a *= in.color_alpha;
 
-     return GBuffer(res_color, vec4f(0.0));
+     return res_color;
 }
 
 fn circle(st: vec2f, radius: f32) -> f32 {
