@@ -90,6 +90,10 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
             format: config.format,
             blend: Some(BlendState::ALPHA_BLENDING),
             write_mask: wgpu::ColorWrites::ALL,
+        }), Some(wgpu::ColorTargetState {
+            format: config.format,
+            blend: Some(BlendState::ALPHA_BLENDING),
+            write_mask: wgpu::ColorWrites::ALL,
         })];
         g_buffer_descriptor.multisample.count = 1;
         self.g_buffer_pipeline = Some(g_buffer_descriptor.to_render_pipeline(global_context.device()));
