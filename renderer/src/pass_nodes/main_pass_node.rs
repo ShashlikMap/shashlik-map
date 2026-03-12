@@ -128,7 +128,6 @@ impl PassNode for MainPassNode {
             let descriptor = wgpu::RenderPassDescriptor {
                 label: Some("MRT Render Pass"),
                 color_attachments: &[
-                    Some(non_msaa_color_attachment_color),
                     Some(non_msaa_color_attachment_positions),
                     Some(non_msaa_color_attachment_normals),
                 ],
