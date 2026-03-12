@@ -7,7 +7,6 @@ use wgpu::{CommandEncoder, TextureView};
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
-    pub non_msaa_texture_view_color: TextureView,
     pub non_msaa_texture_view_positions: TextureView,
     pub non_msaa_texture_view_normals: TextureView,
     depth_texture_view: TextureView,
@@ -23,7 +22,6 @@ impl MainPassNode {
 
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
-            non_msaa_texture_view_color: create_common_texture(size, 1, global_context),
             non_msaa_texture_view_positions: create_common_texture(size, 1, global_context),
             non_msaa_texture_view_normals: create_common_texture(size, 1, global_context),
             depth_texture_view: create_depth_texture(size, SAMPLE_COUNT, global_context),
@@ -52,20 +50,6 @@ impl PassNode for MainPassNode {
         let msaa_color_attachment = wgpu::RenderPassColorAttachment {
             view: &self.msaa_texture_view,
             resolve_target: Some(output_view),
-            ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(wgpu::Color {
-                    r: 0.0,
-                    g: 0.741,
-                    b: 0.961,
-                    a: 1.0,
-                }),
-                store: wgpu::StoreOp::Store,
-            },
-            depth_slice: None,
-        };
-        let non_msaa_color_attachment_color = wgpu::RenderPassColorAttachment {
-            view: &self.non_msaa_texture_view_color,
-            resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(wgpu::Color {
                     r: 0.0,
