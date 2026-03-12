@@ -82,19 +82,17 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
 
         g_buffer_descriptor.label = Some("g_buffer_pipeline");
-        g_buffer_descriptor.fragment.as_mut().unwrap().targets = vec![Some(wgpu::ColorTargetState {
+        let fragment = g_buffer_descriptor.fragment.as_mut().unwrap();
+        fragment.targets = vec![Some(wgpu::ColorTargetState {
             format: config.format,
-            blend: Some(BlendState::ALPHA_BLENDING),
+            blend: None,
             write_mask: wgpu::ColorWrites::ALL,
         }), Some(wgpu::ColorTargetState {
             format: config.format,
-            blend: Some(BlendState::ALPHA_BLENDING),
-            write_mask: wgpu::ColorWrites::ALL,
-        }), Some(wgpu::ColorTargetState {
-            format: config.format,
-            blend: Some(BlendState::ALPHA_BLENDING),
+            blend: None,
             write_mask: wgpu::ColorWrites::ALL,
         })];
+        fragment.entry_point = Some("fs_main_g_buf");
         g_buffer_descriptor.multisample.count = 1;
         self.g_buffer_pipeline = Some(g_buffer_descriptor.to_render_pipeline(global_context.device()));
     }

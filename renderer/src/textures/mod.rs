@@ -44,7 +44,7 @@ pub fn create_depth_texture(size: (u32, u32), sample_count: u32, global_context:
             sample_count,
             size,
             usage: TextureUsages::RENDER_ATTACHMENT,
-            format: TextureFormat::Depth32Float,
+            format: TextureFormat::Depth24Plus,
         },
         global_context,
     )

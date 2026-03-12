@@ -31,9 +31,8 @@ struct VertexOutput {
 }
 
 struct GBuffer {
-    @location(0) colors: vec4<f32>,
-    @location(1) positions: vec4<f32>,
-    @location(2) normal: vec4<f32>,
+    @location(0) positions: vec4<f32>,
+    @location(1) normal: vec4<f32>,
 }
 
 @vertex
@@ -64,12 +63,17 @@ const ambient_color = vec3(0.1, 0.1, 0.1);
 
 // Fragment shader
 @fragment
-fn fs_main(in: VertexOutput) -> GBuffer {
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
     let diffuse_strength = max(dot(in.world_normal, light_dir), 0.0);
     let gradient_koef = 0.5 + min(1.0, tanh(2.0*in.world_position.z))/2.0;
     let diffuse_color = vec3(1.0, 1.0, 1.0) * diffuse_strength;
 
     let result_color = (ambient_color + diffuse_color) * default_color;
 
-    return GBuffer(vec4(result_color.rgb * gradient_koef, in.color_alpha), vec4(in.world_position.xyz, 1.0), vec4(in.world_normal.xyz, 1.0));
+    return vec4(result_color.rgb * gradient_koef, in.color_alpha);
+}
+
+@fragment
+fn fs_main_g_buf(in: VertexOutput) -> GBuffer {
+    return GBuffer(vec4(in.world_position.xyz, 1.0), vec4(in.world_normal.xyz, 1.0));
 }
