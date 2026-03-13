@@ -68,18 +68,7 @@ impl MeshPipeline {
 
 impl WithSSAOTexture for MeshPipeline {
     fn update_ssao_texture(&mut self, texture_view: &TextureView, global_context: &GlobalContext) {
-        // let device = global_context.device();
-        // self.bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-        //     layout: &self.bind_group_layout,
-        //     entries: &[wgpu::BindGroupEntry {
-        //         binding: 0,
-        //         resource: global_context
-        //             .view_projection
-        //             .uniform_buffer
-        //             .as_entire_binding(),
-        //     }],
-        //     label: Some("camera_bind_group"),
-        // });
+        // TODO
     }
 }
 
