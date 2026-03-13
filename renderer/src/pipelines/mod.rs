@@ -35,6 +35,10 @@ pub trait WithTexture {
     fn create_texture_bind_group(&mut self, texture_view: &TextureView, global_context: &GlobalContext) -> BindGroup;
 }
 
+pub trait WithSSAOTexture {
+    fn update_ssao_texture(&mut self, texture_view: &TextureView, global_context: &GlobalContext);
+}
+
 #[derive(Clone, Debug)]
 pub struct OwnedRenderPipelineDescriptor<'a> {
     pub label: Label<'a>,
