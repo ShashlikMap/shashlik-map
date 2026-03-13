@@ -1,11 +1,9 @@
 use crate::draw_commands::MeshVertex;
 use crate::global_context::GlobalContext;
-use crate::pipelines::{
-    OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline,
-};
+use crate::pipelines::{OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline, WithSSAOTexture};
 use crate::textures::SAMPLE_COUNT;
 use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
-use wgpu::{include_wgsl, BindGroup, BindGroupLayout, BlendState, CompareFunction, ComputePass, DepthStencilState, Face, RenderPass, TextureFormat};
+use wgpu::{include_wgsl, BindGroup, BindGroupLayout, BlendState, CompareFunction, ComputePass, DepthStencilState, Face, RenderPass, TextureFormat, TextureView};
 
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,
@@ -13,37 +11,75 @@ pub struct MeshPipeline {
 }
 
 impl MeshPipeline {
-    pub fn new(global_context: &GlobalContext) -> Self {
+    pub fn new(global_context: &GlobalContext, ssao_enabled: bool) -> Self {
         let device = global_context.device();
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+        let mut entries = vec![wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }];
+        if ssao_enabled {
+            entries.push(wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
                 },
                 count: None,
-            }],
+            });
+        }
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &entries,
             label: Some("mesh_pipeline_group_layout"),
         });
+        
+        let mut entries = vec![wgpu::BindGroupEntry {
+            binding: 0,
+            resource: global_context
+                .view_projection
+                .uniform_buffer
+                .as_entire_binding(),
+        }];
+        if ssao_enabled {
+            entries.push(wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&global_context.ssao_texture),
+            });
+        }
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: global_context
-                    .view_projection
-                    .uniform_buffer
-                    .as_entire_binding(),
-            }],
+            entries: &entries,
             label: Some("camera_bind_group"),
         });
         MeshPipeline {
             bind_group_layout,
             bind_group,
         }
+    }
+}
+
+impl WithSSAOTexture for MeshPipeline {
+    fn update_ssao_texture(&mut self, texture_view: &TextureView, global_context: &GlobalContext) {
+        // let device = global_context.device();
+        // self.bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        //     layout: &self.bind_group_layout,
+        //     entries: &[wgpu::BindGroupEntry {
+        //         binding: 0,
+        //         resource: global_context
+        //             .view_projection
+        //             .uniform_buffer
+        //             .as_entire_binding(),
+        //     }],
+        //     label: Some("camera_bind_group"),
+        // });
     }
 }
 

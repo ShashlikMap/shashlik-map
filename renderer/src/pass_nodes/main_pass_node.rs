@@ -3,7 +3,7 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::PassNode;
 use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
-use wgpu::{CommandEncoder, TextureView};
+use wgpu::{CommandEncoder, Extent3d, TextureView};
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
@@ -127,6 +127,27 @@ impl PassNode for MainPassNode {
             global_context.is_preview_render = false;
             layers.render(&mut render_pass, global_context);
         }
+
+        // let source_texture = self.non_msaa_texture_view_positions.texture();
+        // encoder.copy_texture_to_texture(
+        //     wgpu::TexelCopyTextureInfo {
+        //         texture: &source_texture,
+        //         mip_level: 0,
+        //         origin: wgpu::Origin3d::ZERO,
+        //         aspect: wgpu::TextureAspect::All,
+        //     },
+        //     wgpu::TexelCopyTextureInfo {
+        //         texture: &global_context.ssao_texture.texture(),
+        //         mip_level: 0,
+        //         origin: wgpu::Origin3d::ZERO,
+        //         aspect: wgpu::TextureAspect::All,
+        //     },
+        //     Extent3d {
+        //         width: source_texture.width(),
+        //         height: source_texture.height(),
+        //         depth_or_array_layers: 1,
+        //     },
+        // );
 
         {
             let descriptor = wgpu::RenderPassDescriptor {

@@ -1,10 +1,10 @@
 use crate::global_context::GlobalContext;
-use wgpu::{TextureFormat, TextureUsages, TextureView};
+use wgpu::{Device, TextureFormat, TextureUsages, TextureView};
 pub(crate) struct TextureData {
-    sample_count: u32,
-    size: (u32, u32),
-    usage: TextureUsages,
-    format: TextureFormat,
+    pub(crate) sample_count: u32,
+    pub(crate) size: (u32, u32),
+    pub(crate) usage: TextureUsages,
+    pub(crate) format: TextureFormat,
 }
 
 pub const SAMPLE_COUNT: u32 = 4;
@@ -21,7 +21,7 @@ pub fn create_color_binding_texture(
             usage: TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             format: config.format,
         },
-        global_context,
+        global_context.device(),
     )
 }
 
@@ -31,10 +31,10 @@ pub fn create_common_texture(size: (u32, u32), sample_count: u32, global_context
         TextureData {
             sample_count,
             size,
-            usage: TextureUsages::RENDER_ATTACHMENT,
+            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::COPY_SRC,
             format: config.format,
         },
-        global_context,
+        global_context.device(),
     )
 }
 
@@ -46,12 +46,11 @@ pub fn create_depth_texture(size: (u32, u32), sample_count: u32, global_context:
             usage: TextureUsages::RENDER_ATTACHMENT,
             format: TextureFormat::Depth24Plus,
         },
-        global_context,
+        global_context.device(),
     )
 }
 
-fn create_simple_texture(texture_data: TextureData, global_context: &GlobalContext) -> TextureView {
-    let device = global_context.device();
+pub fn create_simple_texture(texture_data: TextureData, device: &Device) -> TextureView {
 
     let texture_extent = wgpu::Extent3d {
         width: texture_data.size.0,

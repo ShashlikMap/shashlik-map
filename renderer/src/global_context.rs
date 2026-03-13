@@ -5,8 +5,9 @@ use crate::utils::ReceiverExt;
 use crate::view_projection::ViewProjection;
 use cgmath::{Matrix4, Vector3};
 use wgpu::util::DeviceExt;
-use wgpu::{BindGroup, BindGroupLayout, Device};
+use wgpu::{BindGroup, BindGroupLayout, Device, TextureUsages, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use crate::textures::{create_common_texture, create_simple_texture, TextureData};
 
 pub struct GlobalContext {
     pub canvas: Box<dyn WgpuCanvas>,
@@ -16,6 +17,7 @@ pub struct GlobalContext {
     pub style_bind_group: Option<BindGroup>,
     pub is_preview_render: bool,
     pub is_g_buffer_render: bool,
+    pub ssao_texture: TextureView,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
 }
 
@@ -25,6 +27,17 @@ impl GlobalContext {
         let view_projection = ViewProjection::new(device);
         let collider = Collider::new();
         let styles_bind_group_layout = Self::create_style_bind_group_layout(device);
+
+        let config = canvas.config();
+        let ssao_texture = create_simple_texture(
+            TextureData {
+                sample_count: 1,
+                size: (canvas.config().width, canvas.config().height),
+                usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
+                format: config.format,
+            },
+            device,
+        );
         GlobalContext {
             canvas,
             view_projection,
@@ -33,6 +46,7 @@ impl GlobalContext {
             style_bind_group: None,
             is_preview_render: false,
             is_g_buffer_render: false,
+            ssao_texture,
             style_uniform_rx: style_store.subscribe(),
         }
     }

@@ -29,7 +29,7 @@ impl Layers {
         let feature_layers = FeatureLayers::new(feature_tags, global_context);
         Layers {
             feature_layers,
-            mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context)),
+            mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context, true)),
             shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, None, false)),
             screen_shape_layer: ScreenShapeLayer::new(ShapePipeline::new(global_context, Some("vs_main_screen"), false),
                                                       global_context),

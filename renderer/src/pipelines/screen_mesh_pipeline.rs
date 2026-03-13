@@ -40,7 +40,7 @@ impl ScreenMeshPipeline {
             });
 
         Self {
-            mesh_pipeline: MeshPipeline::new(global_context),
+            mesh_pipeline: MeshPipeline::new(global_context, false),
             texture_bind_group_layout,
             use_texture,
         }
