@@ -55,7 +55,7 @@ mod utils;
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
-    fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32);
+    fn update(&mut self, view_matrix: Matrix4<f64>, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32);
     fn render(&mut self) -> Option<Texture>;
 }
 
@@ -189,8 +189,8 @@ impl ShashlikRenderer {
         self.pass_nodes = vec![Box::new(pre_pass_node), Box::new(rt_node), Box::new(main_node)];
     }
 
-    fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32) {
-        self.global_context.update(view_proj_matrix, cs_offset, scale);
+    fn update(&mut self, view_matrix: Matrix4<f64>, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32) {
+        self.global_context.update(view_matrix, view_proj_matrix, cs_offset, scale);
 
         // read all messages between renders
         for message in self.renderer_rx.try_iter() {
@@ -257,8 +257,8 @@ impl Renderer for ShashlikRenderer {
         self.resize(width, height);
     }
 
-    fn update(&mut self, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32) {
-        self.update(view_proj_matrix, cs_offset, scale);
+    fn update(&mut self, view_matrix: Matrix4<f64>, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32) {
+        self.update(view_matrix, view_proj_matrix, cs_offset, scale);
     }
 
     fn render(&mut self) -> Option<Texture> {

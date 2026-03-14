@@ -1,6 +1,7 @@
 // Vertex shader
 
 struct CameraUniform {
+    view: mat4x4<f32>,
     view_proj: mat4x4<f32>,
     inv_screen_size: vec2<f32>,
     scale: f32,
@@ -75,5 +76,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
 
 @fragment
 fn fs_main_g_buf(in: VertexOutput) -> GBuffer {
-    return GBuffer(vec4(in.world_position.xyz, 1.0), vec4(in.world_normal.xyz, 1.0));
+    // TODO use view matrix to calc z in VS instead of in.clip_position.z?
+    return GBuffer(vec4(in.world_position.xy, in.clip_position.z, 1.0), vec4(normalize(in.world_normal.xyz), 1.0));
 }

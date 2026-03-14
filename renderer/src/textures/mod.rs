@@ -43,7 +43,7 @@ pub fn create_depth_texture(size: (u32, u32), sample_count: u32, global_context:
         TextureData {
             sample_count,
             size,
-            usage: TextureUsages::RENDER_ATTACHMENT,
+            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
             format: TextureFormat::Depth24Plus,
         },
         global_context.device(),

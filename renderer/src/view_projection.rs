@@ -21,6 +21,7 @@ const FLIP_Y: Matrix4<f64> = Matrix4::new(
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct ViewProjUniform {
+    view: [[f32; 4]; 4],
     view_proj: [[f32; 4]; 4],
     inv_screen_size: [f32; 2],
     scale: f32,
@@ -52,6 +53,7 @@ impl ViewProjection {
 
         ViewProjection {
             uniform: ViewProjUniform {
+                view: Matrix4::identity().into(),
                 view_proj: Matrix4::identity().into(),
                 inv_screen_size: [0.0, 0.0],
                 scale: 0.0,
@@ -65,10 +67,15 @@ impl ViewProjection {
     }
 
     pub fn update(&mut self, queue: &Queue, 
-                  config: &SurfaceConfiguration, 
-                  view_proj_matrix: Matrix4<f64>, 
+                  config: &SurfaceConfiguration,
+                  view_matrix: Matrix4<f64>,
+                  view_proj_matrix: Matrix4<f64>,  
                   cs_offset: Vector3<f64>,
                   scale: f32) {
+        self.uniform.view = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * view_matrix)
+            .cast()
+            .unwrap()
+            .into();
         self.uniform.view_proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * view_proj_matrix)
             .cast()
             .unwrap()

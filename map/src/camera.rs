@@ -29,7 +29,8 @@ impl Camera {
         }
     }
 
-    pub fn build_view_projection_matrix(&mut self) -> cgmath::Matrix4<f64> {
+    /// view + view_proj matrices
+    pub fn build_view_projection_matrix(&mut self) -> (Matrix4<f64>, Matrix4<f64>) {
         let eye_offset = self.eye - self.offset;
         let target_offset = self.target - self.offset;
         let view = cgmath::Matrix4::look_at_rh(
@@ -37,7 +38,7 @@ impl Camera {
             point3(target_offset.x, target_offset.y, target_offset.z),
             self.up,
         );
-        self.perspective_matrix * view
+        (view, self.perspective_matrix * view)
     }
     
     pub fn scale(&self) -> f32 {

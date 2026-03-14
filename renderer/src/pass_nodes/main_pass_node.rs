@@ -12,6 +12,7 @@ pub(crate) struct MainPassNode {
     depth_texture_view: TextureView,
     pub non_msaa_depth_texture_view: TextureView,
     ssao_bind_group: BindGroup,
+    camera_ssao_bind_group: BindGroup,
     ssao_compute_pipeline: ComputePipeline
 }
 
@@ -43,6 +44,8 @@ impl MainPassNode {
             global_context.device(),
         );
 
+        let non_msaa_depth_texture_view = create_depth_texture(size, 1, global_context);
+
         let ssao_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -71,8 +74,44 @@ impl MainPassNode {
                     sample_type: wgpu::TextureSampleType::Float { filterable: false },
                 },
                 count: None,
-            }],
+            },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                    },
+                    count: None,
+                }],
             label: Some("ssao_bind_group_layout"),
+        });
+
+        let camera_ssao_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("camera_ssao_pipeline_group_layout"),
+        });
+
+        let camera_ssao_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &camera_ssao_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: global_context
+                    .view_projection
+                    .uniform_buffer
+                    .as_entire_binding(),
+            }],
+            label: Some("ssao_camera_pipeline_bind_group"),
         });
 
         let ssao_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -88,13 +127,17 @@ impl MainPassNode {
                 wgpu::BindGroupEntry {
                     binding: 2,
                     resource: wgpu::BindingResource::TextureView(&non_msaa_texture_view_positions),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&non_msaa_depth_texture_view),
                 }],
             label: Some("ssao_compute_bind_group"),
         });
 
         let ssao_pipeline_layout = global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("SSAO Pipeline Layout"),
-            bind_group_layouts: &[&ssao_bind_group_layout],
+            bind_group_layouts: &[&ssao_bind_group_layout, &camera_ssao_bind_group_layout],
             ..Default::default()
         });
 
@@ -114,9 +157,10 @@ impl MainPassNode {
             non_msaa_texture_view_positions,
             non_msaa_texture_view_normals,
             depth_texture_view: create_depth_texture(size, SAMPLE_COUNT, global_context),
-            non_msaa_depth_texture_view: create_depth_texture(size, 1, global_context),
+            non_msaa_depth_texture_view,
             ssao_bind_group,
-            ssao_compute_pipeline
+            camera_ssao_bind_group,
+            ssao_compute_pipeline,
         }
     }
 }
@@ -173,7 +217,7 @@ impl PassNode for MainPassNode {
                 load: wgpu::LoadOp::Clear(wgpu::Color {
                     r: 0.0,
                     g: 0.0,
-                    b: 0.0, // TODO We may use 1.0 here to simulate z normal for ground
+                    b: 1.0, // We use 1.0 here to simulate z normal for ground
                     a: 1.0,
                 }),
                 store: wgpu::StoreOp::Store,
@@ -226,6 +270,7 @@ impl PassNode for MainPassNode {
             });
             compute_pass.set_pipeline(&self.ssao_compute_pipeline);
             compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
+            compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
             compute_pass.dispatch_workgroups(64, 64, 1);
         }
 
