@@ -8,6 +8,7 @@ use crate::modifier::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use std::mem;
 use wgpu::{CommandEncoder, ComputePassDescriptor, RenderPass};
+use wgpu::TextureFormat::Rgba16Float;
 
 pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
@@ -75,7 +76,6 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
 
 impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
     fn prepare(&mut self, global_context: &GlobalContext) {
-        let config = global_context.config();
         let descriptor = self.render_pipeline.prepare(global_context);
         let mut g_buffer_descriptor = descriptor.clone();
 
@@ -84,11 +84,11 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
         g_buffer_descriptor.label = Some("g_buffer_pipeline");
         let fragment = g_buffer_descriptor.fragment.as_mut().unwrap();
         fragment.targets = vec![Some(wgpu::ColorTargetState {
-            format: config.format,
+            format: Rgba16Float,
             blend: None,
             write_mask: wgpu::ColorWrites::ALL,
         }), Some(wgpu::ColorTargetState {
-            format: config.format,
+            format: Rgba16Float,
             blend: None,
             write_mask: wgpu::ColorWrites::ALL,
         })];
