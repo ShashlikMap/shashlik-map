@@ -30,7 +30,7 @@ impl MeshPipeline {
                 ty: wgpu::BindingType::Texture {
                     multisampled: false,
                     view_dimension: wgpu::TextureViewDimension::D2,
-                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
                 },
                 count: None,
             });
@@ -57,7 +57,7 @@ impl MeshPipeline {
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &bind_group_layout,
             entries: &entries,
-            label: Some("camera_bind_group"),
+            label: Some("ssao_mesh_pipeline_bind_group"),
         });
         MeshPipeline {
             bind_group_layout,

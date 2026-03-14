@@ -31,7 +31,7 @@ pub fn create_common_texture(size: (u32, u32), sample_count: u32, global_context
         TextureData {
             sample_count,
             size,
-            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::COPY_SRC,
+            usage: TextureUsages::RENDER_ATTACHMENT,
             format: config.format,
         },
         global_context.device(),

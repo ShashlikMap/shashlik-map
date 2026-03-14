@@ -1,9 +1,9 @@
 use crate::global_context::GlobalContext;
-use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::layers::Layers;
+use crate::mesh_layers::BaseMeshLayer;
 use crate::pass_nodes::PassNode;
-use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
-use wgpu::{CommandEncoder, Extent3d, TextureView};
+use crate::textures::{create_common_texture, create_depth_texture, SAMPLE_COUNT};
+use wgpu::{include_wgsl, BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, StorageTextureAccess, TextureFormat, TextureView, TextureViewDimension};
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
@@ -11,6 +11,8 @@ pub(crate) struct MainPassNode {
     pub non_msaa_texture_view_normals: TextureView,
     depth_texture_view: TextureView,
     pub non_msaa_depth_texture_view: TextureView,
+    ssao_bind_group: BindGroup,
+    ssao_compute_pipeline: ComputePipeline
 }
 
 impl MainPassNode {
@@ -20,12 +22,56 @@ impl MainPassNode {
             global_context.config().height,
         );
 
+        let device = global_context.device();
+
+        let ssao_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::StorageTexture {
+                    access: StorageTextureAccess::WriteOnly,
+                    format: TextureFormat::R32Float,
+                    view_dimension: TextureViewDimension::D2,
+                },
+                count: None,
+            }],
+            label: Some("ssao_bind_group_layout"),
+        });
+
+        let ssao_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &ssao_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&global_context.ssao_texture),
+            }],
+            label: Some("ssao_compute_bind_group"),
+        });
+
+        let ssao_pipeline_layout = global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("SSAO Pipeline Layout"),
+            bind_group_layouts: &[&ssao_bind_group_layout],
+            ..Default::default()
+        });
+
+        let ssao_shader = global_context.device().create_shader_module(include_wgsl!("../shaders/ssao.wgsl"));
+
+        let ssao_compute_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("ssao_compute_pipeline"),
+            layout: Some(&ssao_pipeline_layout),
+            module: &ssao_shader,
+            entry_point: None,
+            compilation_options: Default::default(),
+            cache: None,
+        });
+
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
             non_msaa_texture_view_positions: create_common_texture(size, 1, global_context),
             non_msaa_texture_view_normals: create_common_texture(size, 1, global_context),
             depth_texture_view: create_depth_texture(size, SAMPLE_COUNT, global_context),
             non_msaa_depth_texture_view: create_depth_texture(size, 1, global_context),
+            ssao_bind_group,
+            ssao_compute_pipeline
         }
     }
 }
@@ -128,26 +174,15 @@ impl PassNode for MainPassNode {
             layers.render(&mut render_pass, global_context);
         }
 
-        // let source_texture = self.non_msaa_texture_view_positions.texture();
-        // encoder.copy_texture_to_texture(
-        //     wgpu::TexelCopyTextureInfo {
-        //         texture: &source_texture,
-        //         mip_level: 0,
-        //         origin: wgpu::Origin3d::ZERO,
-        //         aspect: wgpu::TextureAspect::All,
-        //     },
-        //     wgpu::TexelCopyTextureInfo {
-        //         texture: &global_context.ssao_texture.texture(),
-        //         mip_level: 0,
-        //         origin: wgpu::Origin3d::ZERO,
-        //         aspect: wgpu::TextureAspect::All,
-        //     },
-        //     Extent3d {
-        //         width: source_texture.width(),
-        //         height: source_texture.height(),
-        //         depth_or_array_layers: 1,
-        //     },
-        // );
+        {
+            let mut compute_pass =encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("SSAO Compute Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&self.ssao_compute_pipeline);
+            compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
+            compute_pass.dispatch_workgroups(64, 64, 1);
+        }
 
         {
             let descriptor = wgpu::RenderPassDescriptor {

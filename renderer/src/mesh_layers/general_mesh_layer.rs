@@ -7,7 +7,7 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::modifier::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use std::mem;
-use wgpu::{BlendState, CommandEncoder, ComputePassDescriptor, RenderPass};
+use wgpu::{CommandEncoder, ComputePassDescriptor, RenderPass};
 
 pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
