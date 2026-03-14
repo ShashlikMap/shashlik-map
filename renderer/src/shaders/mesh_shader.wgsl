@@ -73,10 +73,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
 
     let result_color = (ambient_color + diffuse_color) * default_color;
 
-//    let test_color = textureLoad(ssao_texture, vec2i(floor(in.clip_position.xy)), 0).rgb;
+    let test_color = 1.0 - textureLoad(ssao_texture, vec2i(floor(in.clip_position.xy)), 0).r;
 
-    return vec4(result_color.rgb * gradient_koef, in.color_alpha);
-//    return vec4(test_color, 1.0);
+    return vec4(result_color.rgb * gradient_koef, in.color_alpha * test_color);
 }
 
 @fragment

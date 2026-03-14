@@ -1,13 +1,13 @@
 use crate::collider::Collider;
 use crate::consts::STYLE_SHADER_PARAMS_COUNT;
 use crate::styles::style_store::StyleStore;
+use crate::textures::{create_simple_texture, TextureData};
 use crate::utils::ReceiverExt;
 use crate::view_projection::ViewProjection;
 use cgmath::{Matrix4, Vector3};
 use wgpu::util::DeviceExt;
-use wgpu::{BindGroup, BindGroupLayout, Device, TextureUsages, TextureView};
+use wgpu::{BindGroup, BindGroupLayout, Device, TextureFormat, TextureUsages, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use crate::textures::{create_common_texture, create_simple_texture, TextureData};
 
 pub struct GlobalContext {
     pub canvas: Box<dyn WgpuCanvas>,
@@ -28,13 +28,12 @@ impl GlobalContext {
         let collider = Collider::new();
         let styles_bind_group_layout = Self::create_style_bind_group_layout(device);
 
-        let config = canvas.config();
         let ssao_texture = create_simple_texture(
             TextureData {
                 sample_count: 1,
                 size: (canvas.config().width, canvas.config().height),
-                usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
-                format: config.format,
+                usage: TextureUsages::TEXTURE_BINDING | TextureUsages::STORAGE_BINDING,
+                format: TextureFormat::R32Float,
             },
             device,
         );
