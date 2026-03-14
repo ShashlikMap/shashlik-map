@@ -1,4 +1,5 @@
 struct CameraUniform {
+    view: mat4x4<f32>,
     view_proj: mat4x4<f32>,
     inv_screen_size: vec2<f32>,
     scale: f32,
@@ -90,7 +91,7 @@ fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
 @fragment
 fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
     let test_color = textureLoad(t_diffuse, vec2i(floor(in.clip_position.xy)), 0).r;
-    return vec4f(test_color, 0.0, 0.0, test_color);
+    return vec4f(0.0, 0.0, 0.0, test_color);
 }
 
 // FAKE for compatibility
