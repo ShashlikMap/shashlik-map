@@ -56,7 +56,7 @@ impl ShapePipeline {
             label: Some("shape_indirect_args_layout"),
         });
 
-        let mesh_pipeline = MeshPipeline::new(global_context, false);
+        let mesh_pipeline = MeshPipeline::new(global_context);
 
         let compute_cull_shader = global_context.device().create_shader_module(include_wgsl!("../shaders/shape_culling.wgsl"));
 

@@ -6,7 +6,7 @@ use crate::mesh_layers::screen_shape_layer::ScreenShapeLayer;
 use crate::mesh_layers::text_mesh_layer::TextMeshLayer;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
-use crate::pipelines::screen_mesh_pipeline::ScreenMeshPipeline;
+use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use rustybuzz::ttf_parser;
 use wgpu::{CommandEncoder, RenderPass};
@@ -18,6 +18,7 @@ pub(crate) struct Layers {
     pub screen_shape_layer: ScreenShapeLayer<ShapePipeline>,
     pub text_layer: TextMeshLayer<ScreenMeshPipeline>,
     pub ortho_mesh_layer: OrthoMeshLayer<ScreenMeshPipeline>,
+    pub post_process_layer: OrthoMeshLayer<ScreenMeshPipeline>,
 }
 
 impl Layers {
@@ -29,16 +30,29 @@ impl Layers {
         let feature_layers = FeatureLayers::new(feature_tags, global_context);
         Layers {
             feature_layers,
-            mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context, true)),
+            mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context)),
             shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, None, false)),
             screen_shape_layer: ScreenShapeLayer::new(ShapePipeline::new(global_context, Some("vs_main_screen"), false),
                                                       global_context),
             text_layer: TextMeshLayer::new(
-                ScreenMeshPipeline::new(global_context, false),
+                ScreenMeshPipeline::new(global_context, TextureInfo {
+                    use_texture: false,
+                    filterable: false,
+                    fs_shader: "",
+                }),
                 global_context,
                 font,
             ),
-            ortho_mesh_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, true)),
+            ortho_mesh_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
+                use_texture: true,
+                filterable: true,
+                fs_shader: "fs_main_textured",
+            })),
+            post_process_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
+                use_texture: true,
+                filterable: false,
+                fs_shader: "fs_main_tex_storage",
+            })),
         }
     }
 
@@ -56,6 +70,7 @@ impl BaseMeshLayer for Layers {
         self.text_layer.prepare(global_context);
         self.feature_layers.prepare(global_context);
         self.ortho_mesh_layer.prepare(global_context);
+        self.post_process_layer.prepare(global_context);
     }
 
     fn update(&mut self, global_context: &mut GlobalContext) {
@@ -65,6 +80,7 @@ impl BaseMeshLayer for Layers {
         self.text_layer.update(global_context);
         self.feature_layers.update(global_context);
         self.ortho_mesh_layer.update(global_context);
+        self.post_process_layer.update(global_context);
     }
 
     fn compute(&mut self, encoder: &mut CommandEncoder, global_context: &mut GlobalContext) {
@@ -80,6 +96,7 @@ impl BaseMeshLayer for Layers {
         }
         if !global_context.is_preview_render {
             self.mesh_layer.render(render_pass, global_context);
+            self.post_process_layer.render(render_pass, global_context);
             self.screen_shape_layer
                 .render(render_pass, global_context);
             self.text_layer.render(render_pass, global_context);
@@ -99,5 +116,6 @@ impl BaseMeshLayer for Layers {
         self.text_layer.clear_by_key(key);
         self.feature_layers.clear_by_key(key);
         self.ortho_mesh_layer.clear_by_key(key);
+        self.post_process_layer.clear_by_key(key);
     }
 }

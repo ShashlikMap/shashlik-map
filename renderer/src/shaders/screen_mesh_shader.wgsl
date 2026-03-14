@@ -87,6 +87,12 @@ fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
     return textureSample(t_diffuse, s_diffuse, in.uv.xy);
 }
 
+@fragment
+fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
+    let test_color = textureLoad(t_diffuse, vec2i(floor(in.clip_position.xy)), 0).r;
+    return vec4f(test_color, 0.0, 0.0, test_color);
+}
+
 // FAKE for compatibility
 @fragment
 fn fs_main_g_buf(in: VertexOutput) -> @location(0) vec4<f32>  {

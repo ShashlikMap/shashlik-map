@@ -11,9 +11,9 @@ pub struct MeshPipeline {
 }
 
 impl MeshPipeline {
-    pub fn new(global_context: &GlobalContext, ssao_enabled: bool) -> Self {
+    pub fn new(global_context: &GlobalContext) -> Self {
         let device = global_context.device();
-        let mut entries = vec![wgpu::BindGroupLayoutEntry {
+        let entries = vec![wgpu::BindGroupLayoutEntry {
             binding: 0,
             visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::COMPUTE,
             ty: wgpu::BindingType::Buffer {
@@ -23,37 +23,19 @@ impl MeshPipeline {
             },
             count: None,
         }];
-        if ssao_enabled {
-            entries.push(wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Texture {
-                    multisampled: false,
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                },
-                count: None,
-            });
-        }
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &entries,
             label: Some("mesh_pipeline_group_layout"),
         });
         
-        let mut entries = vec![wgpu::BindGroupEntry {
+        let entries = vec![wgpu::BindGroupEntry {
             binding: 0,
             resource: global_context
                 .view_projection
                 .uniform_buffer
                 .as_entire_binding(),
         }];
-        if ssao_enabled {
-            entries.push(wgpu::BindGroupEntry {
-                binding: 1,
-                resource: wgpu::BindingResource::TextureView(&global_context.ssao_texture),
-            });
-        }
-
+        
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &bind_group_layout,
             entries: &entries,
