@@ -2,8 +2,8 @@ use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pass_nodes::PassNode;
-use crate::textures::{create_common_texture, create_depth_texture, SAMPLE_COUNT};
-use wgpu::{include_wgsl, BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, StorageTextureAccess, TextureFormat, TextureView, TextureViewDimension};
+use crate::textures::{create_common_texture, create_depth_texture, create_simple_texture, TextureData, SAMPLE_COUNT};
+use wgpu::{include_wgsl, BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, StorageTextureAccess, TextureFormat, TextureUsages, TextureView, TextureViewDimension};
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
@@ -24,8 +24,24 @@ impl MainPassNode {
 
         let device = global_context.device();
 
-        let non_msaa_texture_view_positions = create_common_texture(size, 1, global_context);
-        let non_msaa_texture_view_normals = create_common_texture(size, 1, global_context);
+        let non_msaa_texture_view_positions = create_simple_texture(
+            TextureData {
+                sample_count: 1,
+                size,
+                usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
+                format: TextureFormat::Rgba16Float,
+            },
+            global_context.device(),
+        );
+        let non_msaa_texture_view_normals = create_simple_texture(
+            TextureData {
+                sample_count: 1,
+                size,
+                usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
+                format: TextureFormat::Rgba16Float,
+            },
+            global_context.device(),
+        );
 
         let ssao_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
@@ -142,8 +158,8 @@ impl PassNode for MainPassNode {
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(wgpu::Color {
                     r: 0.0,
-                    g: 0.741,
-                    b: 0.961,
+                    g: 0.0,
+                    b: 0.0,
                     a: 1.0,
                 }),
                 store: wgpu::StoreOp::Store,
@@ -156,8 +172,8 @@ impl PassNode for MainPassNode {
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(wgpu::Color {
                     r: 0.0,
-                    g: 0.741,
-                    b: 0.961,
+                    g: 0.0,
+                    b: 0.0, // TODO We may use 1.0 here to simulate z normal for ground
                     a: 1.0,
                 }),
                 store: wgpu::StoreOp::Store,
