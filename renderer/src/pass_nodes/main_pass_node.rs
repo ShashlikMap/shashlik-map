@@ -24,6 +24,9 @@ impl MainPassNode {
 
         let device = global_context.device();
 
+        let non_msaa_texture_view_positions = create_common_texture(size, 1, global_context);
+        let non_msaa_texture_view_normals = create_common_texture(size, 1, global_context);
+
         let ssao_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -32,6 +35,24 @@ impl MainPassNode {
                     access: StorageTextureAccess::WriteOnly,
                     format: TextureFormat::R32Float,
                     view_dimension: TextureViewDimension::D2,
+                },
+                count: None,
+            }, wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                },
+                count: None,
+            }, wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
                 },
                 count: None,
             }],
@@ -43,7 +64,15 @@ impl MainPassNode {
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: wgpu::BindingResource::TextureView(&global_context.ssao_texture),
-            }],
+            },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&non_msaa_texture_view_normals),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&non_msaa_texture_view_positions),
+                }],
             label: Some("ssao_compute_bind_group"),
         });
 
@@ -66,8 +95,8 @@ impl MainPassNode {
 
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
-            non_msaa_texture_view_positions: create_common_texture(size, 1, global_context),
-            non_msaa_texture_view_normals: create_common_texture(size, 1, global_context),
+            non_msaa_texture_view_positions,
+            non_msaa_texture_view_normals,
             depth_texture_view: create_depth_texture(size, SAMPLE_COUNT, global_context),
             non_msaa_depth_texture_view: create_depth_texture(size, 1, global_context),
             ssao_bind_group,
