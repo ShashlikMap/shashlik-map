@@ -28,7 +28,7 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
     }
 
     // FIXME Positioning should not be here
-    pub fn set_texture(&mut self, texture_view: &TextureView, global_context: &GlobalContext) {
+    pub fn set_texture(&mut self, texture_view: &TextureView, offset: (f32, f32), global_context: &GlobalContext) {
         let screen_size = global_context.view_projection.screen_size;
         let texture_size = texture_view.texture().size();
 
@@ -55,8 +55,8 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
         let queue = global_context.queue();
         let attr = TextInstanceInput {
             position: [
-                screen_size.0 as f32 - texture_size.width as f32 - 100.0,
-                screen_size.1 as f32 - 100.0,
+                screen_size.0 as f32 - texture_size.width as f32 + offset.0,
+                screen_size.1 as f32 + offset.0,
                 0.0,
             ],
             color_alpha: 1.0,

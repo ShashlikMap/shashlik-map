@@ -9,9 +9,6 @@ struct CameraUniform {
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 
-@group(0) @binding(1)
-var ssao_texture: texture_2d<f32>;
-
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
@@ -73,9 +70,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
 
     let result_color = (ambient_color + diffuse_color) * default_color;
 
-    let test_color = 1.0 - textureLoad(ssao_texture, vec2i(floor(in.clip_position.xy)), 0).r;
-
-    return vec4(result_color.rgb * gradient_koef, in.color_alpha * test_color);
+    return vec4(result_color.rgb * gradient_koef, in.color_alpha);
 }
 
 @fragment

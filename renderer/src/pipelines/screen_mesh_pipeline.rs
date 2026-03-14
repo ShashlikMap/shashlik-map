@@ -7,11 +7,17 @@ use wgpu::{include_wgsl, BindGroup, BindGroupLayout, CompareFunction, ComputePas
 pub struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
     texture_bind_group_layout: BindGroupLayout,
-    use_texture: bool,
+    texture_info: TextureInfo
+}
+
+pub struct TextureInfo {
+    pub use_texture: bool,
+    pub filterable: bool,
+    pub fs_shader: &'static str,
 }
 
 impl ScreenMeshPipeline {
-    pub fn new(global_context: &GlobalContext, use_texture: bool) -> Self {
+    pub fn new(global_context: &GlobalContext, texture_info: TextureInfo) -> Self {
         let device = global_context.device();
 
         let texture_bind_group_layout =
@@ -23,7 +29,7 @@ impl ScreenMeshPipeline {
                         ty: wgpu::BindingType::Texture {
                             multisampled: false,
                             view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            sample_type: wgpu::TextureSampleType::Float { filterable: texture_info.filterable },
                         },
                         count: None,
                     },
@@ -40,9 +46,9 @@ impl ScreenMeshPipeline {
             });
 
         Self {
-            mesh_pipeline: MeshPipeline::new(global_context, false),
+            mesh_pipeline: MeshPipeline::new(global_context),
             texture_bind_group_layout,
-            use_texture,
+            texture_info,
         }
     }
 }
@@ -62,7 +68,7 @@ impl RenderPipeline for ScreenMeshPipeline {
 
         let device = global_context.device();
 
-        if self.use_texture {
+        if self.texture_info.use_texture {
             mesh_descriptor.layout = Some(device.create_pipeline_layout(
                 &wgpu::PipelineLayoutDescriptor {
                     label: Some("Texture Render Pipeline Layout"),
@@ -89,8 +95,8 @@ impl RenderPipeline for ScreenMeshPipeline {
 
         let fragment = mesh_descriptor.fragment.as_mut().unwrap();
         fragment.module = shader_module;
-        if self.use_texture {
-            fragment.entry_point = Some("fs_main_textured");
+        if self.texture_info.use_texture {
+            fragment.entry_point = Some(self.texture_info.fs_shader);
         }
 
         mesh_descriptor.primitive.cull_mode = None;
