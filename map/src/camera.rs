@@ -10,7 +10,7 @@ pub struct Camera {
     fovy: f64,
     znear: f64,
     zfar: f64,
-    perspective_matrix: Matrix4<f64>,
+    pub perspective_matrix: Matrix4<f64>,
     pub offset: cgmath::Vector3<f64>,
 }
 

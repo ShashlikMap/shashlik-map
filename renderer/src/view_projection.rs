@@ -1,4 +1,4 @@
-use cgmath::{Matrix4, SquareMatrix, Transform, Vector2, Vector3, Vector4};
+use cgmath::{Matrix, Matrix3, Matrix4, SquareMatrix, Transform, Vector2, Vector3, Vector4};
 use geo_types::{Coord, coord};
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 
@@ -22,7 +22,9 @@ const FLIP_Y: Matrix4<f64> = Matrix4::new(
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct ViewProjUniform {
     view: [[f32; 4]; 4],
+    proj: [[f32; 4]; 4],
     view_proj: [[f32; 4]; 4],
+    view_tr_inv: [[f32; 4]; 4],
     inv_screen_size: [f32; 2],
     scale: f32,
     p2_scale: f32
@@ -54,7 +56,9 @@ impl ViewProjection {
         ViewProjection {
             uniform: ViewProjUniform {
                 view: Matrix4::identity().into(),
+                proj: Matrix4::identity().into(),
                 view_proj: Matrix4::identity().into(),
+                view_tr_inv: Matrix4::identity().into(),
                 inv_screen_size: [0.0, 0.0],
                 scale: 0.0,
                 p2_scale: 1.0
@@ -69,14 +73,25 @@ impl ViewProjection {
     pub fn update(&mut self, queue: &Queue, 
                   config: &SurfaceConfiguration,
                   view_matrix: Matrix4<f64>,
-                  view_proj_matrix: Matrix4<f64>,  
+                  proj_matrix: Matrix4<f64>,
+                  view_proj_matrix: Matrix4<f64>,
                   cs_offset: Vector3<f64>,
                   scale: f32) {
-        self.uniform.view = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * view_matrix)
+        self.uniform.view = (view_matrix)
+            .cast()
+            .unwrap()
+            .into();
+        self.uniform.proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * proj_matrix)
             .cast()
             .unwrap()
             .into();
         self.uniform.view_proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * view_proj_matrix)
+            .cast()
+            .unwrap()
+            .into();
+
+        let qq:Matrix4<f64> = view_matrix.invert().unwrap().transpose();
+        self.uniform.view_tr_inv = (qq)
             .cast()
             .unwrap()
             .into();

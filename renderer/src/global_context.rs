@@ -75,11 +75,12 @@ impl GlobalContext {
         }
     }
 
-    pub fn update(&mut self, view_matrix: Matrix4<f64>, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32) {
+    pub fn update(&mut self, view_matrix: Matrix4<f64>, proj: Matrix4<f64>, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32) {
         self.view_projection.update(
             self.canvas.queue(),
             self.canvas.config(),
             view_matrix,
+            proj,
             view_proj_matrix,
             cs_offset,
             scale

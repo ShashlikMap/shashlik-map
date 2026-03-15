@@ -195,6 +195,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let (view, view_proj) = self.camera.build_view_projection_matrix();
         self.renderer.update(
             view,
+            self.camera.perspective_matrix,
             view_proj,
             self.camera.offset,
             self.camera.scale(),

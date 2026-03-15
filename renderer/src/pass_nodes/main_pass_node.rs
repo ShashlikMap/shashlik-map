@@ -271,7 +271,7 @@ impl PassNode for MainPassNode {
             compute_pass.set_pipeline(&self.ssao_compute_pipeline);
             compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
             compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
-            compute_pass.dispatch_workgroups(64, 64, 1);
+            compute_pass.dispatch_workgroups(128, 128, 1);
         }
 
         {
