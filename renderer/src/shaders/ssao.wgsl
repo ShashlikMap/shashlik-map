@@ -19,8 +19,20 @@ struct CameraUniform {
 @group(1) @binding(0)
 var<uniform> camera: CameraUniform;
 
-fn random(st: vec2<f32>) -> f32 {
-    return fract(sin(dot(st, vec2<f32>(12.9898, 78.233))) * 43758.5453123);
+fn hash33_vec3f(p: vec3f) -> vec3f {
+    var v = bitcast<vec3u>(p);
+
+    v = v * 1664525u + 1013904223u;
+    v.x += v.y * v.z;
+    v.y += v.z * v.x;
+    v.z += v.x * v.y;
+    v = v ^ (v >> vec3u(16u));
+    v.x += v.y * v.z;
+    v.y += v.z * v.x;
+    v.z += v.x * v.y;
+
+    let res = vec3f(v) * (1.0 / 4294967295.0);
+    return res * 2.0 - 1.0;
 }
 
 fn hash_noise(p: vec2<f32>) -> vec3<f32> {
@@ -38,32 +50,35 @@ fn get_sample_vector(index: u32, total_samples: f32) -> vec3<f32> {
     return vec3<f32>(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
 }
 
-const radius: f32 = 0.1;
+const radius: f32 = 0.15;
 
 @compute @workgroup_size(8, 8, 1)
 fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let pixel_coord = id.xy;
 
     let fragPos = textureLoad(positions, pixel_coord, 0).xyz;
-    let normal = normalize(textureLoad(normals, pixel_coord, 0).xyz);
+    var normal = -normalize(textureLoad(normals, pixel_coord, 0).xyz);
+
     if(normal.x == 0.0 && normal.y == 0.0 && normal.z == 0.0) {
         textureStore(ssao_texture, pixel_coord, vec4f(0.0, 0.0, 0.0, 0.0));
         return;
     }
 
-    let randomVec = normalize(hash_noise(vec2f(pixel_coord)));
-
+    let randomVec = normalize(camera.view_tr_inv * vec4f(hash_noise(vec2f(pixel_coord)), 1.0)).xyz;
     let tangent = normalize(randomVec - normal * dot(randomVec, normal));
     let bitangent = cross(normal, tangent);
     let TBN = mat3x3(tangent, bitangent, normal);
 
     var occlusion = 0.0;
-    for (var i = 0; i < 64; i++) {
-        var samplePos = TBN * normalize(get_sample_vector(u32(i), 64.0));
+    for (var i = 0; i < 8; i++) {
+        var samplePos = TBN * (hash33_vec3f(fragPos) * get_sample_vector(u32(i), 8).y);
         samplePos = fragPos + samplePos * radius;
 
         let viewSampleDir = normalize(samplePos - fragPos);
         let NdotS = max(dot(normal, viewSampleDir), 0.0);
+        if(NdotS == 0.0) {
+            continue;
+        }
 
         let offset2 = camera.proj * vec4f(samplePos, 1.0);
         let ndcPos = offset2.xy / offset2.w;
@@ -72,10 +87,11 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
         let sampleDepth = textureLoad(positions, screenCoord, 0).z;
 
-//        var rangeCheck = smoothstep(0.2, 1.0, (radius) / abs(fragPos.z - sampleDepth));
-        occlusion += select(1.0, 0.0, sampleDepth <= samplePos.z + 0.0);
+        var rangeCheck = smoothstep(0.1, 1.0, (radius) / abs(fragPos.z - sampleDepth));
+        var aa = select(0.0, 1.0, sampleDepth > samplePos.z + 0.02) * rangeCheck * NdotS;
+        occlusion += aa;
     }
 
-    occlusion = (occlusion / 64.0);
+    occlusion = (occlusion / 8.0);
     textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
 }

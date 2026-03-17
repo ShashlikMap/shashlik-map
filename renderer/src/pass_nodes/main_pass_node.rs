@@ -217,7 +217,7 @@ impl PassNode for MainPassNode {
                 load: wgpu::LoadOp::Clear(wgpu::Color {
                     r: 0.0,
                     g: 0.0,
-                    b: 1.0, // We use 1.0 here to simulate z normal for ground
+                    b: 0.0, // We use 1.0 here to simulate z normal for ground
                     a: 1.0,
                 }),
                 store: wgpu::StoreOp::Store,

@@ -53,10 +53,11 @@ fn vs_main(
     var out: VertexOutput;
     var modelpos = model_position.xyz + pos.position;
     var modelnormal = model.normal;
-//    let viewMat3 = mat3x3(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz);
-//    let viewQQMat3 = mat3x3(camera.view_tr_inv[0].xyz, camera.view_tr_inv[1].xyz, camera.view_tr_inv[2].xyz);
+    // TODO
+    modelnormal.z = -abs(modelnormal.z);
+
     out.world_position = (camera.view * vec4f(modelpos, 1.0)).xyz;
-    out.world_normal = -(camera.view * vec4f(modelnormal, 1.0)).xyz;
+    out.world_normal = (camera.view_tr_inv * vec4f(modelnormal, 1.0)).xyz;
     out.color_alpha = pos.color_alpha;
     out.clip_position = camera.view_proj * vec4<f32>(modelpos, 1.0);
     return out;
