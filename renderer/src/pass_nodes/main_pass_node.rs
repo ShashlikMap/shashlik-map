@@ -17,6 +17,8 @@ pub(crate) struct MainPassNode {
 }
 
 impl MainPassNode {
+    const SSAO_ENABLED: bool = false;
+
     pub fn new(global_context: &GlobalContext) -> Self {
         let size = (
             global_context.config().width,
@@ -243,38 +245,40 @@ impl PassNode for MainPassNode {
             stencil_ops: None,
         };
 
-        {
-            let descriptor = wgpu::RenderPassDescriptor {
-                label: Some("MRT Render Pass"),
-                color_attachments: &[
-                    Some(non_msaa_color_attachment_positions),
-                    Some(non_msaa_color_attachment_normals),
-                ],
-                depth_stencil_attachment: Some(non_msaa_depth_attachment),
-                occlusion_query_set: None,
-                timestamp_writes: None,
-                multiview_mask: None,
-            };
+        if Self::SSAO_ENABLED {
+            {
+                let descriptor = wgpu::RenderPassDescriptor {
+                    label: Some("MRT Render Pass"),
+                    color_attachments: &[
+                        Some(non_msaa_color_attachment_positions),
+                        Some(non_msaa_color_attachment_normals),
+                    ],
+                    depth_stencil_attachment: Some(non_msaa_depth_attachment),
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                    multiview_mask: None,
+                };
 
-            let mut render_pass = encoder.begin_render_pass(&descriptor);
+                let mut render_pass = encoder.begin_render_pass(&descriptor);
 
-            global_context.is_g_buffer_render = true;
-            global_context.is_preview_render = false;
-            layers.render(&mut render_pass, global_context);
-        }
+                global_context.is_g_buffer_render = true;
+                global_context.is_preview_render = false;
+                layers.render(&mut render_pass, global_context);
+            }
 
-        {
-            let mut compute_pass =encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("SSAO Compute Pass"),
-                timestamp_writes: None,
-            });
-            compute_pass.set_pipeline(&self.ssao_compute_pipeline);
-            compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
-            compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
+            {
+                let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                    label: Some("SSAO Compute Pass"),
+                    timestamp_writes: None,
+                });
+                compute_pass.set_pipeline(&self.ssao_compute_pipeline);
+                compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
+                compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
 
-            let xx = (global_context.view_projection.screen_size.0 / 8.0).ceil() as u32;
-            let yy = (global_context.view_projection.screen_size.1 / 8.0).ceil() as u32;
-            compute_pass.dispatch_workgroups(xx, yy, 1);
+                let xx = (global_context.view_projection.screen_size.0 / 8.0).ceil() as u32;
+                let yy = (global_context.view_projection.screen_size.1 / 8.0).ceil() as u32;
+                compute_pass.dispatch_workgroups(xx, yy, 1);
+            }
         }
 
         {
