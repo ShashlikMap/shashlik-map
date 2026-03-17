@@ -77,7 +77,7 @@ impl ViewProjection {
                   view_proj_matrix: Matrix4<f64>,
                   cs_offset: Vector3<f64>,
                   scale: f32) {
-        self.uniform.view = (view_matrix)
+        self.uniform.view = view_matrix
             .cast()
             .unwrap()
             .into();
@@ -90,8 +90,8 @@ impl ViewProjection {
             .unwrap()
             .into();
 
-        let qq:Matrix4<f64> = view_matrix.invert().unwrap().transpose();
-        self.uniform.view_tr_inv = (qq)
+        let view_tr_inv:Matrix4<f64> = view_matrix.invert().unwrap().transpose();
+        self.uniform.view_tr_inv = view_tr_inv
             .cast()
             .unwrap()
             .into();
