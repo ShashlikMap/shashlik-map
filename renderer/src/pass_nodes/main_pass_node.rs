@@ -271,7 +271,10 @@ impl PassNode for MainPassNode {
             compute_pass.set_pipeline(&self.ssao_compute_pipeline);
             compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
             compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
-            compute_pass.dispatch_workgroups(128, 128, 1);
+
+            let xx = (global_context.view_projection.screen_size.0 / 8.0).ceil() as u32;
+            let yy = (global_context.view_projection.screen_size.1 / 8.0).ceil() as u32;
+            compute_pass.dispatch_workgroups(xx, yy, 1);
         }
 
         {

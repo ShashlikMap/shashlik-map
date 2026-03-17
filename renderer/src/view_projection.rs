@@ -1,5 +1,5 @@
-use cgmath::{Matrix, Matrix3, Matrix4, SquareMatrix, Transform, Vector2, Vector3, Vector4};
-use geo_types::{Coord, coord};
+use cgmath::{Matrix, Matrix4, SquareMatrix, Transform, Vector2, Vector3, Vector4};
+use geo_types::{coord, Coord};
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 
 #[rustfmt::skip]
