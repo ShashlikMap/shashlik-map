@@ -2,7 +2,9 @@
 
 struct CameraUniform {
     view: mat4x4<f32>,
+    proj: mat4x4<f32>,
     view_proj: mat4x4<f32>,
+    view_tr_inv: mat4x4<f32>,
     inv_screen_size: vec2<f32>,
     scale: f32,
     p2_scale: f32
@@ -26,9 +28,11 @@ struct InstanceInput {
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
-    @location(1) world_normal: vec3<f32>,
-    @location(2) world_position: vec3<f32>,
-    @location(3) color_alpha: f32,
+    @location(1) view_normal: vec3<f32>,
+    @location(2) view_position: vec3<f32>,
+    @location(3) world_normal: vec3<f32>,
+    @location(4) world_position: vec3<f32>,
+    @location(5) color_alpha: f32,
 }
 
 struct GBuffer {
@@ -51,16 +55,23 @@ fn vs_main(
     var out: VertexOutput;
     var modelpos = model_position.xyz + pos.position;
     var modelnormal = model.normal;
+    // TODO
+        modelnormal.z = -abs(modelnormal.z);
     out.world_position = modelpos;
-    out.world_normal = modelnormal;
+    out.world_normal = -modelnormal;
+
+
+
+    out.view_position = (camera.view * vec4f(modelpos, 1.0)).xyz;
+    out.view_normal = (camera.view_tr_inv * vec4f(modelnormal, 1.0)).xyz;
     out.color_alpha = pos.color_alpha;
     out.clip_position = camera.view_proj * vec4<f32>(modelpos, 1.0);
     return out;
 }
 
-const light_dir = normalize(vec3(0.0, -0.5, 1.0));
+const light_dir = normalize(vec3(0.5, 0.5, 1.0));
 const default_color = vec3(0.4, 0.4, 0.4);
-const ambient_color = vec3(0.1, 0.1, 0.1);
+const ambient_color = vec3(0.6, 0.6, 0.6);
 
 // Fragment shader
 @fragment
@@ -71,11 +82,12 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
 
     let result_color = (ambient_color + diffuse_color) * default_color;
 
-    return vec4(result_color.rgb * gradient_koef, in.color_alpha);
+    return vec4(result_color * gradient_koef, in.color_alpha);
 }
 
 @fragment
 fn fs_main_g_buf(in: VertexOutput) -> GBuffer {
+
     // TODO use view matrix to calc z in VS instead of in.clip_position.z?
-    return GBuffer(vec4(in.world_position.xy, in.clip_position.z, 1.0), vec4(normalize(in.world_normal.xyz), 1.0));
+    return GBuffer(vec4(in.view_position.xyz, 1.0), vec4(in.view_normal.xyz, 1.0));
 }
