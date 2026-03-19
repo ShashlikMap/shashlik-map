@@ -20,6 +20,8 @@ struct CameraUniform {
 @group(1) @binding(0)
 var<uniform> camera: CameraUniform;
 
+var<immediate> constans: u32;
+
 fn hash33_vec3f(p: vec3f) -> vec3f {
     var v = bitcast<vec3u>(p);
 
@@ -51,15 +53,24 @@ fn get_sample_vector(index: u32, total_samples: f32) -> vec3<f32> {
     return vec3<f32>(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
 }
 
-const radius: f32 = 0.3;
-
 @compute @workgroup_size(8, 8, 1)
 fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let pixel_coord = id.xy;
+
     if(pixel_coord.x >= u32(1.0 / camera.inv_screen_size.x) || pixel_coord.y >= u32(1.0 / camera.inv_screen_size.y)) {
         return;
     }
 
+    let is_blur = constans != 0;
+    if(is_blur) {
+        compute_blur(pixel_coord);
+    } else {
+        compute_ssao(pixel_coord);
+    }
+}
+
+const radius: f32 = 0.3;
+fn compute_ssao(pixel_coord: vec2<u32>) {
     let loadedNormal = textureLoad(normals, pixel_coord, 0).xyz;
     var normal = loadedNormal;
 
@@ -114,4 +125,8 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     occlusion = (occlusion / 8.0);
     textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
+}
+
+fn compute_blur(pixel_coord: vec2<u32>) {
+    // TODO
 }
