@@ -140,6 +140,7 @@ impl MainPassNode {
         let ssao_pipeline_layout = global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("SSAO Pipeline Layout"),
             bind_group_layouts: &[&ssao_bind_group_layout, &camera_ssao_bind_group_layout],
+            immediate_size: 4,
             ..Default::default()
         });
 
@@ -275,9 +276,13 @@ impl PassNode for MainPassNode {
                 compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
                 compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
 
-                let xx = (global_context.view_projection.screen_size.0 / 8.0).ceil() as u32;
-                let yy = (global_context.view_projection.screen_size.1 / 8.0).ceil() as u32;
-                compute_pass.dispatch_workgroups(xx, yy, 1);
+                let wg_x = (global_context.view_projection.screen_size.0 / 8.0).ceil() as u32;
+                let wg_y = (global_context.view_projection.screen_size.1 / 8.0).ceil() as u32;
+                compute_pass.dispatch_workgroups(wg_x, wg_y, 1);
+
+                // blur pas using immediates
+                compute_pass.set_immediates(0, bytemuck::cast_slice(&[1]));
+                compute_pass.dispatch_workgroups(wg_x, wg_y, 1);
             }
         }
 
