@@ -24,6 +24,7 @@ pub(crate) struct ViewProjUniform {
     view: [[f32; 4]; 4],
     proj: [[f32; 4]; 4],
     view_proj: [[f32; 4]; 4],
+    view_proj_inv: [[f32; 4]; 4],
     view_tr_inv: [[f32; 4]; 4],
     inv_screen_size: [f32; 2],
     scale: f32,
@@ -58,6 +59,7 @@ impl ViewProjection {
                 view: Matrix4::identity().into(),
                 proj: Matrix4::identity().into(),
                 view_proj: Matrix4::identity().into(),
+                view_proj_inv: Matrix4::identity().into(),
                 view_tr_inv: Matrix4::identity().into(),
                 inv_screen_size: [0.0, 0.0],
                 scale: 0.0,
@@ -85,7 +87,13 @@ impl ViewProjection {
             .cast()
             .unwrap()
             .into();
-        self.uniform.view_proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * view_proj_matrix)
+        let view_proj = FLIP_Y * OPENGL_TO_WGPU_MATRIX * view_proj_matrix;
+        self.uniform.view_proj = view_proj
+            .cast()
+            .unwrap()
+            .into();
+        let view_proj_inv = view_proj.invert().unwrap();
+        self.uniform.view_proj_inv = view_proj_inv
             .cast()
             .unwrap()
             .into();
