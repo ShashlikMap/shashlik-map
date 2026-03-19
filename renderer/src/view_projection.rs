@@ -93,7 +93,8 @@ impl ViewProjection {
             .unwrap()
             .into();
         let view_proj_inv = view_proj.invert().unwrap();
-        self.uniform.view_proj_inv = view_proj_inv
+        // No need OPENGL_TO_WGPU_MATRIX?!
+        self.uniform.view_proj_inv = (FLIP_Y * view_proj_inv)
             .cast()
             .unwrap()
             .into();
