@@ -51,7 +51,7 @@ fn get_sample_vector(index: u32, total_samples: f32) -> vec3<f32> {
     return vec3<f32>(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
 }
 
-const radius: f32 = 0.1;
+const radius: f32 = 0.3;
 
 @compute @workgroup_size(8, 8, 1)
 fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -60,13 +60,30 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
 
-    var normal = -normalize(textureLoad(normals, pixel_coord, 0).xyz);
+    let loadedNormal = textureLoad(normals, pixel_coord, 0).xyz;
+    var normal = loadedNormal;
 
-    if(normal.x == 0.0 && normal.y == 0.0 && normal.z == 0.0) {
-        return;
+    var fragPos = vec3f(0.0, 0.0, 0.0);
+    if(loadedNormal.x == 0.0 && loadedNormal.y == 0.0 && loadedNormal.z == 0.0) {
+        let u_coord = (f32(pixel_coord.x) * camera.inv_screen_size.x) * 2.0 - 1.0;
+        let v_coord = (f32(pixel_coord.y) * camera.inv_screen_size.y) * 2.0 - 1.0;
+        let near_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 0.0, 1.0);
+        let near_world = near_world1.xyz / near_world1.w;
+        let far_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 1.0, 1.0);
+        let far_world = far_world1.xyz / far_world1.w;
+
+        var u = -near_world.z / (far_world.z - near_world.z);
+        if u < 0.0 {
+            u = 1.0 - u;
+        }
+        fragPos = near_world + u * (far_world - near_world);
+        fragPos = (camera.view * vec4f(fragPos, 1.0)).xyz;
+        normal = -normalize((camera.view_tr_inv * vec4f(0.0, 0.0, 1.0, 1.0)).xyz);
+    } else {
+        normal = -normalize(loadedNormal);
+        fragPos = textureLoad(positions, pixel_coord, 0).xyz;
     }
 
-    let fragPos = textureLoad(positions, pixel_coord, 0).xyz;
 
 //    let randomVec = normalize(camera.view_tr_inv * vec4f(hash_noise(vec2f(pixel_coord)), 1.0)).xyz;
 //    let tangent = normalize(randomVec - normal * dot(randomVec, normal));
@@ -75,8 +92,7 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     var occlusion = 0.0;
     for (var i = 0; i < 8; i++) {
-        var samplePos = (hash33_vec3f(fragPos) * get_sample_vector(u32(i), 8).y);
-        samplePos = fragPos + samplePos * radius;
+        let samplePos = fragPos + radius * (hash33_vec3f(fragPos) * get_sample_vector(u32(i), 8).y);
 
         let viewSampleDir = normalize(samplePos - fragPos);
         let NdotS = max(dot(normal, viewSampleDir), 0.0);
@@ -91,9 +107,9 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
         let sampleDepth = textureLoad(positions, screenCoord, 0).z;
 
-        var rangeCheck = smoothstep(0.1, 1.0, (radius) / abs(fragPos.z - sampleDepth));
-        var aa = select(0.0, 1.0, sampleDepth > samplePos.z + 0.02) * rangeCheck * NdotS;
-        occlusion += aa;
+        let rangeCheck = smoothstep(0.1, 1.0, (radius) / abs(fragPos.z - sampleDepth));
+
+        occlusion += select(0.0, 1.0, sampleDepth > samplePos.z + 0.02) * rangeCheck;
     }
 
     occlusion = (occlusion / 8.0);
