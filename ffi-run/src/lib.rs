@@ -7,6 +7,7 @@ use map::ShashlikMap;
 use osm::source::reqwest_source::ReqwestSource;
 use std::sync::RwLock;
 use map::feature_processor::ShashlikFeatureProcessor;
+use wgpu_canvas::SSAO_ENABLED;
 
 #[derive(uniffi::Object)]
 pub struct ShashlikMapApi {
@@ -69,6 +70,10 @@ impl ShashlikMapApi {
     fn set_cam_follow_mode(&self, enabled: bool) {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
         shashlik_map.set_camera_follow_mode(enabled);
+    }
+
+    fn set_ssao_mode(&self, enabled: bool) {
+        unsafe { SSAO_ENABLED = enabled };
     }
 
     fn calculate_route_to_lat_lon(&self, lat: f64, lon: f64, route_costing: RouteCosting) {

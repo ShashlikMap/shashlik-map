@@ -15,6 +15,7 @@ use wgpu::{Features, Limits};
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
+use wgpu_canvas::SSAO_ENABLED;
 use winit_run::PinchWorkaroundHandler;
 
 pub(crate) mod canvas;
@@ -26,6 +27,7 @@ enum SlintMapEvent {
     Pinch(f32, f32, f32),
     VerticalScroll(f32),
     FollowMode(bool),
+    SSAO(bool),
     BtnAction(Action, i32),
 }
 
@@ -139,6 +141,13 @@ fn main() {
                             });
 
                             let slint_map_event_sender_internal = slint_map_event_sender.clone();
+                            ui_weak.on_ssao_mode(move |enabled| {
+                                slint_map_event_sender_internal
+                                    .send(SlintMapEvent::SSAO(enabled))
+                                    .unwrap();
+                            });
+
+                            let slint_map_event_sender_internal = slint_map_event_sender.clone();
                             ui_weak.on_btn_click(move |action, cost_index| {
                                 slint_map_event_sender_internal
                                     .send(SlintMapEvent::BtnAction(action, cost_index))
@@ -203,6 +212,9 @@ fn main() {
                                         }
                                     }
                                 },
+                                SlintMapEvent::SSAO(enabled) => {
+                                    unsafe { SSAO_ENABLED = enabled; }
+                                }
                             };
                         }
                         let target_texture = shashlik_map.update_and_render();

@@ -4,8 +4,6 @@
 
 @group(0) @binding(2) var positions: texture_2d<f32>;
 
-@group(0) @binding(3) var depth: texture_depth_2d;
-
 struct CameraUniform {
     view: mat4x4<f32>,
     proj: mat4x4<f32>,
@@ -22,37 +20,6 @@ var<uniform> camera: CameraUniform;
 
 var<immediate> constans: u32;
 
-fn hash33_vec3f(p: vec3f) -> vec3f {
-    var v = bitcast<vec3u>(p);
-
-    v = v * 1664525u + 1013904223u;
-    v.x += v.y * v.z;
-    v.y += v.z * v.x;
-    v.z += v.x * v.y;
-    v = v ^ (v >> vec3u(16u));
-    v.x += v.y * v.z;
-    v.y += v.z * v.x;
-    v.z += v.x * v.y;
-
-    let res = vec3f(v) * (1.0 / 4294967295.0);
-    return res * 2.0 - 1.0;
-}
-
-fn hash_noise(p: vec2<f32>) -> vec3<f32> {
-    let r = fract(sin(dot(p, vec2<f32>(12.9898, 78.233))) * 43758.5453);
-    let g = fract(sin(dot(p, vec2<f32>(93.11, 23.14))) * 12345.6789);
-    return normalize(vec3<f32>(r * 2.0 - 1.0, g * 2.0 - 1.0, 0.0));
-}
-
-fn get_sample_vector(index: u32, total_samples: f32) -> vec3<f32> {
-    let phi = 2.0 * 3.14159 * (f32(index) * 0.61803398875); // Golden ratio
-    let cos_theta = 1.0 - (f32(index) + 0.5) / total_samples;
-    let sin_theta = sqrt(1.0 - cos_theta * cos_theta);
-
-    // Returns a sample in a hemisphere oriented toward +Z (tangent space)
-    return vec3<f32>(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
-}
-
 @compute @workgroup_size(8, 8, 1)
 fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let pixel_coord = id.xy;
@@ -61,14 +28,41 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
 
-    let is_blur = constans != 0;
-    if(is_blur) {
-        compute_blur(pixel_coord);
-    } else {
-        compute_ssao(pixel_coord);
-    }
+    compute_ssao(pixel_coord);  
 }
 
+const kernel = array<vec3f, 8>(
+      vec3f(-0.988005f, -0.614986f, 0.277931f),
+      vec3f(0.308289f, 0.470236f, 0.121804f),
+      vec3f(-0.286518f, 0.318795f, 0.864876f),
+      vec3f(-0.330144f, -0.274284f, 0.511152f),
+      vec3f(0.477399f, -0.142303f, -0.593631f),
+      vec3f(0.810853f, -0.212716f, 0.217826f),
+      vec3f(-0.100139f, 0.818944f, 0.441590f),
+      vec3f(0.752630f, -0.281644f, 0.447299f)
+  );
+
+const noise_size: u32 = 4;
+const noise: array<vec3f, 16> = array<vec3f, 16>(
+        vec3f(0.607190f, -0.312189f, 0.818114f),
+        vec3f(0.156606f, -0.817238f, -0.217971f),
+        vec3f(-0.417291f, 0.065830f, -0.060644f),
+        vec3f(-0.732652f, -0.385451f, -0.551573f),
+        vec3f(0.585352f, -0.433822f, 0.307726f),
+        vec3f(0.635344f, 0.910413f, 0.477567f),
+        vec3f(-0.147777f, -0.358135f, -0.246600f),
+        vec3f(0.545311f, -0.709271f, -0.237195f),
+        vec3f(0.704174f, 0.194971f, 0.596552f),
+        vec3f(0.752482f, -0.274759f, 0.220105f),
+        vec3f(0.293276f, -0.896187f, 0.203628f),
+        vec3f(0.389533f, 0.850736f, -0.697115f),
+        vec3f(-0.417544f, -0.384861f, -0.851277f),
+        vec3f(-0.639591f, 0.177232f, 0.976510f),
+        vec3f(-0.595367f, 0.263218f, 0.087191f),
+        vec3f(-0.436258f, 0.600377f, -0.742977f)
+    );
+
+const samples: i32 = 8;
 const radius: f32 = 0.2;
 fn compute_ssao(pixel_coord: vec2<u32>) {
     let loadedNormal = textureLoad(normals, pixel_coord, 0).xyz;
@@ -96,14 +90,19 @@ fn compute_ssao(pixel_coord: vec2<u32>) {
     }
 
 
-//    let randomVec = normalize(camera.view_tr_inv * vec4f(hash_noise(vec2f(pixel_coord)), 1.0)).xyz;
-//    let tangent = normalize(randomVec - normal * dot(randomVec, normal));
-//    let bitangent = cross(normal, tangent);
-//    let TBN = mat3x3(tangent, bitangent, normal);
+    let noise_sample_coords = pixel_coord % vec2u(noise_size, noise_size);
+    let noise_vec = noise[noise_sample_coords.y * noise_size + noise_sample_coords.x];
+    let randomVec = (camera.view * vec4f(noise_vec, 0.0)).xyz;
+    let tangent = normalize(randomVec - normal * dot(randomVec, normal));
+    let bitangent = cross(normal, tangent);
+    let TBN = mat3x3(tangent, bitangent, normal);
 
     var occlusion = 0.0;
-    for (var i = 0; i < 8; i++) {
-        let samplePos = fragPos + radius * (hash33_vec3f(fragPos) * get_sample_vector(u32(i), 8).y);
+    for (var i = 0; i < samples; i++) {
+        var kl = kernel[i];
+        kl.z = kl.z * 0.5 + 0.5;
+        let dist_scale = f32(i) / f32(samples);
+        let samplePos = fragPos + (TBN * (kl * lerp(0.1, 1.0, dist_scale * dist_scale))) * radius;
 
         let viewSampleDir = normalize(samplePos - fragPos);
         let NdotS = max(dot(normal, viewSampleDir), 0.0);
@@ -120,20 +119,13 @@ fn compute_ssao(pixel_coord: vec2<u32>) {
 
         let rangeCheck = smoothstep(0.1, 1.0, (radius) / abs(fragPos.z - sampleDepth));
 
-        occlusion += select(0.0, 1.0, sampleDepth > samplePos.z + 0.02) * rangeCheck;
+        occlusion += select(0.0, 1.0, sampleDepth > samplePos.z + 0.025) * rangeCheck;
     }
 
-    occlusion = (occlusion / 8.0);
+    occlusion = occlusion / f32(samples);
     textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
 }
 
-fn compute_blur(pixel_coord: vec2<u32>) {
-   var result = 0.0;
-    for (var y = -2; y < 2; y++) {
-      for (var x = -2; x < 2; x++) {
-        let offset = vec2i(pixel_coord) + vec2i(x, y);
-        result += textureLoad(ssao_texture, offset).r;
-      }
-    }
-    textureStore(ssao_texture, pixel_coord, vec4f(result / 16.0, 0.0, 0.0, 0.0));
+fn lerp(a: f32, b: f32, f:f32) -> f32 {
+    return a + f * (b - a);
 }

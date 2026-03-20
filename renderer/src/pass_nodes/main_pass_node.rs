@@ -4,6 +4,7 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::pass_nodes::PassNode;
 use crate::textures::{create_common_texture, create_depth_texture, create_simple_texture, TextureData, SAMPLE_COUNT};
 use wgpu::{include_wgsl, BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, StorageTextureAccess, TextureFormat, TextureUsages, TextureView, TextureViewDimension};
+use wgpu_canvas::SSAO_ENABLED;
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
@@ -17,7 +18,6 @@ pub(crate) struct MainPassNode {
 }
 
 impl MainPassNode {
-    const SSAO_ENABLED: bool = false;
 
     pub fn new(global_context: &GlobalContext) -> Self {
         let size = (
@@ -76,17 +76,7 @@ impl MainPassNode {
                     sample_type: wgpu::TextureSampleType::Float { filterable: false },
                 },
                 count: None,
-            },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                    },
-                    count: None,
-                }],
+            }],
             label: Some("ssao_bind_group_layout"),
         });
 
@@ -129,10 +119,6 @@ impl MainPassNode {
                 wgpu::BindGroupEntry {
                     binding: 2,
                     resource: wgpu::BindingResource::TextureView(&non_msaa_texture_view_positions),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::TextureView(&non_msaa_depth_texture_view),
                 }],
             label: Some("ssao_compute_bind_group"),
         });
@@ -199,34 +185,6 @@ impl PassNode for MainPassNode {
             },
             depth_slice: None,
         };
-        let non_msaa_color_attachment_positions = wgpu::RenderPassColorAttachment {
-            view: &self.non_msaa_texture_view_positions,
-            resolve_target: None,
-            ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(wgpu::Color {
-                    r: 0.0,
-                    g: 0.0,
-                    b: 0.0,
-                    a: 1.0,
-                }),
-                store: wgpu::StoreOp::Store,
-            },
-            depth_slice: None,
-        };
-        let non_msaa_color_attachment_normals = wgpu::RenderPassColorAttachment {
-            view: &self.non_msaa_texture_view_normals,
-            resolve_target: None,
-            ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(wgpu::Color {
-                    r: 0.0,
-                    g: 0.0,
-                    b: 0.0, // We use 1.0 here to simulate z normal for ground
-                    a: 1.0,
-                }),
-                store: wgpu::StoreOp::Store,
-            },
-            depth_slice: None,
-        };
 
         let depth_attachment = wgpu::RenderPassDepthStencilAttachment {
             view: &self.depth_texture_view,
@@ -237,17 +195,46 @@ impl PassNode for MainPassNode {
             stencil_ops: None,
         };
 
-        let non_msaa_depth_attachment = wgpu::RenderPassDepthStencilAttachment {
-            view: &self.non_msaa_depth_texture_view,
-            depth_ops: Some(wgpu::Operations {
-                load: wgpu::LoadOp::Clear(1.0),
-                store: wgpu::StoreOp::Store,
-            }),
-            stencil_ops: None,
-        };
-
-        if Self::SSAO_ENABLED {
+        if unsafe { SSAO_ENABLED } {
             {
+                let non_msaa_color_attachment_positions = wgpu::RenderPassColorAttachment {
+                    view: &self.non_msaa_texture_view_positions,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 1.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                    depth_slice: None,
+                };
+                let non_msaa_color_attachment_normals = wgpu::RenderPassColorAttachment {
+                    view: &self.non_msaa_texture_view_normals,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0, // We use 1.0 here to simulate z normal for ground
+                            a: 1.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                    depth_slice: None,
+                };
+
+                let non_msaa_depth_attachment = wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.non_msaa_depth_texture_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                };
+
                 let descriptor = wgpu::RenderPassDescriptor {
                     label: Some("MRT Render Pass"),
                     color_attachments: &[
@@ -278,10 +265,6 @@ impl PassNode for MainPassNode {
 
                 let wg_x = (global_context.view_projection.screen_size.0 / 8.0).ceil() as u32;
                 let wg_y = (global_context.view_projection.screen_size.1 / 8.0).ceil() as u32;
-                compute_pass.dispatch_workgroups(wg_x, wg_y, 1);
-
-                // blur pas using immediates
-                compute_pass.set_immediates(0, bytemuck::cast_slice(&[1]));
                 compute_pass.dispatch_workgroups(wg_x, wg_y, 1);
             }
         }
