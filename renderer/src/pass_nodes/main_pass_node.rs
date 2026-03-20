@@ -53,7 +53,7 @@ impl MainPassNode {
                 binding: 0,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::StorageTexture {
-                    access: StorageTextureAccess::WriteOnly,
+                    access: StorageTextureAccess::ReadWrite,
                     format: TextureFormat::R32Float,
                     view_dimension: TextureViewDimension::D2,
                 },
