@@ -344,8 +344,10 @@ fn compute_ssao(pixel_coord: vec2<u32>) {
 
     var occlusion = 0.0;
     for (var i = 0; i < 8; i++) {
-        let ss = f32(i) / 8.0;
-        let samplePos = fragPos + (TBN * kernel[i]) * radius * lerp(0.1, 1.0, ss * ss);
+        var kl = kernel[i];
+        kl.z = kl.z * 0.5 + 0.5;
+        let dist_scale = f32(i) / 8.0;
+        let samplePos = fragPos + (TBN * (kl * lerp(0.1, 1.0, dist_scale * dist_scale))) * radius;
 
         let viewSampleDir = normalize(samplePos - fragPos);
         let NdotS = max(dot(normal, viewSampleDir), 0.0);
