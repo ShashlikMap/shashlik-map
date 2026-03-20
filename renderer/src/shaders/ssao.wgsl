@@ -18,17 +18,16 @@ struct CameraUniform {
 @group(1) @binding(0)
 var<uniform> camera: CameraUniform;
 
-var<immediate> constans: u32;
-
 @compute @workgroup_size(8, 8, 1)
 fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let pixel_coord = id.xy;
+    let ssao_size = 2.0* vec2f(1.0 / camera.inv_screen_size.x, 1.0 / camera.inv_screen_size.y);
 
-    if(pixel_coord.x >= u32(1.0 / camera.inv_screen_size.x) || pixel_coord.y >= u32(1.0 / camera.inv_screen_size.y)) {
+    if(pixel_coord.x >= u32(ssao_size.x) || pixel_coord.y >= u32(ssao_size.y)) {
         return;
     }
 
-    compute_ssao(pixel_coord);  
+    compute_ssao(pixel_coord, ssao_size);
 }
 
 const kernel = array<vec3f, 8>(
@@ -42,8 +41,8 @@ const kernel = array<vec3f, 8>(
       vec3f(0.752630f, -0.281644f, 0.447299f)
   );
 
-const noise_size: u32 = 4;
-const noise: array<vec3f, 16> = array<vec3f, 16>(
+const noise_size: u32 = 2;
+const noise: array<vec3f, 8> = array<vec3f, 8>(
         vec3f(0.607190f, -0.312189f, 0.818114f),
         vec3f(0.156606f, -0.817238f, -0.217971f),
         vec3f(-0.417291f, 0.065830f, -0.060644f),
@@ -51,27 +50,22 @@ const noise: array<vec3f, 16> = array<vec3f, 16>(
         vec3f(0.585352f, -0.433822f, 0.307726f),
         vec3f(0.635344f, 0.910413f, 0.477567f),
         vec3f(-0.147777f, -0.358135f, -0.246600f),
-        vec3f(0.545311f, -0.709271f, -0.237195f),
-        vec3f(0.704174f, 0.194971f, 0.596552f),
-        vec3f(0.752482f, -0.274759f, 0.220105f),
-        vec3f(0.293276f, -0.896187f, 0.203628f),
-        vec3f(0.389533f, 0.850736f, -0.697115f),
-        vec3f(-0.417544f, -0.384861f, -0.851277f),
-        vec3f(-0.639591f, 0.177232f, 0.976510f),
-        vec3f(-0.595367f, 0.263218f, 0.087191f),
-        vec3f(-0.436258f, 0.600377f, -0.742977f)
+        vec3f(0.545311f, -0.709271f, -0.237195f)
     );
 
-const samples: i32 = 8;
+const samples: i32 = 11;
 const radius: f32 = 0.2;
-fn compute_ssao(pixel_coord: vec2<u32>) {
+fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f) {
     let loadedNormal = textureLoad(normals, pixel_coord, 0).xyz;
+    if(loadedNormal.y > 0.0) {
+        return;
+    }
     var normal = loadedNormal;
 
     var fragPos = vec3f(0.0, 0.0, 0.0);
     if(loadedNormal.x == 0.0 && loadedNormal.y == 0.0 && loadedNormal.z == 0.0) {
-        let u_coord = (f32(pixel_coord.x) * camera.inv_screen_size.x) * 2.0 - 1.0;
-        let v_coord = (f32(pixel_coord.y) * camera.inv_screen_size.y) * 2.0 - 1.0;
+        let u_coord = (f32(2 * pixel_coord.x) * camera.inv_screen_size.x) * 2.0 - 1.0;
+        let v_coord = (f32(2 * pixel_coord.y) * camera.inv_screen_size.y) * 2.0 - 1.0;
         let near_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 0.0, 1.0);
         let near_world = near_world1.xyz / near_world1.w;
         let far_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 1.0, 1.0);
@@ -113,17 +107,19 @@ fn compute_ssao(pixel_coord: vec2<u32>) {
         let offset2 = camera.proj * vec4f(samplePos, 1.0);
         let ndcPos = offset2.xy / offset2.w;
         let uv = ndcPos * vec2f(0.5, -0.5) + vec2f(0.5);
-        let screenCoord = vec2i(uv / camera.inv_screen_size);
+        let screenCoord = vec2i(uv / camera.inv_screen_size) / 2;
 
         let sampleDepth = textureLoad(positions, screenCoord, 0).z;
 
         let rangeCheck = smoothstep(0.1, 1.0, (radius) / abs(fragPos.z - sampleDepth));
 
-        occlusion += select(0.0, 1.0, sampleDepth > samplePos.z + 0.025) * rangeCheck;
+        occlusion += select(0.0, 1.0, sampleDepth > samplePos.z + 0.015) * rangeCheck;
     }
 
     occlusion = occlusion / f32(samples);
-    textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
+    if(occlusion > 0.0) {
+        textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
+    }
 }
 
 fn lerp(a: f32, b: f32, f:f32) -> f32 {

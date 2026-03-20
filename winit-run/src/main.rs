@@ -51,9 +51,8 @@ fn main() {
     });
 
     let mut wgpu_settings = WGPUSettings::default();
-    wgpu_settings.device_required_features = Features::VERTEX_WRITABLE_STORAGE | Features::IMMEDIATES;
+    wgpu_settings.device_required_features = Features::VERTEX_WRITABLE_STORAGE | Features::CLEAR_TEXTURE;
     wgpu_settings.device_required_limits = Limits::downlevel_defaults();
-    wgpu_settings.device_required_limits.max_immediate_size = 4;
 
     slint::BackendSelector::new()
         .require_wgpu_28(WGPUConfiguration::Automatic(wgpu_settings))

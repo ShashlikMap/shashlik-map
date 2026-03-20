@@ -46,19 +46,36 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
 
         let device = global_context.device();
 
-        self.mesh = Some(Mesh::quad(
-            device,
-            texture_size.width as f32,
-            texture_size.height as f32,
-        ));
+        if offset.0 == 0.0 {
+            self.mesh = Some(Mesh::quad(
+                device,
+                screen_size.0 as f32,
+                screen_size.1 as f32,
+            ));
+        } else {
+            self.mesh = Some(Mesh::quad(
+                device,
+                texture_size.width as f32,
+                texture_size.height as f32,
+            ));
 
+        }
         let queue = global_context.queue();
-        let attr = TextInstanceInput {
-            position: [
+        let position = if offset.0 == 0.0 {
+            [
+                0.0,
+                screen_size.1 as f32,
+                0.0,
+            ]
+        } else {
+            [
                 screen_size.0 as f32 - texture_size.width as f32 + offset.0,
                 screen_size.1 as f32 + offset.0,
                 0.0,
-            ],
+            ]
+        };
+        let attr = TextInstanceInput {
+            position,
             color_alpha: 1.0,
             matrix: Matrix4::identity().into(),
             screen_space: 1,
