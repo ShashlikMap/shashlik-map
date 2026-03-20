@@ -4,6 +4,7 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::pass_nodes::PassNode;
 use crate::textures::{create_common_texture, create_depth_texture, create_simple_texture, TextureData, SAMPLE_COUNT};
 use wgpu::{include_wgsl, BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, StorageTextureAccess, TextureFormat, TextureUsages, TextureView, TextureViewDimension};
+use wgpu_canvas::SSAO_ENABLED;
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
@@ -17,7 +18,6 @@ pub(crate) struct MainPassNode {
 }
 
 impl MainPassNode {
-    const SSAO_ENABLED: bool = false;
 
     pub fn new(global_context: &GlobalContext) -> Self {
         let size = (
@@ -246,7 +246,7 @@ impl PassNode for MainPassNode {
             stencil_ops: None,
         };
 
-        if Self::SSAO_ENABLED {
+        if unsafe { SSAO_ENABLED } {
             {
                 let descriptor = wgpu::RenderPassDescriptor {
                     label: Some("MRT Render Pass"),
