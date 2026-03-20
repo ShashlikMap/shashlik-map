@@ -93,8 +93,15 @@ fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
 
 @fragment
 fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
-    let test_color = textureLoad(t_diffuse, vec2i(floor(in.clip_position.xy)), 0).r;
-    return vec4f(0.0, 0.0, 0.0, test_color);
+    let pixel_coord = vec2i(floor(in.clip_position.xy));
+    var result = 0.0;
+    for (var y = -2; y < 2; y++) {
+      for (var x = -2; x < 2; x++) {
+        let offset = vec2i(pixel_coord) + vec2i(x, y);
+        result += textureLoad(t_diffuse, offset, 0).r;
+      }
+    }
+    return vec4f(0.0, 0.0, 0.0, result / 16.0);
 }
 
 // FAKE for compatibility

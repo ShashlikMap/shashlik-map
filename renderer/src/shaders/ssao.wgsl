@@ -4,8 +4,6 @@
 
 @group(0) @binding(2) var positions: texture_2d<f32>;
 
-@group(0) @binding(3) var depth: texture_depth_2d;
-
 struct CameraUniform {
     view: mat4x4<f32>,
     proj: mat4x4<f32>,
@@ -30,12 +28,7 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
 
-    let is_blur = constans != 0;
-    if(is_blur) {
-        compute_blur(pixel_coord);
-    } else {
-        compute_ssao(pixel_coord);
-    }
+    compute_ssao(pixel_coord);  
 }
 
 const kernel = array<vec3f, 8>(
@@ -135,16 +128,4 @@ fn compute_ssao(pixel_coord: vec2<u32>) {
 
 fn lerp(a: f32, b: f32, f:f32) -> f32 {
     return a + f * (b - a);
-}
-
-
-fn compute_blur(pixel_coord: vec2<u32>) {
-   var result = 0.0;
-    for (var y = -2; y < 2; y++) {
-      for (var x = -2; x < 2; x++) {
-        let offset = vec2i(pixel_coord) + vec2i(x, y);
-        result += textureLoad(ssao_texture, offset).r;
-      }
-    }
-    textureStore(ssao_texture, pixel_coord, vec4f(result / 16.0, 0.0, 0.0, 0.0));
 }
