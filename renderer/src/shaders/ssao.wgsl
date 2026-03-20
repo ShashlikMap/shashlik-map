@@ -1,4 +1,4 @@
-@group(0) @binding(0) var ssao_texture: texture_storage_2d<r32float, write>;
+@group(0) @binding(0) var ssao_texture: texture_storage_2d<r32float, read_write>;
 
 @group(0) @binding(1) var normals: texture_2d<f32>;
 
@@ -69,7 +69,7 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     }
 }
 
-const radius: f32 = 0.3;
+const radius: f32 = 0.2;
 fn compute_ssao(pixel_coord: vec2<u32>) {
     let loadedNormal = textureLoad(normals, pixel_coord, 0).xyz;
     var normal = loadedNormal;
@@ -128,5 +128,12 @@ fn compute_ssao(pixel_coord: vec2<u32>) {
 }
 
 fn compute_blur(pixel_coord: vec2<u32>) {
-    // TODO
+   var result = 0.0;
+    for (var y = -2; y < 2; y++) {
+      for (var x = -2; x < 2; x++) {
+        let offset = vec2i(pixel_coord) + vec2i(x, y);
+        result += textureLoad(ssao_texture, offset).r;
+      }
+    }
+    textureStore(ssao_texture, pixel_coord, vec4f(result / 16.0, 0.0, 0.0, 0.0));
 }
