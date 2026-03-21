@@ -21,7 +21,7 @@ var<uniform> camera: CameraUniform;
 @compute @workgroup_size(8, 8, 1)
 fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let pixel_coord = id.xy;
-    let ssao_size = 2.0* vec2f(1.0 / camera.inv_screen_size.x, 1.0 / camera.inv_screen_size.y);
+    let ssao_size = 0.5 * vec2f(1.0 / camera.inv_screen_size.x, 1.0 / camera.inv_screen_size.y);
 
     if(pixel_coord.x >= u32(ssao_size.x) || pixel_coord.y >= u32(ssao_size.y)) {
         return;
@@ -109,7 +109,7 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f) {
         let offset2 = camera.proj * vec4f(samplePos, 1.0);
         let ndcPos = offset2.xy / offset2.w;
         let uv = ndcPos * vec2f(0.5, -0.5) + vec2f(0.5);
-        let screenCoord = vec2i(uv / camera.inv_screen_size) / 2;
+        let screenCoord = vec2i(uv * ssao_size);
 
         let sampleDepth = textureLoad(positions, screenCoord, 0).z;
 
