@@ -14,16 +14,22 @@ pub struct OrthoMeshLayer<P: RenderPipeline + WithTexture> {
     mesh: Option<Mesh>,
     instance_buffer: InstanceBuffer<TextInstanceInput>,
     texture_bind_group: Option<BindGroup>,
+    full_screen_mesh: bool,
+    is_bottom_right: bool
 }
 
 impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
-    pub fn new(render_pipeline: P) -> Self {
+    pub fn new(render_pipeline: P,
+               full_screen_mesh: bool,
+               is_bottom_right: bool) -> Self {
         Self {
             render_pipeline,
             pipeline: None,
             mesh: None,
             instance_buffer: InstanceBuffer::default(),
             texture_bind_group: None,
+            full_screen_mesh,
+            is_bottom_right
         }
     }
 
@@ -46,19 +52,29 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
 
         let device = global_context.device();
 
-        self.mesh = Some(Mesh::quad(
-            device,
-            texture_size.width as f32,
-            texture_size.height as f32,
-        ));
+        if self.full_screen_mesh {
+            self.mesh = Some(Mesh::quad(
+                device,
+                screen_size.0 as f32,
+                screen_size.1 as f32,
+            ));
+        } else {
+            self.mesh = Some(Mesh::quad(
+                device,
+                texture_size.width as f32,
+                texture_size.height as f32,
+            ));
 
+        }
         let queue = global_context.queue();
+
+        let position = [
+            if self.is_bottom_right { screen_size.0 as f32 - texture_size.width as f32 } else { 0.0 } + offset.0,
+            screen_size.1 as f32 + offset.1,
+            0.0,
+        ];
         let attr = TextInstanceInput {
-            position: [
-                screen_size.0 as f32 - texture_size.width as f32 + offset.0,
-                screen_size.1 as f32 + offset.0,
-                0.0,
-            ],
+            position,
             color_alpha: 1.0,
             matrix: Matrix4::identity().into(),
             screen_space: 1,

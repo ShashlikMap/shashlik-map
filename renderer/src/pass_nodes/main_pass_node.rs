@@ -3,7 +3,7 @@ use crate::mesh_layers::layers::Layers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pass_nodes::PassNode;
 use crate::textures::{create_common_texture, create_depth_texture, create_simple_texture, TextureData, SAMPLE_COUNT};
-use wgpu::{include_wgsl, BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, StorageTextureAccess, TextureFormat, TextureUsages, TextureView, TextureViewDimension};
+use wgpu::{include_wgsl, BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, ImageSubresourceRange, StorageTextureAccess, TextureFormat, TextureUsages, TextureView, TextureViewDimension};
 use wgpu_canvas::SSAO_ENABLED;
 
 pub(crate) struct MainPassNode {
@@ -25,12 +25,17 @@ impl MainPassNode {
             global_context.config().height,
         );
 
+        let non_msaa_size = (
+            global_context.config().width / 2,
+            global_context.config().height / 2,
+        );
+
         let device = global_context.device();
 
         let non_msaa_texture_view_positions = create_simple_texture(
             TextureData {
                 sample_count: 1,
-                size,
+                size: non_msaa_size,
                 usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
                 format: TextureFormat::Rgba16Float,
             },
@@ -39,14 +44,14 @@ impl MainPassNode {
         let non_msaa_texture_view_normals = create_simple_texture(
             TextureData {
                 sample_count: 1,
-                size,
+                size: non_msaa_size,
                 usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
                 format: TextureFormat::Rgba16Float,
             },
             global_context.device(),
         );
 
-        let non_msaa_depth_texture_view = create_depth_texture(size, 1, global_context);
+        let non_msaa_depth_texture_view = create_depth_texture(non_msaa_size, 1, global_context);
 
         let ssao_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
@@ -126,7 +131,6 @@ impl MainPassNode {
         let ssao_pipeline_layout = global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("SSAO Pipeline Layout"),
             bind_group_layouts: &[&ssao_bind_group_layout, &camera_ssao_bind_group_layout],
-            immediate_size: 4,
             ..Default::default()
         });
 
@@ -255,6 +259,7 @@ impl PassNode for MainPassNode {
             }
 
             {
+                encoder.clear_texture(global_context.ssao_texture.texture(), &ImageSubresourceRange::default());
                 let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                     label: Some("SSAO Compute Pass"),
                     timestamp_writes: None,
@@ -263,8 +268,8 @@ impl PassNode for MainPassNode {
                 compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
                 compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
 
-                let wg_x = (global_context.view_projection.screen_size.0 / 8.0).ceil() as u32;
-                let wg_y = (global_context.view_projection.screen_size.1 / 8.0).ceil() as u32;
+                let wg_x = (global_context.view_projection.screen_size.0 * 0.5 / 8.0).ceil() as u32;
+                let wg_y = (global_context.view_projection.screen_size.1 * 0.5 / 8.0).ceil() as u32;
                 compute_pass.dispatch_workgroups(wg_x, wg_y, 1);
             }
         }
