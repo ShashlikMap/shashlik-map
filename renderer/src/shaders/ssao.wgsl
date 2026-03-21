@@ -30,16 +30,19 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     compute_ssao(pixel_coord, ssao_size);
 }
 
-const kernel = array<vec3f, 8>(
-      vec3f(-0.988005f, -0.614986f, 0.277931f),
-      vec3f(0.308289f, 0.470236f, 0.121804f),
-      vec3f(-0.286518f, 0.318795f, 0.864876f),
-      vec3f(-0.330144f, -0.274284f, 0.511152f),
-      vec3f(0.477399f, -0.142303f, -0.593631f),
-      vec3f(0.810853f, -0.212716f, 0.217826f),
-      vec3f(-0.100139f, 0.818944f, 0.441590f),
-      vec3f(0.752630f, -0.281644f, 0.447299f)
-  );
+const radius: f32 = 0.2;
+
+const samples: i32 = 8;
+const kernel = array<vec3f, samples>(
+         vec3f(-0.454173f, -0.951845f, -0.773499f),
+         vec3f(0.515086f, -0.493797f, 0.553823f),
+         vec3f(-0.057554f, -0.605478f, -0.735224f),
+         vec3f(-0.991788f, 0.051315f, -0.798783f),
+         vec3f(-0.482558f, 0.755326f, 0.523519f),
+         vec3f(0.486357f, 0.864025f, 0.392296f),
+         vec3f(0.940631f, 0.627299f, -0.927376f),
+         vec3f(-0.545596f, 0.582840f, 0.422163f),
+     );
 
 const noise_size: u32 = 2;
 const noise: array<vec3f, 8> = array<vec3f, 8>(
@@ -53,8 +56,6 @@ const noise: array<vec3f, 8> = array<vec3f, 8>(
         vec3f(0.545311f, -0.709271f, -0.237195f)
     );
 
-const samples: i32 = 11;
-const radius: f32 = 0.2;
 fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f) {
     let loadedNormal = textureLoad(normals, pixel_coord, 0).xyz;
     if(loadedNormal.y > 0.0) {
@@ -99,8 +100,7 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f) {
         let samplePos = fragPos + (TBN * (kl * lerp(0.1, 1.0, dist_scale * dist_scale))) * radius;
 
         let viewSampleDir = normalize(samplePos - fragPos);
-        let NdotS = max(dot(normal, viewSampleDir), 0.0);
-        if(NdotS == 0.0) {
+        if(max(dot(normal, viewSampleDir), 0.0) == 0.0) {
             continue;
         }
 
@@ -113,7 +113,7 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f) {
 
         let rangeCheck = smoothstep(0.1, 1.0, (radius) / abs(fragPos.z - sampleDepth));
 
-        occlusion += select(0.0, 1.0, sampleDepth > samplePos.z + 0.015) * rangeCheck;
+        occlusion += select(0.0, 1.0, sampleDepth > samplePos.z + 0.1) * rangeCheck;
     }
 
     if(occlusion > 0.0) {
