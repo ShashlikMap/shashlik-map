@@ -48,12 +48,12 @@ impl Layers {
                 use_texture: true,
                 filterable: true,
                 fs_shader: "fs_main_textured",
-            })),
+            }), false, true),
             post_process_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
                 use_texture: true,
                 filterable: false,
                 fs_shader: "fs_main_tex_storage",
-            })),
+            }), true, false),
         }
     }
 
