@@ -77,7 +77,7 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f) {
         }
         fragPos = near_world + u * (far_world - near_world);
         fragPos = (camera.view * vec4f(fragPos, 1.0)).xyz;
-        normal = -normalize((camera.view_tr_inv * vec4f(0.0, 0.0, 1.0, 1.0)).xyz);
+        normal = normalize((camera.view_tr_inv * vec4f(0.0, 0.0, 1.0, 1.0)).xyz);
     } else {
         normal = -normalize(loadedNormal);
         fragPos = textureLoad(positions, pixel_coord, 0).xyz;
@@ -116,8 +116,8 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f) {
         occlusion += select(0.0, 1.0, sampleDepth > samplePos.z + 0.015) * rangeCheck;
     }
 
-    occlusion = occlusion / f32(samples);
     if(occlusion > 0.0) {
+        occlusion = occlusion / f32(samples);
         textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
     }
 }
