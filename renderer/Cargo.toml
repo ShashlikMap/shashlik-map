@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = { workspace = true }
 bytemuck = { workspace = true}
-cgmath = "0.18"
+glam = "0.32.1"
 wgpu = { workspace = true}
 log = { workspace = true }
 lyon = { workspace = true}

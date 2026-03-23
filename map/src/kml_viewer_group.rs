@@ -1,4 +1,3 @@
-use cgmath::Vector3;
 use geo_types::{Geometry, GeometryCollection, Point};
 use kml::KmlReader;
 use log::error;
@@ -7,6 +6,7 @@ use renderer::geometry_data::{GeometryData, SvgData};
 use renderer::render_group::RenderGroup;
 use renderer::styles::style_id::StyleId;
 use std::path::PathBuf;
+use glam::DVec3;
 
 pub struct KmlGroup {
     pub collection: GeometryCollection<f64>,
@@ -49,7 +49,7 @@ impl KmlGroup {
             Geometry::Point(point) => {
                 geometry_data.push(GeometryData::Svg(SvgData {
                     icon: ("kml", Self::CIRCLE_SVG),
-                    position: Vector3::new(point.x(), point.y(), 0.0).cast().unwrap(),
+                    position: DVec3::new(point.x(), point.y(), 0.0).cast().unwrap(),
                     size: 2.0,
                     style_id: StyleId("kml_dots"),
                     with_collision: false,
