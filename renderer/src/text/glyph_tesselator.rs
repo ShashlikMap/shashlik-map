@@ -1,6 +1,6 @@
+use glam::Vec2;
 use crate::draw_commands::MeshVertex;
 use crate::vertex_attrs::MeshVertexWithUV;
-use cgmath::Vector2;
 use lyon::lyon_tessellation::{
     BuffersBuilder, FillOptions, FillTessellator, FillVertex, FillVertexConstructor,
     StrokeVertexConstructor, VertexBuffers,
@@ -17,7 +17,7 @@ pub struct GlyphTesselator {
 impl GlyphTesselator {
     pub(crate) fn tessellate_fill(
         self,
-        offset: Vector2<f32>,
+        offset: Vec2,
         color: Color,
     ) -> VertexBuffers<MeshVertexWithUV, u32> {
         let mut buffer = VertexBuffers::new();
@@ -79,7 +79,7 @@ impl OutlineBuilder for GlyphTesselator {
 }
 
 struct GlyphVertexConstructor {
-    offset: Vector2<f32>,
+    offset: Vec2,
     color: Color,
 }
 
