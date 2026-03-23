@@ -14,6 +14,7 @@ use rustybuzz::ttf_parser::GlyphId;
 use std::collections::HashMap;
 use std::sync::Arc;
 use glam::{vec3, DVec3, Mat4, Quat, Vec3};
+use num::clamp;
 use wgpu::RenderPass;
 
 #[derive(Clone)]

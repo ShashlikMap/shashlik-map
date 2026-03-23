@@ -14,6 +14,7 @@ use rstar::primitives::Rectangle;
 use std::collections::HashMap;
 use std::mem;
 use glam::DVec3;
+use num::clamp;
 use wgpu::{CommandEncoder, RenderPass};
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.

@@ -49,7 +49,7 @@ impl KmlGroup {
             Geometry::Point(point) => {
                 geometry_data.push(GeometryData::Svg(SvgData {
                     icon: ("kml", Self::CIRCLE_SVG),
-                    position: DVec3::new(point.x(), point.y(), 0.0).cast().unwrap(),
+                    position: DVec3::new(point.x(), point.y(), 0.0),
                     size: 2.0,
                     style_id: StyleId("kml_dots"),
                     with_collision: false,
