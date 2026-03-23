@@ -1,5 +1,4 @@
-use glam::{dvec3, DMat3, DMat4, DVec2, DVec3, Mat3, Mat4, Vec3};
-use lyon::geom::euclid::point3;
+use glam::{dvec3, DMat3, DMat4, DVec2, DVec3};
 
 pub struct Camera {
     pub eye: DVec3,
@@ -48,7 +47,7 @@ impl Camera {
 
         self.perspective_matrix =
             DMat4::perspective_rh(
-                45.0_f32.to_radians() as f64,
+                self.fovy.to_radians(),
                 aspect, self.znear, self.zfar
             )
     }
@@ -88,7 +87,7 @@ impl CameraController {
 
 
         let (sin_pitch, cos_pitch) = self.pitch.to_radians().sin_cos();
-        let (sin_yaw, cos_yaw) = -self.yaw.to_radians().sin_cos();
+        let (sin_yaw, cos_yaw) = (-self.yaw).to_radians().sin_cos();
 
         let dir = DVec3::new(cos_pitch * sin_yaw, cos_pitch * cos_yaw, sin_pitch).normalize();
 

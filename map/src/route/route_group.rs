@@ -1,7 +1,7 @@
 use crate::route::RouteCosting;
 use geo::{Distance, Euclidean};
 use geo_types::Point;
-use glam::{DVec3, Vec2};
+use glam::{DVec3, Vec2, Vec3};
 use lyon::geom::point;
 use lyon::lyon_tessellation::{LineCap, LineJoin};
 use lyon::path::Path;
@@ -63,19 +63,17 @@ impl RenderGroup for RouteGroup {
                     sum_route_dist += d as f32;
                 }
                 if let Some(vect) = vect {
-                    let koef = (dist - (sum_route_dist - vect.magnitude())) / vect.magnitude();
+                    let koef = (dist - (sum_route_dist - vect.length())) / vect.length();
                     let pos = vect * koef;
 
                     canvas.geometry_data(GeometryData::Svg(SvgData {
                         // TODO shape instead of SVG
                         icon: ("route_dot", Self::SQUARE_SVG),
-                        position: DVec3::new(
+                        position: Vec3::new(
                             (prev_point.x() - first_route_point.x()) as f32 + pos.x,
                             (prev_point.y() - first_route_point.y()) as f32 + pos.y,
                             0.0,
-                        )
-                        .cast()
-                        .unwrap(),
+                        ).as_dvec3(),
                         size: 2.5,
                         style_id: style_id.clone(),
                         with_collision: false,

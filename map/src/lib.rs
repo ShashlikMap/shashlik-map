@@ -127,7 +127,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             tiles_provider,
             route_controller: RouteController::new(),
             last_area_lon_lat: Rect::new((0.0, 0.0), (0.0, 0.0)),
-            current_world_position: camera_offset.cast().unwrap(),
+            current_world_position: camera_offset,
             current_bearing: 0.0,
             current_pitch: 45.0,
             temp_color: 0.0,
@@ -235,7 +235,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
                 spatial_data.scale = cam_zoom;
-                spatial_data.transform += (puck_location.cast().unwrap() - spatial_data.transform)
+                spatial_data.transform += (puck_location - spatial_data.transform)
                     * Self::TEMP_ANIMATION_SPEED;
                 spatial_data.yaw +=
                     ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
@@ -249,7 +249,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             let transform_cam_offset = (self.current_world_position) - cam_pos;
             let transform_cam_offset_anim = transform_cam_offset * Self::TEMP_ANIMATION_SPEED;
             // TODO Animation framework. Now it just fixes teleport bug
-            let new_cam_pos = if transform_cam_offset_anim.magnitude2() >= 300.0 {
+            let new_cam_pos = if transform_cam_offset_anim.length() >= 300.0 {
                 cam_pos + transform_cam_offset
             } else {
                 cam_pos + transform_cam_offset_anim
