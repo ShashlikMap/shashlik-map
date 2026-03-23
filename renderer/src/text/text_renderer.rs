@@ -177,7 +177,7 @@ impl ColliderTask for TextRendererCollisionHandler {
 
                 let mut backward = false;
 
-                let flip_rot_m = Mat4::from_axis_angle(Vec3::Z, 180.0f32.to_radians());
+                let flip_rot_m = Mat4::from_rotation_z(std::f32::consts::PI);
                 let half_height_translation =
                     Mat4::from_translation(Vec3::new(0.0, -height / 2.0, 0.0));
 
