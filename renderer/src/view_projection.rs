@@ -1,21 +1,21 @@
-use cgmath::{Matrix, Matrix4, SquareMatrix, Transform, Vector2, Vector3, Vector4};
 use geo_types::{coord, Coord};
+use glam::{DMat4, DVec2, DVec3, DVec4, Mat4};
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 
 #[rustfmt::skip]
-const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f64> = cgmath::Matrix4::from_cols(
-    cgmath::Vector4::new(1.0, 0.0, 0.0, 0.0),
-    cgmath::Vector4::new(0.0, 1.0, 0.0, 0.0),
-    cgmath::Vector4::new(0.0, 0.0, 0.5, 0.0),
-    cgmath::Vector4::new(0.0, 0.0, 0.5, 1.0),
+const OPENGL_TO_WGPU_MATRIX: DMat4 = DMat4::from_cols(
+    DVec4::new(1.0, 0.0, 0.0, 0.0),
+    DVec4::new(0.0, 1.0, 0.0, 0.0),
+    DVec4::new(0.0, 0.0, 0.5, 0.0),
+    DVec4::new(0.0, 0.0, 0.5, 1.0),
 );
 
 #[rustfmt::skip]
-const FLIP_Y: Matrix4<f64> = Matrix4::new(
-    1.0, 0.0, 0.0, 0.0,
+const FLIP_Y: DMat4 = DMat4::from_cols_array(
+    &[1.0, 0.0, 0.0, 0.0,
     0.0, -1.0, 0.0, 0.0,
     0.0, 0.0, 1.0, 0.0,
-    0.0, 0.0, 0.0, 1.0,
+    0.0, 0.0, 0.0, 1.0],
 );
 
 #[repr(C)]
@@ -34,9 +34,9 @@ pub(crate) struct ViewProjUniform {
 #[derive(Clone)]
 pub struct ViewProjection {
     uniform: ViewProjUniform,
-    pub cs_offset: Vector3<f64>,
+    pub cs_offset: DVec3,
     pub screen_size: (f64, f64),
-    inv_view_proj_matrix: Matrix4<f64>,
+    inv_view_proj_matrix: DMat4,
     pub uniform_buffer: Buffer
 }
 
@@ -56,58 +56,52 @@ impl ViewProjection {
 
         ViewProjection {
             uniform: ViewProjUniform {
-                view: Matrix4::identity().into(),
-                proj: Matrix4::identity().into(),
-                view_proj: Matrix4::identity().into(),
-                view_proj_inv: Matrix4::identity().into(),
-                view_tr_inv: Matrix4::identity().into(),
+                view: Mat4::IDENTITY.to_cols_array_2d(),
+                proj: Mat4::IDENTITY.to_cols_array_2d(),
+                view_proj: Mat4::IDENTITY.to_cols_array_2d(),
+                view_proj_inv: Mat4::IDENTITY.to_cols_array_2d(),
+                view_tr_inv: Mat4::IDENTITY.to_cols_array_2d(),
                 inv_screen_size: [0.0, 0.0],
                 scale: 0.0,
                 p2_scale: 1.0
             },
             screen_size: (0.0, 0.0),
-            cs_offset: Vector3::new(0.0, 0.0, 0.0),
-            inv_view_proj_matrix: Matrix4::identity(),
+            cs_offset: DVec3::new(0.0, 0.0, 0.0),
+            inv_view_proj_matrix: DMat4::IDENTITY,
             uniform_buffer,
         }
     }
 
-    pub fn update(&mut self, queue: &Queue, 
+    pub fn update(&mut self, queue: &Queue,
                   config: &SurfaceConfiguration,
-                  view_matrix: Matrix4<f64>,
-                  proj_matrix: Matrix4<f64>,
-                  view_proj_matrix: Matrix4<f64>,
-                  cs_offset: Vector3<f64>,
+                  view_matrix: DMat4,
+                  proj_matrix: DMat4,
+                  view_proj_matrix: DMat4,
+                  cs_offset: DVec3,
                   scale: f32) {
-        self.uniform.view = view_matrix
-            .cast()
-            .unwrap()
-            .into();
+        self.uniform.view = view_matrix.as_mat4()
+            .to_cols_array_2d();
         self.uniform.proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * proj_matrix)
-            .cast()
-            .unwrap()
-            .into();
+            .as_mat4()
+            .to_cols_array_2d();
         let view_proj = FLIP_Y * OPENGL_TO_WGPU_MATRIX * view_proj_matrix;
         self.uniform.view_proj = view_proj
-            .cast()
-            .unwrap()
-            .into();
-        let view_proj_inv = view_proj.invert().unwrap();
+            .as_mat4()
+            .to_cols_array_2d();
+        let view_proj_inv = view_proj.inverse();
         // No need OPENGL_TO_WGPU_MATRIX?!
         self.uniform.view_proj_inv = (view_proj_inv * FLIP_Y)
-            .cast()
-            .unwrap()
-            .into();
+            .as_mat4()
+            .to_cols_array_2d();
 
-        let view_tr_inv:Matrix4<f64> = view_matrix.invert().unwrap().transpose();
+        let view_tr_inv:DMat4 = view_matrix.inverse().transpose();
         self.uniform.view_tr_inv = view_tr_inv
-            .cast()
-            .unwrap()
-            .into();
+            .as_mat4()
+            .to_cols_array_2d();
         self.uniform.scale = scale;
         self.uniform.p2_scale = self.p2_scale(scale);
         self.cs_offset = cs_offset;
-        self.inv_view_proj_matrix = view_proj_matrix.inverse_transform().unwrap();
+        self.inv_view_proj_matrix = view_proj_matrix.inverse();
         self.screen_size = (config.width as f64, config.height as f64);
 
         queue.write_buffer(
@@ -126,10 +120,10 @@ impl ViewProjection {
         p2_scale as f32
     }
 
-pub fn screen_position(&self, world_position: &Vector3<f64>) -> Coord<f64> {
-        let matrix: Matrix4<f32> = self.uniform.view_proj.into();
+pub fn screen_position(&self, world_position: &DVec3) -> Coord<f64> {
+        let matrix: Mat4 = Mat4::from_cols_array_2d(&self.uniform.view_proj);
         let world_position = world_position - self.cs_offset;
-        let pos = matrix.cast().unwrap() * Vector4::new(world_position.x, world_position.y, 0.0, 1.0);
+        let pos = matrix.as_dmat4() * DVec4::new(world_position.x, world_position.y, 0.0, 1.0);
         let clip_pos_x = pos.x / pos.w;
         let clip_pos_y = pos.y / pos.w;
 
@@ -146,27 +140,27 @@ pub fn screen_position(&self, world_position: &Vector3<f64>) -> Coord<f64> {
         self.screen_size = (width as f64, height as f64);
         self.uniform.inv_screen_size = [1.0 / width as f32, 1.0 / height as f32];
     }
-    
-    pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<Vector2<f64>> {
+
+    pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<DVec2> {
         Self::clip_to_world_at_ground(
-            &Vector2::new(coord.x, coord.y),
-            &self.inv_view_proj_matrix.cast().unwrap(),
+            &DVec2::new(coord.x, coord.y),
+            &self.inv_view_proj_matrix,
         ).map(|coord| {
             coord + self.cs_offset.truncate()
         })
     }
 
     fn clip_to_world_at_ground(
-        clip_coords: &Vector2<f64>,
-        inverted_view_proj: &Matrix4<f64>,
-    ) -> Option<Vector2<f64>> {
+        clip_coords: &DVec2,
+        inverted_view_proj: &DMat4,
+    ) -> Option<DVec2> {
         let near_world = Self::clip_to_world_internal(
-            &Vector3::new(clip_coords.x, clip_coords.y, 0.0),
+            &DVec3::new(clip_coords.x, clip_coords.y, 0.0),
             inverted_view_proj,
         );
 
         let far_world = Self::clip_to_world_internal(
-            &Vector3::new(clip_coords.x, clip_coords.y, 1.0),
+            &DVec3::new(clip_coords.x, clip_coords.y, 1.0),
             inverted_view_proj,
         );
 
@@ -178,15 +172,15 @@ pub fn screen_position(&self, world_position: &Vector3<f64>) -> Coord<f64> {
             u = 1.0 - u;
         }
         let result = near_world + u * (far_world - near_world);
-        Some(Vector2::new(result.x, result.y))
+        Some(DVec2::new(result.x, result.y))
     }
 
     fn clip_to_world_internal(
-        window: &Vector3<f64>,
-        inverted_view_proj: &Matrix4<f64>,
-    ) -> Vector3<f64> {
+        window: &DVec3,
+        inverted_view_proj: &DMat4,
+    ) -> DVec3 {
         #[rustfmt::skip]
-            let fixed_window = Vector4::new(
+            let fixed_window = DVec4::new(
             window.x,
             window.y,
             window.z,
@@ -196,7 +190,7 @@ pub fn screen_position(&self, world_position: &Vector3<f64>) -> Coord<f64> {
         let ndc = fixed_window;
         let unprojected = inverted_view_proj * ndc;
 
-        Vector3::new(
+        DVec3::new(
             unprojected.x / unprojected.w,
             unprojected.y / unprojected.w,
             unprojected.z / unprojected.w,
