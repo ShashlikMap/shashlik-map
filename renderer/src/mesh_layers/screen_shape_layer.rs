@@ -9,12 +9,11 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::modifier::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use crate::view_projection::ViewProjection;
-use cgmath::num_traits::clamp;
-use cgmath::Vector3;
 use geo_types::point;
 use rstar::primitives::Rectangle;
 use std::collections::HashMap;
 use std::mem;
+use glam::DVec3;
 use wgpu::{CommandEncoder, RenderPass};
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
@@ -23,8 +22,8 @@ pub(crate) struct ScreenShapeLayer<P: RenderPipeline> {
     pipeline: Option<wgpu::RenderPipeline>,
     meshes: HashMap<String, (Mesh, InstanceBuffer<P::InstanceInputType>)>,
     collision_task_controller: CollisionTaskController<
-        (Vector3<f64>, f32, String),
-        HashMap<String, Vec<(Vector3<f64>, f32)>>,
+        (DVec3, f32, String),
+        HashMap<String, Vec<(DVec3, f32)>>,
     >,
 }
 
@@ -141,8 +140,8 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
 
 struct ScreenMeshCollisionHandler {
     collision_task_wrapper: CollisionTaskWrapper<
-        (Vector3<f64>, f32, String),
-        HashMap<String, Vec<(Vector3<f64>, f32)>>,
+        (DVec3, f32, String),
+        HashMap<String, Vec<(DVec3, f32)>>,
     >,
 }
 
@@ -150,8 +149,8 @@ impl ScreenMeshCollisionHandler {
     const FADE_ANIM_SPEED: f32 = 0.05;
     pub fn new(
         collision_task_wrapper: CollisionTaskWrapper<
-            (Vector3<f64>, f32, String),
-            HashMap<String, Vec<(Vector3<f64>, f32)>>,
+            (DVec3, f32, String),
+            HashMap<String, Vec<(DVec3, f32)>>,
         >,
     ) -> Self {
         ScreenMeshCollisionHandler {
@@ -164,7 +163,7 @@ impl ColliderTask for ScreenMeshCollisionHandler {
     fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler) {
         let render_data_holder = self.collision_task_wrapper.update_holder();
 
-        let mut hm: HashMap<String, Vec<(Vector3<f64>, f32)>> = HashMap::new();
+        let mut hm: HashMap<String, Vec<(DVec3, f32)>> = HashMap::new();
         render_data_holder
             .run_mut_action(|(pos, alpha, key)| {
                 let screen_pos = view_projection.screen_position(&pos);

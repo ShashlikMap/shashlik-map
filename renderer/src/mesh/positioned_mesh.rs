@@ -1,10 +1,10 @@
+use glam::DVec3;
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::modifier::render_modifier::SpatialData;
 use crate::utils::ReceiverExt;
-use cgmath::Vector3;
 use tokio::sync::broadcast::Receiver;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, ComputePass, RenderPass};
 use wgpu::util::{DeviceExt, DrawIndexedIndirectArgs};
@@ -13,11 +13,11 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
     instance_buffer: InstanceBuffer<T>,
     attrs: Vec<T>,
-    cs_offset: Vector3<f64>,
+    cs_offset: DVec3,
     double_style: bool,
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
-    original_instance_positions_alpha: Vec<(Vector3<f64>, f32)>,
+    original_instance_positions_alpha: Vec<(DVec3, f32)>,
     pub instances_args_buffer: Option<Buffer>,
     instances_args_buffer_data: Vec<u8>,
     pub instances_bind_group: Option<BindGroup>,
@@ -29,7 +29,7 @@ impl Mesh {
         self,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,
-        instance_positions_alpha: Option<Vec<(Vector3<f64>, f32)>>,
+        instance_positions_alpha: Option<Vec<(DVec3, f32)>>,
     ) -> PositionedMesh<T> {
         PositionedMesh::new(self, spatial_rx, double_style, instance_positions_alpha)
     }
@@ -40,18 +40,18 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         mesh: Mesh,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,
-        instance_positions_alpha: Option<Vec<(Vector3<f64>, f32)>>,
+        instance_positions_alpha: Option<Vec<(DVec3, f32)>>,
     ) -> Self {
         Self {
             mesh,
             instance_buffer: InstanceBuffer::default(),
             attrs: vec![],
-            cs_offset: Vector3::new(0.0, 0.0, 0.0),
+            cs_offset: DVec3::new(0.0, 0.0, 0.0),
             double_style,
             spatial_rx,
             original_spatial_data: SpatialData::new(),
             original_instance_positions_alpha: instance_positions_alpha
-                .unwrap_or(vec![(Vector3::new(0.0, 0.0, 0.0), 1f32)]),
+                .unwrap_or(vec![(DVec3::new(0.0, 0.0, 0.0), 1f32)]),
             instances_args_buffer: None,
             instances_args_buffer_data: vec![],
             instances_bind_group: None,

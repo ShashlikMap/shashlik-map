@@ -1,13 +1,13 @@
 use crate::modifier::render_modifier::SpatialData;
 use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput};
 use bytemuck::Pod;
-use cgmath::Vector3;
+use glam::DVec3;
 
 pub trait MeshInstanceInput: Sized + Pod {
     fn fill_attrs(
         attrs: &mut Vec<Self>,
-        cs_offset: &Vector3<f64>,
-        original_positions_alpha: &Vec<(Vector3<f64>, f32)>,
+        cs_offset: &DVec3,
+        original_positions_alpha: &Vec<(DVec3, f32)>,
         spatial_data: &SpatialData,
         double_style: bool,
     ) {
@@ -21,9 +21,9 @@ pub trait MeshInstanceInput: Sized + Pod {
 
             let transform_with_cs_offset = item.0 + spatial_data.transform - cs_offset;
             let instance_input = Self::create_instance_struct(
-                transform_with_cs_offset.cast().unwrap().into(),
+                transform_with_cs_offset.as_vec3().to_array(),
                 item.1,
-                matrix.cast().unwrap().into(),
+                matrix.as_mat4().to_cols_array_2d(),
                 [
                     transform_with_cs_offset.x as f32,
                     transform_with_cs_offset.y as f32,

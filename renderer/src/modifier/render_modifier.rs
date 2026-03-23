@@ -1,9 +1,9 @@
-use cgmath::{Deg, Matrix4, Vector3};
+use glam::{DMat4, DVec3};
 
 #[derive(Clone)]
 #[derive(Debug)]
 pub struct SpatialData {
-    pub transform: Vector3<f64>,
+    pub transform: DVec3,
     pub scale: f64,
     pub yaw: f64,
     pub size: (f64, f64),
@@ -12,14 +12,14 @@ pub struct SpatialData {
 impl SpatialData {
     pub fn new() -> SpatialData {
         SpatialData {
-            transform: Vector3::new(0.0, 0.0, 0.0),
+            transform: DVec3::new(0.0, 0.0, 0.0),
             scale: 1.0,
             yaw: 0.0,
             size: (0.0, 0.0),
         }
     }
 
-    pub fn transform(transform: Vector3<f64>) -> SpatialData {
+    pub fn transform(transform: DVec3) -> SpatialData {
         SpatialData { transform, scale: 1.0, yaw: 0.0, size: (0.0, 0.0) }
     }
 
@@ -35,9 +35,9 @@ impl SpatialData {
         self.yaw = yaw;
     }
     
-    pub fn scale_rot_matrix(&self) -> Matrix4<f64> {
-        let scale_matrix = Matrix4::<f64>::from_scale(self.scale);
-        let rotation_matrix = Matrix4::<f64>::from_angle_z(Deg(self.yaw));
+    pub fn scale_rot_matrix(&self) -> DMat4 {
+        let scale_matrix = DMat4::from_scale(DVec3::splat(self.scale));
+        let rotation_matrix = DMat4::from_rotation_z(self.yaw.to_radians());
         scale_matrix * rotation_matrix
     }
 }

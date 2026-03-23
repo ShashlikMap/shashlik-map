@@ -32,7 +32,7 @@ impl<P: RenderPipeline> TextMeshLayer<P> {
                 item.positions = item
                     .positions
                     .iter()
-                    .map(|pos| pos + spatial_data.transform.cast().unwrap())
+                    .map(|pos| pos + spatial_data.transform)
                     .collect();
             });
             holder.set(key.clone(), text_data)
