@@ -6,13 +6,13 @@ edition = "2024"
 [dependencies]
 anyhow = { workspace = true }
 bytemuck = { workspace = true}
-glam = { version = "0.32.1", features = ["bytemuck"] }
-wgpu = { workspace = true}
+glam = { workspace = true }
+num = { workspace = true}
+wgpu = { workspace = true }
 log = { workspace = true }
 lyon = { workspace = true}
 wgpu-canvas = { workspace = true}
 indexmap = "2.12.0"
-num = "0.4.3"
 usvg = "0.41.0"
 geo-types = { workspace = true, features = ["rstar_0_12"] }
 tokio = { workspace = true }

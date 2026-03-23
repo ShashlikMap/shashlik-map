@@ -12,7 +12,6 @@ lyon = { workspace = true}
 tobj = "4.0.3"
 futures = "0.3.31"
 googleprojection = "1.2.0"
-glam = "0.32.1"
 geo-types = { workspace = true }
 log = { workspace = true }
 geo = "0.31.0"
@@ -22,7 +21,8 @@ kml = { git = "https://github.com/ShashlikMap/kml" }
 rand = "0.9.2"
 valhalla-client = "0.5.0"
 ttf-parser = "0.25.1"
-num = "0.4.3"
+glam = { workspace = true }
+num = { workspace = true}
 wgpu = { workspace = true}
 
 
