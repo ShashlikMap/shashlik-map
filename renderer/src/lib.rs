@@ -2,16 +2,18 @@ extern crate core;
 
 use crate::fps::FpsCounter;
 use crate::geometry_data::TextData;
+use crate::mesh_layers::feature_layers::FeatureLayerTag;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
 use crate::modifier::render_modifier::SpatialData;
-use crate::pass_nodes::PassNode;
 use crate::pass_nodes::main_pass_node::MainPassNode;
+use crate::pass_nodes::prepass_node::PrepassNode;
 use crate::pass_nodes::render_to_texture_pass_node::RenderToTexturePassNode;
+use crate::pass_nodes::PassNode;
 use crate::styles::style_store::StyleStore;
 use canvas_api::CanvasApi;
-use cgmath::{Matrix4, Vector2, Vector3, vec2, vec3};
 use geo_types::Coord;
+use glam::{dvec3, vec2, DMat4, DVec2, DVec3};
 use global_context::GlobalContext;
 use mesh_layers::layers::Layers;
 use messages::RendererApiMsg;
@@ -19,14 +21,12 @@ use renderer_api::RendererApi;
 use rustybuzz::ttf_parser;
 use std::collections::HashMap;
 use std::iter;
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
 use tokio::sync::broadcast;
 use wgpu::Texture;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use crate::mesh_layers::feature_layers::FeatureLayerTag;
-use crate::pass_nodes::prepass_node::PrepassNode;
 
 pub mod canvas_api;
 mod collision_handler;
@@ -55,7 +55,7 @@ mod utils;
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
-    fn update(&mut self, view_matrix: Matrix4<f64>, proj: Matrix4<f64>, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32);
+    fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, cs_offset: DVec3, scale: f32);
     fn render(&mut self) -> Option<Texture>;
 }
 
@@ -87,7 +87,7 @@ impl ShashlikRenderer {
                 text: "FPS 0".to_string(),
                 size: 40.0,
                 alpha: 1.0,
-                positions: vec![vec3(100.0, 120.0, 0.0)],
+                positions: vec![dvec3(100.0, 120.0, 0.0)],
                 screen_offset: vec2(0.0, 0.0),
                 screen_space: true,
                 glyph_buffer: None,
@@ -161,7 +161,7 @@ impl ShashlikRenderer {
         });
     }
 
-    pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<Vector2<f64>> {
+    pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<DVec2> {
         self.global_context.view_projection.clip_to_world(coord)
     }
 
@@ -189,7 +189,7 @@ impl ShashlikRenderer {
         self.pass_nodes = vec![Box::new(pre_pass_node), Box::new(rt_node), Box::new(main_node)];
     }
 
-    fn update(&mut self, view_matrix: Matrix4<f64>, proj: Matrix4<f64>, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32) {
+    fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, cs_offset: DVec3, scale: f32) {
         self.global_context.update(view_matrix, proj, view_proj_matrix, cs_offset, scale);
 
         // read all messages between renders
@@ -257,7 +257,7 @@ impl Renderer for ShashlikRenderer {
         self.resize(width, height);
     }
 
-    fn update(&mut self, view_matrix: Matrix4<f64>, proj: Matrix4<f64>, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32) {
+    fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, cs_offset: DVec3, scale: f32) {
         self.update(view_matrix, proj, view_proj_matrix, cs_offset, scale);
     }
 

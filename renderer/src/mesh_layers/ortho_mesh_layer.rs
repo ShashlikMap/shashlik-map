@@ -1,10 +1,10 @@
+use glam::Mat4;
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pipelines::{RenderPipeline, WithTexture};
 use crate::vertex_attrs::TextInstanceInput;
-use cgmath::{Matrix4, SquareMatrix};
 use log::error;
 use wgpu::{BindGroup, CommandEncoder, RenderPass, TextureView};
 
@@ -76,7 +76,7 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
         let attr = TextInstanceInput {
             position,
             color_alpha: 1.0,
-            matrix: Matrix4::identity().into(),
+            matrix: Mat4::IDENTITY.to_cols_array_2d(),
             screen_space: 1,
         };
         self.instance_buffer

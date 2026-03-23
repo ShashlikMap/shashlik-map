@@ -1,6 +1,6 @@
+use glam::{DVec3, Vec2};
 use crate::draw_commands::{GeometryType, MeshVertex};
 use crate::styles::style_id::StyleId;
-use cgmath::{Vector2, Vector3};
 use lyon::lyon_tessellation::VertexBuffers;
 use lyon::path::Path;
 use rustybuzz::GlyphBuffer;
@@ -32,7 +32,7 @@ pub struct Mesh3d {
 
 pub struct SvgData {
     pub icon: (&'static str, &'static [u8]),
-    pub position: Vector3<f64>,
+    pub position: DVec3,
     pub size: f32,
     pub style_id: StyleId,
     pub with_collision: bool,
@@ -41,10 +41,10 @@ pub struct SvgData {
 pub struct TextData {
     pub id: u64,
     pub text: String,
-    pub screen_offset: Vector2<f32>,
+    pub screen_offset: Vec2,
     pub size: f32,
     pub(crate) alpha: f32,
-    pub positions: Vec<Vector3<f64>>,
+    pub positions: Vec<DVec3>,
     pub(crate) screen_space: bool,
     pub(crate) glyph_buffer: Option<GlyphBuffer>,
 }
@@ -53,9 +53,9 @@ impl TextData {
     pub fn new(
         id: u64,
         text: String,
-        screen_offset: Vector2<f32>,
+        screen_offset: Vec2,
         size: f32,
-        positions: Vec<Vector3<f64>>,
+        positions: Vec<DVec3>,
     ) -> Self {
         Self {
             id,

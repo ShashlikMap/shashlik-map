@@ -1,9 +1,9 @@
+use glam::DVec3;
 use crate::global_context::GlobalContext;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::modifier::render_modifier::SpatialData;
-use cgmath::Vector3;
 use wgpu::{BindGroup, BindGroupLayout, ColorTargetState, ComputePass, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, TextureView, VertexBufferLayout};
 
 pub mod mesh_pipeline;
@@ -15,7 +15,7 @@ pub trait RenderPipeline {
 
     fn create_positioned_mesh(spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
                               double_style: bool,
-                              instance_positions_alpha: Option<Vec<(Vector3<f64>, f32)>>,
+                              instance_positions_alpha: Option<Vec<(DVec3, f32)>>,
                               mesh: Mesh) -> PositionedMesh<Self::InstanceInputType> {
         mesh.to_positioned::<Self::InstanceInputType>(spatial_rx, double_style, instance_positions_alpha)
     }

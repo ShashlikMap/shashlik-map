@@ -1,6 +1,6 @@
+use glam::{Mat4, Vec2, Vec3};
 use crate::mesh::mesh::{Mesh, StyledRangeInfo};
 use crate::text::glyph_tesselator::GlyphTesselator;
-use cgmath::{Matrix4, Vector2};
 use log::error;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
@@ -40,7 +40,7 @@ impl DefaultFaceWrapper {
             let glyph_info = glyph_buffer.glyph_infos()[index];
             let mut path_builder = GlyphTesselator::new(Self::MAX_SCALE);
             face.outline_glyph(GlyphId(glyph_info.glyph_id as u16), &mut path_builder);
-            let glyph_buf = path_builder.tessellate_fill(Vector2::new(0.0, 0.0f32), Color::RED);
+            let glyph_buf = path_builder.tessellate_fill(Vec2::new(0.0, 0.0f32), Color::RED);
             glyph_mesh_map.insert(
                 GlyphId(glyph_info.glyph_id as u16),
                 Mesh::create(&device, &glyph_buf, StyledRangeInfo(0, "")),
@@ -85,7 +85,7 @@ impl DefaultFaceWrapper {
         &self,
         glyph_buffer: &GlyphBuffer,
         font_size: f32,
-    ) -> (Matrix4<f32>, f32, f32, f32) {
+    ) -> (Mat4, f32, f32, f32) {
         let scale = self.get_scale_by_font_size(font_size);
 
         let width = glyph_buffer
@@ -95,7 +95,7 @@ impl DefaultFaceWrapper {
             * scale;
         let height = self.glyph_height * scale;
 
-        let scale_m = Matrix4::from_scale(scale / Self::MAX_SCALE);
+        let scale_m = Mat4::from_scale(Vec3::splat(scale / Self::MAX_SCALE));
 
         (scale_m, width, height, scale)
     }

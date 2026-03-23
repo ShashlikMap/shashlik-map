@@ -1,41 +1,38 @@
-use cgmath::{
-    point3, Basis3, Deg, InnerSpace, Matrix4, Rad, Rotation, Rotation3, SquareMatrix,
-    Vector2, Vector3,
-};
+use glam::{dvec3, DMat3, DMat4, DVec2, DVec3};
 
 pub struct Camera {
-    pub eye: cgmath::Vector3<f64>,
-    pub target: cgmath::Vector3<f64>,
-    up: cgmath::Vector3<f64>,
+    pub eye: DVec3,
+    pub target: DVec3,
+    up: DVec3,
     fovy: f64,
     znear: f64,
     zfar: f64,
-    pub perspective_matrix: Matrix4<f64>,
-    pub offset: cgmath::Vector3<f64>,
+    pub perspective_matrix: DMat4,
+    pub offset: DVec3,
 }
 
 impl Camera {
     const INITIAL_Z: f64 = 200.0;
-    pub fn new(initial_world: Vector3<f64>) -> Self {
+    pub fn new(initial_world: DVec3) -> Self {
         Camera {
             eye: (initial_world.x, initial_world.y, Self::INITIAL_Z).into(),
             target: (initial_world.x, initial_world.y, 0.0).into(),
-            up: cgmath::Vector3::unit_y(),
+            up: DVec3::Y,
             fovy: 45.0,
             znear: 1.0,
             zfar: 2000000.0,
-            perspective_matrix: Matrix4::identity(),
-            offset: Vector3::new(initial_world.x, initial_world.y, 0.0),
+            perspective_matrix: DMat4::IDENTITY,
+            offset: DVec3::new(initial_world.x, initial_world.y, 0.0),
         }
     }
 
     /// view + view_proj matrices
-    pub fn build_view_projection_matrix(&mut self) -> (Matrix4<f64>, Matrix4<f64>) {
+    pub fn build_view_projection_matrix(&mut self) -> (DMat4, DMat4) {
         let eye_offset = self.eye - self.offset;
         let target_offset = self.target - self.offset;
-        let view = cgmath::Matrix4::look_at_rh(
-            point3(eye_offset.x, eye_offset.y, eye_offset.z),
-            point3(target_offset.x, target_offset.y, target_offset.z),
+        let view = DMat4::look_at_rh(
+            dvec3(eye_offset.x, eye_offset.y, eye_offset.z),
+            dvec3(target_offset.x, target_offset.y, target_offset.z),
             self.up,
         );
         (view, self.perspective_matrix * view)
@@ -47,17 +44,21 @@ impl Camera {
 
     pub fn resize(&mut self, width: u32, height: u32) {
         let aspect = width as f64 / height as f64;
+
         self.perspective_matrix =
-            cgmath::perspective(cgmath::Deg(self.fovy), aspect, self.znear, self.zfar);
+            DMat4::perspective_rh(
+                self.fovy.to_radians(),
+                aspect, self.znear, self.zfar
+            )
     }
 }
 
 pub struct CameraController {
     pub zoom_delta: f64,
-    pub pan_delta: Vector2<f64>,
+    pub pan_delta: DVec2,
     pub camera_z: f64,
     pub forward_len: f64,
-    pub position: cgmath::Vector3<f64>,
+    pub position: DVec3,
     pub yaw: f64,
     pub pitch: f64,
 }
@@ -68,29 +69,30 @@ impl CameraController {
     pub fn new() -> Self {
         Self {
             zoom_delta: 0.0,
-            pan_delta: Vector2::new(0.0, 0.0),
+            pan_delta: DVec2::new(0.0, 0.0),
             camera_z: 200.0,
             forward_len: 200.0,
-            position: cgmath::Vector3::new(0.0, 0.0, 0.0),
+            position: DVec3::new(0.0, 0.0, 0.0),
             yaw: 0.0,
             pitch: 90.0,
         }
     }
 
-    pub fn set_new_position(&mut self, position: Vector3<f64>) {
+    pub fn set_new_position(&mut self, position: DVec3) {
         self.position = position;
     }
 
     pub(crate) fn update_camera(&mut self, camera: &mut Camera) {
         let speed_koef = self.camera_z / 150.0;
 
-        let (sin_pitch, cos_pitch) = Rad::from(Deg(self.pitch)).0.sin_cos();
-        let (sin_yaw, cos_yaw) = Rad::from(Deg(-self.yaw)).0.sin_cos();
 
-        let dir = Vector3::new(cos_pitch * sin_yaw, cos_pitch * cos_yaw, sin_pitch).normalize();
+        let (sin_pitch, cos_pitch) = self.pitch.to_radians().sin_cos();
+        let (sin_yaw, cos_yaw) = (-self.yaw).to_radians().sin_cos();
+
+        let dir = DVec3::new(cos_pitch * sin_yaw, cos_pitch * cos_yaw, sin_pitch).normalize();
 
         camera.eye += (camera.target - camera.eye).normalize() * self.zoom_delta * speed_koef;
-        let len = (camera.target - camera.eye).magnitude();
+        let len = (camera.target - camera.eye).length();
 
         camera.target = self.position;
         camera.eye = camera.target + (dir * len);
@@ -99,17 +101,17 @@ impl CameraController {
         camera.target += self.pan_delta.extend(0.0) * speed_koef;
 
         let distance_from_origin = (camera.offset
-            - Vector3::new(camera.target.x, camera.target.y, camera.target.z))
-        .magnitude();
+            - DVec3::new(camera.target.x, camera.target.y, camera.target.z))
+        .length();
         if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {
             println!("Origin rebase!");
-            camera.offset = Vector3::new(camera.target.x, camera.target.y, camera.target.z);
+            camera.offset = DVec3::new(camera.target.x, camera.target.y, camera.target.z);
         }
 
-        let rotation_matrix = Basis3::from_angle_z(Deg(self.yaw));
-        camera.up = rotation_matrix.rotate_vector(cgmath::Vector3::unit_y());
+        let rotation_matrix = DMat3::from_rotation_z(self.yaw.to_radians());
+        camera.up = rotation_matrix * DVec3::Y;
 
-        self.pan_delta = Vector2::new(0.0, 0.0);
+        self.pan_delta = DVec2::new(0.0, 0.0);
         self.zoom_delta = 0.0;
 
         self.forward_len = len;

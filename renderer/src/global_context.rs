@@ -1,10 +1,10 @@
+use glam::{DMat4, DVec3};
 use crate::collider::Collider;
 use crate::consts::STYLE_SHADER_PARAMS_COUNT;
 use crate::styles::style_store::StyleStore;
 use crate::textures::{create_simple_texture, TextureData};
 use crate::utils::ReceiverExt;
 use crate::view_projection::ViewProjection;
-use cgmath::{Matrix4, Vector3};
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Device, TextureFormat, TextureUsages, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
@@ -75,7 +75,7 @@ impl GlobalContext {
         }
     }
 
-    pub fn update(&mut self, view_matrix: Matrix4<f64>, proj: Matrix4<f64>, view_proj_matrix: Matrix4<f64>, cs_offset: Vector3<f64>, scale: f32) {
+    pub fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, cs_offset: DVec3, scale: f32) {
         self.view_projection.update(
             self.canvas.queue(),
             self.canvas.config(),

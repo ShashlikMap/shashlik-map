@@ -1,5 +1,4 @@
 use crate::tiles::shashlik_tiles_provider_v0::FeatureProcessor;
-use cgmath::{Vector2, Vector3};
 use geo_types::{Coord, LineString};
 use lyon::geom::point;
 use lyon::path::Path;
@@ -13,6 +12,7 @@ use renderer::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgD
 use renderer::styles::style_id::StyleId;
 use seahash::hash;
 use std::collections::HashMap;
+use glam::{DVec3, Vec2};
 use renderer::mesh::mesh::StyledRangeInfo;
 
 pub struct ShashlikFeatureProcessor {}
@@ -103,9 +103,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
 
             geometry_data.push(GeometryData::Svg(SvgData {
                 icon,
-                position: Vector3::from((local_position.x, local_position.y, 0.0))
-                    .cast()
-                    .unwrap(),
+                position: DVec3::from((local_position.x, local_position.y, 0.0)),
                 size: 40.0 * dpi_scale,
                 style_id,
                 with_collision: true,
@@ -119,12 +117,10 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             geometry_data.push(GeometryData::Text(TextData::new(
                 id,
                 poi.text.to_uppercase(),
-                Vector2::new(0.0, y_offset * dpi_scale),
+                Vec2::new(0.0, y_offset * dpi_scale),
                 40.0 * dpi_scale,
                 vec![
-                    Vector3::from((local_position.x, local_position.y, 0.0))
-                        .cast()
-                        .unwrap(),
+                    DVec3::from((local_position.x, local_position.y, 0.0)),
                 ],
             )));
         }
@@ -256,11 +252,11 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                             geometry_data.push(GeometryData::Text(TextData::new(
                                 hash(name.as_bytes()),
                                 name.to_uppercase(),
-                                Vector2::new(0.0, 0.0),
+                                Vec2::new(0.0, 0.0),
                                 30.0 * dpi_scale,
                                 line
                                     .iter()
-                                    .map(|item| Vector3::new(item.x, item.y, 0.0))
+                                    .map(|item| DVec3::new(item.x, item.y, 0.0))
                                     .collect(),
                             )));
                         }

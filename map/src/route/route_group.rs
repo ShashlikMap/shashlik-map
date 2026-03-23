@@ -1,7 +1,7 @@
 use crate::route::RouteCosting;
-use cgmath::{InnerSpace, Vector2, Vector3};
 use geo::{Distance, Euclidean};
 use geo_types::Point;
+use glam::{DVec3, Vec2, Vec3};
 use lyon::geom::point;
 use lyon::lyon_tessellation::{LineCap, LineJoin};
 use lyon::path::Path;
@@ -31,8 +31,8 @@ impl RouteGroup {
         }
     }
 
-    pub fn first_route_point(&self) -> Vector3<f64> {
-        Vector3::new(self.route[0].x(), self.route[0].y(), 0.0)
+    pub fn first_route_point(&self) -> DVec3 {
+        DVec3::new(self.route[0].x(), self.route[0].y(), 0.0)
     }
 }
 
@@ -51,31 +51,29 @@ impl RenderGroup for RouteGroup {
             let mut sum_route_dist = 0f32;
             let mut point = self.route.remove(0);
             let mut prev_point = point.clone();
-            let mut vect: Option<Vector2<f32>> = None;
+            let mut vect: Option<Vec2> = None;
             loop {
                 while !self.route.is_empty() && dist > sum_route_dist {
                     let new_point = self.route.remove(0);
                     let vect_point = new_point - point;
-                    vect = Some(Vector2::new(vect_point.x() as f32, vect_point.y() as f32));
+                    vect = Some(Vec2::new(vect_point.x() as f32, vect_point.y() as f32));
                     let d = Euclidean.distance(point, new_point);
                     prev_point = point;
                     point = new_point;
                     sum_route_dist += d as f32;
                 }
                 if let Some(vect) = vect {
-                    let koef = (dist - (sum_route_dist - vect.magnitude())) / vect.magnitude();
+                    let koef = (dist - (sum_route_dist - vect.length())) / vect.length();
                     let pos = vect * koef;
 
                     canvas.geometry_data(GeometryData::Svg(SvgData {
                         // TODO shape instead of SVG
                         icon: ("route_dot", Self::SQUARE_SVG),
-                        position: Vector3::new(
+                        position: Vec3::new(
                             (prev_point.x() - first_route_point.x()) as f32 + pos.x,
                             (prev_point.y() - first_route_point.y()) as f32 + pos.y,
                             0.0,
-                        )
-                        .cast()
-                        .unwrap(),
+                        ).as_dvec3(),
                         size: 2.5,
                         style_id: style_id.clone(),
                         with_collision: false,

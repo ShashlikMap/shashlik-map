@@ -1,4 +1,3 @@
-use cgmath::num_traits::ToPrimitive;
 use crate::consts::STYLE_SHADER_PARAMS_COUNT;
 
 #[derive(Clone, Copy, Debug)]
@@ -42,7 +41,7 @@ impl RenderStyle {
 
         style.container[0] = 2.0;
         style.container[5..dash_color.len() + 5].copy_from_slice(&dash_color);
-        style.container[9] = dash_style.to_f32().unwrap();
+        style.container[9] = dash_style as f32;
 
         style
     }

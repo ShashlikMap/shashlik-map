@@ -10,7 +10,6 @@ use crate::styles::style_id::StyleId;
 use crate::styles::style_store::StyleStore;
 use crate::svg::svg_parser::svg_parse;
 use crate::vertex_attrs::ShapeVertex;
-use cgmath::{InnerSpace, Vector3};
 use lyon::lyon_tessellation::{
     BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator,
     StrokeVertex, VertexBuffers,
@@ -18,10 +17,11 @@ use lyon::lyon_tessellation::{
 use lyon::path::Path;
 use std::collections::{BTreeMap, HashMap};
 use std::mem;
+use glam::{DVec3, Vec3};
 
 #[derive(Clone)]
 pub struct MeshInfo {
-    pub instance_positions: Option<Vec<Vector3<f64>>>,
+    pub instance_positions: Option<Vec<DVec3>>,
     pub with_collision: bool,
     pub instance_key: String,
     pub double_style: bool
@@ -176,7 +176,7 @@ impl CanvasApi {
             if path_event.is_edge() {
                 let p1 = path_event.from();
                 let p2 = path_event.to();
-                let normal = Vector3::new(-(p2.y - p1.y), p2.x - p1.x, 0.0)
+                let normal = Vec3::new(-(p2.y - p1.y), p2.x - p1.x, 0.0)
                     .normalize()
                     .into();
 
