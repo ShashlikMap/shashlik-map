@@ -50,6 +50,7 @@ export component ShashlikUI inherits Window {
             width: 300phx;
             CheckBox {
                 text: "Follow mode";
+                height: 24px;
                 checked: true;
                 toggled => {
                     follow_mode(self.checked)
@@ -71,7 +72,7 @@ export component ShashlikUI inherits Window {
             }
 
             Button {
-                text: "Route to center";
+                text: "Route";
                 height: 48px;
                 clicked => {
                     btn_click(Action.Route, cost.current-index)
@@ -87,6 +88,7 @@ export component ShashlikUI inherits Window {
             }
             CheckBox {
                 text: "SSAO";
+                height: 24px;
                 checked: false;
                 toggled => {
                     ssao_mode(self.checked)
