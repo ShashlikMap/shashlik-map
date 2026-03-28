@@ -26,6 +26,7 @@ use std::sync::Arc;
 use std::thread::spawn;
 use tokio::sync::broadcast;
 use wgpu::Texture;
+use wgpu_canvas::PREVIEW_ENABLED;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 pub mod canvas_api;
@@ -178,7 +179,7 @@ impl ShashlikRenderer {
 
         let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
         self.layers
-            .ortho_mesh_layer
+            .preview_mesh_layer
             .set_texture(&rt_node.rt_texture_view, (-100.0, -100.0), &self.global_context);
 
         self.layers
@@ -186,7 +187,12 @@ impl ShashlikRenderer {
             .set_texture(&self.global_context.ssao_texture, (0.0, 0.0), &self.global_context);
 
         let main_node = MainPassNode::new(&mut self.global_context);
-        self.pass_nodes = vec![Box::new(pre_pass_node), Box::new(rt_node), Box::new(main_node)];
+
+        self.pass_nodes = if unsafe { PREVIEW_ENABLED } {
+            vec![Box::new(pre_pass_node), Box::new(rt_node), Box::new(main_node)]
+        } else {
+            vec![Box::new(pre_pass_node), Box::new(main_node)]
+        };
     }
 
     fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, cs_offset: DVec3, scale: f32) {

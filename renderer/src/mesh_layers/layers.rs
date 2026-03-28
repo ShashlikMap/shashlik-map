@@ -10,7 +10,7 @@ use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use rustybuzz::ttf_parser;
 use wgpu::{CommandEncoder, RenderPass};
-use wgpu_canvas::SSAO_ENABLED;
+use wgpu_canvas::{PREVIEW_ENABLED, SSAO_ENABLED};
 
 pub(crate) struct Layers {
     feature_layers: FeatureLayers,
@@ -18,7 +18,7 @@ pub(crate) struct Layers {
     pub mesh_layer: GeneralMeshLayer<MeshPipeline>,
     pub screen_shape_layer: ScreenShapeLayer<ShapePipeline>,
     pub text_layer: TextMeshLayer<ScreenMeshPipeline>,
-    pub ortho_mesh_layer: OrthoMeshLayer<ScreenMeshPipeline>,
+    pub preview_mesh_layer: OrthoMeshLayer<ScreenMeshPipeline>,
     pub post_process_layer: OrthoMeshLayer<ScreenMeshPipeline>,
 }
 
@@ -44,7 +44,7 @@ impl Layers {
                 global_context,
                 font,
             ),
-            ortho_mesh_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
+            preview_mesh_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
                 use_texture: true,
                 filterable: true,
                 fs_shader: "fs_main_textured",
@@ -70,7 +70,7 @@ impl BaseMeshLayer for Layers {
         self.screen_shape_layer.prepare(global_context);
         self.text_layer.prepare(global_context);
         self.feature_layers.prepare(global_context);
-        self.ortho_mesh_layer.prepare(global_context);
+        self.preview_mesh_layer.prepare(global_context);
         self.post_process_layer.prepare(global_context);
     }
 
@@ -80,7 +80,7 @@ impl BaseMeshLayer for Layers {
         self.screen_shape_layer.update(global_context);
         self.text_layer.update(global_context);
         self.feature_layers.update(global_context);
-        self.ortho_mesh_layer.update(global_context);
+        self.preview_mesh_layer.update(global_context);
         self.post_process_layer.update(global_context);
     }
 
@@ -107,8 +107,8 @@ impl BaseMeshLayer for Layers {
         if !global_context.is_g_buffer_render {
             self.feature_layers.render(render_pass, global_context);
         }
-        if !global_context.is_preview_render {
-            self.ortho_mesh_layer.render(render_pass, global_context);
+        if !global_context.is_preview_render && unsafe { PREVIEW_ENABLED } {
+            self.preview_mesh_layer.render(render_pass, global_context);
         }
     }
 
@@ -118,7 +118,7 @@ impl BaseMeshLayer for Layers {
         self.screen_shape_layer.clear_by_key(key);
         self.text_layer.clear_by_key(key);
         self.feature_layers.clear_by_key(key);
-        self.ortho_mesh_layer.clear_by_key(key);
+        self.preview_mesh_layer.clear_by_key(key);
         self.post_process_layer.clear_by_key(key);
     }
 }
