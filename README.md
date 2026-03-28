@@ -35,9 +35,9 @@ with Android/iOS mobile apps(Android is priority for now)
 - [x] Initial SSAO(Screen Space Ambient Occlusion)
 ### Now
 - [ ] _In progress_ General Renderer refactoring
+- [ ] _In progress_ Running on pure Linux with Rust GUI/CMP
+- [ ] _In progress_ Simple shadow mapping
 ### Next
-- [ ] Running on pure Linux with Rust GUI/CMP
-- [ ] Simple shadow mapping
 - [ ] Implement an initial geometric Map-matching POC
 - [ ] CI for KMP mobile SDK + Screenshot rendering
 - [ ] Integrate a simple search
