@@ -9,7 +9,8 @@ I'm writing about the tech I've learned [here](https://hackmd.io/@agent10)
 ## Showcases
 Running on macOS, Android and iOS
 
-<img width="450" alt="Screenshot 2026-02-06 at 08 56 25" src="https://github.com/user-attachments/assets/b9a734d5-38f6-494c-8793-799376d392e7" />
+<img width="450" alt="Screenshot 2026-03-28 at 09 53 14" src="https://github.com/user-attachments/assets/0e75e0b3-a90d-41f3-9eef-66ad689f2d9e" />
+
 <img width="130" height="1872" alt="Screenshot_20260206_085918" src="https://github.com/user-attachments/assets/eabb3468-6206-4dc9-b243-73bc34ce0dff" />
 <img width="130" height="2622" alt="Simulator Screenshot - iPhone 16 Pro - 2025-12-24 at 11 46 18" src="https://github.com/user-attachments/assets/ed5a0121-1402-40a6-ab26-eb0c39853708" />
 
