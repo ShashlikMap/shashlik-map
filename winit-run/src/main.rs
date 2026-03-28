@@ -15,7 +15,7 @@ use wgpu::{Features, Limits};
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
-use wgpu_canvas::SSAO_ENABLED;
+use wgpu_canvas::{PREVIEW_ENABLED, SSAO_ENABLED};
 use winit_run::PinchWorkaroundHandler;
 
 pub(crate) mod canvas;
@@ -28,6 +28,7 @@ enum SlintMapEvent {
     VerticalScroll(f32),
     FollowMode(bool),
     SSAO(bool),
+    Preview(bool),
     BtnAction(Action, i32),
 }
 
@@ -147,6 +148,13 @@ fn main() {
                             });
 
                             let slint_map_event_sender_internal = slint_map_event_sender.clone();
+                            ui_weak.on_preview_mode(move |enabled| {
+                                slint_map_event_sender_internal
+                                    .send(SlintMapEvent::Preview(enabled))
+                                    .unwrap();
+                            });
+
+                            let slint_map_event_sender_internal = slint_map_event_sender.clone();
                             ui_weak.on_btn_click(move |action, cost_index| {
                                 slint_map_event_sender_internal
                                     .send(SlintMapEvent::BtnAction(action, cost_index))
@@ -213,6 +221,9 @@ fn main() {
                                 },
                                 SlintMapEvent::SSAO(enabled) => {
                                     unsafe { SSAO_ENABLED = enabled; }
+                                }
+                                SlintMapEvent::Preview(enabled) => {
+                                    unsafe { PREVIEW_ENABLED = enabled; }
                                 }
                             };
                         }

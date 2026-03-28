@@ -8,7 +8,8 @@ import {
     VerticalBox,
     GridBox,
     CheckBox,
-    Button, ComboBox,
+    Button,
+    ComboBox,
 } from "std-widgets.slint";
 
 export enum Action {
@@ -25,6 +26,7 @@ export component ShashlikUI inherits Window {
     callback vert_scroll(float);
     callback follow_mode(bool);
     callback ssao_mode(bool);
+    callback preview_mode(bool);
     callback btn_click(Action, int);
     title: "ShashlikMap";
 
@@ -86,12 +88,22 @@ export component ShashlikUI inherits Window {
                     btn_click(Action.KML, cost.current-index)
                 }
             }
+
             CheckBox {
                 text: "SSAO";
                 height: 24px;
                 checked: false;
                 toggled => {
                     ssao_mode(self.checked)
+                }
+            }
+
+            CheckBox {
+                text: "Preview";
+                height: 24px;
+                checked: true;
+                toggled => {
+                    preview_mode(self.checked)
                 }
             }
         }
