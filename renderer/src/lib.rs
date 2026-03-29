@@ -186,6 +186,11 @@ impl ShashlikRenderer {
                          &self.global_context.non_msaa_depth_texture_view, (-100.0, -100.0), &self.global_context);
 
         self.layers
+            .sm_layer
+            .set_texture(&self.global_context.ssao_texture,
+                         &self.global_context.non_msaa_depth_texture_view, (0.0, 0.0), &self.global_context);
+        
+        self.layers
             .post_process_layer
             .set_texture(&self.global_context.ssao_texture,
                          &self.global_context.non_msaa_depth_texture_view, (0.0, 0.0), &self.global_context);

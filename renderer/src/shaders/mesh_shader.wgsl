@@ -99,7 +99,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
         let closestDepth = textureSample(t_depth, s_diffuse, (projCoords.xy * vec2f(0.5, -0.5) + 0.5));
         let currentDepth = projCoords.z;
         var shadow = 0.0;
-        if(currentDepth > closestDepth) {
+        if(currentDepth - 0.000035 > closestDepth) {
             shadow = 0.5;
         }
 

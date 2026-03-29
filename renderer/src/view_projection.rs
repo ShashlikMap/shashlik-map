@@ -57,8 +57,8 @@ impl ViewProjection {
         });
 
         let ortho = DMat4::orthographic_rh(
-            -10.0, 10.0, -10.0, 10.0,
-            0.1, 500.0);
+            -20.0, 20.0, -20.0, 20.0,
+            0.01, 500.0);
 
         ViewProjection {
             uniform: ViewProjUniform {
@@ -88,7 +88,7 @@ impl ViewProjection {
                   light_view: DMat4,
                   cs_offset: DVec3,
                   scale: f32) {
-        self.uniform.light_view_proj = ((self.ortho * light_view))
+        self.uniform.light_view_proj = (OPENGL_TO_WGPU_MATRIX * (self.ortho * light_view))
             .as_mat4()
             .to_cols_array_2d();
         self.uniform.view = view_matrix.as_mat4()

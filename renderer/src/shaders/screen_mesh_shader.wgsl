@@ -96,6 +96,34 @@ fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
 }
 
 @fragment
+fn fs_main_sm(in: VertexOutput) -> @location(0) vec4<f32> {
+    let pixel_coord = in.clip_position.xy;
+    let qq = camera.inv_screen_size.x;
+    let u_coord = (pixel_coord.x * camera.inv_screen_size.x) * 2.0 - 1.0;
+    let v_coord = (pixel_coord.y * camera.inv_screen_size.y) * 2.0 - 1.0;
+    let near_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 0.0, 1.0);
+    let near_world = near_world1.xyz / near_world1.w;
+    let far_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 1.0, 1.0);
+    let far_world = far_world1.xyz / far_world1.w;
+
+    var u = -near_world.z / (far_world.z - near_world.z);
+    if u < 0.0 {
+        u = 1.0 - u;
+    }
+    let fragPos = near_world + u * (far_world - near_world);
+
+    let pos_from_light = camera.light_view_proj * vec4<f32>(vec3f(fragPos), 1.0);
+    var projCoords = pos_from_light.xyz;// / in.pos_from_light.w;
+    let closestDepth = textureSample(t_depth, s_diffuse, (projCoords.xy * vec2f(0.5, -0.5) + 0.5));
+    let currentDepth = projCoords.z;
+    var shadow = 0.0;
+    if(currentDepth > closestDepth) {
+        shadow = 0.5;
+    }
+    return vec4(0.0, 0.0, 0.0, shadow);
+}
+
+@fragment
 fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
 //    let pixel_coord = vec2i(floor(in.clip_position.xy * 0.5));
 //    var result = 0.0;
