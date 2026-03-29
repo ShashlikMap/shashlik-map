@@ -81,21 +81,25 @@ const light_dir = normalize(vec3(0.5, 0.5, 1.0));
 const default_color = vec3(0.4, 0.4, 0.4);
 const ambient_color = vec3(0.6, 0.6, 0.6);
 
-//@group(1) @binding(0)
-//var t_depth: texture_depth_2d;
-//@group(1) @binding(1)
-//var s_diffuse: sampler;
+@group(1) @binding(0)
+var t_depth: texture_depth_2d;
+@group(1) @binding(1)
+var s_diffuse: sampler;
 
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
-    let diffuse_strength = max(dot(in.world_normal, light_dir), 0.0);
-    let gradient_koef = 0.5 + min(1.0, tanh(2.0*in.world_position.z))/2.0;
-    let diffuse_color = vec3(1.0, 1.0, 1.0) * diffuse_strength;
+    if(params == 0) {
+        let diffuse_strength = max(dot(in.world_normal, light_dir), 0.0);
+        let gradient_koef = 0.5 + min(1.0, tanh(2.0*in.world_position.z))/2.0;
+        let diffuse_color = vec3(1.0, 1.0, 1.0) * diffuse_strength;
 
-    let result_color = (ambient_color + diffuse_color) * default_color;
+        let result_color = (ambient_color + diffuse_color) * default_color;
 
-    return vec4(result_color * gradient_koef, in.color_alpha);
+        return vec4(result_color * gradient_koef, in.color_alpha);
+    } else {
+        return vec4(1.0);
+    }
 }
 
 @fragment
