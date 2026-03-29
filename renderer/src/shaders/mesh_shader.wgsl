@@ -4,6 +4,7 @@ struct CameraUniform {
     view: mat4x4<f32>,
     proj: mat4x4<f32>,
     view_proj: mat4x4<f32>,
+    light_view_proj: mat4x4<f32>,
     view_proj_inv: mat4x4<f32>,
     view_tr_inv: mat4x4<f32>,
     inv_screen_size: vec2<f32>,
@@ -12,6 +13,8 @@ struct CameraUniform {
 };
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
+
+var<immediate> params: u32;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
@@ -66,7 +69,11 @@ fn vs_main(
     out.view_position = (camera.view * vec4f(modelpos, 1.0)).xyz;
     out.view_normal = (camera.view_tr_inv * vec4f(modelnormal, 1.0)).xyz;
     out.color_alpha = pos.color_alpha;
-    out.clip_position = camera.view_proj * vec4<f32>(modelpos, 1.0);
+    if(params == 1) {
+        out.clip_position = camera.light_view_proj * vec4<f32>(modelpos, 1.0);
+    } else {
+        out.clip_position = camera.view_proj * vec4<f32>(modelpos, 1.0);
+    }
     return out;
 }
 

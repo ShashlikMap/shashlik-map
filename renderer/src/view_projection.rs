@@ -24,6 +24,7 @@ pub(crate) struct ViewProjUniform {
     view: [[f32; 4]; 4],
     proj: [[f32; 4]; 4],
     view_proj: [[f32; 4]; 4],
+    light_view_proj: [[f32; 4]; 4],
     view_proj_inv: [[f32; 4]; 4],
     view_tr_inv: [[f32; 4]; 4],
     inv_screen_size: [f32; 2],
@@ -38,7 +39,6 @@ pub struct ViewProjection {
     pub screen_size: (f64, f64),
     inv_view_proj_matrix: DMat4,
     pub uniform_buffer: Buffer,
-    pub ortho_uniform_buffer: Buffer,
     ortho: DMat4
 }
 
@@ -56,13 +56,6 @@ impl ViewProjection {
             mapped_at_creation: false,
         });
 
-        let ortho_uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ViewProjection Buffer"),
-            size,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
-            mapped_at_creation: false,
-        });
-
         let ortho = DMat4::orthographic_rh(
             -50.0, 50.0, -50.0, 50.0,
             0.1, 500.0);
@@ -72,6 +65,7 @@ impl ViewProjection {
                 view: Mat4::IDENTITY.to_cols_array_2d(),
                 proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_proj: Mat4::IDENTITY.to_cols_array_2d(),
+                light_view_proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_proj_inv: Mat4::IDENTITY.to_cols_array_2d(),
                 view_tr_inv: Mat4::IDENTITY.to_cols_array_2d(),
                 inv_screen_size: [0.0, 0.0],
@@ -82,7 +76,6 @@ impl ViewProjection {
             cs_offset: DVec3::new(0.0, 0.0, 0.0),
             inv_view_proj_matrix: DMat4::IDENTITY,
             uniform_buffer,
-            ortho_uniform_buffer,
             ortho
         }
     }
@@ -95,15 +88,9 @@ impl ViewProjection {
                   light_view: DMat4,
                   cs_offset: DVec3,
                   scale: f32) {
-        self.uniform.view_proj = (OPENGL_TO_WGPU_MATRIX * (self.ortho * light_view))
+        self.uniform.light_view_proj = (OPENGL_TO_WGPU_MATRIX * (self.ortho * light_view))
             .as_mat4()
             .to_cols_array_2d();
-        queue.write_buffer(
-            &self.ortho_uniform_buffer,
-            0,
-            bytemuck::cast_slice(&[self.uniform]),
-        );
-
         self.uniform.view = view_matrix.as_mat4()
             .to_cols_array_2d();
         self.uniform.proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * proj_matrix)

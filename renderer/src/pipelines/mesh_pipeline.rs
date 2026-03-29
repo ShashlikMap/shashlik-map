@@ -1,3 +1,4 @@
+use bytemuck::Contiguous;
 use crate::draw_commands::MeshVertex;
 use crate::global_context::GlobalContext;
 use crate::pipelines::{OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline, WithSSAOTexture};
@@ -8,7 +9,6 @@ use wgpu::{include_wgsl, BindGroup, BindGroupLayout, BlendState, CompareFunction
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,
     pub bind_group: BindGroup,
-    ortho_bind_group: BindGroup,
 }
 
 impl MeshPipeline {
@@ -43,21 +43,9 @@ impl MeshPipeline {
             label: Some("mesh_pipeline_bind_group"),
         });
 
-        let ortho_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            entries: &vec![wgpu::BindGroupEntry {
-                binding: 0,
-                resource: global_context
-                    .view_projection
-                    .ortho_uniform_buffer
-                    .as_entire_binding(),
-            }],
-            label: Some("mesh_pipeline_ortho_bind_group"),
-        });
         MeshPipeline {
             bind_group_layout,
             bind_group,
-            ortho_bind_group
         }
     }
 }
@@ -75,11 +63,8 @@ impl RenderPipeline for MeshPipeline {
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
-        if global_context.is_pre_depth_render {
-            render_pass.set_bind_group(0, &self.ortho_bind_group, &[]);
-        } else {
-            render_pass.set_bind_group(0, &self.bind_group, &[]);
-        }
+        render_pass.set_immediates(0, bytemuck::bytes_of(&(global_context.is_pre_depth_render as u32)));
+        render_pass.set_bind_group(0, &self.bind_group, &[]);
     }
 
     fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
@@ -89,6 +74,7 @@ impl RenderPipeline for MeshPipeline {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Mesh Render Pipeline Layout"),
             bind_group_layouts: &[&self.bind_group_layout],
+            immediate_size: 4,
             ..Default::default()
         });
         let shader_module =

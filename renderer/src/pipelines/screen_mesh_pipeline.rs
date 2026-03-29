@@ -86,6 +86,7 @@ impl RenderPipeline for ScreenMeshPipeline {
                         &self.mesh_pipeline.bind_group_layout,
                         &self.texture_bind_group_layout,
                     ],
+                    immediate_size: 4,
                     ..Default::default()
                 },
             ));
