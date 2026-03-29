@@ -192,11 +192,12 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         self.update_entities();
 
-        let (view, view_proj) = self.camera.build_view_projection_matrix();
+        let (view, view_proj, light_view) = self.camera.build_view_projection_matrix();
         self.renderer.update(
             view,
             self.camera.perspective_matrix,
             view_proj,
+            light_view,
             self.camera.offset,
             self.camera.scale(),
         );

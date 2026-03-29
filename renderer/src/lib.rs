@@ -56,7 +56,7 @@ mod utils;
 
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
-    fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, cs_offset: DVec3, scale: f32);
+    fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, light_view: DMat4, cs_offset: DVec3, scale: f32);
     fn render(&mut self) -> Option<Texture>;
 }
 
@@ -177,16 +177,19 @@ impl ShashlikRenderer {
     fn config_pass_nodes(&mut self) {
         let pre_pass_node = PrepassNode::new();
 
+        let main_node = MainPassNode::new(&mut self.global_context);
+
         let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
         self.layers
             .preview_mesh_layer
-            .set_texture(&rt_node.rt_texture_view, (-100.0, -100.0), &self.global_context);
+            .set_texture(&rt_node.rt_texture_view,
+                         &main_node.non_msaa_depth_texture_view, (-100.0, -100.0), &self.global_context);
 
         self.layers
             .post_process_layer
-            .set_texture(&self.global_context.ssao_texture, (0.0, 0.0), &self.global_context);
+            .set_texture(&self.global_context.ssao_texture,
+                         &main_node.non_msaa_depth_texture_view, (0.0, 0.0), &self.global_context);
 
-        let main_node = MainPassNode::new(&mut self.global_context);
 
         self.pass_nodes = if unsafe { PREVIEW_ENABLED } {
             vec![Box::new(pre_pass_node), Box::new(rt_node), Box::new(main_node)]
@@ -195,8 +198,8 @@ impl ShashlikRenderer {
         };
     }
 
-    fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, cs_offset: DVec3, scale: f32) {
-        self.global_context.update(view_matrix, proj, view_proj_matrix, cs_offset, scale);
+    fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, light_view: DMat4, cs_offset: DVec3, scale: f32) {
+        self.global_context.update(view_matrix, proj, view_proj_matrix, light_view, cs_offset, scale);
 
         // read all messages between renders
         for message in self.renderer_rx.try_iter() {
@@ -263,8 +266,8 @@ impl Renderer for ShashlikRenderer {
         self.resize(width, height);
     }
 
-    fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, cs_offset: DVec3, scale: f32) {
-        self.update(view_matrix, proj, view_proj_matrix, cs_offset, scale);
+    fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, light_view: DMat4, cs_offset: DVec3, scale: f32) {
+        self.update(view_matrix, proj, view_proj_matrix, light_view, cs_offset, scale);
     }
 
     fn render(&mut self) -> Option<Texture> {

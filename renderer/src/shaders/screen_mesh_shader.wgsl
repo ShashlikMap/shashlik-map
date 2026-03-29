@@ -71,6 +71,8 @@ fn vs_main(
 @group(1) @binding(0)
 var t_diffuse: texture_2d<f32>;
 @group(1) @binding(1)
+var t_depth: texture_depth_2d;
+@group(1) @binding(2)
 var s_diffuse: sampler;
 
 @fragment
@@ -83,12 +85,14 @@ const tex_border_x: f32 = 0.02;
 @fragment
 fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
     let uv = in.uv;
-    let tex_size = textureDimensions(t_diffuse);
-    let tex_border_y = (tex_border_x * (f32(tex_size.x) / f32(tex_size.y)));
-    if in.uv.x <= tex_border_x || in.uv.x >= 1.0 - tex_border_x || in.uv.y <= tex_border_y || in.uv.y >= 1.0 - tex_border_y {
-         return vec4(1.0, 0.0, 0.0, 1.0);
-    }
-    return textureSample(t_diffuse, s_diffuse, in.uv.xy);
+//    let tex_size = textureDimensions(t_diffuse);
+//    let tex_border_y = (tex_border_x * (f32(tex_size.x) / f32(tex_size.y)));
+//    if in.uv.x <= tex_border_x || in.uv.x >= 1.0 - tex_border_x || in.uv.y <= tex_border_y || in.uv.y >= 1.0 - tex_border_y {
+//         return vec4(1.0, 0.0, 0.0, 1.0);
+//    }
+//    return textureSample(t_diffuse, s_diffuse, in.uv.xy);
+    let gg = textureSample(t_depth, s_diffuse, in.uv.xy);
+    return vec4(gg, gg, gg, 1.0);
 }
 
 @fragment

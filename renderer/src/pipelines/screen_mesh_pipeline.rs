@@ -36,6 +36,16 @@ impl ScreenMeshPipeline {
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
                         visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Depth,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
                         // This should match the filterable field of the
                         // corresponding Texture entry above.
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
@@ -123,6 +133,7 @@ impl WithTexture for ScreenMeshPipeline {
     fn create_texture_bind_group(
         &mut self,
         texture_view: &TextureView,
+        depth_texture_view: &TextureView,
         global_context: &GlobalContext,
     ) -> BindGroup {
         let device = global_context.device();
@@ -144,6 +155,10 @@ impl WithTexture for ScreenMeshPipeline {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
+                    resource: wgpu::BindingResource::TextureView(depth_texture_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
                     resource: wgpu::BindingResource::Sampler(&diffuse_sampler),
                 },
             ],

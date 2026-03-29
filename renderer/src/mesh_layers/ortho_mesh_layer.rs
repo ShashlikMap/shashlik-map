@@ -34,7 +34,7 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
     }
 
     // FIXME Positioning should not be here
-    pub fn set_texture(&mut self, texture_view: &TextureView, offset: (f32, f32), global_context: &GlobalContext) {
+    pub fn set_texture(&mut self, texture_view: &TextureView, depth_texture_view: &TextureView, offset: (f32, f32), global_context: &GlobalContext) {
         let screen_size = global_context.view_projection.screen_size;
         let texture_size = texture_view.texture().size();
 
@@ -47,7 +47,7 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
         }
         self.texture_bind_group = Some(
             self.render_pipeline
-                .create_texture_bind_group(texture_view, global_context),
+                .create_texture_bind_group(texture_view, depth_texture_view, global_context),
         );
 
         let device = global_context.device();
@@ -61,15 +61,15 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
         } else {
             self.mesh = Some(Mesh::quad(
                 device,
-                texture_size.width as f32,
-                texture_size.height as f32,
+                512.0f32,
+                512.0f32,
             ));
 
         }
         let queue = global_context.queue();
 
         let position = [
-            if self.is_bottom_right { screen_size.0 as f32 - texture_size.width as f32 } else { 0.0 } + offset.0,
+            if self.is_bottom_right { screen_size.0 as f32 - 512.0f32 } else { 0.0 } + offset.0,
             screen_size.1 as f32 + offset.1,
             0.0,
         ];

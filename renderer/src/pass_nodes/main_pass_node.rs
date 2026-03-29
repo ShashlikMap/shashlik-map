@@ -26,8 +26,8 @@ impl MainPassNode {
         );
 
         let non_msaa_size = (
-            global_context.config().width / 2,
-            global_context.config().height / 2,
+            1024,
+            1024,
         );
 
         let device = global_context.device();
@@ -255,6 +255,7 @@ impl PassNode for MainPassNode {
 
                 global_context.is_g_buffer_render = true;
                 global_context.is_preview_render = false;
+                global_context.is_pre_depth_render = true;
                 layers.render(&mut render_pass, global_context);
             }
 
@@ -288,6 +289,7 @@ impl PassNode for MainPassNode {
 
             global_context.is_g_buffer_render = false;
             global_context.is_preview_render = false;
+            global_context.is_pre_depth_render = false;
             layers.render(&mut render_pass, global_context);
         }
     }

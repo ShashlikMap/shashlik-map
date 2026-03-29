@@ -93,10 +93,12 @@ impl BaseMeshLayer for Layers {
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         if !global_context.is_g_buffer_render {
             self.shape_layer.disable_skip_mesh_feature = global_context.is_preview_render;
-            self.shape_layer.render(render_pass, global_context);
+            if !global_context.is_preview_render {
+                self.shape_layer.render(render_pass, global_context);
+            }
         }
+        self.mesh_layer.render(render_pass, global_context);
         if !global_context.is_preview_render {
-            self.mesh_layer.render(render_pass, global_context);
             if unsafe { SSAO_ENABLED } {
                 self.post_process_layer.render(render_pass, global_context);
             }

@@ -32,7 +32,10 @@ pub trait RenderPipeline {
 }
 
 pub trait WithTexture {
-    fn create_texture_bind_group(&mut self, texture_view: &TextureView, global_context: &GlobalContext) -> BindGroup;
+    fn create_texture_bind_group(&mut self,
+                                 texture_view: &TextureView,
+                                 depth_texture_view: &TextureView,
+                                 global_context: &GlobalContext) -> BindGroup;
 }
 
 pub trait WithSSAOTexture {

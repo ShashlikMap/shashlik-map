@@ -68,6 +68,7 @@ impl PassNode for RenderToTexturePassNode {
 
         global_context.is_g_buffer_render = false;
         global_context.is_preview_render = true;
+        global_context.is_pre_depth_render = true;
         layers.render(&mut render_pass, global_context);
     }
 }

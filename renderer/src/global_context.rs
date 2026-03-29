@@ -17,6 +17,7 @@ pub struct GlobalContext {
     pub style_bind_group: Option<BindGroup>,
     pub is_preview_render: bool,
     pub is_g_buffer_render: bool,
+    pub is_pre_depth_render: bool,
     pub ssao_texture: TextureView,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
 }
@@ -45,6 +46,7 @@ impl GlobalContext {
             style_bind_group: None,
             is_preview_render: false,
             is_g_buffer_render: false,
+            is_pre_depth_render: false,
             ssao_texture,
             style_uniform_rx: style_store.subscribe(),
         }
@@ -75,13 +77,14 @@ impl GlobalContext {
         }
     }
 
-    pub fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, cs_offset: DVec3, scale: f32) {
+    pub fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, light_view: DMat4, cs_offset: DVec3, scale: f32) {
         self.view_projection.update(
             self.canvas.queue(),
             self.canvas.config(),
             view_matrix,
             proj,
             view_proj_matrix,
+            light_view,
             cs_offset,
             scale
         );

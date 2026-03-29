@@ -8,6 +8,7 @@ use wgpu::{include_wgsl, BindGroup, BindGroupLayout, BlendState, CompareFunction
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,
     pub bind_group: BindGroup,
+    ortho_bind_group: BindGroup,
 }
 
 impl MeshPipeline {
@@ -39,11 +40,24 @@ impl MeshPipeline {
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &bind_group_layout,
             entries: &entries,
-            label: Some("ssao_mesh_pipeline_bind_group"),
+            label: Some("mesh_pipeline_bind_group"),
+        });
+
+        let ortho_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &bind_group_layout,
+            entries: &vec![wgpu::BindGroupEntry {
+                binding: 0,
+                resource: global_context
+                    .view_projection
+                    .ortho_uniform_buffer
+                    .as_entire_binding(),
+            }],
+            label: Some("mesh_pipeline_ortho_bind_group"),
         });
         MeshPipeline {
             bind_group_layout,
             bind_group,
+            ortho_bind_group
         }
     }
 }
@@ -60,8 +74,12 @@ impl RenderPipeline for MeshPipeline {
     fn compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {
     }
 
-    fn render(&mut self, render_pass: &mut RenderPass, _global_context: &GlobalContext) {
-        render_pass.set_bind_group(0, &self.bind_group, &[]);
+    fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        if global_context.is_pre_depth_render {
+            render_pass.set_bind_group(0, &self.ortho_bind_group, &[]);
+        } else {
+            render_pass.set_bind_group(0, &self.bind_group, &[]);
+        }
     }
 
     fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
@@ -103,7 +121,7 @@ impl RenderPipeline for MeshPipeline {
             },
             depth_stencil: Some({
                 DepthStencilState {
-                    format: TextureFormat::Depth24Plus,
+                    format: TextureFormat::Depth32Float,
                     depth_write_enabled: true,
                     depth_compare: CompareFunction::Less,
                     stencil: Default::default(),

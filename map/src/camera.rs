@@ -27,7 +27,7 @@ impl Camera {
     }
 
     /// view + view_proj matrices
-    pub fn build_view_projection_matrix(&mut self) -> (DMat4, DMat4) {
+    pub fn build_view_projection_matrix(&mut self) -> (DMat4, DMat4, DMat4) {
         let eye_offset = self.eye - self.offset;
         let target_offset = self.target - self.offset;
         let view = DMat4::look_at_rh(
@@ -35,7 +35,12 @@ impl Camera {
             dvec3(target_offset.x, target_offset.y, target_offset.z),
             self.up,
         );
-        (view, self.perspective_matrix * view)
+        let light_view = DMat4::look_at_rh(
+            dvec3(target_offset.x - 5.0, target_offset.y - 5.0, target_offset.z - 10.0),
+            dvec3(target_offset.x, target_offset.y, target_offset.z),
+            DVec3::Z,
+        );
+        (view, self.perspective_matrix * view, light_view)
     }
     
     pub fn scale(&self) -> f32 {
