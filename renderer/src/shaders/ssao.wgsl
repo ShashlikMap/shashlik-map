@@ -60,69 +60,69 @@ const noise: array<vec3f, 8> = array<vec3f, 8>(
     );
 
 fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f) {
-    let loadedNormal = textureLoad(normals, pixel_coord, 0).xyz;
-    if(loadedNormal.y > 0.0) {
-        return;
-    }
-    var normal = loadedNormal;
-
-    var fragPos = vec3f(0.0, 0.0, 0.0);
-    if(loadedNormal.x == 0.0 && loadedNormal.y == 0.0 && loadedNormal.z == 0.0) {
-        let u_coord = (f32(2 * pixel_coord.x) * camera.inv_screen_size.x) * 2.0 - 1.0;
-        let v_coord = (f32(2 * pixel_coord.y) * camera.inv_screen_size.y) * 2.0 - 1.0;
-        let near_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 0.0, 1.0);
-        let near_world = near_world1.xyz / near_world1.w;
-        let far_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 1.0, 1.0);
-        let far_world = far_world1.xyz / far_world1.w;
-
-        var u = -near_world.z / (far_world.z - near_world.z);
-        if u < 0.0 {
-            u = 1.0 - u;
-        }
-        fragPos = near_world + u * (far_world - near_world);
-        fragPos = (camera.view * vec4f(fragPos, 1.0)).xyz;
-        normal = normalize((camera.view_tr_inv * vec4f(0.0, 0.0, 1.0, 1.0)).xyz);
-    } else {
-        normal = -normalize(loadedNormal);
-        fragPos = textureLoad(positions, pixel_coord, 0).xyz;
-    }
-
-
-    let noise_sample_coords = pixel_coord % vec2u(noise_size, noise_size);
-    let noise_vec = noise[noise_sample_coords.y * noise_size + noise_sample_coords.x];
-    let randomVec = (camera.view * vec4f(noise_vec, 0.0)).xyz;
-    let tangent = normalize(randomVec - normal * dot(randomVec, normal));
-    let bitangent = cross(normal, tangent);
-    let TBN = mat3x3(tangent, bitangent, normal);
-
-    var occlusion = 0.0;
-    for (var i = 0; i < samples; i++) {
-        var kl = kernel[i];
-        kl.z = kl.z * 0.5 + 0.5;
-        let dist_scale = f32(i) / f32(samples);
-        let samplePos = fragPos + (TBN * (kl * lerp(0.1, 1.0, dist_scale * dist_scale))) * radius;
-
-        let viewSampleDir = normalize(samplePos - fragPos);
-        if(max(dot(normal, viewSampleDir), 0.0) == 0.0) {
-            continue;
-        }
-
-        let offset2 = camera.proj * vec4f(samplePos, 1.0);
-        let ndcPos = offset2.xy / offset2.w;
-        let uv = ndcPos * vec2f(0.5, -0.5) + vec2f(0.5);
-        let screenCoord = vec2i(uv * ssao_size);
-
-        let sampleDepth = textureLoad(positions, screenCoord, 0).z;
-
-        let rangeCheck = smoothstep(0.1, 1.0, (radius) / abs(fragPos.z - sampleDepth));
-
-        occlusion += select(0.0, 1.0, sampleDepth > samplePos.z + 0.1) * rangeCheck;
-    }
-
-    if(occlusion > 0.0) {
-        occlusion = occlusion / f32(samples);
-        textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
-    }
+//    let loadedNormal = textureLoad(normals, pixel_coord, 0).xyz;
+//    if(loadedNormal.y > 0.0) {
+//        return;
+//    }
+//    var normal = loadedNormal;
+//
+//    var fragPos = vec3f(0.0, 0.0, 0.0);
+//    if(loadedNormal.x == 0.0 && loadedNormal.y == 0.0 && loadedNormal.z == 0.0) {
+//        let u_coord = (f32(2 * pixel_coord.x) * camera.inv_screen_size.x) * 2.0 - 1.0;
+//        let v_coord = (f32(2 * pixel_coord.y) * camera.inv_screen_size.y) * 2.0 - 1.0;
+//        let near_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 0.0, 1.0);
+//        let near_world = near_world1.xyz / near_world1.w;
+//        let far_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 1.0, 1.0);
+//        let far_world = far_world1.xyz / far_world1.w;
+//
+//        var u = -near_world.z / (far_world.z - near_world.z);
+//        if u < 0.0 {
+//            u = 1.0 - u;
+//        }
+//        fragPos = near_world + u * (far_world - near_world);
+//        fragPos = (camera.view * vec4f(fragPos, 1.0)).xyz;
+//        normal = normalize((camera.view_tr_inv * vec4f(0.0, 0.0, 1.0, 1.0)).xyz);
+//    } else {
+//        normal = -normalize(loadedNormal);
+//        fragPos = textureLoad(positions, pixel_coord, 0).xyz;
+//    }
+//
+//
+//    let noise_sample_coords = pixel_coord % vec2u(noise_size, noise_size);
+//    let noise_vec = noise[noise_sample_coords.y * noise_size + noise_sample_coords.x];
+//    let randomVec = (camera.view * vec4f(noise_vec, 0.0)).xyz;
+//    let tangent = normalize(randomVec - normal * dot(randomVec, normal));
+//    let bitangent = cross(normal, tangent);
+//    let TBN = mat3x3(tangent, bitangent, normal);
+//
+//    var occlusion = 0.0;
+//    for (var i = 0; i < samples; i++) {
+//        var kl = kernel[i];
+//        kl.z = kl.z * 0.5 + 0.5;
+//        let dist_scale = f32(i) / f32(samples);
+//        let samplePos = fragPos + (TBN * (kl * lerp(0.1, 1.0, dist_scale * dist_scale))) * radius;
+//
+//        let viewSampleDir = normalize(samplePos - fragPos);
+//        if(max(dot(normal, viewSampleDir), 0.0) == 0.0) {
+//            continue;
+//        }
+//
+//        let offset2 = camera.proj * vec4f(samplePos, 1.0);
+//        let ndcPos = offset2.xy / offset2.w;
+//        let uv = ndcPos * vec2f(0.5, -0.5) + vec2f(0.5);
+//        let screenCoord = vec2i(uv * ssao_size);
+//
+//        let sampleDepth = textureLoad(positions, screenCoord, 0).z;
+//
+//        let rangeCheck = smoothstep(0.1, 1.0, (radius) / abs(fragPos.z - sampleDepth));
+//
+//        occlusion += select(0.0, 1.0, sampleDepth > samplePos.z + 0.1) * rangeCheck;
+//    }
+//
+//    if(occlusion > 0.0) {
+//        occlusion = occlusion / f32(samples);
+//        textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
+//    }
 }
 
 fn lerp(a: f32, b: f32, f:f32) -> f32 {
