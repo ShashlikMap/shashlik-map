@@ -11,7 +11,7 @@ pub(crate) struct MainPassNode {
     pub non_msaa_texture_view_positions: TextureView,
     pub non_msaa_texture_view_normals: TextureView,
     depth_texture_view: TextureView,
-    pub non_msaa_depth_texture_view: TextureView,
+    // pub non_msaa_depth_texture_view: TextureView,
     ssao_bind_group: BindGroup,
     camera_ssao_bind_group: BindGroup,
     ssao_compute_pipeline: ComputePipeline
@@ -50,9 +50,7 @@ impl MainPassNode {
             },
             global_context.device(),
         );
-
-        let non_msaa_depth_texture_view = create_depth_texture(non_msaa_size, 1, global_context);
-
+        
         let ssao_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -150,7 +148,6 @@ impl MainPassNode {
             non_msaa_texture_view_positions,
             non_msaa_texture_view_normals,
             depth_texture_view: create_depth_texture(size, SAMPLE_COUNT, global_context),
-            non_msaa_depth_texture_view,
             ssao_bind_group,
             camera_ssao_bind_group,
             ssao_compute_pipeline,
@@ -229,9 +226,9 @@ impl PassNode for MainPassNode {
                     },
                     depth_slice: None,
                 };
-
+                
                 let non_msaa_depth_attachment = wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.non_msaa_depth_texture_view,
+                    view: &global_context.non_msaa_depth_texture_view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
                         store: wgpu::StoreOp::Store,

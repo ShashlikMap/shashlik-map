@@ -2,7 +2,7 @@ use glam::{DMat4, DVec3};
 use crate::collider::Collider;
 use crate::consts::STYLE_SHADER_PARAMS_COUNT;
 use crate::styles::style_store::StyleStore;
-use crate::textures::{create_simple_texture, TextureData};
+use crate::textures::{create_depth_texture, create_simple_texture, TextureData};
 use crate::utils::ReceiverExt;
 use crate::view_projection::ViewProjection;
 use wgpu::util::DeviceExt;
@@ -19,6 +19,7 @@ pub struct GlobalContext {
     pub is_g_buffer_render: bool,
     pub is_pre_depth_render: bool,
     pub ssao_texture: TextureView,
+    pub non_msaa_depth_texture_view: TextureView,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
 }
 
@@ -38,6 +39,15 @@ impl GlobalContext {
             },
             device,
         );
+        let non_msaa_depth_texture_view = create_simple_texture(
+            TextureData {
+                sample_count: 1,
+                size: (1024, 1024),
+                usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
+                format: TextureFormat::Depth32Float,
+            },
+            device,
+        );
         GlobalContext {
             canvas,
             view_projection,
@@ -48,6 +58,7 @@ impl GlobalContext {
             is_g_buffer_render: false,
             is_pre_depth_render: false,
             ssao_texture,
+            non_msaa_depth_texture_view,
             style_uniform_rx: style_store.subscribe(),
         }
     }
