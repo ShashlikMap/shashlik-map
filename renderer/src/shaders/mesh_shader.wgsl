@@ -36,7 +36,8 @@ struct VertexOutput {
     @location(2) view_position: vec3<f32>,
     @location(3) world_normal: vec3<f32>,
     @location(4) world_position: vec3<f32>,
-    @location(5) color_alpha: f32,
+    @location(5) pos_from_light: vec4<f32>,
+    @location(6) color_alpha: f32,
 }
 
 struct GBuffer {
@@ -64,13 +65,12 @@ fn vs_main(
     out.world_position = modelpos;
     out.world_normal = -modelnormal;
 
-
-
     out.view_position = (camera.view * vec4f(modelpos, 1.0)).xyz;
     out.view_normal = (camera.view_tr_inv * vec4f(modelnormal, 1.0)).xyz;
     out.color_alpha = pos.color_alpha;
+    out.pos_from_light = camera.light_view_proj * vec4<f32>(modelpos, 1.0);
     if(params == 1) {
-        out.clip_position = camera.light_view_proj * vec4<f32>(modelpos, 1.0);
+        out.clip_position = out.pos_from_light;
     } else {
         out.clip_position = camera.view_proj * vec4<f32>(modelpos, 1.0);
     }
@@ -94,7 +94,16 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
         let gradient_koef = 0.5 + min(1.0, tanh(2.0*in.world_position.z))/2.0;
         let diffuse_color = vec3(1.0, 1.0, 1.0) * diffuse_strength;
 
-        let result_color = (ambient_color + diffuse_color) * default_color;
+
+        var projCoords = in.pos_from_light.xyz;// / in.pos_from_light.w;
+        let closestDepth = textureSample(t_depth, s_diffuse, (projCoords.xy * vec2f(0.5, -0.5) + 0.5));
+        let currentDepth = projCoords.z;
+        var shadow = 0.0;
+        if(currentDepth > closestDepth) {
+            shadow = 0.5;
+        }
+
+        let result_color = (ambient_color + diffuse_color) * default_color * (1.0 - shadow);
 
         return vec4(result_color * gradient_koef, in.color_alpha);
     } else {

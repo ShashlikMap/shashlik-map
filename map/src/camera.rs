@@ -36,7 +36,7 @@ impl Camera {
             self.up,
         );
         let light_view = DMat4::look_at_rh(
-            dvec3(target_offset.x - 5.0, target_offset.y - 5.0, target_offset.z - 10.0),
+            dvec3(target_offset.x + 5.0, target_offset.y + 5.0, target_offset.z + 10.0),
             dvec3(target_offset.x, target_offset.y, target_offset.z),
             DVec3::Z,
         );
