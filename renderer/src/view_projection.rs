@@ -57,7 +57,7 @@ impl ViewProjection {
         });
 
         let ortho = DMat4::orthographic_rh(
-            -40.0, 40.0, -40.0, 40.0,
+            -10.0, 10.0, -10.0, 10.0,
             0.1, 500.0);
 
         ViewProjection {

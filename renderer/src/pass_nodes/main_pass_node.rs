@@ -26,8 +26,8 @@ impl MainPassNode {
         );
 
         let non_msaa_size = (
-            1024,
-            1024,
+            2048,
+            2048,
         );
 
         let device = global_context.device();

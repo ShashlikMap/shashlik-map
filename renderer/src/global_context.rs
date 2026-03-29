@@ -42,7 +42,7 @@ impl GlobalContext {
         let non_msaa_depth_texture_view = create_simple_texture(
             TextureData {
                 sample_count: 1,
-                size: (1024, 1024),
+                size: (2048, 2048),
                 usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
                 format: TextureFormat::Depth32Float,
             },
