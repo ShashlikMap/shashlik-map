@@ -114,12 +114,21 @@ fn fs_main_sm(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let pos_from_light = camera.light_view_proj * vec4<f32>(vec3f(fragPos), 1.0);
     var projCoords = pos_from_light.xyz;// / in.pos_from_light.w;
-    let closestDepth = textureSample(t_depth, s_diffuse, (projCoords.xy * vec2f(0.5, -0.5) + 0.5));
     let currentDepth = projCoords.z;
+
+    let texelSize = 1.0 / vec2f(textureDimensions(t_depth));
     var shadow = 0.0;
-    if(currentDepth > closestDepth) {
-        shadow = 0.5;
+    for (var xx = -1; xx < 1; xx++) {
+        for (var yy = -1; yy < 1; yy++) {
+            let pcfDepth = textureSample(t_depth, s_diffuse, (projCoords.xy * vec2f(0.5, -0.5) + 0.5) + vec2f(f32(xx), f32(yy)) * texelSize);
+            if(currentDepth - 0.000035 > pcfDepth) {
+                shadow += 1.0;
+            }
+        }
     }
+    shadow /= 9.0;
+//    shadow = shadow * 0.5;
+
     return vec4(0.0, 0.0, 0.0, shadow);
 }
 
