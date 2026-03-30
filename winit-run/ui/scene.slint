@@ -12,6 +12,12 @@ import {
     ComboBox,
 } from "std-widgets.slint";
 
+export enum Feature {
+    SSAO,
+    Shadows,
+    Preview
+}
+
 export enum Action {
     DmOffice,
     Route,
@@ -25,8 +31,7 @@ export component ShashlikUI inherits Window {
     callback pointer_event(PointerEvent, float, float);
     callback vert_scroll(float);
     callback follow_mode(bool);
-    callback ssao_mode(bool);
-    callback preview_mode(bool);
+    callback feature_enabled(Feature, bool);
     callback btn_click(Action, int);
     title: "ShashlikMap";
 
@@ -94,7 +99,7 @@ export component ShashlikUI inherits Window {
                 height: 24px;
                 checked: false;
                 toggled => {
-                    ssao_mode(self.checked)
+                    feature_enabled(Feature.SSAO, self.checked)
                 }
             }
 
@@ -103,7 +108,16 @@ export component ShashlikUI inherits Window {
                 height: 24px;
                 checked: true;
                 toggled => {
-                    preview_mode(self.checked)
+                    feature_enabled(Feature.Preview, self.checked)
+                }
+            }
+
+            CheckBox {
+                text: "Shadows";
+                height: 24px;
+                checked: true;
+                toggled => {
+                    feature_enabled(Feature.Shadows, self.checked)
                 }
             }
         }

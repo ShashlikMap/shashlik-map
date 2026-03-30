@@ -15,13 +15,13 @@ use renderer::canvas_api::CanvasApi;
 use renderer::modifier::render_modifier::SpatialData;
 use renderer::render_group::RenderGroup;
 use renderer::renderer_api::RendererApi;
-use renderer::{Renderer, ShashlikRenderer};
+use renderer::{Renderer, RendererUpdateData, ShashlikRenderer};
 use route::route_controller::RouteController;
 use std::mem;
 use std::path::PathBuf;
 use std::sync::{Arc, LazyLock};
 use std::thread::spawn;
-use glam::{DVec2, DVec3, Vec2};
+use glam::{DMat4, DVec2, DVec3, Vec2};
 use num::clamp;
 use osm::styles::{DashStyle, RenderStyle};
 use osm::styles::style_loader::StyleLoader;
@@ -193,13 +193,17 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.update_entities();
 
         let (view, view_proj) = self.camera.build_view_projection_matrix();
-        self.renderer.update(
-            view,
-            self.camera.perspective_matrix,
-            view_proj,
-            self.camera.offset,
-            self.camera.scale(),
-        );
+        let view_light = self.camera.build_view_light_matrix();
+        
+        let update_data = RendererUpdateData {
+            view_matrix: view,
+            view_light_matrix: view_light,
+            proj_matrix: self.camera.perspective_matrix,
+            view_proj_matrix: view_proj,
+            cs_offset: self.camera.offset,
+            scale: self.camera.scale(),
+        };
+        self.renderer.update(update_data);
 
         self.fetch_tiles();
 

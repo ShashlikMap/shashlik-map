@@ -15,7 +15,7 @@ use wgpu::{Features, Limits};
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
-use wgpu_canvas::{PREVIEW_ENABLED, SSAO_ENABLED};
+use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SSAO_ENABLED};
 use winit_run::PinchWorkaroundHandler;
 
 pub(crate) mod canvas;
@@ -27,8 +27,7 @@ enum SlintMapEvent {
     Pinch(f32, f32, f32),
     VerticalScroll(f32),
     FollowMode(bool),
-    SSAO(bool),
-    Preview(bool),
+    FeatureEnabled(Feature, bool),
     BtnAction(Action, i32),
 }
 
@@ -141,16 +140,9 @@ fn main() {
                             });
 
                             let slint_map_event_sender_internal = slint_map_event_sender.clone();
-                            ui_weak.on_ssao_mode(move |enabled| {
+                            ui_weak.on_feature_enabled(move |feature, enabled| {
                                 slint_map_event_sender_internal
-                                    .send(SlintMapEvent::SSAO(enabled))
-                                    .unwrap();
-                            });
-
-                            let slint_map_event_sender_internal = slint_map_event_sender.clone();
-                            ui_weak.on_preview_mode(move |enabled| {
-                                slint_map_event_sender_internal
-                                    .send(SlintMapEvent::Preview(enabled))
+                                    .send(SlintMapEvent::FeatureEnabled(feature, enabled))
                                     .unwrap();
                             });
 
@@ -219,11 +211,18 @@ fn main() {
                                         }
                                     }
                                 },
-                                SlintMapEvent::SSAO(enabled) => {
-                                    unsafe { SSAO_ENABLED = enabled; }
-                                }
-                                SlintMapEvent::Preview(enabled) => {
-                                    unsafe { PREVIEW_ENABLED = enabled; }
+                                SlintMapEvent::FeatureEnabled(feature, enabled) => {
+                                    match feature {
+                                        Feature::SSAO => {
+                                            unsafe { SSAO_ENABLED = enabled; }
+                                        }
+                                        Feature::Shadows => {
+                                            unsafe { SHADOWS_ENABLED = enabled; }
+                                        }
+                                        Feature::Preview => {
+                                            unsafe { PREVIEW_ENABLED = enabled; }
+                                        }
+                                    }
                                 }
                             };
                         }

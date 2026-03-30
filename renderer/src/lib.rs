@@ -54,9 +54,18 @@ pub mod pipelines;
 mod textures;
 mod utils;
 
+pub struct RendererUpdateData {
+    pub view_matrix: DMat4,
+    pub view_light_matrix: DMat4,
+    pub proj_matrix: DMat4,
+    pub view_proj_matrix: DMat4,
+    pub cs_offset: DVec3,
+    pub scale: f32,
+}
+
 pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
-    fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, cs_offset: DVec3, scale: f32);
+    fn update(&mut self, data: RendererUpdateData);
     fn render(&mut self) -> Option<Texture>;
 }
 
@@ -195,8 +204,8 @@ impl ShashlikRenderer {
         };
     }
 
-    fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, cs_offset: DVec3, scale: f32) {
-        self.global_context.update(view_matrix, proj, view_proj_matrix, cs_offset, scale);
+    fn update(&mut self, data: RendererUpdateData) {
+        self.global_context.update(data);
 
         // read all messages between renders
         for message in self.renderer_rx.try_iter() {
@@ -263,8 +272,8 @@ impl Renderer for ShashlikRenderer {
         self.resize(width, height);
     }
 
-    fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, cs_offset: DVec3, scale: f32) {
-        self.update(view_matrix, proj, view_proj_matrix, cs_offset, scale);
+    fn update(&mut self, data: RendererUpdateData) {
+        self.update(data);
     }
 
     fn render(&mut self) -> Option<Texture> {

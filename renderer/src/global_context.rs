@@ -8,6 +8,7 @@ use crate::view_projection::ViewProjection;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Device, TextureFormat, TextureUsages, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use crate::RendererUpdateData;
 
 pub struct GlobalContext {
     pub canvas: Box<dyn WgpuCanvas>,
@@ -75,15 +76,11 @@ impl GlobalContext {
         }
     }
 
-    pub fn update(&mut self, view_matrix: DMat4, proj: DMat4, view_proj_matrix: DMat4, cs_offset: DVec3, scale: f32) {
+    pub fn update(&mut self, data: RendererUpdateData) {
         self.view_projection.update(
             self.canvas.queue(),
             self.canvas.config(),
-            view_matrix,
-            proj,
-            view_proj_matrix,
-            cs_offset,
-            scale
+            data
         );
         self.collider.update_view_proj(&self.view_projection);
 

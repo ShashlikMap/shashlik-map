@@ -1,6 +1,7 @@
 use geo_types::{coord, Coord};
 use glam::{DMat4, DVec2, DVec3, DVec4, Mat4};
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
+use crate::RendererUpdateData;
 
 #[rustfmt::skip]
 const OPENGL_TO_WGPU_MATRIX: DMat4 = DMat4::from_cols(
@@ -25,6 +26,7 @@ pub(crate) struct ViewProjUniform {
     proj: [[f32; 4]; 4],
     view_proj: [[f32; 4]; 4],
     view_proj_inv: [[f32; 4]; 4],
+    light_view_proj: [[f32; 4]; 4],
     view_tr_inv: [[f32; 4]; 4],
     inv_screen_size: [f32; 2],
     scale: f32,
@@ -60,6 +62,7 @@ impl ViewProjection {
                 proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_proj_inv: Mat4::IDENTITY.to_cols_array_2d(),
+                light_view_proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_tr_inv: Mat4::IDENTITY.to_cols_array_2d(),
                 inv_screen_size: [0.0, 0.0],
                 scale: 0.0,
@@ -74,17 +77,23 @@ impl ViewProjection {
 
     pub fn update(&mut self, queue: &Queue,
                   config: &SurfaceConfiguration,
-                  view_matrix: DMat4,
-                  proj_matrix: DMat4,
-                  view_proj_matrix: DMat4,
-                  cs_offset: DVec3,
-                  scale: f32) {
-        self.uniform.view = view_matrix.as_mat4()
+                  data: RendererUpdateData) {
+
+        self.uniform.view = data.view_matrix.as_mat4()
             .to_cols_array_2d();
-        self.uniform.proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * proj_matrix)
+        self.uniform.proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * data.proj_matrix)
             .as_mat4()
             .to_cols_array_2d();
-        let view_proj = FLIP_Y * OPENGL_TO_WGPU_MATRIX * view_proj_matrix;
+        let view_proj = FLIP_Y * OPENGL_TO_WGPU_MATRIX * data.view_proj_matrix;
+
+        // TODO
+        let ortho = DMat4::orthographic_rh(
+            -200.0, 200.0, -200.0, 200.0,
+            0.01, 250.0);
+        self.uniform.light_view_proj = (OPENGL_TO_WGPU_MATRIX * (ortho * data.view_light_matrix))
+            .as_mat4()
+            .to_cols_array_2d();
+
         self.uniform.view_proj = view_proj
             .as_mat4()
             .to_cols_array_2d();
@@ -94,14 +103,14 @@ impl ViewProjection {
             .as_mat4()
             .to_cols_array_2d();
 
-        let view_tr_inv:DMat4 = view_matrix.inverse().transpose();
+        let view_tr_inv:DMat4 = data.view_matrix.inverse().transpose();
         self.uniform.view_tr_inv = view_tr_inv
             .as_mat4()
             .to_cols_array_2d();
-        self.uniform.scale = scale;
-        self.uniform.p2_scale = self.p2_scale(scale);
-        self.cs_offset = cs_offset;
-        self.inv_view_proj_matrix = view_proj_matrix.inverse();
+        self.uniform.scale = data.scale;
+        self.uniform.p2_scale = self.p2_scale(data.scale);
+        self.cs_offset = data.cs_offset;
+        self.inv_view_proj_matrix = data.view_proj_matrix.inverse();
         self.screen_size = (config.width as f64, config.height as f64);
 
         queue.write_buffer(
