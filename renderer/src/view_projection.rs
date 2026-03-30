@@ -1,4 +1,5 @@
 use geo_types::{coord, Coord};
+use geo_types::Geometry::Rect;
 use glam::{DMat4, DVec2, DVec3, DVec4, Mat4};
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 
@@ -57,8 +58,8 @@ impl ViewProjection {
         });
 
         let ortho = DMat4::orthographic_rh(
-            -20.0, 20.0, -20.0, 20.0,
-            0.01, 500.0);
+            -200.0, 200.0, -200.0, 200.0,
+            0.01, 250.0);
 
         ViewProjection {
             uniform: ViewProjUniform {
@@ -88,6 +89,12 @@ impl ViewProjection {
                   light_view: DMat4,
                   cs_offset: DVec3,
                   scale: f32) {
+
+        let qq = (scale / 0.7) as f64;
+        self.ortho = DMat4::orthographic_rh(
+            -200.0 * qq, 200.0 * qq, -200.0 * qq, 200.0 * qq,
+            0.01, 500.0);
+
         self.uniform.light_view_proj = (OPENGL_TO_WGPU_MATRIX * (self.ortho * light_view))
             .as_mat4()
             .to_cols_array_2d();

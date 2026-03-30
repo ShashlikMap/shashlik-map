@@ -84,7 +84,7 @@ const ambient_color = vec3(0.6, 0.6, 0.6);
 @group(1) @binding(0)
 var t_depth: texture_depth_2d;
 @group(1) @binding(1)
-var s_diffuse: sampler;
+var s_diffuse: sampler_comparison;
 
 // Fragment shader
 @fragment
@@ -94,23 +94,26 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
         let gradient_koef = 0.5 + min(1.0, tanh(2.0*in.world_position.z))/2.0;
         let diffuse_color = vec3(1.0, 1.0, 1.0) * diffuse_strength;
 
-
-        var projCoords = in.pos_from_light.xyz;// / in.pos_from_light.w;
-        let closestDepth = textureSample(t_depth, s_diffuse, (projCoords.xy * vec2f(0.5, -0.5) + 0.5));
-        let currentDepth = projCoords.z;
-
-        let texelSize = 1.0 / vec2f(textureDimensions(t_depth));
         var shadow = 0.0;
-        for (var xx = -1; xx < 1; xx++) {
-            for (var yy = -1; yy < 1; yy++) {
-                let pcfDepth = textureSample(t_depth, s_diffuse, (projCoords.xy * vec2f(0.5, -0.5) + 0.5) + vec2f(f32(xx), f32(yy)) * texelSize);
-                if(currentDepth - 0.000035 > pcfDepth) {
-                    shadow += 1.0;
+        if(camera.scale < 0.5) {
+
+            var projCoords = in.pos_from_light.xyz;// / in.pos_from_light.w;
+            let currentDepth = projCoords.z;
+
+            let texelSize = 2.0 / vec2f(textureDimensions(t_depth));
+
+            for (var xx = -1; xx <= 1; xx++) {
+                for (var yy = -1; yy <= 1; yy++) {
+    //                let pcfDepth = textureSample(t_depth, s_diffuse, (projCoords.xy * vec2f(0.5, -0.5) + 0.5) + vec2f(f32(xx), f32(yy)) * texelSize);
+    //                if(currentDepth - 0.000035 > pcfDepth) {
+    //                    shadow += 1.0;
+    //                }
+                    shadow += (textureSampleCompare(t_depth, s_diffuse, (projCoords.xy * vec2f(0.5, -0.5) + 0.5) + vec2f(f32(xx), f32(yy)) * texelSize, currentDepth - 0.000035));
                 }
             }
+            shadow /= 9.0;
+            shadow *= 0.5;
         }
-        shadow /= 9.0;
-//        shadow = shadow * 0.5;
 
         let result_color = (ambient_color + diffuse_color) * default_color * (1.0 - shadow);
 

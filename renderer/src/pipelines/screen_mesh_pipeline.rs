@@ -48,7 +48,7 @@ impl ScreenMeshPipeline {
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         // This should match the filterable field of the
                         // corresponding Texture entry above.
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
                         count: None,
                     },
                 ],
@@ -145,6 +145,7 @@ impl WithTexture for ScreenMeshPipeline {
             mag_filter: wgpu::FilterMode::Nearest,
             min_filter: wgpu::FilterMode::Nearest,
             mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            compare: Some(CompareFunction::GreaterEqual),
             ..Default::default()
         });
         device.create_bind_group(&wgpu::BindGroupDescriptor {

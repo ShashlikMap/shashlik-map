@@ -189,15 +189,15 @@ impl ShashlikRenderer {
             .sm_layer
             .set_texture(&self.global_context.ssao_texture,
                          &self.global_context.non_msaa_depth_texture_view, (0.0, 0.0), &self.global_context);
-        
-        self.layers
-            .post_process_layer
-            .set_texture(&self.global_context.ssao_texture,
-                         &self.global_context.non_msaa_depth_texture_view, (0.0, 0.0), &self.global_context);
+
+        // self.layers
+        //     .post_process_layer
+        //     .set_texture(&self.global_context.ssao_texture,
+        //                  &self.global_context.non_msaa_depth_texture_view, (0.0, 0.0), &self.global_context);
 
 
         self.pass_nodes = if unsafe { PREVIEW_ENABLED } {
-            vec![Box::new(pre_pass_node), Box::new(rt_node), Box::new(main_node)]
+            vec![Box::new(pre_pass_node), Box::new(main_node)]
         } else {
             vec![Box::new(pre_pass_node), Box::new(main_node)]
         };

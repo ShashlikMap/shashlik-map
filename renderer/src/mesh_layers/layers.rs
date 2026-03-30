@@ -88,8 +88,8 @@ impl BaseMeshLayer for Layers {
         self.screen_shape_layer.update(global_context);
         self.text_layer.update(global_context);
         self.feature_layers.update(global_context);
-        self.preview_mesh_layer.update(global_context);
-        self.post_process_layer.update(global_context);
+        // self.preview_mesh_layer.update(global_context);
+        // self.post_process_layer.update(global_context);
     }
 
     fn compute(&mut self, encoder: &mut CommandEncoder, global_context: &mut GlobalContext) {
@@ -114,7 +114,7 @@ impl BaseMeshLayer for Layers {
 
 
             if unsafe { SSAO_ENABLED } {
-                self.post_process_layer.render(render_pass, global_context);
+                // self.post_process_layer.render(render_pass, global_context);
             }
             self.screen_shape_layer
                 .render(render_pass, global_context);
@@ -124,7 +124,7 @@ impl BaseMeshLayer for Layers {
             self.feature_layers.render(render_pass, global_context);
         }
         if !global_context.is_preview_render && unsafe { PREVIEW_ENABLED } {
-            self.preview_mesh_layer.render(render_pass, global_context);
+            // self.preview_mesh_layer.render(render_pass, global_context);
         }
     }
 
@@ -135,7 +135,7 @@ impl BaseMeshLayer for Layers {
         self.screen_shape_layer.clear_by_key(key);
         self.text_layer.clear_by_key(key);
         self.feature_layers.clear_by_key(key);
-        self.preview_mesh_layer.clear_by_key(key);
+        // self.preview_mesh_layer.clear_by_key(key);
         self.post_process_layer.clear_by_key(key);
     }
 }
