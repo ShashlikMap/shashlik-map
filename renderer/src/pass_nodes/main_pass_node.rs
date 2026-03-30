@@ -258,20 +258,18 @@ impl PassNode for MainPassNode {
                 layers.render(&mut render_pass, global_context);
             }
 
-            {
-                encoder.clear_texture(global_context.ssao_texture.texture(), &ImageSubresourceRange::default());
-                let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                    label: Some("SSAO Compute Pass"),
-                    timestamp_writes: None,
-                });
-                compute_pass.set_pipeline(&self.ssao_compute_pipeline);
-                compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
-                compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
+            encoder.clear_texture(global_context.ssao_texture.texture(), &ImageSubresourceRange::default());
+            let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("SSAO Compute Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&self.ssao_compute_pipeline);
+            compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
+            compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
 
-                let wg_x = (global_context.view_projection.screen_size.0 * 0.5 / 8.0).ceil() as u32;
-                let wg_y = (global_context.view_projection.screen_size.1 * 0.5 / 8.0).ceil() as u32;
-                compute_pass.dispatch_workgroups(wg_x, wg_y, 1);
-            }
+            let wg_x = (global_context.view_projection.screen_size.0 * 0.5 / 8.0).ceil() as u32;
+            let wg_y = (global_context.view_projection.screen_size.1 * 0.5 / 8.0).ceil() as u32;
+            compute_pass.dispatch_workgroups(wg_x, wg_y, 1);
         }
 
         {
