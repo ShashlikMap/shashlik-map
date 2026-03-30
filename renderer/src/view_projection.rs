@@ -92,8 +92,8 @@ impl ViewProjection {
 
         let qq = (scale / 0.7) as f64;
         self.ortho = DMat4::orthographic_rh(
-            -200.0 * qq, 200.0 * qq, -200.0 * qq, 200.0 * qq,
-            0.01, 500.0);
+            -220.0 * qq, 120.0 * qq, -100.0 * qq, 220.0 * qq,
+            0.01, 1000.0);
 
         self.uniform.light_view_proj = (OPENGL_TO_WGPU_MATRIX * (self.ortho * light_view))
             .as_mat4()

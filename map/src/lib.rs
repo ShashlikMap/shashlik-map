@@ -376,7 +376,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn load_kml_path(&self, path_buf: PathBuf) {
-        println!("Loading KML from20 {:?}", path_buf);
+        println!("Loading KML from21 {:?}", path_buf);
         let kml_group = KmlGroup::new(
             path_buf,
             self.create_location_coord_converter(),
