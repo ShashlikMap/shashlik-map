@@ -1,14 +1,13 @@
-use glam::{DMat4, DVec3};
 use crate::collider::Collider;
 use crate::consts::STYLE_SHADER_PARAMS_COUNT;
 use crate::styles::style_store::StyleStore;
 use crate::textures::{create_simple_texture, TextureData};
 use crate::utils::ReceiverExt;
 use crate::view_projection::ViewProjection;
+use crate::RendererUpdateData;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Device, TextureFormat, TextureUsages, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use crate::RendererUpdateData;
 
 pub struct GlobalContext {
     pub canvas: Box<dyn WgpuCanvas>,
