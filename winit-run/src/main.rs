@@ -1,7 +1,8 @@
-use map::ShashlikMap;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
+use map::ShashlikMap;
+use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
 use slint::private_unstable_api::re_exports::PointerEventKind;
 use slint::wgpu_28::{WGPUConfiguration, WGPUSettings};
@@ -9,13 +10,12 @@ use slint::{GraphicsAPI, RenderingState};
 use std::cell::Cell;
 use std::rc::Rc;
 use std::sync::mpsc;
-use native_dialog::DialogBuilder;
-use wgpu::{Features, Limits, PowerPreference};
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
-use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SSAO_ENABLED};
+use wgpu::{Features, Limits};
 use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
+use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SSAO_ENABLED};
 
 slint::include_modules!();
 
