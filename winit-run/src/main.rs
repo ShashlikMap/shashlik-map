@@ -1,4 +1,3 @@
-use crate::canvas::SlintWgpuCanvas;
 use map::ShashlikMap;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
@@ -16,9 +15,8 @@ use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SSAO_ENABLED};
+use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
 use winit_run::PinchWorkaroundHandler;
-
-pub(crate) mod canvas;
 
 slint::include_modules!();
 
@@ -97,7 +95,7 @@ fn main() {
                             view_formats: vec![],
                         };
                         let canvas =
-                            SlintWgpuCanvas(queue.clone(), device.clone(), config, target_texture);
+                            DefaultWgpuCanvas(queue.clone(), device.clone(), config, target_texture);
                         let tiles_provider = ShashlikTilesProviderV0::new(
                             ReqwestSource::new(),
                             ShashlikFeatureProcessor::new(),
