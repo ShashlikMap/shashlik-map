@@ -1,7 +1,8 @@
-use map::ShashlikMap;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
+use map::ShashlikMap;
+use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
 use slint::private_unstable_api::re_exports::PointerEventKind;
 use slint::wgpu_28::{WGPUConfiguration, WGPUSettings};
@@ -9,14 +10,12 @@ use slint::{GraphicsAPI, RenderingState};
 use std::cell::Cell;
 use std::rc::Rc;
 use std::sync::mpsc;
-use native_dialog::DialogBuilder;
-use wgpu::{Features, Limits};
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
-use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SSAO_ENABLED};
+use wgpu::{Features, Limits};
 use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
-use winit_run::PinchWorkaroundHandler;
+use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SSAO_ENABLED};
 
 slint::include_modules!();
 
@@ -39,14 +38,6 @@ fn main() {
     let (slint_map_event_sender, slint_map_event_receiver) = mpsc::channel();
 
     let pointer_pos = Rc::new(Cell::new((0f32, 0f32)));
-    let pointer_pos_internal = Rc::clone(&pointer_pos);
-    let slint_map_event_sender_internal = slint_map_event_sender.clone();
-    let app = PinchWorkaroundHandler::new(move |delta| {
-        let (x, y) = pointer_pos_internal.get();
-        slint_map_event_sender_internal
-            .send(SlintMapEvent::Pinch(delta * 100.0, x, y))
-            .unwrap();
-    });
 
     let mut wgpu_settings = WGPUSettings::default();
     wgpu_settings.device_required_features = Features::VERTEX_WRITABLE_STORAGE | Features::CLEAR_TEXTURE;
@@ -54,7 +45,6 @@ fn main() {
 
     slint::BackendSelector::new()
         .require_wgpu_28(WGPUConfiguration::Automatic(wgpu_settings))
-        .with_winit_custom_application_handler(app)
         .select()
         .expect("Unable to create Slint backend with WGPU based renderer");
 
@@ -127,6 +117,13 @@ fn main() {
                             ui_weak.on_vert_scroll(move |delta_y| {
                                 slint_map_event_sender_internal
                                     .send(SlintMapEvent::VerticalScroll(delta_y / 5.0))
+                                    .unwrap();
+                            });
+
+                            let slint_map_event_sender_internal = slint_map_event_sender.clone();
+                            ui_weak.on_pinch(move |delta, x, y| {
+                                slint_map_event_sender_internal
+                                    .send(SlintMapEvent::Pinch(-delta * 1.0, x, y))
                                     .unwrap();
                             });
 

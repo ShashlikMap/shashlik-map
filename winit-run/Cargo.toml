@@ -3,9 +3,6 @@ name = "winit-run"
 version = "0.1.0"
 edition = "2024"
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [dependencies]
 osm = { workspace = true }
 map = { path = "../map" }
@@ -13,11 +10,10 @@ wgpu-canvas = { workspace = true}
 env_logger = { workspace = true }
 pollster = { workspace = true }
 wgpu = { workspace = true}
-winit = { workspace = true }
 native-dialog = "0.9.3"
+objc2 = "0.6.4"
 
-slint = { version = "1.15.0", features = ["unstable-wgpu-28", "unstable-winit-030"]}
-i-slint-backend-winit = "1.15.0"
+slint = { git = "https://github.com/slint-ui/slint", features = ["unstable-wgpu-28", "renderer-winit-skia"] }
 
 [build-dependencies]
-slint-build = "1.15.0"
+slint-build = { git = "https://github.com/slint-ui/slint" }
