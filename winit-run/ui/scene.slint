@@ -28,8 +28,10 @@ export component ShashlikUI inherits Window {
     in property <image> texture <=> image.source;
     out property <int> requested-texture-width: image.width / 1phx;
     out property <int> requested-texture-height: image.height / 1phx;
+    property <float> prev_scale: 1.0;
     callback pointer_event(PointerEvent, float, float);
     callback vert_scroll(float);
+    callback pinch(float, float, float);
     callback follow_mode(bool);
     callback feature_enabled(Feature, bool);
     callback btn_click(Action, int);
@@ -40,7 +42,7 @@ export component ShashlikUI inherits Window {
             width: 1600phx;
             height: 1200phx;
 
-            image_overlay := TouchArea {
+            TouchArea {
                 width: parent.width;
                 height: parent.height;
                 pointer-event(event) => {
@@ -49,6 +51,16 @@ export component ShashlikUI inherits Window {
                 scroll-event(event) => {
                     vert_scroll(event.delta-y / 1phx);
                     accept;
+                }
+            }
+
+            ScaleRotateGestureHandler {
+                started => {
+                    prev_scale = 1.0;
+                }
+                updated => {
+                    pinch(-100.0 * (self.scale - prev_scale), self.center.x / 1phx, self.center.y / 1phx);
+                    prev_scale = self.scale;
                 }
             }
         }
