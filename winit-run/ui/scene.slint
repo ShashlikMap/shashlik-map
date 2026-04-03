@@ -40,14 +40,14 @@ export component ShashlikUI inherits Window {
     title: "ShashlikMap";
     width: screen-width * 1phx;
     height: screen-height * 1phx;
-    padding: 4px;
 
     HorizontalBox {
         image := Image {
-            horizontal-stretch: 0.7;
+            width: 80%;
+            height: 100%;
             TouchArea {
-                width: parent.width;
-                height: parent.height;
+                width: 100%;
+                height: 100%;
                 pointer-event(event) => {
                     pointer_event(event, self.mouse-x / 1phx, self.mouse-y / 1phx)
                 }
@@ -69,7 +69,6 @@ export component ShashlikUI inherits Window {
         }
 
         VerticalBox {
-            horizontal-stretch: 0.3;
             CheckBox {
                 text: "Follow mode";
                 height: 24px;

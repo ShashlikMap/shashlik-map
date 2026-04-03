@@ -17,7 +17,7 @@ log = "0.4.29"
 [target.'cfg(target_os = "linux")'.dependencies]
 slint = { git = "https://github.com/slint-ui/slint", features = ["backend-linuxkms-noseat", "renderer-skia-vulkan"] }
 [target.'cfg(target_os = "macos")'.dependencies]
-slint = { git = "https://github.com/slint-ui/slint", features = ["renderer-winit-skia"] }
+slint = { git = "https://github.com/slint-ui/slint", features = ["backend-winit", "renderer-skia"] }
 
 [build-dependencies]
 slint-build = { git = "https://github.com/slint-ui/slint" }

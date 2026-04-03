@@ -30,10 +30,6 @@ enum SlintMapEvent {
 }
 
 fn main() {
-    // TODO Correct UI resize
-    const SCREEN_WIDTH: u32 = 800;
-    const SCREEN_HEIGHT: u32 = 600;
-
     env_logger::init();
 
     let (slint_map_event_sender, slint_map_event_receiver) = mpsc::channel();
@@ -52,11 +48,13 @@ fn main() {
     let ui = ShashlikUI::new().unwrap();
     let mut screen_size = ui.window().size();
     if screen_size.width == 0 || screen_size.height == 0 {
-        screen_size = PhysicalSize::new(1600, 1200);
+        screen_size = PhysicalSize::new(2000, 1200);
     }
     ui.set_screen_width(screen_size.width as i32);
     ui.set_screen_height(screen_size.height as i32);
 
+    let screen_width = ui.get_requested_texture_width();
+    let screen_height = ui.get_requested_texture_height();
     let ui_weak = ui.as_weak();
     let mut shashlik_map = None;
 
@@ -69,8 +67,8 @@ fn main() {
                         let target_texture = device.create_texture(&wgpu::TextureDescriptor {
                             label: None,
                             size: wgpu::Extent3d {
-                                width: SCREEN_WIDTH,
-                                height: SCREEN_HEIGHT,
+                                width: screen_width as u32,
+                                height: screen_height as u32,
                                 depth_or_array_layers: 1,
                             },
                             mip_level_count: 1,
@@ -85,8 +83,8 @@ fn main() {
                         let config = SurfaceConfiguration {
                             usage: TextureUsages::RENDER_ATTACHMENT,
                             format: TextureFormat::Rgba8UnormSrgb,
-                            width: SCREEN_WIDTH,
-                            height: SCREEN_HEIGHT,
+                            width: screen_width as u32,
+                            height: screen_height as u32,
                             present_mode: Default::default(),
                             desired_maximum_frame_latency: 0,
                             alpha_mode: Default::default(),
@@ -160,7 +158,7 @@ fn main() {
                         let mut map =
                             pollster::block_on(ShashlikMap::new(Box::new(canvas), tiles_provider))
                                 .unwrap();
-                        map.resize(SCREEN_WIDTH, SCREEN_HEIGHT);
+                        map.resize(screen_width as u32, screen_height as u32);
                         shashlik_map = Some(map);
                     }
                     _ => {}
