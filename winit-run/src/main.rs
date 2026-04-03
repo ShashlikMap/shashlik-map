@@ -4,7 +4,7 @@ use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
 use map::ShashlikMap;
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
-use slint::private_unstable_api::re_exports::{Coord, PointerEventKind};
+use slint::private_unstable_api::re_exports::PointerEventKind;
 use slint::wgpu_28::{WGPUConfiguration, WGPUSettings};
 use slint::{GraphicsAPI, PhysicalSize, RenderingState};
 use std::cell::Cell;
@@ -14,7 +14,6 @@ use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
-use log::error;
 use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
 use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SSAO_ENABLED};
 
@@ -37,7 +36,8 @@ fn main() {
     let pointer_pos = Rc::new(Cell::new((0f32, 0f32)));
 
     let mut wgpu_settings = WGPUSettings::default();
-    wgpu_settings.device_required_features = Features::VERTEX_WRITABLE_STORAGE | Features::CLEAR_TEXTURE;
+    wgpu_settings.device_required_features =
+        Features::VERTEX_WRITABLE_STORAGE | Features::CLEAR_TEXTURE;
     wgpu_settings.device_required_limits = Limits::downlevel_defaults();
 
     slint::BackendSelector::new()
@@ -47,14 +47,22 @@ fn main() {
 
     let ui = ShashlikUI::new().unwrap();
     let mut screen_size = ui.window().size();
+    println!("screen size: {:?}", screen_size);
     if screen_size.width == 0 || screen_size.height == 0 {
         screen_size = PhysicalSize::new(2000, 1200);
     }
     ui.set_screen_width(screen_size.width as i32);
     ui.set_screen_height(screen_size.height as i32);
 
-    let screen_width = ui.get_requested_texture_width();
-    let screen_height = ui.get_requested_texture_height();
+    let dpi = if screen_size.height <= 600 { 0.7 } else { 1.0 };
+    let texture_width = ui.get_requested_texture_width();
+    let texture_height = ui.get_requested_texture_height();
+    println!(
+        "texture width: {} and height: {}",
+        texture_width, texture_height
+    );
+    let scale_factor = ui.window().scale_factor();
+    println!("scale_factor: {}", scale_factor);
     let ui_weak = ui.as_weak();
     let mut shashlik_map = None;
 
@@ -67,8 +75,8 @@ fn main() {
                         let target_texture = device.create_texture(&wgpu::TextureDescriptor {
                             label: None,
                             size: wgpu::Extent3d {
-                                width: screen_width as u32,
-                                height: screen_height as u32,
+                                width: texture_width as u32,
+                                height: texture_height as u32,
                                 depth_or_array_layers: 1,
                             },
                             mip_level_count: 1,
@@ -83,19 +91,23 @@ fn main() {
                         let config = SurfaceConfiguration {
                             usage: TextureUsages::RENDER_ATTACHMENT,
                             format: TextureFormat::Rgba8UnormSrgb,
-                            width: screen_width as u32,
-                            height: screen_height as u32,
+                            width: texture_width as u32,
+                            height: texture_height as u32,
                             present_mode: Default::default(),
                             desired_maximum_frame_latency: 0,
                             alpha_mode: Default::default(),
                             view_formats: vec![],
                         };
-                        let canvas =
-                            DefaultWgpuCanvas(queue.clone(), device.clone(), config, target_texture);
+                        let canvas = DefaultWgpuCanvas(
+                            queue.clone(),
+                            device.clone(),
+                            config,
+                            target_texture,
+                        );
                         let tiles_provider = ShashlikTilesProviderV0::new(
                             ReqwestSource::new(),
                             ShashlikFeatureProcessor::new(),
-                            1.0,
+                            dpi,
                         );
 
                         if let Some(ui_weak) = ui_weak.upgrade() {
@@ -158,7 +170,7 @@ fn main() {
                         let mut map =
                             pollster::block_on(ShashlikMap::new(Box::new(canvas), tiles_provider))
                                 .unwrap();
-                        map.resize(screen_width as u32, screen_height as u32);
+                        map.resize(texture_width as u32, texture_height as u32);
                         shashlik_map = Some(map);
                     }
                     _ => {}
@@ -194,11 +206,10 @@ fn main() {
                                             0 => RouteCosting::Pedestrian,
                                             1 => RouteCosting::Auto,
                                             2 => RouteCosting::Motorbike,
-                                            _ => panic!("{cost_index} cost index not supported")
+                                            _ => panic!("{cost_index} cost index not supported"),
                                         };
-                                        shashlik_map.create_route_to_from_screen_center(
-                                            route_costing,
-                                        );
+                                        shashlik_map
+                                            .create_route_to_from_screen_center(route_costing);
                                     }
                                     Action::KML => {
                                         let path = DialogBuilder::file()
@@ -212,19 +223,17 @@ fn main() {
                                         }
                                     }
                                 },
-                                SlintMapEvent::FeatureEnabled(feature, enabled) => {
-                                    match feature {
-                                        Feature::SSAO => {
-                                            unsafe { SSAO_ENABLED = enabled; }
-                                        }
-                                        Feature::Shadows => {
-                                            unsafe { SHADOWS_ENABLED = enabled; }
-                                        }
-                                        Feature::Preview => {
-                                            unsafe { PREVIEW_ENABLED = enabled; }
-                                        }
-                                    }
-                                }
+                                SlintMapEvent::FeatureEnabled(feature, enabled) => match feature {
+                                    Feature::SSAO => unsafe {
+                                        SSAO_ENABLED = enabled;
+                                    },
+                                    Feature::Shadows => unsafe {
+                                        SHADOWS_ENABLED = enabled;
+                                    },
+                                    Feature::Preview => unsafe {
+                                        PREVIEW_ENABLED = enabled;
+                                    },
+                                },
                             };
                         }
                         let target_texture = shashlik_map.update_and_render();
