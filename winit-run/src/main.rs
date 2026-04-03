@@ -4,9 +4,9 @@ use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
 use map::ShashlikMap;
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
-use slint::private_unstable_api::re_exports::PointerEventKind;
+use slint::private_unstable_api::re_exports::{Coord, PointerEventKind};
 use slint::wgpu_28::{WGPUConfiguration, WGPUSettings};
-use slint::{GraphicsAPI, RenderingState};
+use slint::{GraphicsAPI, PhysicalSize, RenderingState};
 use std::cell::Cell;
 use std::rc::Rc;
 use std::sync::mpsc;
@@ -14,6 +14,7 @@ use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
+use log::error;
 use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
 use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SSAO_ENABLED};
 
@@ -30,8 +31,8 @@ enum SlintMapEvent {
 
 fn main() {
     // TODO Correct UI resize
-    const SCREEN_WIDTH: u32 = 1600;
-    const SCREEN_HEIGHT: u32 = 1200;
+    const SCREEN_WIDTH: u32 = 800;
+    const SCREEN_HEIGHT: u32 = 600;
 
     env_logger::init();
 
@@ -49,6 +50,13 @@ fn main() {
         .expect("Unable to create Slint backend with WGPU based renderer");
 
     let ui = ShashlikUI::new().unwrap();
+    let mut screen_size = ui.window().size();
+    if screen_size.width == 0 || screen_size.height == 0 {
+        screen_size = PhysicalSize::new(1600, 1200);
+    }
+    ui.set_screen_width(screen_size.width as i32);
+    ui.set_screen_height(screen_size.height as i32);
+
     let ui_weak = ui.as_weak();
     let mut shashlik_map = None;
 

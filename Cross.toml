@@ -1,0 +1,14 @@
+[build]
+local-rust-root = false
+
+[target.aarch64-unknown-linux-gnu]
+mounts = [
+    { source = "cross-cargo-cache", target = "/usr/local/cargo/registry", type = "volume" },
+    { source = "cross-cargo-git", target = "/usr/local/cargo/git", type = "volume" }
+]
+
+pre-build = [
+    "dpkg --add-architecture arm64",
+    "apt-get update",
+    "apt-get install --assume-yes libxkbcommon-dev:arm64 libwayland-dev:arm64 libx11-dev:arm64 libfontconfig1-dev:arm64 libudev-dev:arm64 libinput-dev:arm64 libgbm-dev:arm64"
+]

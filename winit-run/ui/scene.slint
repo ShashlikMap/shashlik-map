@@ -25,6 +25,8 @@ export enum Action {
 }
 
 export component ShashlikUI inherits Window {
+    in property <int> screen-width;
+    in property <int> screen-height;
     in property <image> texture <=> image.source;
     out property <int> requested-texture-width: image.width / 1phx;
     out property <int> requested-texture-height: image.height / 1phx;
@@ -36,12 +38,13 @@ export component ShashlikUI inherits Window {
     callback feature_enabled(Feature, bool);
     callback btn_click(Action, int);
     title: "ShashlikMap";
+    width: screen-width * 1phx;
+    height: screen-height * 1phx;
+    padding: 4px;
 
     HorizontalBox {
         image := Image {
-            width: 1600phx;
-            height: 1200phx;
-
+            horizontal-stretch: 0.7;
             TouchArea {
                 width: parent.width;
                 height: parent.height;
@@ -66,7 +69,7 @@ export component ShashlikUI inherits Window {
         }
 
         VerticalBox {
-            width: 300phx;
+            horizontal-stretch: 0.3;
             CheckBox {
                 text: "Follow mode";
                 height: 24px;
