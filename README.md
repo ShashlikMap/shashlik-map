@@ -1,8 +1,8 @@
 # Shashlik Map
 A WIP map engine written in Rust using WGPU.
 
-The initial goal of the project is to learn a new cross-platform tech stack to build a mobile-ready MapEngine
-with focus on Navigation features(including DeadReckoning and Map-matching)
+The initial goal of the project is to learn a new cross-platform tech stack to build a mobile and Linux KMS-ready map engine. 
+The project focuses on rendering and navigation features, including dead reckoning and map matching.
 
 I'm writing about the tech I've learned [here](https://hackmd.io/@agent10)
 
