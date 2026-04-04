@@ -24,27 +24,35 @@ export enum Action {
     KML,
 }
 
+export struct Scale  {
+    value: float,
+    x: float,
+    y: float,
+}
+
 export component ShashlikUI inherits Window {
+    in property <int> screen-width;
+    in property <int> screen-height;
     in property <image> texture <=> image.source;
     out property <int> requested-texture-width: image.width / 1phx;
     out property <int> requested-texture-height: image.height / 1phx;
-    property <float> prev_scale: 1.0;
+    out property <Scale> current-scale;
     callback pointer_event(PointerEvent, float, float);
     callback vert_scroll(float);
-    callback pinch(float, float, float);
     callback follow_mode(bool);
     callback feature_enabled(Feature, bool);
     callback btn_click(Action, int);
     title: "ShashlikMap";
+    width: screen-width * 1phx;
+    height: screen-height * 1phx;
 
     HorizontalBox {
         image := Image {
-            width: 1600phx;
-            height: 1200phx;
-
+            width: 80%;
+            height: 100%;
             TouchArea {
-                width: parent.width;
-                height: parent.height;
+                width: 100%;
+                height: 100%;
                 pointer-event(event) => {
                     pointer_event(event, self.mouse-x / 1phx, self.mouse-y / 1phx)
                 }
@@ -56,17 +64,18 @@ export component ShashlikUI inherits Window {
 
             ScaleRotateGestureHandler {
                 started => {
-                    prev_scale = 1.0;
+                    current-scale = { value: 0.0, x: 0.0, y: 0.0 };
+                }
+                ended => {
+                    current-scale = { value: 0.0, x: 0.0, y: 0.0 };
                 }
                 updated => {
-                    pinch(-100.0 * (self.scale - prev_scale), self.center.x / 1phx, self.center.y / 1phx);
-                    prev_scale = self.scale;
+                    current-scale = { value: self.scale, x: self.center.x / 1phx, y: self.center.y / 1phx };
                 }
             }
         }
 
         VerticalBox {
-            width: 300phx;
             CheckBox {
                 text: "Follow mode";
                 height: 24px;
