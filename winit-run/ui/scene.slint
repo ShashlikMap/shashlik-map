@@ -24,16 +24,21 @@ export enum Action {
     KML,
 }
 
+export struct Scale  {
+    value: float,
+    x: float,
+    y: float,
+}
+
 export component ShashlikUI inherits Window {
     in property <int> screen-width;
     in property <int> screen-height;
     in property <image> texture <=> image.source;
     out property <int> requested-texture-width: image.width / 1phx;
     out property <int> requested-texture-height: image.height / 1phx;
-    property <float> prev_scale: 1.0;
+    out property <Scale> current-scale;
     callback pointer_event(PointerEvent, float, float);
     callback vert_scroll(float);
-    callback pinch(float, float, float);
     callback follow_mode(bool);
     callback feature_enabled(Feature, bool);
     callback btn_click(Action, int);
@@ -59,11 +64,13 @@ export component ShashlikUI inherits Window {
 
             ScaleRotateGestureHandler {
                 started => {
-                    prev_scale = 1.0;
+                    current-scale = { value: 0.0, x: 0.0, y: 0.0 };
+                }
+                ended => {
+                    current-scale = { value: 0.0, x: 0.0, y: 0.0 };
                 }
                 updated => {
-                    pinch(-100.0 * (self.scale - prev_scale), self.center.x / 1phx, self.center.y / 1phx);
-                    prev_scale = self.scale;
+                    current-scale = { value: self.scale, x: self.center.x / 1phx, y: self.center.y / 1phx };
                 }
             }
         }

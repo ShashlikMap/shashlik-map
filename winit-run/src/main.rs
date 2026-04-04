@@ -21,7 +21,6 @@ slint::include_modules!();
 
 enum SlintMapEvent {
     Pan(f32, f32),
-    Pinch(f32, f32, f32),
     VerticalScroll(f32),
     FollowMode(bool),
     FeatureEnabled(Feature, bool),
@@ -66,6 +65,7 @@ fn main() {
     let ui_weak = ui.as_weak();
     let mut shashlik_map = None;
 
+    let mut prev_pinch_scale: Option<Scale> = None;
     ui.window()
         .set_rendering_notifier(move |state, graphics_api: &GraphicsAPI| {
             let mut pressed = false;
@@ -94,7 +94,7 @@ fn main() {
                             width: texture_width as u32,
                             height: texture_height as u32,
                             present_mode: Default::default(),
-                            desired_maximum_frame_latency: 0,
+                            desired_maximum_frame_latency: 2,
                             alpha_mode: Default::default(),
                             view_formats: vec![],
                         };
@@ -113,21 +113,26 @@ fn main() {
                         if let Some(ui_weak) = ui_weak.upgrade() {
                             let slint_map_event_sender_internal = slint_map_event_sender.clone();
                             let pointer_pos = Rc::clone(&pointer_pos);
-                            ui_weak.on_pointer_event(move |event, x, y| match event.kind {
-                                PointerEventKind::Cancel => pressed = false,
-                                PointerEventKind::Down => pressed = true,
-                                PointerEventKind::Up => pressed = false,
-                                PointerEventKind::Move => {
-                                    if pressed {
-                                        let delta_x = -(x - pointer_pos.get().0) / 10.0;
-                                        let delta_y = -(y - pointer_pos.get().1) / 10.0;
-                                        slint_map_event_sender_internal
-                                            .send(SlintMapEvent::Pan(delta_x, delta_y))
-                                            .unwrap();
+                            ui_weak.on_pointer_event(move |event, x, y| {
+                                match event.kind {
+                                    PointerEventKind::Cancel => pressed = false,
+                                    PointerEventKind::Down => {
+                                        pointer_pos.set((x, y));
+                                        pressed = true
+                                    },
+                                    PointerEventKind::Up => pressed = false,
+                                    PointerEventKind::Move => {
+                                        if pressed {
+                                            let delta_x = -(x - pointer_pos.get().0) / (7.0 * dpi);
+                                            let delta_y = -(y - pointer_pos.get().1) / (7.0 * dpi);
+                                            slint_map_event_sender_internal
+                                                .send(SlintMapEvent::Pan(delta_x, delta_y))
+                                                .unwrap();
+                                        }
+                                        pointer_pos.set((x, y));
                                     }
-                                    pointer_pos.set((x, y));
+                                    _ => {}
                                 }
-                                _ => {}
                             });
 
                             // TODO How to get rid of all this clones?
@@ -137,14 +142,7 @@ fn main() {
                                     .send(SlintMapEvent::VerticalScroll(delta_y / 5.0))
                                     .unwrap();
                             });
-
-                            let slint_map_event_sender_internal = slint_map_event_sender.clone();
-                            ui_weak.on_pinch(move |delta, x, y| {
-                                slint_map_event_sender_internal
-                                    .send(SlintMapEvent::Pinch(-delta * 1.0, x, y))
-                                    .unwrap();
-                            });
-
+                            
                             let slint_map_event_sender_internal = slint_map_event_sender.clone();
                             ui_weak.on_follow_mode(move |enabled| {
                                 slint_map_event_sender_internal
@@ -179,16 +177,13 @@ fn main() {
                     if let (Some(shashlik_map), Some(app)) =
                         (shashlik_map.as_mut(), ui_weak.upgrade())
                     {
-                        if let Ok(event) = slint_map_event_receiver.try_recv() {
+                        while let Ok(event) = slint_map_event_receiver.try_recv() {
                             match event {
                                 SlintMapEvent::Pan(dx, dy) => {
                                     shashlik_map.pan_delta(dx, dy);
                                 }
                                 SlintMapEvent::VerticalScroll(delta_y) => {
                                     shashlik_map.pitch_delta(delta_y);
-                                }
-                                SlintMapEvent::Pinch(delta, x, y) => {
-                                    shashlik_map.zoom_delta(delta, (x, y));
                                 }
                                 SlintMapEvent::FollowMode(enabled) => {
                                     shashlik_map.set_camera_follow_mode(enabled);
@@ -236,6 +231,21 @@ fn main() {
                                 },
                             };
                         }
+
+                        let curr_pinch_scale = app.get_current_scale();
+                        if let Some(prev_scale) = &prev_pinch_scale {
+                            let delta = curr_pinch_scale.value / prev_scale.value - 1.0;
+                            if curr_pinch_scale.value > 0.0 && delta != 0.0 {
+                                shashlik_map.zoom_delta(150.0 * delta, (curr_pinch_scale.x, curr_pinch_scale.y));
+                            }
+                        }
+
+                        if curr_pinch_scale.value > 0.0 {
+                            prev_pinch_scale = Some(curr_pinch_scale.clone());
+                        } else {
+                            prev_pinch_scale = None;
+                        }
+
                         let target_texture = shashlik_map.update_and_render();
                         app.set_texture(slint::Image::try_from(target_texture.unwrap()).unwrap());
                         app.window().request_redraw();
