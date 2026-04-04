@@ -7,12 +7,13 @@ with focus on Navigation features(including DeadReckoning and Map-matching)
 I'm writing about the tech I've learned [here](https://hackmd.io/@agent10)
 
 ## Showcases
-Running on macOS, Android and iOS
+Running on macOS, Android, iOS and Linux via KMS
 
 <img width="450" alt="Screenshot 2026-03-28 at 09 53 14" src="https://github.com/user-attachments/assets/0e75e0b3-a90d-41f3-9eef-66ad689f2d9e" />
 
-<img width="130" height="1872" alt="Screenshot_20260206_085918" src="https://github.com/user-attachments/assets/eabb3468-6206-4dc9-b243-73bc34ce0dff" />
-<img width="130" height="2622" alt="Simulator Screenshot - iPhone 16 Pro - 2025-12-24 at 11 46 18" src="https://github.com/user-attachments/assets/ed5a0121-1402-40a6-ab26-eb0c39853708" />
+<img width="130" height="1872" src="https://github.com/user-attachments/assets/eabb3468-6206-4dc9-b243-73bc34ce0dff" />
+<img width="130" height="2622" src="https://github.com/user-attachments/assets/ed5a0121-1402-40a6-ab26-eb0c39853708" />
+<img width="450" height="2622" src="https://github.com/user-attachments/assets/d52a4287-8551-43ed-8e4a-879457db9cce" />
 
 ## Tech stack
 The stack leverages the following approaches and libraries:
@@ -21,6 +22,7 @@ with [RustyBuzz](https://github.com/harfbuzz/rustybuzz) support as a vector font
 - Uses custom tiles, a simple tiles generator and a tile server, [separate repo](https://github.com/ShashlikMap/shashlik-tiles-gen-v0). The server is running in free AWS EC2 Cloud. 
 - Kotlin/Compose Multiplatfom, [uniffi-rs](https://github.com/mozilla/uniffi-rs) and [gobley](https://github.com/gobley/gobley) projects enable fast and seamless integration 
 with Android/iOS mobile apps(Android is priority for now)
+- [Slint UI](https://github.com/slint-ui/slint) is used for native platforms (macOS and Linux)
 - [Rust Valhalla client](https://github.com/jelmer/valhalla-client-rs) is used a routing clieng/engine
 
 ### The component diagram:
@@ -34,9 +36,9 @@ with Android/iOS mobile apps(Android is priority for now)
 - [x] Better integration with [SlintUI](https://slint.dev/blog/slint-1.12-released)
 - [x] A GPU-driven dotted line rendering
 - [x] Initial SSAO(Screen Space Ambient Occlusion)
+- [x] Running on pure Linux via KMS with Slint UI
 ### Now
 - [ ] _In progress_ General Renderer refactoring
-- [ ] _In progress_ Running on pure Linux with Rust GUI/CMP
 - [ ] _In progress_ Simple shadow mapping
 ### Next
 - [ ] Implement an initial geometric Map-matching POC
@@ -62,6 +64,28 @@ cargo run --package winit-run --release
 ```
 ### iOS
 Open "kmp/iosApp" project in XCode and just Run it
+
+### Linux via KMS
+The current version has been tested on a Raspberry Pi 4 with Raspberry Pi OS Lite.
+It works via KMS and doesn't require a window subsystem.
+
+Prerequisites for the Linux device:
+- Enable SSH
+- Install and configure Vulkan:
+
+`sudo apt install mesa-vulkan-drivers vulkan-tools libvulkan1`
+
+- Install additional required libraries:
+
+`sudo apt install libfontconfig1 libgbm1 libinput10 libxkbcommon-x11-0`
+
+Prerequisites for the building machine:
+- Install [cross-rs](https://github.com/cross-rs/cross)
+- Install Docker
+
+Execute *kms_deploy.sh* script:
+- `chmod +x kms_deploy.sh`
+- `TARGET_HOST=admin@raspberrypi.local ./kms_deploy.sh`. Note: Replace with your actual device user and address.
 
 ## Integration with KMP apps
 1. Add dependency to the version catalog
@@ -92,3 +116,5 @@ implementation(libs.shashlikmap)
 - Tileset on the Web Service is generated only for Japan(Kanto region) and USA(Bay Area)
 - Android app might not work on Android Emulator with hardware GPU acceleration. Try to change GPU mode to `Software` one.
 - Debug build performance is significantly lower than Release build.
+- The latest unrealeased Slint UI (version 1.16.x) has a VSync issue that locks the frame rate to 60 FPS on macOS.
+- Slint UI currently has quite limited touch gesture support.
