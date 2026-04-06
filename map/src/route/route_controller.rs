@@ -48,7 +48,7 @@ impl RouteController {
                     .directions_type(DirectionsType::None)
                     .costing(costing);
 
-                api.clear_render_groups(HashSet::from_iter(vec!["route".to_string()]));
+                Self::clear_routes_internal(api.clone());
                 match valhalla.route(manifest) {
                     Ok(trip) => {
                         println!("Route calculated: {:?}", trip);
@@ -74,5 +74,13 @@ impl RouteController {
                 }
             });
         }
+    }
+
+    pub fn clear_routes(&self, api: Arc<RendererApi>) {
+        Self::clear_routes_internal(api);
+    }
+
+    fn clear_routes_internal(api: Arc<RendererApi>) {
+        api.clear_render_groups(HashSet::from_iter(vec!["route".to_string()]));
     }
 }

@@ -7,12 +7,12 @@ use crate::route::RouteCosting;
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use futures::executor::block_on;
-use futures::{pin_mut, Stream, StreamExt};
+use futures::{Stream, StreamExt, pin_mut};
 use geo_types::private_utils::get_bounding_rect;
-use geo_types::{coord, Coord, Point, Rect};
+use geo_types::{Coord, Point, Rect, coord};
 use geo_types::{LineString, Polygon};
 use glam::{DVec2, DVec3, Vec2};
-use num::clamp;
+use num::{abs, clamp};
 use osm::styles::style_loader::StyleLoader;
 use osm::styles::{DashStyle, RenderStyle};
 use renderer::canvas_api::CanvasApi;
@@ -32,12 +32,12 @@ use wgpu::Texture;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 mod camera;
-pub mod route;
-mod kml_viewer_group;
-mod puck_group;
-pub mod tiles;
-pub mod mesh_loader;
 pub mod feature_processor;
+mod kml_viewer_group;
+pub mod mesh_loader;
+mod puck_group;
+pub mod route;
+pub mod tiles;
 pub struct ShashlikMap<T: TilesProvider> {
     renderer: Box<ShashlikRenderer>,
     camera: Camera,
@@ -50,6 +50,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     current_pitch: f64,
     pub temp_color: f32,
     cam_follow_mode: bool,
+    cam_follow_zoom_lock: Option<f64>,
     screen_params: ScreenParam,
 }
 
@@ -77,7 +78,8 @@ impl RenderGroup for TileData {
             });
     }
 }
-static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> = LazyLock::new(|| Face::parse(include_bytes!("../font.ttf"), 0).unwrap());
+static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> =
+    LazyLock::new(|| Face::parse(include_bytes!("../font.ttf"), 0).unwrap());
 
 impl<T: TilesProvider> ShashlikMap<T> {
     const TEMP_ANIMATION_SPEED: f64 = 0.03;
@@ -87,17 +89,21 @@ impl<T: TilesProvider> ShashlikMap<T> {
     ) -> anyhow::Result<ShashlikMap<T>> {
         let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
 
-        let feature_layer_tags = vec![FeatureLayerTag {
-            name: "kml_layer",
-            ..Default::default()
-        }, FeatureLayerTag {
-            name: "route_layer",
-            vertex_shader: Some("vs_main_route"),
-            indirect: true,
-        }, FeatureLayerTag {
-            name: "puck_layer",
-            ..Default::default()
-        }];
+        let feature_layer_tags = vec![
+            FeatureLayerTag {
+                name: "kml_layer",
+                ..Default::default()
+            },
+            FeatureLayerTag {
+                name: "route_layer",
+                vertex_shader: Some("vs_main_route"),
+                indirect: true,
+            },
+            FeatureLayerTag {
+                name: "puck_layer",
+                ..Default::default()
+            },
+        ];
         let renderer = ShashlikRenderer::new(feature_layer_tags, canvas, &DEFAULT_FONT).await?;
         let tiles_stream = tiles_provider.tiles();
 
@@ -132,6 +138,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             current_pitch: 45.0,
             temp_color: 0.0,
             cam_follow_mode: true,
+            cam_follow_zoom_lock: None,
             screen_params: ScreenParam {
                 width: screen_size.0 as u32,
                 height: screen_size.1 as u32,
@@ -194,7 +201,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         let (view, view_proj) = self.camera.build_view_projection_matrix();
         let view_light = self.camera.build_view_light_matrix();
-        
+
         let update_data = RendererUpdateData {
             view_matrix: view,
             view_light_matrix: view_light,
@@ -239,8 +246,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
                 spatial_data.scale = cam_zoom;
-                spatial_data.transform += (puck_location - spatial_data.transform)
-                    * Self::TEMP_ANIMATION_SPEED;
+                spatial_data.transform +=
+                    (puck_location - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED;
                 spatial_data.yaw +=
                     ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
             });
@@ -268,7 +275,15 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.camera_controller.yaw = new_cam_yaw;
 
         self.camera_controller.pitch +=
-            (self.current_pitch - self.camera_controller.pitch) * Self::TEMP_ANIMATION_SPEED
+            (self.current_pitch - self.camera_controller.pitch) * Self::TEMP_ANIMATION_SPEED;
+
+        if let Some(zoom_lock) = self.cam_follow_zoom_lock {
+            let current_delta = self.camera_controller.forward_len - zoom_lock;
+            if abs(current_delta) > 10.0 {
+                self.camera_controller.zoom_delta =
+                    current_delta * Self::TEMP_ANIMATION_SPEED;
+            }
+        }
     }
 
     pub fn zoom_delta(&mut self, delta: f32, point: (f32, f32)) {
@@ -303,8 +318,13 @@ impl<T: TilesProvider> ShashlikMap<T> {
         if self.cam_follow_mode {
             self.current_pitch = 45.0;
         } else {
+            self.set_camera_follow_zoom_lock(None);
             self.current_pitch = 90.0;
         }
+    }
+
+    pub fn set_camera_follow_zoom_lock(&mut self, value: Option<f64>) {
+        self.cam_follow_zoom_lock = value;
     }
 
     pub fn set_lon_lat_bearing(&mut self, lon: f64, lat: f64, bearing: Option<f32>) {
@@ -369,26 +389,34 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 RenderStyle::Dashed(color1, color2, dash_style) => {
                     let dash_style_value = match dash_style {
                         DashStyle::Solid => 0,
-                        DashStyle::Circles => 1
+                        DashStyle::Circles => 1,
                     };
-                    renderer::styles::render_style::RenderStyle::dashed(color1.as_array(), color2.as_array(), dash_style_value)
+                    renderer::styles::render_style::RenderStyle::dashed(
+                        color1.as_array(),
+                        color2.as_array(),
+                        dash_style_value,
+                    )
                 }
             };
-            self.renderer.api.update_style(style_id, move |style| *style = actual_render_style);
+            self.renderer
+                .api
+                .update_style(style_id, move |style| *style = actual_render_style);
         });
     }
 
     pub fn load_kml_path(&self, path_buf: PathBuf) {
         println!("Loading KML from {:?}", path_buf);
-        let kml_group = KmlGroup::new(
-            path_buf,
-            self.create_location_coord_converter(),
-        );
-        
+        let kml_group = KmlGroup::new(path_buf, self.create_location_coord_converter());
+
         self.renderer.api.add_render_group(
             "kml_data".to_string(),
             SpatialData::transform(DVec3::new(0.0, 0.0, 0.0)),
             Box::new(kml_group),
         );
+    }
+
+    pub fn clear_routes(&self) {
+        self.route_controller
+            .clear_routes(self.renderer.api.clone());
     }
 }
