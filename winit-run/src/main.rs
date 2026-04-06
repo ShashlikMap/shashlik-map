@@ -4,7 +4,6 @@ use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
 use map::ShashlikMap;
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
-use slint::private_unstable_api::re_exports::PointerEventKind;
 use slint::wgpu_28::{WGPUConfiguration, WGPUSettings};
 use slint::{GraphicsAPI, PhysicalSize, RenderingState};
 use std::cell::Cell;
@@ -20,7 +19,6 @@ use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SSAO_ENABLED};
 slint::include_modules!();
 
 enum SlintMapEvent {
-    Pan(f32, f32),
     VerticalScroll(f32),
     FollowMode(bool),
     FeatureEnabled(Feature, bool),
@@ -66,6 +64,7 @@ fn main() {
     let mut shashlik_map = None;
 
     let mut prev_pinch_scale: Option<Scale> = None;
+    let mut prev_pan_state: Option<PanState> = None;
     ui.window()
         .set_rendering_notifier(move |state, graphics_api: &GraphicsAPI| {
             let mut pressed = false;
@@ -111,30 +110,6 @@ fn main() {
                         );
 
                         if let Some(ui_weak) = ui_weak.upgrade() {
-                            let slint_map_event_sender_internal = slint_map_event_sender.clone();
-                            let pointer_pos = Rc::clone(&pointer_pos);
-                            ui_weak.on_pointer_event(move |event, x, y| {
-                                match event.kind {
-                                    PointerEventKind::Cancel => pressed = false,
-                                    PointerEventKind::Down => {
-                                        pointer_pos.set((x, y));
-                                        pressed = true
-                                    },
-                                    PointerEventKind::Up => pressed = false,
-                                    PointerEventKind::Move => {
-                                        if pressed {
-                                            let delta_x = -(x - pointer_pos.get().0) / (7.0 * dpi);
-                                            let delta_y = -(y - pointer_pos.get().1) / (7.0 * dpi);
-                                            slint_map_event_sender_internal
-                                                .send(SlintMapEvent::Pan(delta_x, delta_y))
-                                                .unwrap();
-                                        }
-                                        pointer_pos.set((x, y));
-                                    }
-                                    _ => {}
-                                }
-                            });
-
                             // TODO How to get rid of all this clones?
                             let slint_map_event_sender_internal = slint_map_event_sender.clone();
                             ui_weak.on_vert_scroll(move |delta_y| {
@@ -179,9 +154,6 @@ fn main() {
                     {
                         while let Ok(event) = slint_map_event_receiver.try_recv() {
                             match event {
-                                SlintMapEvent::Pan(dx, dy) => {
-                                    shashlik_map.pan_delta(dx, dy);
-                                }
                                 SlintMapEvent::VerticalScroll(delta_y) => {
                                     shashlik_map.pitch_delta(delta_y);
                                 }
@@ -230,6 +202,17 @@ fn main() {
                                     },
                                 },
                             };
+                        }
+                        let curr_pan_state = app.get_current_pan_state();
+                        if curr_pan_state.pressed {
+                            if let Some(prev_pan) = &prev_pan_state {
+                                let delta_x = -(curr_pan_state.x - prev_pan.x) / (9.0 * dpi);
+                                let delta_y = -(curr_pan_state.y - prev_pan.y) / (9.0 * dpi);
+                                shashlik_map.pan_delta(delta_x, delta_y);
+                            }
+                            prev_pan_state = Some(curr_pan_state.clone());
+                        } else {
+                            prev_pan_state = None;
                         }
 
                         let curr_pinch_scale = app.get_current_scale();
