@@ -6,8 +6,6 @@ use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
 use slint::wgpu_28::{WGPUConfiguration, WGPUSettings};
 use slint::{GraphicsAPI, PhysicalSize, RenderingState};
-use std::cell::Cell;
-use std::rc::Rc;
 use std::sync::mpsc;
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
@@ -29,8 +27,6 @@ fn main() {
     env_logger::init();
 
     let (slint_map_event_sender, slint_map_event_receiver) = mpsc::channel();
-
-    let pointer_pos = Rc::new(Cell::new((0f32, 0f32)));
 
     let mut wgpu_settings = WGPUSettings::default();
     wgpu_settings.device_required_features =
@@ -67,7 +63,6 @@ fn main() {
     let mut prev_pan_state: Option<PanState> = None;
     ui.window()
         .set_rendering_notifier(move |state, graphics_api: &GraphicsAPI| {
-            let mut pressed = false;
             match state {
                 RenderingState::RenderingSetup => match graphics_api {
                     GraphicsAPI::WGPU28 { device, queue, .. } => {
