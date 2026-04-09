@@ -10,21 +10,23 @@ use crate::styles::style_id::StyleId;
 use crate::styles::style_store::StyleStore;
 use crate::svg::svg_parser::svg_parse;
 use crate::vertex_attrs::ShapeVertex;
+use glam::{DVec3, Vec3};
+use lyon::geom::euclid::Point2D;
 use lyon::lyon_tessellation::{
     BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator,
     StrokeVertex, VertexBuffers,
 };
-use lyon::path::Path;
+use lyon::path::{Path, Winding};
 use std::collections::{BTreeMap, HashMap};
 use std::mem;
-use glam::{DVec3, Vec3};
 
 #[derive(Clone)]
 pub struct MeshInfo {
     pub instance_positions: Option<Vec<DVec3>>,
+    pub size: Option<f32>,
     pub with_collision: bool,
     pub instance_key: String,
-    pub double_style: bool
+    pub double_style: bool,
 }
 
 pub struct CanvasApi {
@@ -40,6 +42,7 @@ pub struct CanvasApi {
 }
 
 impl CanvasApi {
+
     pub fn new(style_store: StyleStore) -> CanvasApi {
         CanvasApi {
             style_store,
@@ -105,9 +108,10 @@ impl CanvasApi {
                 .collect();
             let mesh_info = MeshInfo {
                 instance_positions: None,
+                size: None,
                 with_collision: false,
                 instance_key: "".to_string(),
-                double_style: true
+                double_style: true,
             };
             let batch = Mesh2dCommandBatch {
                 mesh,
@@ -246,7 +250,7 @@ impl CanvasApi {
                 Self::tessellate_fill_path(&data.path, &mut self.geometry, |vertex| ShapeVertex {
                     position: [vertex.position().x, vertex.position().y, 0.0f32],
                     normals: [0.0, 0.0, 0.0],
-                    uv_dist: [0.0, 0.0, 0.0],// fill doesn't have length
+                    uv_dist: [0.0, 0.0, 0.0], // fill doesn't have length
                     style_index: style_index as u32,
                 });
             }
@@ -281,14 +285,36 @@ impl CanvasApi {
             })
             .or_insert_with(|| {
                 let style_index = self.style_store.get_index(&data.style_id);
-                let mesh = svg_parse(data.icon.1, data.size, style_index);
+                let mut mesh: VertexBuffers<ShapeVertex, u32> = VertexBuffers::new();
+                let mut mesh_size = data.size;
+                if let Some(svg_background) = data.background {
+                    mesh_size += 2.0 * svg_background.padding;
+                    let background_style_index = self.style_store.get_index(&svg_background.style_id);
+                    let mut builder = Path::builder();
+                    builder.add_circle(
+                        Point2D::new(0.0, 0.0),
+                        svg_background.padding + data.size / 2.0,
+                        Winding::Positive,
+                    );
+                    let path = builder.build();
+                    Self::tessellate_fill_path(&path, &mut mesh, |vertex| ShapeVertex {
+                        position: [vertex.position().x, vertex.position().y, 0.0f32],
+                        normals: [0.0, 0.0, 0.0],
+                        uv_dist: [0.0, 0.0, 0.0], // fill doesn't have length
+                        style_index: background_style_index as u32,
+                    });
+                }
+
+                svg_parse(data.icon.1, &mut mesh, data.size, style_index);
+
                 (
                     mesh,
                     MeshInfo {
                         instance_positions: Some(vec![data.position]),
+                        size: Some(mesh_size),
                         with_collision: data.with_collision,
                         instance_key: data.icon.0.to_string(),
-                        double_style: false
+                        double_style: false,
                     },
                 )
             });

@@ -23,9 +23,14 @@ pub(crate) struct ScreenShapeLayer<P: RenderPipeline> {
     pipeline: Option<wgpu::RenderPipeline>,
     meshes: HashMap<String, (Mesh, InstanceBuffer<P::InstanceInputType>)>,
     collision_task_controller: CollisionTaskController<
-        (DVec3, f32, String),
+        (ShapeInfo, f32, String),
         HashMap<String, Vec<(DVec3, f32)>>,
     >,
+}
+
+struct ShapeInfo {
+    pub position: DVec3,
+    pub size: f32,
 }
 
 impl<P: RenderPipeline> ScreenShapeLayer<P> {
@@ -68,8 +73,15 @@ impl<P: RenderPipeline> ScreenShapeLayer<P> {
             let instance_positions =
                 mem::take(&mut batch.mesh_info.instance_positions).unwrap_or_default();
 
+            let size = batch.mesh_info.size.unwrap_or_default();
+
+
             let batch_data: Vec<_> = instance_positions.into_iter().map(|item| {
-                (item + spatial_data.transform, 0.0f32, instance_key.clone())
+                let shape_info = ShapeInfo {
+                    position: item + spatial_data.transform,
+                    size
+                };
+                (shape_info, 0.0f32, instance_key.clone())
             }).collect();
 
             data.extend(batch_data)
@@ -141,7 +153,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
 
 struct ScreenMeshCollisionHandler {
     collision_task_wrapper: CollisionTaskWrapper<
-        (DVec3, f32, String),
+        (ShapeInfo, f32, String),
         HashMap<String, Vec<(DVec3, f32)>>,
     >,
 }
@@ -150,7 +162,7 @@ impl ScreenMeshCollisionHandler {
     const FADE_ANIM_SPEED: f32 = 0.05;
     pub fn new(
         collision_task_wrapper: CollisionTaskWrapper<
-            (DVec3, f32, String),
+            (ShapeInfo, f32, String),
             HashMap<String, Vec<(DVec3, f32)>>,
         >,
     ) -> Self {
@@ -166,13 +178,13 @@ impl ColliderTask for ScreenMeshCollisionHandler {
 
         let mut hm: HashMap<String, Vec<(DVec3, f32)>> = HashMap::new();
         render_data_holder
-            .run_mut_action(|(pos, alpha, key)| {
-                let screen_pos = view_projection.screen_position(&pos);
-                // TODO Bounds for svg?
+            .run_mut_action(|(shape_info, alpha, key)| {
+                let screen_pos = view_projection.screen_position(&shape_info.position);
+                let offset = shape_info.size * 0.5;
                 // no need to use f64 for collision detection
                 let bounds = Rectangle::from_corners(
-                    point! { x: screen_pos.x as f32 - 20.0, y: screen_pos.y as f32 - 20.0},
-                    point! { x: screen_pos.x as f32 + 20.0, y: screen_pos.y as f32 + 20.0},
+                    point! { x: screen_pos.x as f32 - offset, y: screen_pos.y as f32 - offset},
+                    point! { x: screen_pos.x as f32 + offset, y: screen_pos.y as f32 + offset},
                 );
 
                 let within_screen = collision_handler.within_screen(bounds);
@@ -184,7 +196,7 @@ impl ColliderTask for ScreenMeshCollisionHandler {
                     }
                 }
 
-                hm.entry(key.clone()).or_default().push((*pos, *alpha));
+                hm.entry(key.clone()).or_default().push((shape_info.position, *alpha));
             });
 
         self.collision_task_wrapper.send_result(hm);

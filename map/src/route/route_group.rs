@@ -77,6 +77,7 @@ impl RenderGroup for RouteGroup {
                         size: 2.5,
                         style_id: style_id.clone(),
                         with_collision: false,
+                        background: None,
                     }));
                 }
 

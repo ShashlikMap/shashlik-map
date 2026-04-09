@@ -12,12 +12,12 @@ use usvg::{tiny_skia_path, Group, Size, Transform};
 
 pub fn svg_parse(
     icon: &[u8],
+    mesh: &mut VertexBuffers<ShapeVertex, u32>,
     width: f32,
     style_index: usize,
-) -> VertexBuffers<ShapeVertex, u32> {
+) {
     let mut fill_tess = FillTessellator::new();
     let mut stroke_tess = StrokeTessellator::new();
-    let mut mesh: VertexBuffers<ShapeVertex, _> = VertexBuffers::new();
 
     let opt = usvg::Options::default();
     let db = usvg::fontdb::Database::new();
@@ -43,14 +43,12 @@ pub fn svg_parse(
         &mut transforms,
         &mut primitives,
         &mut fill_tess,
-        &mut mesh,
+        mesh,
         &mut stroke_tess,
         original_size,
         style_index as u32,
         scale,
     );
-
-    mesh
 }
 
 fn collect_geom(
