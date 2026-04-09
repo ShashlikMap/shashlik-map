@@ -53,6 +53,7 @@ impl KmlGroup {
                     size: 2.0,
                     style_id: StyleId("kml_dots"),
                     with_collision: false,
+                    background: None
                 }));
             }
             Geometry::GeometryCollection(collection) => {

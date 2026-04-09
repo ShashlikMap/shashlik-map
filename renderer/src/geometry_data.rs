@@ -30,12 +30,18 @@ pub struct Mesh3d {
     pub mesh_data: VertexBuffers<MeshVertex, u32>,
 }
 
+pub struct SvgBackground {
+    pub style_id: StyleId,
+    pub padding: f32
+}
+
 pub struct SvgData {
     pub icon: (&'static str, &'static [u8]),
     pub position: DVec3,
     pub size: f32,
     pub style_id: StyleId,
     pub with_collision: bool,
+    pub background: Option<SvgBackground>,
 }
 
 pub struct TextData {

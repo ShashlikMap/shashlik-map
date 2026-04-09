@@ -8,7 +8,7 @@ use osm::map::{
 };
 use rand::Rng;
 use renderer::draw_commands::{GeometryType, PolylineOptions};
-use renderer::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData, TextData};
+use renderer::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgBackground, SvgData, TextData};
 use renderer::styles::style_id::StyleId;
 use seahash::hash;
 use std::collections::HashMap;
@@ -88,6 +88,14 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             MapPointObjectKind::PopArea(..) => None,
         };
         if let Some(icon) = icon {
+            let background = if !matches!(poi.kind, MapPointObjectKind::TrafficLight) {
+                Some(SvgBackground {
+                    style_id: StyleId("poi_background"),
+                    padding: 7.0 * dpi_scale,
+                })
+            } else {
+                None
+            };
             let style_id = match poi.kind {
                 MapPointObjectKind::TrainStation(is_train) => {
                     if is_train {
@@ -104,9 +112,10 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             geometry_data.push(GeometryData::Svg(SvgData {
                 icon,
                 position: DVec3::from((local_position.x, local_position.y, 0.0)),
-                size: 40.0 * dpi_scale,
+                size: 30.0 * dpi_scale,
                 style_id,
                 with_collision: true,
+                background
             }));
         }
 
