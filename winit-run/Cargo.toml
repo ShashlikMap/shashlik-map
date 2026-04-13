@@ -16,6 +16,7 @@ slint = { git = "https://github.com/slint-ui/slint", features = ["unstable-wgpu-
 log = "0.4.29"
 [target.'cfg(target_os = "linux")'.dependencies]
 slint = { git = "https://github.com/slint-ui/slint", features = ["backend-linuxkms-noseat", "renderer-skia-vulkan"] }
+map = { path = "../map", features = ["sgnss"] }
 [target.'cfg(target_os = "macos")'.dependencies]
 slint = { git = "https://github.com/slint-ui/slint", features = ["backend-winit", "renderer-skia"] }
 

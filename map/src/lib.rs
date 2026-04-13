@@ -7,9 +7,9 @@ use crate::route::RouteCosting;
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use futures::executor::block_on;
-use futures::{Stream, StreamExt, pin_mut};
+use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
-use geo_types::{Coord, Point, Rect, coord};
+use geo_types::{coord, Coord, Point, Rect};
 use geo_types::{LineString, Polygon};
 use glam::{DVec2, DVec3, Vec2};
 use num::{abs, clamp};
@@ -23,9 +23,12 @@ use renderer::renderer_api::RendererApi;
 use renderer::styles::style_id::StyleId;
 use renderer::{Renderer, RendererUpdateData, ShashlikRenderer};
 use route::route_controller::RouteController;
+#[cfg(feature = "sgnss")]
+use sgnss::{start_sgnss};
 use std::mem;
 use std::path::PathBuf;
-use std::sync::{Arc, LazyLock};
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::spawn;
 use ttf_parser::Face;
 use wgpu::Texture;
@@ -52,6 +55,11 @@ pub struct ShashlikMap<T: TilesProvider> {
     cam_follow_mode: bool,
     cam_follow_zoom_lock: Option<f64>,
     screen_params: ScreenParam,
+    map_event_receiver: Receiver<MapEvent>,
+}
+
+enum MapEvent {
+    LatLon(f64, f64),
 }
 
 struct ScreenParam {
@@ -126,6 +134,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
         camera_controller.pitch = 45.0;
         camera_controller.position = camera_offset;
 
+        let (map_event_sender, map_event_receiver) = mpsc::channel();
+
         let mut map = ShashlikMap {
             renderer: Box::new(renderer),
             camera: cam,
@@ -143,9 +153,13 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 width: screen_size.0 as u32,
                 height: screen_size.1 as u32,
             },
+            map_event_receiver,
         };
         map.set_lon_lat_bearing(initial_coord.x, initial_coord.y, Some(0f32));
         map.load_styles();
+
+        Self::start_sgnss_if_available(map_event_sender);
+
         Ok(map)
     }
 
@@ -195,6 +209,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn update_and_render(&mut self) -> Option<Texture> {
+        self.consume_map_events();
         self.camera_controller.update_camera(&mut self.camera);
 
         self.update_entities();
@@ -234,6 +249,16 @@ impl<T: TilesProvider> ShashlikMap<T> {
         // }
 
         self.last_area_lon_lat = area_lon_lat;
+    }
+
+    fn consume_map_events(&mut self) {
+        if let Ok(event) = self.map_event_receiver.try_recv() {
+            match event {
+                MapEvent::LatLon(lat, lon) => {
+                    self.set_lon_lat_bearing(lon, lat, None);
+                }
+            }
+        }
     }
 
     fn update_entities(&mut self) {
@@ -280,8 +305,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         if let Some(zoom_lock) = self.cam_follow_zoom_lock {
             let current_delta = self.camera_controller.forward_len - zoom_lock;
             if abs(current_delta) > 10.0 {
-                self.camera_controller.zoom_delta =
-                    current_delta * Self::TEMP_ANIMATION_SPEED;
+                self.camera_controller.zoom_delta = current_delta * Self::TEMP_ANIMATION_SPEED;
             }
         }
     }
@@ -418,5 +442,13 @@ impl<T: TilesProvider> ShashlikMap<T> {
     pub fn clear_routes(&self) {
         self.route_controller
             .clear_routes(self.renderer.api.clone());
+    }
+
+    #[allow(unused_variables)]
+    fn start_sgnss_if_available(map_sender: Sender<MapEvent>) {
+        #[cfg(feature = "sgnss")]
+        start_sgnss(move |lat, lon| {
+            map_sender.send(MapEvent::LatLon(lat, lon)).unwrap();
+        });
     }
 }

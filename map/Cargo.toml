@@ -3,9 +3,13 @@ name = "map"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+sgnss = ["dep:sgnss"]
+
 [dependencies]
 osm = { workspace = true }
 renderer = { path = "../renderer" }
+sgnss = { path = "../sgnss", optional = true }
 anyhow = { workspace = true }
 wgpu-canvas = { workspace = true}
 lyon = { workspace = true}

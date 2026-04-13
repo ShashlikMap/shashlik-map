@@ -1,0 +1,9 @@
+[package]
+name = "sgnss"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+serial2 = "0.2.35"
+nmea-parser = "0.11.0"
