@@ -30,6 +30,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::spawn;
+use std::time::{Duration, Instant};
 use ttf_parser::Face;
 use wgpu::Texture;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
@@ -56,6 +57,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     cam_follow_zoom_lock: Option<f64>,
     screen_params: ScreenParam,
     map_event_receiver: Receiver<MapEvent>,
+    last_interaction: Instant,
 }
 
 enum MapEvent {
@@ -91,6 +93,9 @@ static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> =
 
 impl<T: TilesProvider> ShashlikMap<T> {
     const TEMP_ANIMATION_SPEED: f64 = 0.03;
+
+    const FOLLOW_ANIMATION_DELAY_MS: u64 = 2000;
+
     pub async fn new(
         canvas: Box<dyn WgpuCanvas>,
         mut tiles_provider: T,
@@ -148,12 +153,13 @@ impl<T: TilesProvider> ShashlikMap<T> {
             current_pitch: 45.0,
             temp_color: 0.0,
             cam_follow_mode: true,
-            cam_follow_zoom_lock: None,
+            cam_follow_zoom_lock: Some(30.0),
             screen_params: ScreenParam {
                 width: screen_size.0 as u32,
                 height: screen_size.1 as u32,
             },
             map_event_receiver,
+            last_interaction: Instant::now(),
         };
         map.set_lon_lat_bearing(initial_coord.x, initial_coord.y, Some(0f32));
         map.load_styles();
@@ -267,6 +273,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         let cam_zoom = self.camera_controller.forward_len / 100.0;
 
+        let cam_yaw = self.camera_controller.yaw;
+
         self.renderer
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
@@ -277,8 +285,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
                     ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
             });
 
-        let cam_yaw = self.camera_controller.yaw;
-        let new_cam_yaw = if self.cam_follow_mode {
+        if self.should_animate() {
             let cam_pos = self.camera_controller.position;
             let cam_pos = DVec3::new(cam_pos.x, cam_pos.y, cam_pos.z);
 
@@ -293,24 +300,26 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
             self.camera_controller.set_new_position(new_cam_pos);
 
-            cam_yaw + ((self.current_bearing - cam_yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED
-        } else {
-            cam_yaw * (1.0 - Self::TEMP_ANIMATION_SPEED) % 360.0
-        };
-        self.camera_controller.yaw = new_cam_yaw;
+            let new_cam_yaw = cam_yaw + ((self.current_bearing - cam_yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
+            self.camera_controller.yaw = new_cam_yaw
+        }
 
-        self.camera_controller.pitch +=
-            (self.current_pitch - self.camera_controller.pitch) * Self::TEMP_ANIMATION_SPEED;
+        if self.should_animate() {
+            self.camera_controller.pitch +=
+                (self.current_pitch - self.camera_controller.pitch) * Self::TEMP_ANIMATION_SPEED;
 
-        if let Some(zoom_lock) = self.cam_follow_zoom_lock {
-            let current_delta = self.camera_controller.forward_len - zoom_lock;
-            if abs(current_delta) > 10.0 {
-                self.camera_controller.zoom_delta = current_delta * Self::TEMP_ANIMATION_SPEED;
+            if let Some(zoom_lock) = self.cam_follow_zoom_lock {
+                let current_delta = self.camera_controller.forward_len - zoom_lock;
+                if abs(current_delta) > 10.0 {
+                    self.camera_controller.zoom_delta = current_delta * Self::TEMP_ANIMATION_SPEED;
+                }
             }
         }
     }
 
     pub fn zoom_delta(&mut self, delta: f32, point: (f32, f32)) {
+        self.reset_last_interaction();
+
         self.camera_controller.zoom_delta = delta as f64;
 
         let screen_center = self.screen_params.center();
@@ -321,34 +330,31 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn pan_delta(&mut self, delta_x: f32, delta_y: f32) {
-        // pan is disabled for now
-        if !self.cam_follow_mode {
-            self.camera_controller.pan_delta = DVec2::new(delta_x as f64, delta_y as f64);
-        }
+        self.reset_last_interaction();
+        self.camera_controller.pan_delta = DVec2::new(delta_x as f64, delta_y as f64);
     }
 
     pub fn pitch_delta(&mut self, delta: f32) {
-        self.camera_controller.pitch += delta as f64;
-        self.camera_controller.pitch = clamp(self.camera_controller.pitch, 45.0, 90.0);
-        self.current_pitch = self.camera_controller.pitch;
+        self.reset_last_interaction();
+        self.camera_controller.pitch = clamp(self.camera_controller.pitch + delta as f64, 45.0, 90.0);
     }
 
-    pub fn get_camera_follow_mode(&self) -> bool {
-        self.cam_follow_mode
+    fn reset_last_interaction(&mut self) {
+        self.last_interaction = Instant::now();
+    }
+
+    fn should_animate(&self) -> bool {
+        self.cam_follow_mode && Instant::now().duration_since(self.last_interaction)
+            >= Duration::from_millis(Self::FOLLOW_ANIMATION_DELAY_MS)
     }
 
     pub fn set_camera_follow_mode(&mut self, follow_mode: bool) {
         self.cam_follow_mode = follow_mode;
-        if self.cam_follow_mode {
-            self.current_pitch = 45.0;
-        } else {
-            self.set_camera_follow_zoom_lock(None);
-            self.current_pitch = 90.0;
-        }
-    }
 
-    pub fn set_camera_follow_zoom_lock(&mut self, value: Option<f64>) {
-        self.cam_follow_zoom_lock = value;
+        if self.cam_follow_mode {
+            self.cam_follow_zoom_lock = Some(30.0);
+            self.current_pitch = 45.0;
+        }
     }
 
     pub fn set_lon_lat_bearing(&mut self, lon: f64, lat: f64, bearing: Option<f32>) {
