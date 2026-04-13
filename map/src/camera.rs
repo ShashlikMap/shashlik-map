@@ -1,4 +1,5 @@
-use glam::{dvec3, DMat3, DMat4, DVec2, DVec3};
+use glam::{dvec3, DMat2, DMat3, DMat4, DVec2, DVec3};
+use std::f64::consts::PI;
 
 pub struct Camera {
     pub eye: DVec3,
@@ -96,7 +97,6 @@ impl CameraController {
     pub(crate) fn update_camera(&mut self, camera: &mut Camera) {
         let speed_koef = self.camera_z / 150.0;
 
-
         let (sin_pitch, cos_pitch) = self.pitch.to_radians().sin_cos();
         let (sin_yaw, cos_yaw) = (-self.yaw).to_radians().sin_cos();
 
@@ -108,8 +108,9 @@ impl CameraController {
         camera.target = self.position;
         camera.eye = camera.target + (dir * len);
 
-        camera.eye += self.pan_delta.extend(0.0) * speed_koef;
-        camera.target += self.pan_delta.extend(0.0) * speed_koef;
+        let pan_vec = (DMat2::from_angle(self.yaw.to_radians() - PI) * self.pan_delta).extend(0.0);
+        camera.eye -= pan_vec * speed_koef;
+        camera.target -= pan_vec * speed_koef;
 
         let distance_from_origin = (camera.offset
             - DVec3::new(camera.target.x, camera.target.y, camera.target.z))
