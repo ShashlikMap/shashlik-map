@@ -15,9 +15,9 @@ num = "0.4.3"
 futures-lite = "2"
 raw-window-handle = "0.6"
 wgpu-canvas = { path = "wgpu-canvas" }
-lyon = "1.0.16"
+lyon = "1.0.19"
 bytemuck = { version = "1.16", features = [ "derive" ] }
-geo-types = "0.7.17"
+geo-types = "0.7.18"
 error-stack = "0.6.0"
 tokio = { version = "1", features = ["full"] }
 thiserror = "2"
