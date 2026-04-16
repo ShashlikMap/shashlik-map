@@ -9,6 +9,7 @@ use crate::modifier::render_modifier::SpatialData;
 use crate::pass_nodes::main_pass_node::MainPassNode;
 use crate::pass_nodes::prepass_node::PrepassNode;
 use crate::pass_nodes::render_to_texture_pass_node::RenderToTexturePassNode;
+use crate::pass_nodes::shadow_pre_pass::ShadowPrepass;
 use crate::pass_nodes::PassNode;
 use crate::styles::style_store::StyleStore;
 use canvas_api::CanvasApi;
@@ -26,8 +27,8 @@ use std::sync::Arc;
 use std::thread::spawn;
 use tokio::sync::broadcast;
 use wgpu::Texture;
-use wgpu_canvas::PREVIEW_ENABLED;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use wgpu_canvas::PREVIEW_ENABLED;
 
 pub mod canvas_api;
 mod collision_handler;
@@ -185,8 +186,10 @@ impl ShashlikRenderer {
 
     fn config_pass_nodes(&mut self) {
         let pre_pass_node = PrepassNode::new();
+        let shadow_pass_node = ShadowPrepass::new();
 
         let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
+
         self.layers
             .preview_mesh_layer
             .set_texture(&rt_node.rt_texture_view, (-100.0, -100.0), &self.global_context);
@@ -197,11 +200,14 @@ impl ShashlikRenderer {
 
         let main_node = MainPassNode::new(&mut self.global_context);
 
-        self.pass_nodes = if unsafe { PREVIEW_ENABLED } {
-            vec![Box::new(pre_pass_node), Box::new(rt_node), Box::new(main_node)]
-        } else {
-            vec![Box::new(pre_pass_node), Box::new(main_node)]
-        };
+        self.pass_nodes = vec![Box::new(pre_pass_node)];
+
+        if unsafe { PREVIEW_ENABLED } {
+            self.pass_nodes.push(Box::new(rt_node));
+        }
+        self.pass_nodes.push(Box::new(shadow_pass_node));
+
+        self.pass_nodes.push(Box::new(main_node));
     }
 
     fn update(&mut self, data: RendererUpdateData) {

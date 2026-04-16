@@ -1,7 +1,7 @@
 use crate::collider::Collider;
 use crate::consts::STYLE_SHADER_PARAMS_COUNT;
 use crate::styles::style_store::StyleStore;
-use crate::textures::{create_simple_texture, TextureData};
+use crate::textures::{create_depth_texture, create_simple_texture, TextureData};
 use crate::utils::ReceiverExt;
 use crate::view_projection::ViewProjection;
 use crate::RendererUpdateData;
@@ -17,7 +17,9 @@ pub struct GlobalContext {
     pub style_bind_group: Option<BindGroup>,
     pub is_preview_render: bool,
     pub is_g_buffer_render: bool,
+    pub is_shadow_render: bool,
     pub ssao_texture: TextureView,
+    pub shadow_map_depth_texture: TextureView,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
 }
 
@@ -37,6 +39,10 @@ impl GlobalContext {
             },
             device,
         );
+        let shadow_map_depth_texture = create_depth_texture((2048, 2048),
+                                                            1,
+                                                            TextureFormat::Depth32Float,
+                                                            device);
         GlobalContext {
             canvas,
             view_projection,
@@ -45,7 +51,9 @@ impl GlobalContext {
             style_bind_group: None,
             is_preview_render: false,
             is_g_buffer_render: false,
+            is_shadow_render: false,
             ssao_texture,
+            shadow_map_depth_texture,
             style_uniform_rx: style_store.subscribe(),
         }
     }

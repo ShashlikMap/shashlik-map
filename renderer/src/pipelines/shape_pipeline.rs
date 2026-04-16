@@ -113,6 +113,7 @@ impl RenderPipeline for ShapePipeline {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shape Render Pipeline Layout"),
             bind_group_layouts: &layouts,
+            immediate_size: 4,
             ..Default::default()
         });
 

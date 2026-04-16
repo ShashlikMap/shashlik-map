@@ -3,7 +3,7 @@ use crate::mesh_layers::layers::Layers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pass_nodes::PassNode;
 use crate::textures::{create_color_binding_texture, create_depth_texture, create_common_texture, SAMPLE_COUNT};
-use wgpu::{CommandEncoder, TextureView};
+use wgpu::{CommandEncoder, TextureFormat, TextureView};
 
 pub(crate) struct RenderToTexturePassNode {
     msaa_texture_view: TextureView,
@@ -19,7 +19,9 @@ impl RenderToTexturePassNode {
         );
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
-            depth_texture_view: create_depth_texture(size, SAMPLE_COUNT, global_context),
+            depth_texture_view: create_depth_texture(size, SAMPLE_COUNT,
+                                                     TextureFormat::Depth24Plus,
+                                                     global_context.device()),
             rt_texture_view: create_color_binding_texture(size, global_context),
         }
     }
@@ -38,7 +40,7 @@ impl PassNode for RenderToTexturePassNode {
         global_context: &mut GlobalContext,
     ) {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("Render Pass"),
+            label: Some("Render To Texture Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.msaa_texture_view,
                 resolve_target: Some(&self.rt_texture_view),
@@ -68,6 +70,7 @@ impl PassNode for RenderToTexturePassNode {
 
         global_context.is_g_buffer_render = false;
         global_context.is_preview_render = true;
+        global_context.is_shadow_render = false;
         layers.render(&mut render_pass, global_context);
     }
 }

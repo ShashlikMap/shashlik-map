@@ -51,7 +51,9 @@ impl MainPassNode {
             global_context.device(),
         );
 
-        let non_msaa_depth_texture_view = create_depth_texture(non_msaa_size, 1, global_context);
+        let non_msaa_depth_texture_view = create_depth_texture(non_msaa_size, 1,
+                                                               TextureFormat::Depth24Plus,
+                                                               global_context.device());
 
         let ssao_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
@@ -149,7 +151,10 @@ impl MainPassNode {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
             non_msaa_texture_view_positions,
             non_msaa_texture_view_normals,
-            depth_texture_view: create_depth_texture(size, SAMPLE_COUNT, global_context),
+            depth_texture_view: create_depth_texture(size,
+                                                     SAMPLE_COUNT,
+                                                     TextureFormat::Depth24Plus,
+                                                     global_context.device()),
             non_msaa_depth_texture_view,
             ssao_bind_group,
             camera_ssao_bind_group,
@@ -255,6 +260,7 @@ impl PassNode for MainPassNode {
 
                 global_context.is_g_buffer_render = true;
                 global_context.is_preview_render = false;
+                global_context.is_shadow_render = false;
                 layers.render(&mut render_pass, global_context);
             }
 
@@ -286,6 +292,7 @@ impl PassNode for MainPassNode {
 
             global_context.is_g_buffer_render = false;
             global_context.is_preview_render = false;
+            global_context.is_shadow_render = false;
             layers.render(&mut render_pass, global_context);
         }
     }

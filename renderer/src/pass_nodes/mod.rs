@@ -1,6 +1,7 @@
 pub mod render_to_texture_pass_node;
 pub mod main_pass_node;
 pub mod prepass_node;
+pub mod shadow_pre_pass;
 
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
