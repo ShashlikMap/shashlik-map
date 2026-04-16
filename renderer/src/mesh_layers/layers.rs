@@ -91,23 +91,25 @@ impl BaseMeshLayer for Layers {
 
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        if !global_context.is_g_buffer_render {
+        if !global_context.is_g_buffer_render && !global_context.is_shadow_render {
             self.shape_layer.disable_skip_mesh_feature = global_context.is_preview_render;
             self.shape_layer.render(render_pass, global_context);
         }
         if !global_context.is_preview_render {
             self.mesh_layer.render(render_pass, global_context);
-            if unsafe { SSAO_ENABLED } {
+            if unsafe { SSAO_ENABLED } && !global_context.is_shadow_render {
                 self.post_process_layer.render(render_pass, global_context);
             }
-            self.screen_shape_layer
-                .render(render_pass, global_context);
-            self.text_layer.render(render_pass, global_context);
+            if !global_context.is_shadow_render {
+                self.screen_shape_layer
+                    .render(render_pass, global_context);
+                self.text_layer.render(render_pass, global_context);
+            }
         }
-        if !global_context.is_g_buffer_render {
+        if !global_context.is_g_buffer_render && !global_context.is_shadow_render {
             self.feature_layers.render(render_pass, global_context);
         }
-        if !global_context.is_preview_render && unsafe { PREVIEW_ENABLED } {
+        if !global_context.is_preview_render && unsafe { PREVIEW_ENABLED } && !global_context.is_shadow_render {
             self.preview_mesh_layer.render(render_pass, global_context);
         }
     }

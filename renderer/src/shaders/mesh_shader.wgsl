@@ -14,6 +14,8 @@ struct CameraUniform {
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 
+var<immediate> params: u32;
+
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
@@ -85,6 +87,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
     let result_color = (ambient_color + diffuse_color) * default_color;
 
     return vec4(result_color * gradient_koef, in.color_alpha);
+}
+
+@fragment
+fn fs_main_empty(in: VertexOutput) {
 }
 
 @fragment

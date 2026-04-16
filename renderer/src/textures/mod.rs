@@ -38,15 +38,15 @@ pub fn create_common_texture(size: (u32, u32), sample_count: u32, global_context
     )
 }
 
-pub fn create_depth_texture(size: (u32, u32), sample_count: u32, global_context: &GlobalContext) -> TextureView {
+pub fn create_depth_texture(size: (u32, u32), sample_count: u32, format: TextureFormat, device: &Device) -> TextureView {
     create_simple_texture(
         TextureData {
             sample_count,
             size,
             usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-            format: TextureFormat::Depth24Plus,
+            format,
         },
-        global_context.device(),
+        device,
     )
 }
 

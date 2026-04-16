@@ -14,6 +14,7 @@ pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
     pipeline: Option<wgpu::RenderPipeline>,
     g_buffer_pipeline: Option<wgpu::RenderPipeline>,
+    shadow_pipeline: Option<wgpu::RenderPipeline>,
     render_data_holder: RenderDataHolder<PositionedMesh<P::InstanceInputType>>,
     pub disable_skip_mesh_feature: bool,
 }
@@ -24,6 +25,7 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
             render_pipeline,
             pipeline: None,
             g_buffer_pipeline: None,
+            shadow_pipeline: None,
             render_data_holder: RenderDataHolder::new(),
             disable_skip_mesh_feature: false,
         }
@@ -78,6 +80,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
     fn prepare(&mut self, global_context: &GlobalContext) {
         let descriptor = self.render_pipeline.prepare(global_context);
         let mut g_buffer_descriptor = descriptor.clone();
+        let mut shadow_descriptor = descriptor.clone();
 
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
 
@@ -95,6 +98,14 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
         fragment.entry_point = Some("fs_main_g_buf");
         g_buffer_descriptor.multisample.count = 1;
         self.g_buffer_pipeline = Some(g_buffer_descriptor.to_render_pipeline(global_context.device()));
+
+        shadow_descriptor.label = Some("shadow_pipeline");
+        let fragment = shadow_descriptor.fragment.as_mut().unwrap();
+        fragment.targets = vec![];
+        fragment.entry_point = Some("fs_main_empty");
+        shadow_descriptor.multisample.count = 1;
+        shadow_descriptor.depth_stencil.as_mut().unwrap().format = wgpu::TextureFormat::Depth32Float;
+        self.shadow_pipeline = Some(shadow_descriptor.to_render_pipeline(global_context.device()));
     }
 
     fn update(&mut self, global_context: &mut GlobalContext) {
@@ -127,6 +138,8 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
         if let Some(render_pipeline) = self.pipeline.as_ref() {
             if global_context.is_g_buffer_render {
                 render_pass.set_pipeline(self.g_buffer_pipeline.as_ref().unwrap());
+            } else if global_context.is_shadow_render {
+                render_pass.set_pipeline(self.shadow_pipeline.as_ref().unwrap());
             } else {
                 render_pass.set_pipeline(render_pipeline);
             }

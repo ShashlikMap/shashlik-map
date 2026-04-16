@@ -60,7 +60,11 @@ impl RenderPipeline for MeshPipeline {
     fn compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {
     }
 
-    fn render(&mut self, render_pass: &mut RenderPass, _global_context: &GlobalContext) {
+    fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        render_pass.set_immediates(
+            0,
+            bytemuck::bytes_of(&(global_context.is_shadow_render as u32)),
+        );
         render_pass.set_bind_group(0, &self.bind_group, &[]);
     }
 
@@ -71,6 +75,7 @@ impl RenderPipeline for MeshPipeline {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Mesh Render Pipeline Layout"),
             bind_group_layouts: &[&self.bind_group_layout],
+            immediate_size: 4,
             ..Default::default()
         });
         let shader_module =
