@@ -77,6 +77,11 @@ const light_dir = normalize(vec3(0.5, 0.5, 1.0));
 const default_color = vec3(0.4, 0.4, 0.4);
 const ambient_color = vec3(0.6, 0.6, 0.6);
 
+@group(1) @binding(0)
+var t_depth: texture_depth_2d;
+@group(1) @binding(1)
+var s_diffuse: sampler_comparison;
+
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
