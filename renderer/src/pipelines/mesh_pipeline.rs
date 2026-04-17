@@ -18,7 +18,7 @@ impl MeshPipeline {
         let device = global_context.device();
         let entries = vec![wgpu::BindGroupLayoutEntry {
             binding: 0,
-            visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::COMPUTE,
+            visibility: wgpu::ShaderStages::VERTEX_FRAGMENT | wgpu::ShaderStages::COMPUTE,
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Uniform,
                 has_dynamic_offset: false,
