@@ -149,70 +149,57 @@ impl WithTexture for ScreenMeshPipeline {
             compare: Some(CompareFunction::GreaterEqual),
             ..Default::default()
         });
+        let dummy_texture = create_simple_texture(
+            TextureData {
+                sample_count: 1,
+                size: (1, 1),
+                usage: TextureUsages::TEXTURE_BINDING,
+                format: TextureFormat::R32Float,
+            },
+            device,
+        );
+        let dummy_depth_texture = create_simple_texture(
+            TextureData {
+                sample_count: 1,
+                size: (1, 1),
+                usage: TextureUsages::TEXTURE_BINDING,
+                format: TextureFormat::Depth32Float,
+            },
+            device,
+        );
+        let mut entries: Vec<wgpu::BindGroupEntry> = vec![];
         if texture_view.texture().format().is_depth_stencil_format() {
-            let dummy_texture = create_simple_texture(
-                TextureData {
-                    sample_count: 1,
-                    size: (1, 1),
-                    usage: TextureUsages::TEXTURE_BINDING,
-                    format: TextureFormat::R32Float,
-                },
-                device,
-            );
-            device.create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &self.texture_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&dummy_texture),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::TextureView(texture_view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: wgpu::BindingResource::Sampler(&diffuse_sampler),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: wgpu::BindingResource::Sampler(&sampler_compare),
-                    },
-                ],
-                label: Some("depth_compare_bind_group"),
-            })
+            entries.push(wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&dummy_texture),
+            });
+            entries.push(wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(texture_view),
+            });
         } else {
-            let dummy_texture = create_simple_texture(
-                TextureData {
-                    sample_count: 1,
-                    size: (1, 1),
-                    usage: TextureUsages::TEXTURE_BINDING,
-                    format: TextureFormat::Depth32Float,
-                },
-                device,
-            );
-            device.create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &self.texture_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&texture_view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::TextureView(&dummy_texture),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 2,
-                        resource: wgpu::BindingResource::Sampler(&diffuse_sampler),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: wgpu::BindingResource::Sampler(&sampler_compare),
-                    },
-                ],
-                label: Some("depth_compare_bind_group"),
-            })
+            entries.push(wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&texture_view),
+            });
+            entries.push(wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&dummy_depth_texture),
+            });
         }
+        entries.push(wgpu::BindGroupEntry {
+            binding: 2,
+            resource: wgpu::BindingResource::Sampler(&diffuse_sampler),
+        });
+        entries.push( wgpu::BindGroupEntry {
+            binding: 3,
+            resource: wgpu::BindingResource::Sampler(&sampler_compare),
+        });
+
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.texture_bind_group_layout,
+            entries: &entries,
+            label: Some("texture_bind_group"),
+        })
     }
 }
