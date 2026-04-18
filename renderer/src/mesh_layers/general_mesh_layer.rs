@@ -100,9 +100,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
         self.g_buffer_pipeline = Some(g_buffer_descriptor.to_render_pipeline(global_context.device()));
 
         shadow_descriptor.label = Some("shadow_pipeline");
-        let fragment = shadow_descriptor.fragment.as_mut().unwrap();
-        fragment.targets = vec![];
-        fragment.entry_point = Some("fs_main_empty");
+        shadow_descriptor.fragment = None;
         shadow_descriptor.multisample.count = 1;
         shadow_descriptor.depth_stencil.as_mut().unwrap().format = wgpu::TextureFormat::Depth32Float;
         self.shadow_pipeline = Some(shadow_descriptor.to_render_pipeline(global_context.device()));

@@ -121,10 +121,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
 }
 
 @fragment
-fn fs_main_empty(in: VertexOutput) {
-}
-
-@fragment
 fn fs_main_g_buf(in: VertexOutput) -> GBuffer {
 
     // TODO use view matrix to calc z in VS instead of in.clip_position.z?
