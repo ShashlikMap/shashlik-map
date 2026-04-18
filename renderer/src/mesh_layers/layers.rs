@@ -10,7 +10,7 @@ use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use rustybuzz::ttf_parser;
 use wgpu::{CommandEncoder, RenderPass};
-use wgpu_canvas::{PREVIEW_ENABLED, SSAO_ENABLED};
+use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SSAO_ENABLED};
 
 pub(crate) struct Layers {
     feature_layers: FeatureLayers,
@@ -97,21 +97,21 @@ impl BaseMeshLayer for Layers {
         self.feature_layers.compute(encoder, global_context);
     }
 
-
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         if !global_context.is_g_buffer_render && !global_context.is_shadow_render {
             self.shape_layer.disable_skip_mesh_feature = global_context.is_preview_render;
             self.shape_layer.render(render_pass, global_context);
         }
         if !global_context.is_preview_render {
-            if !global_context.is_g_buffer_render && !global_context.is_shadow_render {
+            let not_shadow_or_g_buf = !global_context.is_g_buffer_render && !global_context.is_shadow_render;
+            if unsafe { SHADOWS_ENABLED } && not_shadow_or_g_buf {
                 self.shadow_map_layer.render(render_pass, global_context);
             }
             self.mesh_layer.render(render_pass, global_context);
-            if unsafe { SSAO_ENABLED } && !global_context.is_shadow_render {
+            if unsafe { SSAO_ENABLED } && not_shadow_or_g_buf {
                 self.post_process_layer.render(render_pass, global_context);
             }
-            if !global_context.is_shadow_render {
+            if not_shadow_or_g_buf {
                 self.screen_shape_layer
                     .render(render_pass, global_context);
                 self.text_layer.render(render_pass, global_context);

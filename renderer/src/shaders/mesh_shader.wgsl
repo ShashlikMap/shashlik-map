@@ -70,7 +70,7 @@ fn vs_main(
     out.color_alpha = pos.color_alpha;
     out.pos_from_light = camera.light_view_proj * vec4<f32>(modelpos, 1.0);
 
-    if(params == 1) {
+    if((params & 1) > 0) {
         out.clip_position = out.pos_from_light;
     } else {
         out.clip_position = camera.view_proj * vec4<f32>(modelpos, 1.0);
@@ -95,7 +95,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
     let diffuse_color = vec3(1.0, 1.0, 1.0) * diffuse_strength;
 
     var shadow = 0.0;
-    if(camera.scale < 0.5) {
+    if(camera.scale < 0.5 && (params & 2) > 0) {
 
         var projCoords = in.pos_from_light.xyz;// / in.pos_from_light.w;
         let currentDepth = projCoords.z;

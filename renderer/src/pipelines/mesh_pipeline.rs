@@ -4,6 +4,7 @@ use crate::pipelines::{OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedV
 use crate::textures::{create_simple_texture, TextureData, SAMPLE_COUNT};
 use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
 use wgpu::{include_wgsl, BindGroup, BindGroupLayout, BlendState, CompareFunction, ComputePass, DepthStencilState, Face, RenderPass, SamplerDescriptor, TextureFormat, TextureUsages, TextureView};
+use wgpu_canvas::SHADOWS_ENABLED;
 
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,
@@ -138,13 +139,20 @@ impl RenderPipeline for MeshPipeline {
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        let mut mask = global_context.is_shadow_render as u32;
+        if unsafe { SHADOWS_ENABLED } {
+            mask |= 2;
+        }
         render_pass.set_immediates(
             0,
-            bytemuck::bytes_of(&(global_context.is_shadow_render as u32)),
+            bytemuck::bytes_of(&mask),
         );
         render_pass.set_bind_group(0, &self.bind_group, &[]);
 
-        if global_context.is_shadow_render || global_context.is_preview_render || global_context.is_g_buffer_render {
+        if unsafe { !SHADOWS_ENABLED } ||
+            global_context.is_shadow_render ||
+            global_context.is_preview_render ||
+            global_context.is_g_buffer_render {
             render_pass.set_bind_group(1, &self.depth_dummy_bind_group, &[]);
         } else {
             render_pass.set_bind_group(1, &self.depth_bind_group, &[]);
