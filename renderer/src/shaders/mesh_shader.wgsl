@@ -85,7 +85,7 @@ const ambient_color = vec3(0.6, 0.6, 0.6);
 @group(1) @binding(0)
 var t_depth: texture_depth_2d;
 @group(1) @binding(1)
-var s_diffuse: sampler_comparison;
+var s_compare: sampler_comparison;
 
 // Fragment shader
 @fragment
@@ -108,7 +108,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
 //                if(currentDepth - 0.000035 > pcfDepth) {
 //                    shadow += 1.0;
 //                }
-                shadow += (textureSampleCompare(t_depth, s_diffuse, (projCoords.xy * vec2f(0.5, -0.5) + 0.5) + vec2f(f32(xx), f32(yy)) * texelSize, currentDepth - 0.000035));
+                shadow += (textureSampleCompare(t_depth, s_compare, (projCoords.xy * vec2f(0.5, -0.5) + 0.5) + vec2f(f32(xx), f32(yy)) * texelSize, currentDepth - 0.000035));
             }
         }
         shadow /= 9.0;

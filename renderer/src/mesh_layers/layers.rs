@@ -16,6 +16,7 @@ pub(crate) struct Layers {
     feature_layers: FeatureLayers,
     pub shape_layer: GeneralMeshLayer<ShapePipeline>,
     pub mesh_layer: GeneralMeshLayer<MeshPipeline>,
+    pub shadow_map_layer: OrthoMeshLayer<ScreenMeshPipeline>,
     pub screen_shape_layer: ScreenShapeLayer<ShapePipeline>,
     pub text_layer: TextMeshLayer<ScreenMeshPipeline>,
     pub preview_mesh_layer: OrthoMeshLayer<ScreenMeshPipeline>,
@@ -35,6 +36,11 @@ impl Layers {
             shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, None, false)),
             screen_shape_layer: ScreenShapeLayer::new(ShapePipeline::new(global_context, Some("vs_main_screen"), false),
                                                       global_context),
+            shadow_map_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
+                use_texture: true,
+                filterable: false,
+                fs_shader: "fs_main_sm",
+            }), true, false),
             text_layer: TextMeshLayer::new(
                 ScreenMeshPipeline::new(global_context, TextureInfo {
                     use_texture: false,
@@ -67,6 +73,7 @@ impl BaseMeshLayer for Layers {
     fn prepare(&mut self, global_context: &GlobalContext) {
         self.shape_layer.prepare(global_context);
         self.mesh_layer.prepare(global_context);
+        self.shadow_map_layer.prepare(global_context);
         self.screen_shape_layer.prepare(global_context);
         self.text_layer.prepare(global_context);
         self.feature_layers.prepare(global_context);
@@ -77,6 +84,7 @@ impl BaseMeshLayer for Layers {
     fn update(&mut self, global_context: &mut GlobalContext) {
         self.shape_layer.update(global_context);
         self.mesh_layer.update(global_context);
+        self.shadow_map_layer.update(global_context);
         self.screen_shape_layer.update(global_context);
         self.text_layer.update(global_context);
         self.feature_layers.update(global_context);
@@ -96,6 +104,9 @@ impl BaseMeshLayer for Layers {
             self.shape_layer.render(render_pass, global_context);
         }
         if !global_context.is_preview_render {
+            if !global_context.is_g_buffer_render && !global_context.is_shadow_render {
+                self.shadow_map_layer.render(render_pass, global_context);
+            }
             self.mesh_layer.render(render_pass, global_context);
             if unsafe { SSAO_ENABLED } && !global_context.is_shadow_render {
                 self.post_process_layer.render(render_pass, global_context);
@@ -117,6 +128,7 @@ impl BaseMeshLayer for Layers {
     fn clear_by_key(&mut self, key: &str) {
         self.shape_layer.clear_by_key(key);
         self.mesh_layer.clear_by_key(key);
+        self.shadow_map_layer.clear_by_key(key);
         self.screen_shape_layer.clear_by_key(key);
         self.text_layer.clear_by_key(key);
         self.feature_layers.clear_by_key(key);
