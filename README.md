@@ -37,9 +37,11 @@ with Android/iOS mobile apps(Android is priority for now)
 - [x] A GPU-driven dotted line rendering
 - [x] Initial SSAO(Screen Space Ambient Occlusion)
 - [x] Running on pure Linux via KMS with Slint UI
+- [x] Simple shadow mapping
+
 ### Now
 - [ ] _In progress_ General Renderer refactoring
-- [ ] _In progress_ Simple shadow mapping
+
 ### Next
 - [ ] Implement an initial geometric Map-matching POC
 - [ ] CI for KMP mobile SDK + Screenshot rendering
