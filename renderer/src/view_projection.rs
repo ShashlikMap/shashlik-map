@@ -92,10 +92,10 @@ impl ViewProjection {
             .to_cols_array_2d();
         let view_proj = FLIP_Y * OPENGL_TO_WGPU_MATRIX * data.view_proj_matrix;
 
-        let qq = (data.scale / 0.7) as f64;
+        let ortho_scaler = (data.scale / 0.7) as f64;
         self.ortho = DMat4::orthographic_rh(
-            -220.0 * qq, 120.0 * qq, -100.0 * qq, 220.0 * qq,
-            0.01, 1000.0);
+            -220.0 * ortho_scaler, 120.0 * ortho_scaler, -100.0 * ortho_scaler, 220.0 * ortho_scaler,
+            0.01, 1500.0);
 
         self.uniform.light_view_proj = (OPENGL_TO_WGPU_MATRIX * (self.ortho * data.view_light_matrix))
             .as_mat4()

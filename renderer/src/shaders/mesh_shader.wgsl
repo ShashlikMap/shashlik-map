@@ -78,9 +78,9 @@ fn vs_main(
     return out;
 }
 
-const light_dir = normalize(vec3(0.5, 0.5, 1.0));
+const light_dir = normalize(vec3(0.5, 0.5, 0.6));
 const default_color = vec3(0.4, 0.4, 0.4);
-const ambient_color = vec3(0.6, 0.6, 0.6);
+const ambient_color = vec3(0.65, 0.65, 0.65);
 
 @group(1) @binding(0)
 var t_depth: texture_depth_2d;
@@ -90,33 +90,29 @@ var s_compare: sampler_comparison;
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
+
     let diffuse_strength = max(dot(in.world_normal, light_dir), 0.0);
     let gradient_koef = 0.5 + min(1.0, tanh(2.0 * in.world_position.z)) / 2.0;
     let diffuse_color = vec3(1.0, 1.0, 1.0) * diffuse_strength;
 
     var shadow = 0.0;
-    if(camera.scale < 0.5 && (params & 2) > 0) {
+    if((params & 2) > 0) {
 
         var projCoords = in.pos_from_light.xyz;// / in.pos_from_light.w;
         let currentDepth = projCoords.z;
 
         let texelSize = 2.0 / vec2f(textureDimensions(t_depth));
 
+        let shadow_bias = 0.0005 * camera.scale;
         for (var xx = -1; xx <= 1; xx++) {
             for (var yy = -1; yy <= 1; yy++) {
-//                let pcfDepth = textureSample(t_depth, s_diffuse, (projCoords.xy * vec2f(0.5, -0.5) + 0.5) + vec2f(f32(xx), f32(yy)) * texelSize);
-//                if(currentDepth - 0.000035 > pcfDepth) {
-//                    shadow += 1.0;
-//                }
-                shadow += (textureSampleCompare(t_depth, s_compare, (projCoords.xy * vec2f(0.5, -0.5) + 0.5) + vec2f(f32(xx), f32(yy)) * texelSize, currentDepth - 0.000035));
+                shadow += (textureSampleCompare(t_depth, s_compare, (projCoords.xy * vec2f(0.5, -0.5) + 0.5) + vec2f(f32(xx), f32(yy)) * texelSize, currentDepth - shadow_bias));
             }
         }
         shadow /= 9.0;
-        shadow *= 0.5;
     }
 
-    let result_color = (ambient_color + diffuse_color) * default_color * (1.0 - shadow);
-
+    let result_color = (ambient_color + (1.0 - shadow) * (diffuse_color)) * default_color;
     return vec4(result_color * gradient_koef, in.color_alpha);
 }
 

@@ -108,45 +108,40 @@ fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
 
 @fragment
 fn fs_main_sm(in: VertexOutput) -> @location(0) vec4<f32> {
-    if(camera.scale < 0.7) {
-        let pixel_coord = in.clip_position.xy;
-        let qq = camera.inv_screen_size.x;
-        let u_coord = (pixel_coord.x * camera.inv_screen_size.x) * 2.0 - 1.0;
-        let v_coord = (pixel_coord.y * camera.inv_screen_size.y) * 2.0 - 1.0;
-        let near_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 0.0, 1.0);
-        let near_world = near_world1.xyz / near_world1.w;
-        let far_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 1.0, 1.0);
-        let far_world = far_world1.xyz / far_world1.w;
+    let pixel_coord = in.clip_position.xy;
+    let u_coord = (pixel_coord.x * camera.inv_screen_size.x) * 2.0 - 1.0;
+    let v_coord = (pixel_coord.y * camera.inv_screen_size.y) * 2.0 - 1.0;
+    let near_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 0.0, 1.0);
+    let near_world = near_world1.xyz / near_world1.w;
+    let far_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 1.0, 1.0);
+    let far_world = far_world1.xyz / far_world1.w;
 
-        var u = -near_world.z / (far_world.z - near_world.z);
-        if u < 0.0 {
-            u = 1.0 - u;
-        }
-        let fragPos = near_world + u * (far_world - near_world);
+    var u = -near_world.z / (far_world.z - near_world.z);
+    if u < 0.0 {
+        u = 1.0 - u;
+    }
+    let fragPos = near_world + u * (far_world - near_world);
 
-        let pos_from_light = camera.light_view_proj * vec4<f32>(vec3f(fragPos), 1.0);
-        var projCoords = pos_from_light.xyz;// / in.pos_from_light.w;
-        let currentDepth = projCoords.z;
+    let pos_from_light = camera.light_view_proj * vec4<f32>(vec3f(fragPos), 1.0);
+    var projCoords = pos_from_light.xyz;// / in.pos_from_light.w;
+    let currentDepth = projCoords.z;
 
-        let texelSize = 2.0 / vec2f(textureDimensions(t_depth));
-        var shadow = 0.0;
-        for (var xx = -1; xx <= 1; xx++) {
-            for (var yy = -1; yy <= 1; yy++) {
-                shadow += (textureSampleCompare(t_depth, s_compare, (projCoords.xy * vec2f(0.5, -0.5) + 0.5) + vec2f(f32(xx), f32(yy)) * texelSize, currentDepth - 0.000035));
+    let texelSize = 2.0 / vec2f(textureDimensions(t_depth));
+    var shadow = 0.0;
+    for (var xx = -1; xx <= 1; xx++) {
+        for (var yy = -1; yy <= 1; yy++) {
+            shadow += (textureSampleCompare(t_depth, s_compare, (projCoords.xy * vec2f(0.5, -0.5) + 0.5) + vec2f(f32(xx), f32(yy)) * texelSize, currentDepth));
 
 //                let pcfDepth = textureSample(t_depth, s_diffuse, (projCoords.xy * vec2f(0.5, -0.5) + 0.5) + vec2f(f32(xx), f32(yy)) * texelSize);
 //                if(currentDepth - 0.000035 > pcfDepth) {
 //                    shadow += 1.0;
 //                }
-            }
         }
-        shadow /= 9.0;
-        shadow = shadow * 0.5;
-
-        return vec4(0.0, 0.0, 0.0, shadow);
-    } else {
-        discard;
     }
+    shadow /= 9.0;
+    shadow = shadow * 0.5;
+
+    return vec4(0.0, 0.0, 0.0, shadow);
 }
 
 // FAKE for compatibility
