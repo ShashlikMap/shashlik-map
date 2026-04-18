@@ -11,9 +11,9 @@ Running on macOS, Android, iOS and Linux via KMS
 
 <img width="450" alt="Screenshot 2026-03-28 at 09 53 14" src="https://github.com/user-attachments/assets/0e75e0b3-a90d-41f3-9eef-66ad689f2d9e" />
 
-<img width="130" height="1872" src="https://github.com/user-attachments/assets/eabb3468-6206-4dc9-b243-73bc34ce0dff" />
-<img width="130" height="2622" src="https://github.com/user-attachments/assets/ed5a0121-1402-40a6-ab26-eb0c39853708" />
-<img width="450" height="2622" src="https://github.com/user-attachments/assets/d52a4287-8551-43ed-8e4a-879457db9cce" />
+<img width="130" src="https://github.com/user-attachments/assets/eabb3468-6206-4dc9-b243-73bc34ce0dff" />
+<img width="130" src="https://github.com/user-attachments/assets/ed5a0121-1402-40a6-ab26-eb0c39853708" />
+<img width="450" src="https://github.com/user-attachments/assets/d52a4287-8551-43ed-8e4a-879457db9cce" />
 
 ## Tech stack
 The stack leverages the following approaches and libraries:
