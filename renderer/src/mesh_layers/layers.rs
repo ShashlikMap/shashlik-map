@@ -10,12 +10,13 @@ use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use rustybuzz::ttf_parser;
 use wgpu::{CommandEncoder, RenderPass};
-use wgpu_canvas::{PREVIEW_ENABLED, SSAO_ENABLED};
+use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SSAO_ENABLED};
 
 pub(crate) struct Layers {
     feature_layers: FeatureLayers,
     pub shape_layer: GeneralMeshLayer<ShapePipeline>,
     pub mesh_layer: GeneralMeshLayer<MeshPipeline>,
+    pub shadow_map_layer: OrthoMeshLayer<ScreenMeshPipeline>,
     pub screen_shape_layer: ScreenShapeLayer<ShapePipeline>,
     pub text_layer: TextMeshLayer<ScreenMeshPipeline>,
     pub preview_mesh_layer: OrthoMeshLayer<ScreenMeshPipeline>,
@@ -35,6 +36,11 @@ impl Layers {
             shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, None, false)),
             screen_shape_layer: ScreenShapeLayer::new(ShapePipeline::new(global_context, Some("vs_main_screen"), false),
                                                       global_context),
+            shadow_map_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
+                use_texture: true,
+                filterable: false,
+                fs_shader: "fs_main_sm",
+            }), true, false),
             text_layer: TextMeshLayer::new(
                 ScreenMeshPipeline::new(global_context, TextureInfo {
                     use_texture: false,
@@ -67,6 +73,7 @@ impl BaseMeshLayer for Layers {
     fn prepare(&mut self, global_context: &GlobalContext) {
         self.shape_layer.prepare(global_context);
         self.mesh_layer.prepare(global_context);
+        self.shadow_map_layer.prepare(global_context);
         self.screen_shape_layer.prepare(global_context);
         self.text_layer.prepare(global_context);
         self.feature_layers.prepare(global_context);
@@ -77,6 +84,7 @@ impl BaseMeshLayer for Layers {
     fn update(&mut self, global_context: &mut GlobalContext) {
         self.shape_layer.update(global_context);
         self.mesh_layer.update(global_context);
+        self.shadow_map_layer.update(global_context);
         self.screen_shape_layer.update(global_context);
         self.text_layer.update(global_context);
         self.feature_layers.update(global_context);
@@ -89,18 +97,21 @@ impl BaseMeshLayer for Layers {
         self.feature_layers.compute(encoder, global_context);
     }
 
-
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         if !global_context.is_g_buffer_render && !global_context.is_shadow_render {
             self.shape_layer.disable_skip_mesh_feature = global_context.is_preview_render;
             self.shape_layer.render(render_pass, global_context);
         }
         if !global_context.is_preview_render {
+            let not_shadow_or_g_buf = !global_context.is_g_buffer_render && !global_context.is_shadow_render;
+            if unsafe { SHADOWS_ENABLED } && not_shadow_or_g_buf {
+                self.shadow_map_layer.render(render_pass, global_context);
+            }
             self.mesh_layer.render(render_pass, global_context);
-            if unsafe { SSAO_ENABLED } && !global_context.is_shadow_render {
+            if unsafe { SSAO_ENABLED } && not_shadow_or_g_buf {
                 self.post_process_layer.render(render_pass, global_context);
             }
-            if !global_context.is_shadow_render {
+            if not_shadow_or_g_buf {
                 self.screen_shape_layer
                     .render(render_pass, global_context);
                 self.text_layer.render(render_pass, global_context);
@@ -117,6 +128,7 @@ impl BaseMeshLayer for Layers {
     fn clear_by_key(&mut self, key: &str) {
         self.shape_layer.clear_by_key(key);
         self.mesh_layer.clear_by_key(key);
+        self.shadow_map_layer.clear_by_key(key);
         self.screen_shape_layer.clear_by_key(key);
         self.text_layer.clear_by_key(key);
         self.feature_layers.clear_by_key(key);

@@ -53,7 +53,7 @@ pub struct OwnedRenderPipelineDescriptor<'a> {
 impl OwnedRenderPipelineDescriptor<'_> {
     pub fn to_render_pipeline(self, device: &Device) -> wgpu::RenderPipeline {
         let descriptor = self;
-        let owned_fragment_state = descriptor.fragment.as_ref().unwrap();
+
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: descriptor.label,
             layout: descriptor.layout.as_ref(),
@@ -63,11 +63,13 @@ impl OwnedRenderPipelineDescriptor<'_> {
                 buffers: &*descriptor.vertex.buffers,
                 compilation_options: Default::default(),
             },
-            fragment: Some(wgpu::FragmentState {
-                module: &owned_fragment_state.module,
-                entry_point: owned_fragment_state.entry_point,
-                targets: &*owned_fragment_state.targets.clone(),
-                compilation_options: owned_fragment_state.compilation_options.clone(),
+            fragment: descriptor.fragment.as_ref().map(|owned_fragment_state| {
+                wgpu::FragmentState {
+                    module: &owned_fragment_state.module,
+                    entry_point: owned_fragment_state.entry_point,
+                    targets: &*owned_fragment_state.targets,
+                    compilation_options: owned_fragment_state.compilation_options.clone(),
+                }
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,

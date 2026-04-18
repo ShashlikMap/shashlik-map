@@ -195,6 +195,10 @@ impl ShashlikRenderer {
             .set_texture(&rt_node.rt_texture_view, (-100.0, -100.0), &self.global_context);
 
         self.layers
+            .shadow_map_layer
+            .set_texture(&self.global_context.shadow_map_depth_texture, (0.0, 0.0), &self.global_context);
+
+        self.layers
             .post_process_layer
             .set_texture(&self.global_context.ssao_texture, (0.0, 0.0), &self.global_context);
 

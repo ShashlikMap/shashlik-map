@@ -225,11 +225,6 @@ fn fs_main_g_buf(in: VertexOutput) -> @location(0) vec4<f32>  {
     return vec4(1.0, 1.0, 1.0, 1.0);
 }
 
-// FAKE for compatibility
-@fragment
-fn fs_main_empty(in: VertexOutput) {
-}
-
 fn circle(st: vec2f, radius: f32) -> f32 {
     let dist = vec2f(st.x - 0.5, st.y - 0.5);
 	return 1.0 - smoothstep(radius-(radius*0.04),

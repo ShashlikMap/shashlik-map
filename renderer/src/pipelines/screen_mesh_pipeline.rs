@@ -2,7 +2,8 @@ use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline, WithTexture};
 use crate::vertex_attrs::{MeshVertexWithUV, ShapeInstanceInput, TextInstanceInput, VertexAttrib};
-use wgpu::{include_wgsl, BindGroup, BindGroupLayout, CompareFunction, ComputePass, RenderPass, TextureView};
+use wgpu::{include_wgsl, BindGroup, BindGroupLayout, CompareFunction, ComputePass, RenderPass, SamplerDescriptor, TextureFormat, TextureUsages, TextureView};
+use crate::textures::{create_simple_texture, TextureData};
 
 pub struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
@@ -36,9 +37,25 @@ impl ScreenMeshPipeline {
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
                         visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Depth,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
                         // This should match the filterable field of the
                         // corresponding Texture entry above.
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
                         count: None,
                     },
                 ],
@@ -128,19 +145,61 @@ impl WithTexture for ScreenMeshPipeline {
     ) -> BindGroup {
         let device = global_context.device();
         let diffuse_sampler = device.create_sampler(&Default::default());
+        let sampler_compare = device.create_sampler(&SamplerDescriptor {
+            compare: Some(CompareFunction::GreaterEqual),
+            ..Default::default()
+        });
+        let dummy_texture = create_simple_texture(
+            TextureData {
+                sample_count: 1,
+                size: (1, 1),
+                usage: TextureUsages::TEXTURE_BINDING,
+                format: TextureFormat::R32Float,
+            },
+            device,
+        );
+        let dummy_depth_texture = create_simple_texture(
+            TextureData {
+                sample_count: 1,
+                size: (1, 1),
+                usage: TextureUsages::TEXTURE_BINDING,
+                format: TextureFormat::Depth32Float,
+            },
+            device,
+        );
+        let mut entries: Vec<wgpu::BindGroupEntry> = vec![];
+        if texture_view.texture().format().is_depth_stencil_format() {
+            entries.push(wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&dummy_texture),
+            });
+            entries.push(wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(texture_view),
+            });
+        } else {
+            entries.push(wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&texture_view),
+            });
+            entries.push(wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::TextureView(&dummy_depth_texture),
+            });
+        }
+        entries.push(wgpu::BindGroupEntry {
+            binding: 2,
+            resource: wgpu::BindingResource::Sampler(&diffuse_sampler),
+        });
+        entries.push( wgpu::BindGroupEntry {
+            binding: 3,
+            resource: wgpu::BindingResource::Sampler(&sampler_compare),
+        });
+
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.texture_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(texture_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&diffuse_sampler),
-                },
-            ],
-            label: Some("diffuse_bind_group"),
+            entries: &entries,
+            label: Some("texture_bind_group"),
         })
     }
 }

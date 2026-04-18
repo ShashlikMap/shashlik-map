@@ -39,7 +39,8 @@ pub struct ViewProjection {
     pub cs_offset: DVec3,
     pub screen_size: (f64, f64),
     inv_view_proj_matrix: DMat4,
-    pub uniform_buffer: Buffer
+    pub uniform_buffer: Buffer,
+    ortho: DMat4
 }
 
 impl ViewProjection {
@@ -55,6 +56,10 @@ impl ViewProjection {
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
             mapped_at_creation: false,
         });
+
+        let ortho = DMat4::orthographic_rh(
+            -200.0, 200.0, -200.0, 200.0,
+            0.01, 250.0);
 
         ViewProjection {
             uniform: ViewProjUniform {
@@ -72,6 +77,7 @@ impl ViewProjection {
             cs_offset: DVec3::new(0.0, 0.0, 0.0),
             inv_view_proj_matrix: DMat4::IDENTITY,
             uniform_buffer,
+            ortho
         }
     }
 
@@ -86,11 +92,12 @@ impl ViewProjection {
             .to_cols_array_2d();
         let view_proj = FLIP_Y * OPENGL_TO_WGPU_MATRIX * data.view_proj_matrix;
 
-        // TODO
-        let ortho = DMat4::orthographic_rh(
-            -200.0, 200.0, -200.0, 200.0,
-            0.01, 250.0);
-        self.uniform.light_view_proj = (OPENGL_TO_WGPU_MATRIX * (ortho * data.view_light_matrix))
+        let ortho_scaler = (data.scale / 0.7) as f64;
+        self.ortho = DMat4::orthographic_rh(
+            -220.0 * ortho_scaler, 120.0 * ortho_scaler, -100.0 * ortho_scaler, 220.0 * ortho_scaler,
+            0.01, 1500.0);
+
+        self.uniform.light_view_proj = (OPENGL_TO_WGPU_MATRIX * (self.ortho * data.view_light_matrix))
             .as_mat4()
             .to_cols_array_2d();
 
