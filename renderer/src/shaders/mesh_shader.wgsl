@@ -98,15 +98,15 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
     var shadow = 0.0;
     if((params & 2) > 0) {
 
-        var projCoords = in.pos_from_light.xyz;// / in.pos_from_light.w;
-        let currentDepth = projCoords.z;
+        let currentDepth = in.pos_from_light.z;
+        let projCoords = (in.pos_from_light.xy * vec2f(0.5, -0.5)) + 0.5;
 
-        let texelSize = 2.0 / vec2f(textureDimensions(t_depth));
+        let texelSize = 1.2 / vec2f(textureDimensions(t_depth));
 
         let shadow_bias = 0.0005 * camera.scale;
         for (var xx = -1; xx <= 1; xx++) {
             for (var yy = -1; yy <= 1; yy++) {
-                shadow += (textureSampleCompare(t_depth, s_compare, (projCoords.xy * vec2f(0.5, -0.5) + 0.5) + vec2f(f32(xx), f32(yy)) * texelSize, currentDepth - shadow_bias));
+                shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(f32(xx), f32(yy)) * texelSize, currentDepth - shadow_bias));
             }
         }
         shadow /= 9.0;

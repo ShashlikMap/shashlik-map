@@ -146,6 +146,8 @@ impl WithTexture for ScreenMeshPipeline {
         let device = global_context.device();
         let diffuse_sampler = device.create_sampler(&Default::default());
         let sampler_compare = device.create_sampler(&SamplerDescriptor {
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
             compare: Some(CompareFunction::GreaterEqual),
             ..Default::default()
         });
