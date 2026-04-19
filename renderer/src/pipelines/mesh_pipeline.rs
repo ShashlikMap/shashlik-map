@@ -71,6 +71,8 @@ impl MeshPipeline {
         });
 
         let depth_sampler = device.create_sampler(&SamplerDescriptor {
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
             compare: Some(CompareFunction::GreaterEqual),
             ..Default::default()
         });
