@@ -108,34 +108,41 @@ fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
 
 @fragment
 fn fs_main_sm(in: VertexOutput) -> @location(0) vec4<f32> {
-    let pixel_coord = in.clip_position.xy;
-    let u_coord = (pixel_coord.x * camera.inv_screen_size.x) * 2.0 - 1.0;
-    let v_coord = (pixel_coord.y * camera.inv_screen_size.y) * 2.0 - 1.0;
-    let near_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 0.0, 1.0);
+    let uv = in.uv * 2.0 - 1.0;
+    let near_world1 = camera.view_proj_inv * vec4f(uv.x, uv.y, 0.0, 1.0);
     let near_world = near_world1.xyz / near_world1.w;
-    let far_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 1.0, 1.0);
+    let far_world1 = camera.view_proj_inv * vec4f(uv.x, uv.y, 1.0, 1.0);
     let far_world = far_world1.xyz / far_world1.w;
 
     var u = -near_world.z / (far_world.z - near_world.z);
     if u < 0.0 {
         u = 1.0 - u;
     }
-    var fragPos = near_world + u * (far_world - near_world);
+
     // shift a bit ground shadows towards the light to create free contact shadow around building
-    fragPos.x -= 0.006;
-    fragPos.y -= 0.006;
+    let fragPos = near_world + u * (far_world - near_world) - 0.006;
 
     let pos_from_light = camera.light_view_proj * vec4<f32>(vec3f(fragPos), 1.0);
     let currentDepth = pos_from_light.z;
     let projCoords = (pos_from_light.xy * vec2f(0.5, -0.5)) + 0.5;
 
-    let texelSize = 2.0 / vec2f(textureDimensions(t_depth));
     var shadow = 0.0;
-    for (var xx = -1; xx <= 1; xx++) {
-        for (var yy = -1; yy <= 1; yy++) {
-            shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(f32(xx), f32(yy)) * texelSize, currentDepth));
-        }
+    let texelSize = 2.0 / vec2f(textureDimensions(t_depth));
+    shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(-1.0, -1.0) * texelSize, currentDepth));
+    shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(1.0, 1.0) * texelSize, currentDepth));
+    shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(-1.0, 1.0) * texelSize, currentDepth));
+    shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(1.0, -1.0) * texelSize, currentDepth));
+    if(shadow == 0.0 || shadow == 4.0) {
+        // 0.125: (shadow / 4.0) * 0.5
+        return vec4(0.0, 0.0, 0.0, shadow * 0.125);
     }
+
+    shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(-1.0, 0.0) * texelSize, currentDepth));
+    shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(0.0, -1.0) * texelSize, currentDepth));
+    shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(0.0, 0.0) * texelSize, currentDepth));
+    shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(0.0, 1.0) * texelSize, currentDepth));
+    shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(1.0, 0.0) * texelSize, currentDepth));
+
     shadow /= 9.0;
     shadow = shadow * 0.5;
 

@@ -90,10 +90,8 @@ var s_compare: sampler_comparison;
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
-
-    let diffuse_strength = max(dot(in.world_normal, light_dir), 0.0);
     let gradient_koef = 0.5 + min(1.0, tanh(2.0 * in.world_position.z)) / 2.0;
-    let diffuse_color = vec3(1.0, 1.0, 1.0) * diffuse_strength;
+    let diffuse_color = max(dot(in.world_normal, light_dir), 0.0);
 
     var shadow = 0.0;
     if((params & 2) > 0) {
@@ -104,12 +102,22 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
         let texelSize = 1.2 / vec2f(textureDimensions(t_depth));
 
         let shadow_bias = 0.0005 * camera.scale;
-        for (var xx = -1; xx <= 1; xx++) {
-            for (var yy = -1; yy <= 1; yy++) {
-                shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(f32(xx), f32(yy)) * texelSize, currentDepth - shadow_bias));
-            }
+        let depth_with_bias = currentDepth - shadow_bias;
+        shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(-1.0, -1.0) * texelSize, depth_with_bias));
+        shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(1.0, 1.0) * texelSize, depth_with_bias));
+        shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(-1.0, 1.0) * texelSize, depth_with_bias));
+        shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(1.0, -1.0) * texelSize, depth_with_bias));
+        if(shadow == 0.0 || shadow == 4.0) {
+            shadow *= 0.25;
+        } else {
+            shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(-1.0, 0.0) * texelSize, depth_with_bias));
+            shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(0.0, -1.0) * texelSize, depth_with_bias));
+            shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(0.0, 0.0) * texelSize, depth_with_bias));
+            shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(0.0, 1.0) * texelSize, depth_with_bias));
+            shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(1.0, 0.0) * texelSize, depth_with_bias));
+
+            shadow /= 9.0;
         }
-        shadow /= 9.0;
     }
 
     let result_color = (ambient_color + (1.0 - shadow) * (diffuse_color)) * default_color;
