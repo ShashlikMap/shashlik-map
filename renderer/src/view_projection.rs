@@ -173,7 +173,7 @@ impl ViewProjection {
 
             self.ortho = DMat4::orthographic_rh(
                 min_x, max_x, min_y, max_y,
-                0.01, 1000.0);
+                0.01, 1500.0);
         }
     }
 

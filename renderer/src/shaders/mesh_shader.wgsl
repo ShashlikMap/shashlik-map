@@ -101,7 +101,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
 
         let texelSize = 1.2 / vec2f(textureDimensions(t_depth));
 
-        let shadow_bias = 0.0005 * camera.scale;
+        let shadow_bias = 0.0007 * camera.scale;
         let depth_with_bias = currentDepth - shadow_bias;
         shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(-1.0, -1.0) * texelSize, depth_with_bias));
         shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(1.0, 1.0) * texelSize, depth_with_bias));

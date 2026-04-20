@@ -1,3 +1,4 @@
+use std::cmp::max;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
@@ -12,7 +13,7 @@ use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
 use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
-use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SSAO_ENABLED};
+use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
 
 slint::include_modules!();
 
@@ -47,6 +48,10 @@ fn main() {
     }
     ui.set_screen_width(screen_size.width as i32);
     ui.set_screen_height(screen_size.height as i32);
+
+    if max(screen_size.width, screen_size.height) <= 1024 {
+        unsafe { SHADOWS_TEX_SIZE = (1024, 1024); }
+    }
 
     let dpi = if screen_size.height <= 600 { 0.7 } else { 1.0 };
     let texture_width = ui.get_requested_texture_width();

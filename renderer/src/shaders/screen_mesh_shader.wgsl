@@ -108,6 +108,9 @@ fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
 
 @fragment
 fn fs_main_sm(in: VertexOutput) -> @location(0) vec4<f32> {
+    if(camera.scale >= 1.0) {
+        return vec4(0.0, 0.0, 0.0, 0.0);
+    }
     let uv = in.uv * 2.0 - 1.0;
     let near_world1 = camera.view_proj_inv * vec4f(uv.x, uv.y, 0.0, 1.0);
     let near_world = near_world1.xyz / near_world1.w;
