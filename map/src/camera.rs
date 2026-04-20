@@ -1,10 +1,11 @@
 use glam::{dvec3, DMat2, DMat3, DMat4, DVec2, DVec3};
 use std::f64::consts::PI;
+use renderer::LIGHT_POS;
 
 pub struct Camera {
     pub eye: DVec3,
     pub target: DVec3,
-    up: DVec3,
+    pub up: DVec3,
     fovy: f64,
     znear: f64,
     zfar: f64,
@@ -32,8 +33,8 @@ impl Camera {
         let eye_offset = self.eye - self.offset;
         let target_offset = self.target - self.offset;
         let view = DMat4::look_at_rh(
-            dvec3(eye_offset.x, eye_offset.y, eye_offset.z),
-            dvec3(target_offset.x, target_offset.y, target_offset.z),
+            eye_offset,
+            target_offset,
             self.up,
         );
         (view, self.perspective_matrix * view)
@@ -43,8 +44,8 @@ impl Camera {
     pub fn build_view_light_matrix(&mut self) -> DMat4 {
         let target_offset = self.target - self.offset;
         let light_view = DMat4::look_at_rh(
-            dvec3(target_offset.x + 5.0, target_offset.y + 5.0, target_offset.z + 6.0),
-            dvec3(target_offset.x, target_offset.y, target_offset.z),
+            target_offset + LIGHT_POS,
+            target_offset,
             DVec3::Z,
         );
         light_view
@@ -52,6 +53,10 @@ impl Camera {
     
     pub fn scale(&self) -> f32 {
         (self.eye.z / Self::INITIAL_Z) as f32
+    }
+
+    pub fn eye_direction(&self) -> DVec3 {
+        self.eye - self.target
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
