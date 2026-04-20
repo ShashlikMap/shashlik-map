@@ -1,3 +1,4 @@
+use std::f64::consts::PI;
 use crate::{RendererUpdateData, LIGHT_POS};
 use geo_types::{coord, Coord};
 use glam::{DMat2, DMat4, DVec2, DVec3, DVec4, Mat4, Vec3Swizzles};
@@ -147,22 +148,28 @@ impl ViewProjection {
         let center = self.clip_to_world(&coord! {x: 0.0, y: 0.0});
         if let (Some(c1), Some(c2), Some(c3), Some(c4), Some(center)) = (c1, c2, c3, c4, center) {
             let light_pos = LIGHT_POS.normalize();
-            let mut rad_to_light = data.eye_direction.xy().angle_to(light_pos.xy());
+            let mut rad_to_light = (data.eye_direction.xy()).angle_to(light_pos.xy());
             if rad_to_light.is_nan() {
                 rad_to_light = -data.up.xy().angle_to(light_pos.xy());
             }
+            if rad_to_light > 0.0 {
+                rad_to_light += PI;
+            }
             let rotation = DMat2::from_angle(rad_to_light);
+
 
             let p1 = rotation * (c1 - center);
             let p2 = rotation * (c2 - center);
             let p3 = rotation * (c3 - center);
             let p4 = rotation * (c4 - center);
 
+            let y_offset = 1.0 / light_pos.z;
+
             let min_x = min_f64!(p1.x, p2.x, p3.x, p4.x);
-            let min_y = min_f64!(p1.y, p2.y, p3.y, p4.y);
+            let min_y = min_f64!(p1.y, p2.y, p3.y, p4.y) * y_offset;
 
             let max_x = max_f64!(p1.x, p2.x, p3.x, p4.x);
-            let max_y = max_f64!(p1.y, p2.y, p3.y, p4.y) * (1.0 / light_pos.z);
+            let max_y = max_f64!(p1.y, p2.y, p3.y, p4.y) * y_offset;
 
             self.ortho = DMat4::orthographic_rh(
                 min_x, max_x, min_y, max_y,
