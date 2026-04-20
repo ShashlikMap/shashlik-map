@@ -7,6 +7,7 @@ use crate::view_projection::ViewProjection;
 use crate::RendererUpdateData;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Device, TextureFormat, TextureUsages, TextureView};
+use wgpu_canvas::SHADOWS_TEX_SIZE;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 pub struct GlobalContext {
@@ -39,7 +40,8 @@ impl GlobalContext {
             },
             device,
         );
-        let shadow_map_depth_texture = create_depth_texture((2048, 2048),
+        println!("kiol: {:?}", unsafe { SHADOWS_TEX_SIZE });
+        let shadow_map_depth_texture = create_depth_texture(unsafe { SHADOWS_TEX_SIZE },
                                                             1,
                                                             TextureFormat::Depth32Float,
                                                             device);

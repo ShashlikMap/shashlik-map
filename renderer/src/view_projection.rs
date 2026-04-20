@@ -1,7 +1,8 @@
+use std::f64::consts::PI;
+use crate::{RendererUpdateData, LIGHT_POS};
 use geo_types::{coord, Coord};
-use glam::{DMat4, DVec2, DVec3, DVec4, Mat4};
+use glam::{DMat2, DMat4, DVec2, DVec3, DVec4, Mat4, Vec3Swizzles};
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
-use crate::RendererUpdateData;
 
 #[rustfmt::skip]
 const OPENGL_TO_WGPU_MATRIX: DMat4 = DMat4::from_cols(
@@ -18,6 +19,20 @@ const FLIP_Y: DMat4 = DMat4::from_cols_array(
     0.0, 0.0, 1.0, 0.0,
     0.0, 0.0, 0.0, 1.0],
 );
+
+macro_rules! min_f64 {
+    ($x:expr) => ($x);
+    ($x:expr, $($y:expr),+) => {
+        ($x).min(min_f64!($($y),+))
+    };
+}
+
+macro_rules! max_f64 {
+    ($x:expr) => ($x);
+    ($x:expr, $($y:expr),+) => {
+        ($x).max(max_f64!($($y),+))
+    };
+}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -92,10 +107,7 @@ impl ViewProjection {
             .to_cols_array_2d();
         let view_proj = FLIP_Y * OPENGL_TO_WGPU_MATRIX * data.view_proj_matrix;
 
-        let ortho_scaler = (data.scale / 0.7) as f64;
-        self.ortho = DMat4::orthographic_rh(
-            -220.0 * ortho_scaler, 120.0 * ortho_scaler, -100.0 * ortho_scaler, 220.0 * ortho_scaler,
-            0.01, 1500.0);
+        self.ortho_for_shadow_map(&data);
 
         self.uniform.light_view_proj = (OPENGL_TO_WGPU_MATRIX * (self.ortho * data.view_light_matrix))
             .as_mat4()
@@ -125,6 +137,44 @@ impl ViewProjection {
             0,
             bytemuck::cast_slice(&[self.uniform]),
         );
+    }
+
+    /// calculate ortho matrix for shadow mapping
+    fn ortho_for_shadow_map(&mut self, data: &RendererUpdateData) {
+        let c1 = self.clip_to_world(&coord! {x: -1.0, y: -1.0});
+        let c2 = self.clip_to_world(&coord! {x: 1.0, y: -1.0});
+        let c3 = self.clip_to_world(&coord! {x: -1.0, y: 1.0});
+        let c4 = self.clip_to_world(&coord! {x: 1.0, y: 1.0});
+        let center = self.clip_to_world(&coord! {x: 0.0, y: 0.0});
+        if let (Some(c1), Some(c2), Some(c3), Some(c4), Some(center)) = (c1, c2, c3, c4, center) {
+            let light_pos = LIGHT_POS.normalize();
+            let mut rad_to_light = (data.eye_direction.xy()).angle_to(light_pos.xy());
+            if rad_to_light.is_nan() {
+                rad_to_light = -data.up.xy().angle_to(light_pos.xy());
+            }
+            if rad_to_light > 0.0 {
+                rad_to_light += PI;
+            }
+            let rotation = DMat2::from_angle(rad_to_light);
+
+
+            let p1 = rotation * (c1 - center);
+            let p2 = rotation * (c2 - center);
+            let p3 = rotation * (c3 - center);
+            let p4 = rotation * (c4 - center);
+
+            let y_offset = 1.0 / light_pos.z;
+
+            let min_x = min_f64!(p1.x, p2.x, p3.x, p4.x);
+            let min_y = min_f64!(p1.y, p2.y, p3.y, p4.y) * y_offset;
+
+            let max_x = max_f64!(p1.x, p2.x, p3.x, p4.x);
+            let max_y = max_f64!(p1.y, p2.y, p3.y, p4.y) * y_offset;
+
+            self.ortho = DMat4::orthographic_rh(
+                min_x, max_x, min_y, max_y,
+                0.01, 1500.0);
+        }
     }
 
     fn p2_scale(&mut self, scale: f32) -> f32 {

@@ -230,6 +230,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
             view_proj_matrix: view_proj,
             cs_offset: self.camera.offset,
             scale: self.camera.scale(),
+            eye_direction: self.camera.eye_direction(),
+            up: self.camera.up
         };
         self.renderer.update(update_data);
 

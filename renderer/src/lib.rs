@@ -55,6 +55,9 @@ pub mod pipelines;
 mod textures;
 mod utils;
 
+/// should be the same as mesh_shader.wgsl
+pub static LIGHT_POS: DVec3 = dvec3(5.0, 5.0, 6.0);
+
 pub struct RendererUpdateData {
     pub view_matrix: DMat4,
     pub view_light_matrix: DMat4,
@@ -62,6 +65,8 @@ pub struct RendererUpdateData {
     pub view_proj_matrix: DMat4,
     pub cs_offset: DVec3,
     pub scale: f32,
+    pub eye_direction: DVec3,
+    pub up: DVec3,
 }
 
 pub trait Renderer {
