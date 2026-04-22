@@ -20,8 +20,10 @@ rstar = "0.12.2"
 rustybuzz = "0.20.1"
 rustc-hash = "1.1.0"
 linked-hash-map = "0.5.6"
+wesl = { git = "https://github.com/wgsl-tooling-wg/wesl-rs", features = ["naga-ext"]}
 
 [build-dependencies]
 anyhow = "1.0"
+wesl = { git = "https://github.com/wgsl-tooling-wg/wesl-rs", features = ["naga-ext"]}
 
 

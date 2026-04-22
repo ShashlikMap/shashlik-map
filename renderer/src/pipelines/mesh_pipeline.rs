@@ -3,7 +3,9 @@ use crate::global_context::GlobalContext;
 use crate::pipelines::{OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline, WithSSAOTexture};
 use crate::textures::{create_simple_texture, TextureData, SAMPLE_COUNT};
 use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
-use wgpu::{include_wgsl, BindGroup, BindGroupLayout, BlendState, CompareFunction, ComputePass, DepthStencilState, Face, RenderPass, SamplerDescriptor, TextureFormat, TextureUsages, TextureView};
+use std::borrow::Cow;
+use wesl::include_wesl;
+use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, ComputePass, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, TextureFormat, TextureUsages, TextureView};
 use wgpu_canvas::SHADOWS_ENABLED;
 
 pub struct MeshPipeline {
@@ -171,8 +173,10 @@ impl RenderPipeline for MeshPipeline {
             immediate_size: 4,
             ..Default::default()
         });
-        let shader_module =
-            device.create_shader_module(include_wgsl!("../shaders/mesh_shader.wgsl"));
+        let shader_module = device.create_shader_module(ShaderModuleDescriptor {
+            label: Some("mesh_shader"),
+            source: ShaderSource::Wgsl(Cow::from(include_wesl!("mesh_shader"))),
+        });
         OwnedRenderPipelineDescriptor {
             label: Some("Mesh Render Pipeline"),
             layout: Some(pipeline_layout),
