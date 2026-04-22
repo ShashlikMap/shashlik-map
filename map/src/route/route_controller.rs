@@ -51,7 +51,8 @@ impl RouteController {
                 Self::clear_routes_internal(api.clone());
                 match valhalla.route(manifest) {
                     Ok(trip) => {
-                        println!("Route calculated: {:?}", trip);
+                        // println!("Route calculated: {:?}", trip);
+                        println!("Route calculated!");
                         if let Some(leg) = trip.legs.first() {
                             let route: Vec<Point> = leg
                                 .shape
