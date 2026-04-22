@@ -2,7 +2,9 @@ use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex, VertexAttrib};
-use wgpu::{include_wgsl, BindGroup, BindGroupLayout, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, RenderPass, ShaderStages};
+use std::borrow::Cow;
+use wesl::include_wesl;
+use wgpu::{BindGroup, BindGroupLayout, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
 
 pub struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
@@ -57,8 +59,10 @@ impl ShapePipeline {
         });
 
         let mesh_pipeline = MeshPipeline::new(global_context);
-
-        let compute_cull_shader = global_context.device().create_shader_module(include_wgsl!("../shaders/shape_culling.wgsl"));
+        let compute_cull_shader = global_context.device().create_shader_module(ShaderModuleDescriptor {
+            label: Some("shape_culling"),
+            source: ShaderSource::Wgsl(Cow::from(include_wesl!("shape_culling"))),
+        });
 
         let culling_pipeline_layout = global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shape Compute Pipeline Layout"),
@@ -126,9 +130,11 @@ impl RenderPipeline for ShapePipeline {
 
         mesh_descriptor.layout = Some(pipeline_layout);
 
-        let shader_module =
-            device.create_shader_module(include_wgsl!("../shaders/shape_shader.wgsl"));
 
+        let shader_module = device.create_shader_module(ShaderModuleDescriptor {
+            label: Some("shape_shader"),
+            source: ShaderSource::Wgsl(Cow::from(include_wesl!("shape_shader"))),
+        });
         let vertex = &mut mesh_descriptor.vertex;
         vertex.entry_point = self.vs_func_name.or(vertex.entry_point);
         

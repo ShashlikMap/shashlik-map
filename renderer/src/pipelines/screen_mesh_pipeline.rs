@@ -1,9 +1,11 @@
 use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline, WithTexture};
-use crate::vertex_attrs::{MeshVertexWithUV, ShapeInstanceInput, TextInstanceInput, VertexAttrib};
-use wgpu::{include_wgsl, BindGroup, BindGroupLayout, CompareFunction, ComputePass, RenderPass, SamplerDescriptor, TextureFormat, TextureUsages, TextureView};
 use crate::textures::{create_simple_texture, TextureData};
+use crate::vertex_attrs::{MeshVertexWithUV, ShapeInstanceInput, TextInstanceInput, VertexAttrib};
+use std::borrow::Cow;
+use wesl::include_wesl;
+use wgpu::{BindGroup, BindGroupLayout, CompareFunction, ComputePass, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, TextureFormat, TextureUsages, TextureView};
 
 pub struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
@@ -104,9 +106,11 @@ impl RenderPipeline for ScreenMeshPipeline {
         stencil.depth_write_enabled = false;
         mesh_descriptor.depth_stencil = Some(stencil);
 
-        let shader_module =
-            device.create_shader_module(include_wgsl!("../shaders/screen_mesh_shader.wgsl"));
-
+        let shader_module = device.create_shader_module(ShaderModuleDescriptor {
+            label: Some("screen_mesh_shader"),
+            source: ShaderSource::Wgsl(Cow::from(include_wesl!("screen_mesh_shader"))),
+        });
+       
         let vertex = &mut mesh_descriptor.vertex;
         vertex.module = shader_module.to_owned();
         vertex.buffers = vec![MeshVertexWithUV::desc(), TextInstanceInput::desc()];

@@ -3,7 +3,9 @@ use crate::mesh_layers::layers::Layers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pass_nodes::PassNode;
 use crate::textures::{create_common_texture, create_depth_texture, create_simple_texture, TextureData, SAMPLE_COUNT};
-use wgpu::{include_wgsl, BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, ImageSubresourceRange, StorageTextureAccess, TextureFormat, TextureUsages, TextureView, TextureViewDimension};
+use std::borrow::Cow;
+use wesl::include_wesl;
+use wgpu::{BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, ImageSubresourceRange, ShaderModuleDescriptor, ShaderSource, StorageTextureAccess, TextureFormat, TextureUsages, TextureView, TextureViewDimension};
 use wgpu_canvas::SSAO_ENABLED;
 
 pub(crate) struct MainPassNode {
@@ -135,8 +137,11 @@ impl MainPassNode {
             bind_group_layouts: &[&ssao_bind_group_layout, &camera_ssao_bind_group_layout],
             ..Default::default()
         });
-
-        let ssao_shader = global_context.device().create_shader_module(include_wgsl!("../shaders/ssao.wgsl"));
+        
+        let ssao_shader = global_context.device().create_shader_module(ShaderModuleDescriptor {
+            label: Some("ssao"),
+            source: ShaderSource::Wgsl(Cow::from(include_wesl!("ssao"))),
+        });
 
         let ssao_compute_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {
             label: Some("ssao_compute_pipeline"),
