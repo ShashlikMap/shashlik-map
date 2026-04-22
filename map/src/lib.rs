@@ -162,6 +162,11 @@ impl<T: TilesProvider> ShashlikMap<T> {
         map.set_lon_lat_bearing(initial_coord.x, initial_coord.y, Some(0f32));
         map.load_styles();
 
+        // FIXME, the first route rendering can take a lot of time...
+        if cfg!(target_os = "linux") {
+            map.create_route_to((initial_coord.x, initial_coord.y), RouteCosting::Auto);
+        }
+
         Self::start_sgnss_if_available(map_event_sender);
 
         Ok(map)
