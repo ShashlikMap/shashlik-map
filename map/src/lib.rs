@@ -52,7 +52,6 @@ pub struct ShashlikMap<T: TilesProvider> {
     current_world_position: DVec3,
     current_bearing: f64,
     current_pitch: f64,
-    pub temp_color: f32,
     cam_follow_mode: bool,
     cam_follow_zoom_lock: Option<f64>,
     screen_params: ScreenParam,
@@ -151,7 +150,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
             current_world_position: camera_offset,
             current_bearing: 0.0,
             current_pitch: 45.0,
-            temp_color: 0.0,
             cam_follow_mode: true,
             cam_follow_zoom_lock: Some(30.0),
             screen_params: ScreenParam {
@@ -357,6 +355,14 @@ impl<T: TilesProvider> ShashlikMap<T> {
             self.cam_follow_zoom_lock = Some(30.0);
             self.current_pitch = 45.0;
         }
+    }
+
+    pub fn set_current_pitch(&mut self, current_pitch: f64) {
+        self.current_pitch = current_pitch;
+    }
+
+    pub fn set_cam_follow_zoom_lock(&mut self, cam_follow_zoom_lock: Option<f64>) {
+        self.cam_follow_zoom_lock = cam_follow_zoom_lock;
     }
 
     pub fn set_lon_lat_bearing(&mut self, lon: f64, lat: f64, bearing: Option<f32>) {
