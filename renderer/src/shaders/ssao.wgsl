@@ -1,4 +1,5 @@
 import super::common::CameraUniform;
+import super::common::frag_pos_from_ray;
 
 @group(0) @binding(0) var ssao_texture: texture_storage_2d<r32float, read_write>;
 
@@ -60,23 +61,13 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f) {
     if(loadedNormal.x == 0.0 && loadedNormal.y == 0.0 && loadedNormal.z == 0.0) {
         let u_coord = (f32(2 * pixel_coord.x) * camera.inv_screen_size.x) * 2.0 - 1.0;
         let v_coord = (f32(2 * pixel_coord.y) * camera.inv_screen_size.y) * 2.0 - 1.0;
-        let near_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 0.0, 1.0);
-        let near_world = near_world1.xyz / near_world1.w;
-        let far_world1 = camera.view_proj_inv * vec4f(u_coord, v_coord, 1.0, 1.0);
-        let far_world = far_world1.xyz / far_world1.w;
-
-        var u = -near_world.z / (far_world.z - near_world.z);
-        if u < 0.0 {
-            u = 1.0 - u;
-        }
-        fragPos = near_world + u * (far_world - near_world);
+        fragPos = frag_pos_from_ray(camera, vec2f(u_coord, v_coord));
         fragPos = (camera.view * vec4f(fragPos, 1.0)).xyz;
         normal = normalize((camera.view_tr_inv * vec4f(0.0, 0.0, 1.0, 1.0)).xyz);
     } else {
         normal = -normalize(loadedNormal);
         fragPos = textureLoad(positions, pixel_coord, 0).xyz;
     }
-
 
     let noise_sample_coords = pixel_coord % vec2u(noise_size, noise_size);
     let noise_vec = noise[noise_sample_coords.y * noise_size + noise_sample_coords.x];

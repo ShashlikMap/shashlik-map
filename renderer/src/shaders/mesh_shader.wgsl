@@ -1,4 +1,5 @@
 import super::common::CameraUniform;
+import super::common::pcf;
 
 // Vertex shader
 
@@ -94,21 +95,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
 
         let shadow_bias = 0.0007 * camera.scale;
         let depth_with_bias = currentDepth - shadow_bias;
-        shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(-1.0, -1.0) * texelSize, depth_with_bias));
-        shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(1.0, 1.0) * texelSize, depth_with_bias));
-        shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(-1.0, 1.0) * texelSize, depth_with_bias));
-        shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(1.0, -1.0) * texelSize, depth_with_bias));
-        if(shadow == 0.0 || shadow == 4.0) {
-            shadow *= 0.25;
-        } else {
-            shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(-1.0, 0.0) * texelSize, depth_with_bias));
-            shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(0.0, -1.0) * texelSize, depth_with_bias));
-            shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(0.0, 0.0) * texelSize, depth_with_bias));
-            shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(0.0, 1.0) * texelSize, depth_with_bias));
-            shadow += (textureSampleCompare(t_depth, s_compare, projCoords + vec2f(1.0, 0.0) * texelSize, depth_with_bias));
-
-            shadow /= 9.0;
-        }
+        shadow = pcf(t_depth, s_compare, projCoords, texelSize, depth_with_bias);
     }
 
     let result_color = (ambient_color + (1.0 - shadow) * (diffuse_color)) * default_color;
