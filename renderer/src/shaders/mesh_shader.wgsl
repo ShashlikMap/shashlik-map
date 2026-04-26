@@ -96,7 +96,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
         shadow = shadow_map(t_depth, s_compare, projCoords, 1.2, depth_with_bias);
     }
 
-    let result_color = (ambient_color + (1.0 - shadow) * (diffuse_color)) * default_color;
+    let result_color = (ambient_color + (1.0 - shadow * 0.6) * (diffuse_color)) * default_color;
     return vec4(result_color * gradient_koef, in.color_alpha);
 }
 
