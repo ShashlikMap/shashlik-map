@@ -82,7 +82,7 @@ var s_compare: sampler_comparison;
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
-    let gradient_koef = 0.5 + min(1.0, tanh(2.0 * in.world_position.z)) / 2.0;
+    let gradient_koef = 0.5 + min(1.0, tanh(0.5 + 2.0 * in.world_position.z)) / 2.0;
     let diffuse_color = max(dot(in.world_normal, light_dir), 0.0);
 
     var shadow = 0.0;
