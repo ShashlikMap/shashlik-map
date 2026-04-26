@@ -1,5 +1,5 @@
 import super::common::CameraUniform;
-import super::common::pcf;
+import super::common::shadow_map;
 
 // Vertex shader
 
@@ -90,12 +90,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
 
         let currentDepth = in.pos_from_light.z;
         let projCoords = (in.pos_from_light.xy * vec2f(0.5, -0.5)) + 0.5;
-
-        let texelSize = 1.2 / vec2f(textureDimensions(t_depth));
-
         let shadow_bias = 0.0007 * camera.scale;
         let depth_with_bias = currentDepth - shadow_bias;
-        shadow = pcf(t_depth, s_compare, projCoords, texelSize, depth_with_bias);
+
+        shadow = shadow_map(t_depth, s_compare, projCoords, 1.2, depth_with_bias);
     }
 
     let result_color = (ambient_color + (1.0 - shadow) * (diffuse_color)) * default_color;

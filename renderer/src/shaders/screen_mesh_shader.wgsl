@@ -1,5 +1,5 @@
 import super::common::CameraUniform;
-import super::common::pcf;
+import super::common::shadow_map;
 import super::common::frag_pos_from_ray;
 
 @group(0) @binding(0)
@@ -111,10 +111,9 @@ fn fs_main_sm(in: VertexOutput) -> @location(0) vec4<f32> {
     let currentDepth = pos_from_light.z;
     let projCoords = (pos_from_light.xy * vec2f(0.5, -0.5)) + 0.5;
 
-    let texelSize = 2.0 / vec2f(textureDimensions(t_depth));
-    let shadow = pcf(t_depth, s_compare, projCoords, texelSize, currentDepth) * 0.5;
+    let shadow = shadow_map(t_depth, s_compare, projCoords, 2.0, currentDepth);
 
-    return vec4(0.0, 0.0, 0.0, shadow);
+    return vec4(0.0, 0.0, 0.0, shadow * 0.5);
 }
 
 // FAKE for compatibility
