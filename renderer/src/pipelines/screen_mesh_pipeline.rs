@@ -51,7 +51,7 @@ impl ScreenMeshPipeline {
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         // This should match the filterable field of the
                         // corresponding Texture entry above.
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                         count: None,
                     },
                     wgpu::BindGroupLayoutEntry {
@@ -148,7 +148,11 @@ impl WithTexture for ScreenMeshPipeline {
         global_context: &GlobalContext,
     ) -> BindGroup {
         let device = global_context.device();
-        let diffuse_sampler = device.create_sampler(&Default::default());
+        let diffuse_sampler = device.create_sampler(&SamplerDescriptor {
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
         let sampler_compare = device.create_sampler(&SamplerDescriptor {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
@@ -160,7 +164,7 @@ impl WithTexture for ScreenMeshPipeline {
                 sample_count: 1,
                 size: (1, 1),
                 usage: TextureUsages::TEXTURE_BINDING,
-                format: TextureFormat::R32Float,
+                format: TextureFormat::Rgba16Float,
             },
             device,
         );

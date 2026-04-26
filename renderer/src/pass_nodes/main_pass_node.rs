@@ -28,8 +28,8 @@ impl MainPassNode {
         );
 
         let non_msaa_size = (
-            global_context.config().width / 2,
-            global_context.config().height / 2,
+            global_context.config().width,
+            global_context.config().height,
         );
 
         let device = global_context.device();
@@ -62,8 +62,8 @@ impl MainPassNode {
                 binding: 0,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::StorageTexture {
-                    access: StorageTextureAccess::ReadWrite,
-                    format: TextureFormat::R32Float,
+                    access: StorageTextureAccess::WriteOnly,
+                    format: TextureFormat::Rgba16Float,
                     view_dimension: TextureViewDimension::D2,
                 },
                 count: None,
@@ -269,7 +269,8 @@ impl PassNode for MainPassNode {
                 layers.render(&mut render_pass, global_context);
             }
 
-            encoder.clear_texture(global_context.ssao_texture.texture(), &ImageSubresourceRange::default());
+            let ssao_texture = global_context.ssao_texture.texture();
+            encoder.clear_texture(ssao_texture, &ImageSubresourceRange::default());
             let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("SSAO Compute Pass"),
                 timestamp_writes: None,
@@ -277,9 +278,8 @@ impl PassNode for MainPassNode {
             compute_pass.set_pipeline(&self.ssao_compute_pipeline);
             compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
             compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
-
-            let wg_x = (global_context.view_projection.screen_size.0 * 0.5 / 8.0).ceil() as u32;
-            let wg_y = (global_context.view_projection.screen_size.1 * 0.5 / 8.0).ceil() as u32;
+            let wg_x = (ssao_texture.size().width as f32 / 8.0).ceil() as u32;
+            let wg_y = (ssao_texture.size().height as f32 / 8.0).ceil() as u32;
             compute_pass.dispatch_workgroups(wg_x, wg_y, 1);
         }
 

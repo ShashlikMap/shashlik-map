@@ -89,12 +89,15 @@ fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
 
 @fragment
 fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
-    let f = fract(floor(in.clip_position.xy * 0.5) - 0.5);
-
-    let values = textureGather(0, t_diffuse, s_diffuse, in.uv);
-    let top = mix(values.w, values.z, f.x);
-    let bottom = mix(values.x, values.y, f.x);
-    return vec4f(0.0, 0.0, 0.0, mix(top, bottom, f.y));
+    var result = 0.0;
+    let texelSize = 1.0 / vec2f(textureDimensions(t_diffuse));
+    for (var y = -3; y < 3; y++) {
+      for (var x = -3; x < 3; x++) {
+        let offset = in.uv + vec2f(f32(x), f32(y)) * texelSize;
+        result += textureSample(t_diffuse, s_diffuse, offset).r;
+      }
+    }
+    return vec4f(0.0, 0.0, 0.0, result / 36.0);
 }
 
 @fragment
