@@ -1,7 +1,7 @@
 import super::common::CameraUniform;
 import super::common::frag_pos_from_ray;
 
-@group(0) @binding(0) var ssao_texture: texture_storage_2d<r32float, read_write>;
+@group(0) @binding(0) var ssao_texture: texture_storage_2d<r32float, write>;
 
 @group(0) @binding(1) var normals: texture_2d<f32>;
 
@@ -13,13 +13,13 @@ var<uniform> camera: CameraUniform;
 @compute @workgroup_size(8, 8, 1)
 fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let pixel_coord = id.xy;
-    let ssao_size = 0.5 * vec2f(1.0 / camera.inv_screen_size.x, 1.0 / camera.inv_screen_size.y);
+    let ssao_size = textureDimensions(ssao_texture);
 
-    if(pixel_coord.x >= u32(ssao_size.x) || pixel_coord.y >= u32(ssao_size.y)) {
+    if(pixel_coord.x >= ssao_size.x || pixel_coord.y >= ssao_size.y) {
         return;
     }
 
-    compute_ssao(pixel_coord, ssao_size);
+    compute_ssao(pixel_coord, vec2f(ssao_size));
 }
 
 const radius: f32 = 0.2;
@@ -59,9 +59,8 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f) {
 
     var fragPos = vec3f(0.0, 0.0, 0.0);
     if(loadedNormal.x == 0.0 && loadedNormal.y == 0.0 && loadedNormal.z == 0.0) {
-        let u_coord = (f32(2 * pixel_coord.x) * camera.inv_screen_size.x) * 2.0 - 1.0;
-        let v_coord = (f32(2 * pixel_coord.y) * camera.inv_screen_size.y) * 2.0 - 1.0;
-        fragPos = frag_pos_from_ray(camera, vec2f(u_coord, v_coord));
+        let uv_coord = (vec2f(2 * pixel_coord.xy) * camera.inv_screen_size) * 2.0 - 1.0;
+        fragPos = frag_pos_from_ray(camera, uv_coord);
         fragPos = (camera.view * vec4f(fragPos, 1.0)).xyz;
         normal = normalize((camera.view_tr_inv * vec4f(0.0, 0.0, 1.0, 1.0)).xyz);
     } else {
@@ -88,8 +87,8 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f) {
             continue;
         }
 
-        let offset2 = camera.proj * vec4f(samplePos, 1.0);
-        let ndcPos = offset2.xy / offset2.w;
+        let offset = camera.proj * vec4f(samplePos, 1.0);
+        let ndcPos = offset.xy / offset.w;
         let uv = ndcPos * vec2f(0.5, -0.5) + vec2f(0.5);
         let screenCoord = vec2i(uv * ssao_size);
 

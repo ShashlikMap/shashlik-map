@@ -1,4 +1,9 @@
-use glam::{dvec3, DMat2, DMat3, DMat4, DVec2, DVec3};
+use glam::dvec3;
+use glam::DMat2;
+use glam::DMat3;
+use glam::DMat4;
+use glam::DVec2;
+use glam::DVec3;
 use std::f64::consts::PI;
 use renderer::LIGHT_POS;
 
