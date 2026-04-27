@@ -219,9 +219,9 @@ impl MainPassNode {
     }
 
     fn generate_rnd_vec4(rng: &mut ThreadRng) -> Vec4 {
-        Vec4::new(rng.random_range(-1.0..1.0),
-                  rng.random_range(-1.0..1.0),
-                  rng.random_range(-1.0..1.0), 0.0)
+        Vec4::new(rng.random_range(-1.0..=1.0),
+                  rng.random_range(-1.0..=1.0),
+                  rng.random_range(-1.0..=1.0), 0.0)
     }
 
     fn generate_noise_texture_qq_data() -> [[Vec4; 3]; 16] {
@@ -233,9 +233,9 @@ impl MainPassNode {
     }
 
     fn generate_rnd_vec4_qq(rng: &mut ThreadRng) -> Vec4 {
-        Vec4::new(rng.random_range(-1.0..1.0),
-                  rng.random_range(-1.0..1.0),
-                  rng.random_range(0.0..1.0), 0.0)
+        Vec4::new(rng.random_range(-1.0..=1.0),
+                  rng.random_range(-1.0..=1.0),
+                  rng.random_range(0.0..=1.0), 0.0)
     }
 }
 

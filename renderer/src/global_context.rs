@@ -34,7 +34,7 @@ impl GlobalContext {
         let ssao_texture = create_simple_texture(
             TextureData {
                 sample_count: 1,
-                size: (canvas.config().width, canvas.config().height),
+                size: (canvas.config().width / 2, canvas.config().height / 2),
                 usage: TextureUsages::TEXTURE_BINDING | TextureUsages::STORAGE_BINDING,
                 format: TextureFormat::Rgba16Float,
             },
