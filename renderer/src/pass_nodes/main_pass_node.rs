@@ -3,12 +3,12 @@ use crate::mesh_layers::layers::Layers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pass_nodes::PassNode;
 use crate::textures::{create_common_texture, create_depth_texture, create_simple_texture, create_simple_texture_with_data, TextureData, SAMPLE_COUNT};
+use glam::Vec4;
+use rand::prelude::ThreadRng;
+use rand::{rng, RngExt};
 use std::borrow::Cow;
-use glam::{Vec3, Vec4};
 use wesl::include_wesl;
 use wgpu::{BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, ImageSubresourceRange, ShaderModuleDescriptor, ShaderSource, StorageTextureAccess, TextureFormat, TextureUsages, TextureView, TextureViewDimension};
-use rand::{random as other_random, rng, RngExt};
-use rand::prelude::ThreadRng;
 use wgpu_canvas::SSAO_ENABLED;
 
 pub(crate) struct MainPassNode {
@@ -31,8 +31,8 @@ impl MainPassNode {
         );
 
         let non_msaa_size = (
-            global_context.config().width,
-            global_context.config().height,
+            global_context.config().width / 2,
+            global_context.config().height / 2,
         );
 
         let device = global_context.device();

@@ -23,7 +23,8 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
         return;
     }
 
-    compute_ssao(pixel_coord, vec2f(ssao_size));
+    let screen_size = (1.0 / camera.inv_screen_size);
+    compute_ssao(pixel_coord, vec2f(ssao_size), screen_size);
 }
 
 const radius: f32 = 0.2;
@@ -32,8 +33,9 @@ const samples: i32 = 16;
 
 const noise_size: u32 = 64;
 
-fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f) {
-    let loadedNormal = textureLoad(normals, 2 * pixel_coord, 0).xyz;
+fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
+    let pixel_mul = u32(1);//u32(screen_size.x / ssao_size.x);
+    let loadedNormal = textureLoad(normals, pixel_mul * pixel_coord, 0).xyz;
     if(loadedNormal.y > 0.0) {
         return;
     }
@@ -41,13 +43,13 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f) {
 
     var fragPos = vec3f(0.0, 0.0, 0.0);
     if(loadedNormal.x == 0.0 && loadedNormal.y == 0.0 && loadedNormal.z == 0.0) {
-        let uv_coord = (vec2f(2 * pixel_coord.xy) * camera.inv_screen_size) * 2.0 - 1.0;
+        let uv_coord = (vec2f(pixel_mul * pixel_coord.xy) * camera.inv_screen_size) * 2.0 - 1.0;
         fragPos = frag_pos_from_ray(camera, uv_coord);
         fragPos = (camera.view * vec4f(fragPos, 1.0)).xyz;
         normal = normalize((camera.view_tr_inv * vec4f(0.0, 0.0, 1.0, 1.0)).xyz);
     } else {
         normal = -normalize(loadedNormal);
-        fragPos = textureLoad(positions, 2 * pixel_coord, 0).xyz;
+        fragPos = textureLoad(positions, pixel_mul * pixel_coord, 0).xyz;
     }
 
     let noise_sample_coords = pixel_coord % vec2u(noise_size, noise_size);
@@ -72,7 +74,7 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f) {
         let offset = camera.proj * vec4f(samplePos, 1.0);
         let ndcPos = offset.xy / offset.w;
         let uv = ndcPos * vec2f(0.5, -0.5) + vec2f(0.5);
-        let screenCoord = vec2i(uv * (1.0 / camera.inv_screen_size));
+        let screenCoord = vec2i(uv * screen_size);
 
         let sampleDepth = textureLoad(positions, screenCoord, 0).z;
 
