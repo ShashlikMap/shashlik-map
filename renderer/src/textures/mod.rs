@@ -1,5 +1,7 @@
 use crate::global_context::GlobalContext;
-use wgpu::{Device, TextureFormat, TextureUsages, TextureView};
+use wgpu::{Device, Queue, TextureFormat, TextureUsages, TextureView};
+use wgpu::util::{DeviceExt, TextureDataOrder};
+
 pub(crate) struct TextureData {
     pub(crate) sample_count: u32,
     pub(crate) size: (u32, u32),
@@ -51,14 +53,29 @@ pub fn create_depth_texture(size: (u32, u32), sample_count: u32, format: Texture
 }
 
 pub fn create_simple_texture(texture_data: TextureData, device: &Device) -> TextureView {
+    let texture_descriptor = create_texture_descriptor(texture_data);
+    let texture = device.create_texture(&texture_descriptor);
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
+    view
+}
+
+pub fn create_simple_texture_with_data(texture_data: TextureData, queue: &Queue, device: &Device, data: &[u8]) -> TextureView {
+    let texture_descriptor = create_texture_descriptor(texture_data);
+    let texture = device.create_texture_with_data(queue, &texture_descriptor, TextureDataOrder::default(), data);
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+    view
+}
+
+fn create_texture_descriptor<'a>(texture_data: TextureData) -> wgpu::TextureDescriptor<'a> {
     let texture_extent = wgpu::Extent3d {
         width: texture_data.size.0,
         height: texture_data.size.1,
         depth_or_array_layers: 1,
     };
 
-    let texture_descriptor = &wgpu::TextureDescriptor {
+     wgpu::TextureDescriptor {
         size: texture_extent,
         mip_level_count: 1,
         sample_count: texture_data.sample_count,
@@ -67,9 +84,5 @@ pub fn create_simple_texture(texture_data: TextureData, device: &Device) -> Text
         usage: texture_data.usage,
         label: None,
         view_formats: &[],
-    };
-    let texture = device.create_texture(texture_descriptor);
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-    view
+    }
 }
