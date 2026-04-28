@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.shashlik.kmp.ShashlikMap
 import com.shashlik.kmp.ShashlikMapApiHolder
+import com.shashlik.kmp.isDebugBuild
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import uniffi.ffi_run.RouteCosting.AUTO
 import uniffi.ffi_run.RouteCosting.MOTORBIKE
@@ -86,6 +87,11 @@ fun App() {
                 }
 
             }
+            Text(
+                "Build:${if (isDebugBuild) "Debug" else "Release"}",
+                modifier = Modifier.align(Alignment.BottomEnd)
+                    .padding(bottom = 8.dp, end = 8.dp)
+            )
         }
     }
 }
