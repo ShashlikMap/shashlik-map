@@ -11,8 +11,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LifecycleStartEffect
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.shashlik.kmp.shared.BuildConfig
 import timber.log.Timber
 import timber.log.Timber.DebugTree
+
+@Suppress("KotlinConstantConditions")
+actual val isDebugBuild: Boolean = BuildConfig.DEBUG
 
 fun shashlikMapInit() {
     Timber.plant(DebugTree())
