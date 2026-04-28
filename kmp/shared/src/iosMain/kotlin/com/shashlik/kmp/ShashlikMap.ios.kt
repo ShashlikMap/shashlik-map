@@ -5,6 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitView
 
+@OptIn(kotlin.experimental.ExperimentalNativeApi::class)
+actual val isDebugBuild: Boolean get() = Platform.isDebugBinary
 @Composable
 actual fun ShashlikMap(onLongTap: (x: Float, y: Float) -> Unit) {
     UIKitView(
