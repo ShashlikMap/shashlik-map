@@ -57,7 +57,7 @@ impl Camera {
     }
     
     pub fn scale(&self) -> f32 {
-        (self.eye.z / Self::INITIAL_Z) as f32
+        (self.eye_direction().length() / Self::INITIAL_Z) as f32
     }
 
     pub fn eye_direction(&self) -> DVec3 {

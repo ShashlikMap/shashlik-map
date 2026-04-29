@@ -126,7 +126,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let cam = Camera::new(camera_offset);
 
         let mut puck_spatial_data = SpatialData::transform(DVec3::new(0.0, 0.0, 0.0));
-        puck_spatial_data.scale(1.0);
+        puck_spatial_data.scale(DVec3::splat(1.0));
         renderer.api.add_render_group(
             "puck".to_string(),
             puck_spatial_data,
@@ -240,8 +240,9 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     fn fetch_tiles(&mut self) {
-        let zoom_level = self.camera_controller.camera_z / 100.0;
-        let zoom_level = (zoom_level.log2().round() as i32).max(0);
+        let zoom_level = self.camera.scale();
+        let zoom_level = ((zoom_level.log2() + 1.0) as i32).max(0);
+
         let p1 = self.clip_to_lon_lat(&coord! {x: -1.0, y: -1.0}).unwrap();
         let p2 = self.clip_to_lon_lat(&coord! {x: 1.0, y: -1.0}).unwrap();
         let p3 = self.clip_to_lon_lat(&coord! {x: 1.0, y: 1.0}).unwrap();
@@ -272,7 +273,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let puck_location = self.current_world_position;
         let bearing = self.current_bearing;
 
-        let cam_zoom = self.camera_controller.forward_len / 100.0;
+        let cam_zoom = self.camera.scale() as f64;
 
         let cam_yaw = self.camera_controller.yaw;
 
@@ -284,7 +285,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.renderer
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
-                spatial_data.scale = cam_zoom;
+                spatial_data.scale = DVec3::splat(cam_zoom);
                 spatial_data.transform +=
                     (puck_location - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED;
                 spatial_data.yaw +=
