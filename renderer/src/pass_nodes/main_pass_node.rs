@@ -68,7 +68,7 @@ impl MainPassNode {
             size: (16, 1),
             usage: TextureUsages::TEXTURE_BINDING,
             format: TextureFormat::Rgba32Float,
-        }, global_context.queue(), global_context.device(), bytemuck::cast_slice(&Self::generate_noise_texture_qq_data()));
+        }, global_context.queue(), global_context.device(), bytemuck::cast_slice(&Self::generate_ssao_kerner_data()));
 
         let non_msaa_depth_texture_view = create_depth_texture(non_msaa_size, 1,
                                                                TextureFormat::Depth24Plus,
@@ -224,15 +224,15 @@ impl MainPassNode {
                   rng.random_range(-1.0..=1.0), 0.0)
     }
 
-    fn generate_noise_texture_qq_data() -> [[Vec4; 3]; 16] {
+    fn generate_ssao_kerner_data() -> [[Vec4; 3]; 16] {
         use core::array::from_fn;
         let mut rng = rng();
-        from_fn(|_| [Self::generate_rnd_vec4_qq(&mut rng),
-            Self::generate_rnd_vec4_qq(&mut rng),
-            Self::generate_rnd_vec4_qq(&mut rng)])
+        from_fn(|_| [Self::generate_rnd_vec4_2(&mut rng),
+            Self::generate_rnd_vec4_2(&mut rng),
+            Self::generate_rnd_vec4_2(&mut rng)])
     }
 
-    fn generate_rnd_vec4_qq(rng: &mut ThreadRng) -> Vec4 {
+    fn generate_rnd_vec4_2(rng: &mut ThreadRng) -> Vec4 {
         Vec4::new(rng.random_range(-1.0..=1.0),
                   rng.random_range(-1.0..=1.0),
                   rng.random_range(0.0..=1.0), 0.0)
