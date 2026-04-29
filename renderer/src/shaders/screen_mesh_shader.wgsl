@@ -130,9 +130,3 @@ fn fs_main_sm(in: VertexOutput) -> @location(0) vec4<f32> {
 
     return vec4(0.0, 0.0, 0.0, shadow * 0.5);
 }
-
-// FAKE for compatibility
-@fragment
-fn fs_main_g_buf(in: VertexOutput) -> @location(0) vec4<f32>  {
-    return vec4(1.0, 1.0, 1.0, 1.0);
-}
