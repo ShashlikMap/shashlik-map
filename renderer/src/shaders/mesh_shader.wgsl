@@ -49,7 +49,9 @@ fn vs_main(
             pos.model_matrix_2,
             pos.model_matrix_3,
     );
-    let model_position = model_matrix * vec4(model.position.xyz, 1.0);
+    var model_position = model_matrix * vec4(model.position.xyz, 1.0);
+    model_position.z = model_position.z * camera.scale_2d_3d;
+
     var out: VertexOutput;
     var modelpos = model_position.xyz + pos.position;
     var modelnormal = model.normal;
@@ -62,7 +64,8 @@ fn vs_main(
     out.view_normal = (camera.view_tr_inv * vec4f(modelnormal, 1.0)).xyz;
     out.color_alpha = pos.color_alpha;
     out.pos_from_light = camera.light_view_proj * vec4<f32>(modelpos, 1.0);
-    if(modelpos.z > 0.0) {
+    // check scale_2d_3d, when geometry is flat height = 1.0 gives a correct value for gradient in fragment shader
+    if(modelpos.z > 0.0 || camera.scale_2d_3d == 0.0) {
         // technically, normalized z coord
         out.height = 1.0;
     }

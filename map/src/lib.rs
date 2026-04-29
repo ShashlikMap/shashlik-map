@@ -24,17 +24,19 @@ use renderer::styles::style_id::StyleId;
 use renderer::{Renderer, RendererUpdateData, ShashlikRenderer};
 use route::route_controller::RouteController;
 #[cfg(feature = "sgnss")]
-use sgnss::{start_sgnss};
+use sgnss::start_sgnss;
 use std::mem;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::spawn;
 use std::time::{Duration, Instant};
 use ttf_parser::Face;
 use wgpu::Texture;
-use wgpu_canvas::SSAO_ENABLED;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use wgpu_canvas::SSAO_ENABLED;
+use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
 mod camera;
 pub mod feature_processor;
@@ -43,6 +45,8 @@ pub mod mesh_loader;
 mod puck_group;
 pub mod route;
 pub mod tiles;
+mod transition_2d_3d_helper;
+
 pub struct ShashlikMap<T: TilesProvider> {
     renderer: Box<ShashlikRenderer>,
     camera: Camera,
@@ -53,6 +57,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     current_world_position: DVec3,
     current_bearing: f64,
     current_pitch: f64,
+    transition_2d_3d_helper: Transition2d3dHelper,
     cam_follow_mode: bool,
     cam_follow_zoom_lock: Option<f64>,
     screen_params: ScreenParam,
@@ -126,14 +131,16 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let cam = Camera::new(camera_offset);
 
         let mut puck_spatial_data = SpatialData::transform(DVec3::new(0.0, 0.0, 0.0));
-        puck_spatial_data.scale(1.0);
+        puck_spatial_data.scale(DVec3::splat(1.0));
         renderer.api.add_render_group(
             "puck".to_string(),
             puck_spatial_data,
             Box::new(SimplePuck {}),
         );
 
-        Self::run_tiles(renderer.api.clone(), tiles_stream);
+        let zero_zoom_level_loaded = Arc::new(AtomicBool::new(false));
+        let transition_2d_3d_helper = Transition2d3dHelper::new(zero_zoom_level_loaded.clone());
+        Self::run_tiles(renderer.api.clone(), zero_zoom_level_loaded.clone(), tiles_stream);
 
         let mut camera_controller = CameraController::new();
         camera_controller.pitch = 45.0;
@@ -151,6 +158,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             current_world_position: camera_offset,
             current_bearing: 0.0,
             current_pitch: 45.0,
+            transition_2d_3d_helper,
             cam_follow_mode: true,
             cam_follow_zoom_lock: Some(30.0),
             screen_params: ScreenParam {
@@ -177,6 +185,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     fn run_tiles(
         renderer_api: Arc<RendererApi>,
+        zero_zoom_level_loaded: Arc<AtomicBool>,
         tiles_stream: impl Stream<Item = TilesMessage> + Send + 'static,
     ) {
         spawn(move || {
@@ -188,6 +197,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
                         None => break,
                         Some(msg) => match msg {
                             TilesMessage::TilesData(data) => {
+                                let has_zero_level = data.iter().any(|item| item.zoom_level == 0);
+                                zero_zoom_level_loaded.store(has_zero_level, Ordering::Relaxed);
                                 data.into_iter().for_each(|item| {
                                     renderer_api.add_render_group(
                                         item.key.to_string(),
@@ -219,6 +230,9 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         self.update_entities();
 
+        let cam_zoom = self.camera.scale();
+        let scale_2d_3d = self.transition_2d_3d_helper.update(cam_zoom, Self::TEMP_ANIMATION_SPEED as f32);
+
         let (view, view_proj) = self.camera.build_view_projection_matrix();
         let view_light = self.camera.build_view_light_matrix();
 
@@ -230,7 +244,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
             cs_offset: self.camera.offset,
             scale: self.camera.scale(),
             eye_direction: self.camera.eye_direction(),
-            up: self.camera.up
+            up: self.camera.up,
+            scale_2d_3d,
         };
         self.renderer.update(update_data);
 
@@ -240,8 +255,9 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     fn fetch_tiles(&mut self) {
-        let zoom_level = self.camera_controller.camera_z / 100.0;
-        let zoom_level = (zoom_level.log2().round() as i32).max(0);
+        let zoom_level = self.camera.scale();
+        let zoom_level = ((zoom_level.log2() + 1.0) as i32).max(0);
+
         let p1 = self.clip_to_lon_lat(&coord! {x: -1.0, y: -1.0}).unwrap();
         let p2 = self.clip_to_lon_lat(&coord! {x: 1.0, y: -1.0}).unwrap();
         let p3 = self.clip_to_lon_lat(&coord! {x: 1.0, y: 1.0}).unwrap();
@@ -272,7 +288,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let puck_location = self.current_world_position;
         let bearing = self.current_bearing;
 
-        let cam_zoom = self.camera_controller.forward_len / 100.0;
+        let cam_zoom = self.camera.scale() as f64;
 
         let cam_yaw = self.camera_controller.yaw;
 
@@ -284,7 +300,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.renderer
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
-                spatial_data.scale = cam_zoom;
+                spatial_data.scale = DVec3::splat(cam_zoom);
                 spatial_data.transform +=
                     (puck_location - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED;
                 spatial_data.yaw +=
