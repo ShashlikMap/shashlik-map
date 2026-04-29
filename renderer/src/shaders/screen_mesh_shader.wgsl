@@ -87,17 +87,29 @@ fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
     return textureSample(t_diffuse, s_diffuse, in.uv.xy);
 }
 
+const weights = array<f32, 9>(
+        1.0, 2.0, 1.0,
+        2.0, 4.0, 2.0,
+        1.0, 2.0, 1.0
+    );
+
 @fragment
 fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
     var result = 0.0;
     let texelSize = 1.0 / vec2f(textureDimensions(t_diffuse));
-    for (var y = -3; y < 3; y++) {
-      for (var x = -3; x < 3; x++) {
-        let offset = in.uv + vec2f(f32(x), f32(y)) * texelSize;
-        result += textureSample(t_diffuse, s_diffuse, offset).r;
-      }
+
+    var index = 0;
+
+    for (var y = -1; y <= 1; y++) {
+        for (var x = -1; x <= 1; x++) {
+            let offset = in.uv + vec2f(f32(x), f32(y)) * texelSize;
+            result += textureSample(t_diffuse, s_diffuse, offset).r * weights[index];
+            index++;
+        }
     }
-    return vec4f(0.0, 0.0, 0.0, result / 36.0);
+    result = result / 16.0;
+
+    return vec4f(0.0, 0.0, 0.0, result * max(0.0, 1.0 - camera.scale * 2.0));
 }
 
 @fragment
@@ -108,7 +120,7 @@ fn fs_main_sm(in: VertexOutput) -> @location(0) vec4<f32> {
     let uv = in.uv * 2.0 - 1.0;
 
     // shift a bit ground shadows towards the light to create free contact shadow around building
-    let fragPos = frag_pos_from_ray(camera, uv) - 0.006;
+    let fragPos = frag_pos_from_ray(camera, uv) - 0.003;
 
     let pos_from_light = camera.light_view_proj * vec4<f32>(fragPos, 1.0);
     let currentDepth = pos_from_light.z;

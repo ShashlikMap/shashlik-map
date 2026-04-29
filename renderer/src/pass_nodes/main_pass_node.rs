@@ -2,7 +2,10 @@ use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pass_nodes::PassNode;
-use crate::textures::{create_common_texture, create_depth_texture, create_simple_texture, TextureData, SAMPLE_COUNT};
+use crate::textures::{create_common_texture, create_depth_texture, create_simple_texture, create_simple_texture_with_data, TextureData, SAMPLE_COUNT};
+use glam::Vec4;
+use rand::prelude::ThreadRng;
+use rand::{rng, RngExt};
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, ImageSubresourceRange, ShaderModuleDescriptor, ShaderSource, StorageTextureAccess, TextureFormat, TextureUsages, TextureView, TextureViewDimension};
@@ -53,6 +56,20 @@ impl MainPassNode {
             global_context.device(),
         );
 
+        let noise_texture = create_simple_texture_with_data( TextureData {
+            sample_count: 1,
+            size: (64, 64),
+            usage: TextureUsages::TEXTURE_BINDING,
+            format: TextureFormat::Rgba32Float,
+        }, global_context.queue(), global_context.device(), bytemuck::cast_slice(&Self::generate_noise_texture_data()));
+
+        let kernel_texture = create_simple_texture_with_data( TextureData {
+            sample_count: 1,
+            size: (16, 1),
+            usage: TextureUsages::TEXTURE_BINDING,
+            format: TextureFormat::Rgba32Float,
+        }, global_context.queue(), global_context.device(), bytemuck::cast_slice(&Self::generate_ssao_kerner_data()));
+
         let non_msaa_depth_texture_view = create_depth_texture(non_msaa_size, 1,
                                                                TextureFormat::Depth24Plus,
                                                                global_context.device());
@@ -78,6 +95,24 @@ impl MainPassNode {
                 count: None,
             }, wgpu::BindGroupLayoutEntry {
                 binding: 2,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                },
+                count: None,
+            }, wgpu::BindGroupLayoutEntry {
+                binding: 3,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                },
+                count: None,
+            }, wgpu::BindGroupLayoutEntry {
+                binding: 4,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Texture {
                     multisampled: false,
@@ -128,6 +163,14 @@ impl MainPassNode {
                 wgpu::BindGroupEntry {
                     binding: 2,
                     resource: wgpu::BindingResource::TextureView(&non_msaa_texture_view_positions),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&noise_texture),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&kernel_texture),
                 }],
             label: Some("ssao_compute_bind_group"),
         });
@@ -165,6 +208,34 @@ impl MainPassNode {
             camera_ssao_bind_group,
             ssao_compute_pipeline,
         }
+    }
+
+    fn generate_noise_texture_data() -> [[Vec4; 3]; 4096] {
+        use core::array::from_fn;
+        let mut rng = rng();
+        from_fn(|_| [Self::generate_rnd_vec4(&mut rng),
+            Self::generate_rnd_vec4(&mut rng),
+            Self::generate_rnd_vec4(&mut rng)])
+    }
+
+    fn generate_rnd_vec4(rng: &mut ThreadRng) -> Vec4 {
+        Vec4::new(rng.random_range(-1.0..=1.0),
+                  rng.random_range(-1.0..=1.0),
+                  rng.random_range(-1.0..=1.0), 0.0)
+    }
+
+    fn generate_ssao_kerner_data() -> [[Vec4; 3]; 16] {
+        use core::array::from_fn;
+        let mut rng = rng();
+        from_fn(|_| [Self::generate_rnd_vec4_2(&mut rng),
+            Self::generate_rnd_vec4_2(&mut rng),
+            Self::generate_rnd_vec4_2(&mut rng)])
+    }
+
+    fn generate_rnd_vec4_2(rng: &mut ThreadRng) -> Vec4 {
+        Vec4::new(rng.random_range(-1.0..=1.0),
+                  rng.random_range(-1.0..=1.0),
+                  rng.random_range(0.0..=1.0), 0.0)
     }
 }
 

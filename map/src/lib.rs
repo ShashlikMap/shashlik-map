@@ -33,6 +33,7 @@ use std::thread::spawn;
 use std::time::{Duration, Instant};
 use ttf_parser::Face;
 use wgpu::Texture;
+use wgpu_canvas::SSAO_ENABLED;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 mod camera;
@@ -274,6 +275,11 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let cam_zoom = self.camera_controller.forward_len / 100.0;
 
         let cam_yaw = self.camera_controller.yaw;
+
+        // SSAO is only enabled for near ground
+        if unsafe { SSAO_ENABLED } {
+            unsafe { SSAO_ENABLED = self.camera.scale() < 1.0 };
+        }
 
         self.renderer
             .api

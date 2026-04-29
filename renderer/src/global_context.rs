@@ -31,16 +31,20 @@ impl GlobalContext {
         let collider = Collider::new();
         let styles_bind_group_layout = Self::create_style_bind_group_layout(device);
 
+        #[cfg(target_os = "macos")]
+        let ssao_size = (canvas.config().width, canvas.config().height);
+        #[cfg(not(target_os = "macos"))]
+        let mut ssao_size = (canvas.config().width / 2, canvas.config().height / 2);
+
         let ssao_texture = create_simple_texture(
             TextureData {
                 sample_count: 1,
-                size: (canvas.config().width, canvas.config().height),
+                size: ssao_size,
                 usage: TextureUsages::TEXTURE_BINDING | TextureUsages::STORAGE_BINDING,
                 format: TextureFormat::Rgba16Float,
             },
             device,
         );
-        println!("kiol: {:?}", unsafe { SHADOWS_TEX_SIZE });
         let shadow_map_depth_texture = create_depth_texture(unsafe { SHADOWS_TEX_SIZE },
                                                             1,
                                                             TextureFormat::Depth32Float,

@@ -1,19 +1,19 @@
 use crate::tiles::shashlik_tiles_provider_v0::FeatureProcessor;
 use geo_types::{Coord, LineString};
+use glam::{DVec3, Vec2};
 use lyon::geom::point;
 use lyon::path::Path;
 use osm::map::{
     HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapPointInfo, MapPointObjectKind,
     NatureKind,
 };
-use rand::Rng;
+use rand::RngExt;
 use renderer::draw_commands::{GeometryType, PolylineOptions};
 use renderer::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgBackground, SvgData, TextData};
+use renderer::mesh::mesh::StyledRangeInfo;
 use renderer::styles::style_id::StyleId;
 use seahash::hash;
 use std::collections::HashMap;
-use glam::{DVec3, Vec2};
-use renderer::mesh::mesh::StyledRangeInfo;
 
 pub struct ShashlikFeatureProcessor {}
 
