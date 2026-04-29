@@ -31,8 +31,8 @@ impl MainPassNode {
         );
 
         let non_msaa_size = (
-            global_context.config().width / 2,
-            global_context.config().height / 2,
+            global_context.config().width,
+            global_context.config().height,
         );
 
         let device = global_context.device();

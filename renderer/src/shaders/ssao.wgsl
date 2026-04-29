@@ -27,14 +27,14 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     compute_ssao(pixel_coord, vec2f(ssao_size), screen_size);
 }
 
-const radius: f32 = 0.2;
+const radius: f32 = 0.15;
 
 const samples: i32 = 16;
 
 const noise_size: u32 = 64;
 
 fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
-    let pixel_mul = u32(1);//u32(screen_size.x / ssao_size.x);
+    let pixel_mul = u32(screen_size.x / ssao_size.x);
     let loadedNormal = textureLoad(normals, pixel_mul * pixel_coord, 0).xyz;
     if(loadedNormal.y > 0.0) {
         return;

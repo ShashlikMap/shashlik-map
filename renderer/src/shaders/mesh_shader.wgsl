@@ -30,6 +30,7 @@ struct VertexOutput {
     @location(4) world_position: vec3<f32>,
     @location(5) pos_from_light: vec4<f32>,
     @location(6) color_alpha: f32,
+    @location(7) height: f32,
 }
 
 struct GBuffer {
@@ -61,6 +62,10 @@ fn vs_main(
     out.view_normal = (camera.view_tr_inv * vec4f(modelnormal, 1.0)).xyz;
     out.color_alpha = pos.color_alpha;
     out.pos_from_light = camera.light_view_proj * vec4<f32>(modelpos, 1.0);
+    if(modelpos.z > 0.0) {
+        // technically, normalized z coord
+        out.height = 1.0;
+    }
 
     if((params & 1) > 0) {
         out.clip_position = out.pos_from_light;
@@ -79,10 +84,12 @@ var t_depth: texture_depth_2d;
 @group(1) @binding(1)
 var s_compare: sampler_comparison;
 
+const dither_strength = 2.0 / 255.0;
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
-    let gradient_koef = 0.5 + min(1.0, tanh(0.5 + 2.0 * in.world_position.z)) / 2.0;
+    let gradient_koef_ground = min(1.0, (0.9 + in.height * 7.0));
+    let gradient_koef_walls = 0.85 + in.height * 0.15;
     let diffuse_color = max(dot(in.world_normal, light_dir), 0.0);
 
     var shadow = 0.0;
@@ -96,8 +103,12 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
         shadow = shadow_map(t_depth, s_compare, projCoords, 1.2, depth_with_bias);
     }
 
-    let result_color = (ambient_color + (1.0 - shadow * 0.6) * (diffuse_color)) * default_color;
-    return vec4(result_color * gradient_koef, in.color_alpha);
+    let result_color = (ambient_color + (1.0 - shadow * 0.6) * (diffuse_color)) * default_color * gradient_koef_walls * gradient_koef_ground;
+
+    let noise = fract(sin(dot(in.clip_position.xy, vec2<f32>(12.9898, 78.233))) * 43758.5453);
+    let final_color = (result_color) + (noise - 0.5) * dither_strength;
+
+    return vec4(final_color, in.color_alpha);
 }
 
 @fragment
