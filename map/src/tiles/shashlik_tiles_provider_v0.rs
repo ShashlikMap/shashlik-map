@@ -134,6 +134,7 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
         let tile_data = TileData {
             key: tile_key.as_string_key(),
             position: tile_position,
+            zoom_level,
             // can be negative
             size: (tile_rect_size.x.abs(), tile_rect_size.y.abs()),
             geometry_data,

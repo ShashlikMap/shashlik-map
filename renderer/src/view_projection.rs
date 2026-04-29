@@ -45,7 +45,8 @@ pub(crate) struct ViewProjUniform {
     view_tr_inv: [[f32; 4]; 4],
     inv_screen_size: [f32; 2],
     scale: f32,
-    p2_scale: f32
+    p2_scale: f32,
+    scale_2d_3d: f32
 }
 
 #[derive(Clone)]
@@ -86,7 +87,8 @@ impl ViewProjection {
                 view_tr_inv: Mat4::IDENTITY.to_cols_array_2d(),
                 inv_screen_size: [0.0, 0.0],
                 scale: 0.0,
-                p2_scale: 1.0
+                p2_scale: 1.0,
+                scale_2d_3d: 1.0,
             },
             screen_size: (0.0, 0.0),
             cs_offset: DVec3::new(0.0, 0.0, 0.0),
@@ -128,6 +130,7 @@ impl ViewProjection {
             .to_cols_array_2d();
         self.uniform.scale = data.scale;
         self.uniform.p2_scale = self.p2_scale(data.scale);
+        self.uniform.scale_2d_3d = data.scale_2d_3d;
         self.cs_offset = data.cs_offset;
         self.inv_view_proj_matrix = data.view_proj_matrix.inverse();
         self.screen_size = (config.width as f64, config.height as f64);
