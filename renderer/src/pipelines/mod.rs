@@ -29,6 +29,7 @@ pub trait RenderPipeline {
     fn get_instances_layouts(&self) -> Option<(&BindGroupLayout, &BindGroupLayout)>;
 
     fn is_indirect(&self) -> bool;
+    fn support_g_buf(&self) -> bool;
 }
 
 pub trait WithTexture {

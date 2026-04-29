@@ -233,4 +233,8 @@ impl RenderPipeline for MeshPipeline {
     fn is_indirect(&self) -> bool {
         false
     }
+
+    fn support_g_buf(&self) -> bool {
+        true
+    }
 }
