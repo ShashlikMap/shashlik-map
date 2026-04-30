@@ -18,6 +18,7 @@ use wgpu::naga::compact::KeepUnused::No;
 use wgpu::{
     Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture, Texture, TextureView,
 };
+use wgpu_canvas::{PreviewType, PREVIEW_TYPE};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 //FIXME https://github.com/gobley/gobley/issues/20
@@ -96,6 +97,8 @@ pub fn createShashlikMapApi(
     let map_api = ShashlikMapApi {
         shashlik_map: RwLock::new(shashlik_map),
     };
+    // TODO Better config manager
+    unsafe { PREVIEW_TYPE = PreviewType::Camera }
     Arc::into_raw(Arc::new(map_api)) as jlong
 }
 
