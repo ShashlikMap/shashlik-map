@@ -26,9 +26,9 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread::spawn;
 use tokio::sync::broadcast;
-use wgpu::Texture;
+use wgpu::{Texture, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use wgpu_canvas::PREVIEW_ENABLED;
+use wgpu_canvas::{PreviewType, PREVIEW_ENABLED, PREVIEW_TYPE};
 
 pub mod canvas_api;
 mod collision_handler;
@@ -83,6 +83,8 @@ pub struct ShashlikRenderer {
     pub api: Arc<RendererApi>,
     fps_counter: FpsCounter<100>,
     global_context: GlobalContext,
+    preview_textures: HashMap<PreviewType, TextureView>,
+    current_preview_type: PreviewType
 }
 
 impl ShashlikRenderer {
@@ -128,6 +130,8 @@ impl ShashlikRenderer {
             api,
             fps_counter: FpsCounter::new(),
             global_context,
+            preview_textures: HashMap::new(),
+            current_preview_type: PreviewType::None
         })
     }
 
@@ -197,9 +201,8 @@ impl ShashlikRenderer {
         let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
         let main_node = MainPassNode::new(&mut self.global_context);
 
-        self.layers
-            .preview_mesh_layer
-            .set_texture(&rt_node.rt_texture_view, (-100.0, -100.0), &self.global_context);
+        self.preview_textures.insert(PreviewType::Camera, rt_node.rt_texture_view.clone());
+        self.preview_textures.insert(PreviewType::SSAO, self.global_context.ssao_texture.clone());
 
         self.layers
             .shadow_map_layer
@@ -212,15 +215,25 @@ impl ShashlikRenderer {
 
         self.pass_nodes = vec![Box::new(pre_pass_node)];
 
-        if unsafe { PREVIEW_ENABLED } {
-            self.pass_nodes.push(Box::new(rt_node));
-        }
+        self.pass_nodes.push(Box::new(rt_node));
+
         self.pass_nodes.push(Box::new(shadow_pass_node));
 
         self.pass_nodes.push(Box::new(main_node));
     }
 
     fn update(&mut self, data: RendererUpdateData) {
+        unsafe {
+            if self.current_preview_type != PREVIEW_TYPE {
+                self.current_preview_type = PREVIEW_TYPE;
+                if let Some(texture_view) = self.preview_textures.get(&self.current_preview_type) {
+                    self.layers
+                        .preview_mesh_layer
+                        .set_texture(texture_view, (-100.0, -100.0), &self.global_context);
+                }
+            }
+        }
+
         self.global_context.update(data);
 
         // read all messages between renders

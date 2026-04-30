@@ -68,7 +68,7 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
             || texture_format == TextureFormat::R32Float {
             TextureType::GeneralRFloat
         } else if texture_format == TextureFormat::Rgba16Float {
-            if texture_usage == TextureUsages::STORAGE_BINDING {
+            if texture_usage.contains(TextureUsages::STORAGE_BINDING) {
                 TextureType::GeneralRFloat
             } else {
                 TextureType::GeneralRgba

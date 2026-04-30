@@ -13,7 +13,7 @@ use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
 use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
-use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
+use wgpu_canvas::{PreviewType, PREVIEW_ENABLED, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
 
 slint::include_modules!();
 
@@ -138,6 +138,17 @@ fn main() {
                                 slint_map_event_sender_internal
                                     .send(SlintMapEvent::BtnAction(action, cost_index))
                                     .unwrap()
+                            });
+
+                            // let slint_map_event_sender_internal = slint_map_event_sender.clone();
+                            ui_weak.on_preview_type(move |preview_type| {
+                                if preview_type == 1 {
+                                    unsafe { PREVIEW_TYPE = PreviewType::Camera }
+                                } else if preview_type == 2 {
+                                    unsafe { PREVIEW_TYPE = PreviewType::SSAO }
+                                } else {
+                                    unsafe { PREVIEW_TYPE = PreviewType::None }
+                                }
                             });
                         }
 
