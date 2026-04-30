@@ -11,7 +11,6 @@ struct CameraUniform {
     scale_2d_3d: f32
 };
 
-
 fn shadow_map(t_depth: texture_depth_2d, s_compare: sampler_comparison, coord: vec2f, blur_size: f32, depth_with_bias: f32) -> f32 {
     @if(CASTANO)
     return castano(t_depth, s_compare, coord, depth_with_bias);

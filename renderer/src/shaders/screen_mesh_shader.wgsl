@@ -1,9 +1,13 @@
 import super::common::CameraUniform;
 import super::common::shadow_map;
 import super::common::frag_pos_from_ray;
+import super::textures;
+import super::textures::TextureType;
 
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
+
+var<immediate> texture_type: TextureType;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
@@ -84,7 +88,15 @@ fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
     if in.uv.x <= tex_border_x || in.uv.x >= 1.0 - tex_border_x || in.uv.y <= tex_border_y || in.uv.y >= 1.0 - tex_border_y {
          return vec4(1.0, 0.0, 0.0, 1.0);
     }
-    return textureSample(t_diffuse, s_diffuse, in.uv.xy);
+    if texture_type == textures::GENERAL_RGBA {
+        return textureSample(t_diffuse, s_diffuse, in.uv.xy);
+    } else if texture_type == textures::GENERAL_RGBA_R_NEG {
+        let r = textureSample(t_diffuse, s_diffuse, in.uv.xy).r;
+        return vec4f(vec3f(1.0 - r), 1.0);
+    } else { // TextureType::DEPTH
+        let depth = textureSample(t_depth, s_diffuse, in.uv.xy);
+        return vec4f(vec3f(depth), 1.0);
+    }
 }
 
 const weights = array<f32, 9>(

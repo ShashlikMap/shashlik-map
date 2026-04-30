@@ -195,6 +195,7 @@ impl ShashlikRenderer {
         let shadow_pass_node = ShadowPrepass::new();
 
         let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
+        let main_node = MainPassNode::new(&mut self.global_context);
 
         self.layers
             .preview_mesh_layer
@@ -208,7 +209,6 @@ impl ShashlikRenderer {
             .post_process_layer
             .set_texture(&self.global_context.ssao_texture, (0.0, 0.0), &self.global_context);
 
-        let main_node = MainPassNode::new(&mut self.global_context);
 
         self.pass_nodes = vec![Box::new(pre_pass_node)];
 
