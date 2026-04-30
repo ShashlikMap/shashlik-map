@@ -29,7 +29,7 @@ use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use wgpu_canvas::{PreviewType, PREVIEW_ENABLED, PREVIEW_TYPE};
+use wgpu_canvas::{PreviewType, PREVIEW_TYPE};
 
 pub mod canvas_api;
 mod collision_handler;

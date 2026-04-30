@@ -78,7 +78,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     return vec4(0.0, 0.0, 0.0, in.color_alpha);
 }
 
-const tex_border_x: f32 = 0.02;
+const tex_border_x: f32 = 0.01;
 
 @fragment
 fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {

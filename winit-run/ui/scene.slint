@@ -15,7 +15,6 @@ import {
 export enum Feature {
     SSAO,
     Shadows,
-    Preview
 }
 
 export enum Action {
@@ -135,15 +134,6 @@ export component ShashlikUI inherits Window {
                 checked: false;
                 toggled => {
                     feature_enabled(Feature.SSAO, self.checked)
-                }
-            }
-
-            CheckBox {
-                text: "Preview";
-                height: 24px;
-                checked: true;
-                toggled => {
-                    feature_enabled(Feature.Preview, self.checked)
                 }
             }
 

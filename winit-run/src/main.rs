@@ -1,6 +1,3 @@
-use std::cmp::max;
-use std::rc::Rc;
-use std::str::FromStr;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
@@ -9,6 +6,9 @@ use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
 use slint::wgpu_28::{WGPUConfiguration, WGPUSettings};
 use slint::{GraphicsAPI, PhysicalSize, RenderingState, VecModel};
+use std::cmp::max;
+use std::rc::Rc;
+use std::str::FromStr;
 use std::sync::mpsc;
 use strum::IntoEnumIterator;
 use wgpu::SurfaceConfiguration;
@@ -16,7 +16,7 @@ use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
 use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
-use wgpu_canvas::{PreviewType, PREVIEW_ENABLED, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
+use wgpu_canvas::{PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
 
 slint::include_modules!();
 
@@ -209,9 +209,6 @@ fn main() {
                                     },
                                     Feature::Shadows => unsafe {
                                         SHADOWS_ENABLED = enabled;
-                                    },
-                                    Feature::Preview => unsafe {
-                                        PREVIEW_ENABLED = enabled;
                                     },
                                 },
                             };
