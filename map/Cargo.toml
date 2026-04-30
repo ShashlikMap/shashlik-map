@@ -23,7 +23,9 @@ seahash = "4.1.0"
 rayon = "1.11.0"
 kml = { git = "https://github.com/ShashlikMap/kml" }
 rand = { workspace = true }
-valhalla-client = "0.5.2"
+# 0.5.2+ doesn't work on android due to internal reqwest 0.13.0+ that uses
+# rustls-platform-verifier that requires a tricky setup https://github.com/rustls/rustls-platform-verifier#android
+valhalla-client = "0.5.0"
 ttf-parser = "0.25.1"
 glam = { workspace = true }
 num = { workspace = true}
