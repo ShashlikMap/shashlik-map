@@ -10,6 +10,7 @@ wgpu-canvas = { workspace = true}
 env_logger = { workspace = true }
 pollster = { workspace = true }
 wgpu = { workspace = true}
+strum = { workspace = true }
 native-dialog = "0.9.3"
 
 slint = { version = "1.16.0", features = ["unstable-wgpu-28"] }

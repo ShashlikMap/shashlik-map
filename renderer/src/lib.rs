@@ -25,6 +25,7 @@ use std::iter;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread::spawn;
+use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
@@ -201,8 +202,19 @@ impl ShashlikRenderer {
         let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
         let main_node = MainPassNode::new(&mut self.global_context);
 
-        self.preview_textures.insert(PreviewType::Camera, rt_node.rt_texture_view.clone());
-        self.preview_textures.insert(PreviewType::SSAO, self.global_context.ssao_texture.clone());
+        PreviewType::iter().for_each(|preview_type| {
+            if let Some(texture_view) = match preview_type {
+                PreviewType::None => None,
+                PreviewType::Camera => Some(rt_node.rt_texture_view.clone()),
+                PreviewType::SSAO => Some(self.global_context.ssao_texture.clone()),
+                PreviewType::SSAOPositions => Some(main_node.non_msaa_texture_view_positions.clone()),
+                PreviewType::SSAONormals => Some(main_node.non_msaa_texture_view_normals.clone()),
+                PreviewType::SSAODepth => Some(main_node.non_msaa_depth_texture_view.clone()),
+                PreviewType::ShadowMap => Some(self.global_context.shadow_map_depth_texture.clone()),
+            } {
+                self.preview_textures.insert(preview_type, texture_view);
+            }
+        });
 
         self.layers
             .shadow_map_layer

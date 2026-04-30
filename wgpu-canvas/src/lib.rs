@@ -1,8 +1,10 @@
+use strum::{Display, EnumIter, EnumString};
+
 pub mod wgpu_canvas;
 
 // TODO Proper config manager
 
-#[derive(Eq, PartialEq, Copy, Clone, Hash)]
+#[derive(Eq, PartialEq, Copy, Clone, Hash, Display, EnumIter, EnumString)]
 pub enum PreviewType {
     None, Camera, SSAO, SSAOPositions, SSAONormals, SSAODepth, ShadowMap
 }

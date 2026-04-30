@@ -37,6 +37,7 @@ export struct PanState {
 }
 
 export component ShashlikUI inherits Window {
+    in property <[string]> preview_type_items;
     in property <int> screen-width;
     in property <int> screen-height;
     in property <image> texture <=> image.source;
@@ -47,7 +48,7 @@ export component ShashlikUI inherits Window {
     property <bool> pressed: false;
     callback vert_scroll(float);
     callback follow_mode(bool);
-    callback preview_type(int);
+    callback preview_type(string);
     callback feature_enabled(Feature, bool);
     callback btn_click(Action, int);
     title: "ShashlikMap";
@@ -157,10 +158,10 @@ export component ShashlikUI inherits Window {
 
             preview_types := ComboBox {
                 height: 48px;
-                model: ["None", "Camera", "SSAO"];
+                model: preview_type_items;
                 current-index: 0;
                 selected(value) => {
-                    preview_type(self.current-index)
+                    preview_type(value)
                 }
             }
         }

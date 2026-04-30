@@ -1,4 +1,6 @@
 use std::cmp::max;
+use std::rc::Rc;
+use std::str::FromStr;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
@@ -6,8 +8,9 @@ use map::ShashlikMap;
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
 use slint::wgpu_28::{WGPUConfiguration, WGPUSettings};
-use slint::{GraphicsAPI, PhysicalSize, RenderingState};
+use slint::{GraphicsAPI, PhysicalSize, RenderingState, VecModel};
 use std::sync::mpsc;
+use strum::IntoEnumIterator;
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
@@ -48,6 +51,11 @@ fn main() {
     }
     ui.set_screen_width(screen_size.width as i32);
     ui.set_screen_height(screen_size.height as i32);
+
+    let items: Vec<slint::SharedString> = PreviewType::iter().map(move |preview_type| preview_type
+        .to_string()
+        .into()).collect();
+    ui.set_preview_type_items(Rc::new(VecModel::from(items)).into());
 
     if max(screen_size.width, screen_size.height) <= 1024 {
         unsafe { SHADOWS_TEX_SIZE = (1024, 1024); }
@@ -140,15 +148,8 @@ fn main() {
                                     .unwrap()
                             });
 
-                            // let slint_map_event_sender_internal = slint_map_event_sender.clone();
                             ui_weak.on_preview_type(move |preview_type| {
-                                if preview_type == 1 {
-                                    unsafe { PREVIEW_TYPE = PreviewType::Camera }
-                                } else if preview_type == 2 {
-                                    unsafe { PREVIEW_TYPE = PreviewType::SSAO }
-                                } else {
-                                    unsafe { PREVIEW_TYPE = PreviewType::None }
-                                }
+                                unsafe { PREVIEW_TYPE = PreviewType::from_str(preview_type.as_str()).unwrap(); }
                             });
                         }
 
