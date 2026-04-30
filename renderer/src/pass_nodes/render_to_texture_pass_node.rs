@@ -2,8 +2,9 @@ use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pass_nodes::PassNode;
-use crate::textures::{create_color_binding_texture, create_depth_texture, create_common_texture, SAMPLE_COUNT};
+use crate::textures::{create_color_binding_texture, create_common_texture, create_depth_texture, SAMPLE_COUNT};
 use wgpu::{CommandEncoder, TextureFormat, TextureView};
+use wgpu_canvas::PREVIEW_TYPE;
 
 pub(crate) struct RenderToTexturePassNode {
     msaa_texture_view: TextureView,
@@ -39,6 +40,9 @@ impl PassNode for RenderToTexturePassNode {
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {
+        if unsafe { !PREVIEW_TYPE.is_enabled() } {
+            return;
+        }
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render To Texture Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {

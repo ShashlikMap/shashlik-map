@@ -10,7 +10,7 @@ use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use rustybuzz::ttf_parser;
 use wgpu::{CommandEncoder, RenderPass};
-use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SSAO_ENABLED};
+use wgpu_canvas::{PREVIEW_TYPE, SHADOWS_ENABLED, SSAO_ENABLED};
 
 pub(crate) struct Layers {
     feature_layers: FeatureLayers,
@@ -120,7 +120,7 @@ impl BaseMeshLayer for Layers {
         if !global_context.is_g_buffer_render && !global_context.is_shadow_render {
             self.feature_layers.render(render_pass, global_context);
         }
-        if !global_context.is_preview_render && unsafe { PREVIEW_ENABLED } && !global_context.is_shadow_render {
+        if unsafe { PREVIEW_TYPE.is_enabled() } && !global_context.is_preview_render && !global_context.is_shadow_render {
             self.preview_mesh_layer.render(render_pass, global_context);
         }
     }

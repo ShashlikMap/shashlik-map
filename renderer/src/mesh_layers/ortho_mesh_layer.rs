@@ -6,7 +6,15 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::pipelines::{RenderPipeline, WithTexture};
 use crate::vertex_attrs::TextInstanceInput;
 use log::error;
-use wgpu::{BindGroup, CommandEncoder, RenderPass, TextureView};
+use wgpu::{BindGroup, CommandEncoder, RenderPass, TextureFormat, TextureUsages, TextureView};
+
+#[repr(u8)]
+#[derive(Debug, Copy, Clone)]
+enum TextureType {
+    GeneralRgba,
+    GeneralRFloat,
+    Depth,
+}
 
 pub struct OrthoMeshLayer<P: RenderPipeline + WithTexture> {
     render_pipeline: P,
@@ -15,7 +23,8 @@ pub struct OrthoMeshLayer<P: RenderPipeline + WithTexture> {
     instance_buffer: InstanceBuffer<TextInstanceInput>,
     texture_bind_group: Option<BindGroup>,
     full_screen_mesh: bool,
-    is_bottom_right: bool
+    is_bottom_right: bool,
+    texture_type: TextureType,
 }
 
 impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
@@ -29,14 +38,14 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
             instance_buffer: InstanceBuffer::default(),
             texture_bind_group: None,
             full_screen_mesh,
-            is_bottom_right
+            is_bottom_right,
+            texture_type: TextureType::GeneralRgba,
         }
     }
 
     // FIXME Positioning should not be here
     pub fn set_texture(&mut self, texture_view: &TextureView, offset: (f32, f32), global_context: &GlobalContext) {
         let screen_size = global_context.view_projection.screen_size;
-        let texture_size = texture_view.texture().size();
 
         if screen_size.0 == 0.0 || screen_size.1 == 0.0 {
             error!(
@@ -50,26 +59,51 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
                 .create_texture_bind_group(texture_view, global_context),
         );
 
+        let texture_format = texture_view.texture().format();
+        let texture_usage = texture_view.texture().usage();
+        self.texture_type = if texture_format.is_depth_stencil_format() {
+            TextureType::Depth
+        } else if texture_format == TextureFormat::R16Float
+            || texture_format == TextureFormat::R32Float {
+            TextureType::GeneralRFloat
+        } else if texture_format == TextureFormat::Rgba16Float {
+            if texture_usage.contains(TextureUsages::STORAGE_BINDING) {
+                TextureType::GeneralRFloat
+            } else {
+                TextureType::GeneralRgba
+            }
+        } else {
+            TextureType::GeneralRgba
+        };
+
         let device = global_context.device();
 
+        let mesh_size;
         if self.full_screen_mesh {
+            mesh_size = (screen_size.0 as f32, screen_size.1 as f32);
             self.mesh = Some(Mesh::quad(
                 device,
                 screen_size.0 as f32,
                 screen_size.1 as f32,
             ));
         } else {
+            let texture_size = texture_view.texture().size();
+            let aspect = texture_size.height as f32 / texture_size.width as f32;
+            let width = screen_size.0 as f32 * 0.35;
+            let height = aspect * width;
+            mesh_size = (width, height);
+
             self.mesh = Some(Mesh::quad(
                 device,
-                texture_size.width as f32,
-                texture_size.height as f32,
+                mesh_size.0,
+                mesh_size.1
             ));
 
         }
         let queue = global_context.queue();
 
         let position = [
-            if self.is_bottom_right { screen_size.0 as f32 - texture_size.width as f32 } else { 0.0 } + offset.0,
+            if self.is_bottom_right { screen_size.0 as f32 - mesh_size.0 } else { 0.0 } + offset.0,
             screen_size.1 as f32 + offset.1,
             0.0,
         ];
@@ -103,6 +137,12 @@ impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
             render_pass.set_pipeline(render_pipeline);
 
             self.render_pipeline.render(render_pass, global_context);
+
+            // override params
+            render_pass.set_immediates(
+                0,
+                bytemuck::bytes_of(&(self.texture_type as u32)),
+            );
             if let Some(texture_bind_group) = self.texture_bind_group.as_ref() {
                 render_pass.set_bind_group(1, texture_bind_group, &[]);
             }

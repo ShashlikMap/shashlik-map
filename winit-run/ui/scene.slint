@@ -15,7 +15,6 @@ import {
 export enum Feature {
     SSAO,
     Shadows,
-    Preview
 }
 
 export enum Action {
@@ -24,19 +23,20 @@ export enum Action {
     KML,
 }
 
-export struct Scale  {
+export struct Scale {
     value: float,
     x: float,
     y: float,
 }
 
-export struct PanState  {
+export struct PanState {
     pressed: bool,
     x: float,
     y: float,
 }
 
 export component ShashlikUI inherits Window {
+    in property <[string]> preview_type_items;
     in property <int> screen-width;
     in property <int> screen-height;
     in property <image> texture <=> image.source;
@@ -47,6 +47,7 @@ export component ShashlikUI inherits Window {
     property <bool> pressed: false;
     callback vert_scroll(float);
     callback follow_mode(bool);
+    callback preview_type(string);
     callback feature_enabled(Feature, bool);
     callback btn_click(Action, int);
     title: "ShashlikMap";
@@ -61,9 +62,9 @@ export component ShashlikUI inherits Window {
                 width: 100%;
                 height: 100%;
                 pointer-event(event) => {
-                    if(event.kind == PointerEventKind.down) {
+                    if (event.kind == PointerEventKind.down) {
                         pressed = true;
-                    } else if(event.kind == PointerEventKind.up || event.kind == PointerEventKind.cancel) {
+                    } else if (event.kind == PointerEventKind.up || event.kind == PointerEventKind.cancel) {
                         pressed = false;
                     }
                     current-pan-state = { pressed: pressed, x: self.mouse-x / 1phx, y: self.mouse-y / 1phx };
@@ -137,20 +138,20 @@ export component ShashlikUI inherits Window {
             }
 
             CheckBox {
-                text: "Preview";
-                height: 24px;
-                checked: true;
-                toggled => {
-                    feature_enabled(Feature.Preview, self.checked)
-                }
-            }
-
-            CheckBox {
                 text: "Shadows";
                 height: 24px;
                 checked: true;
                 toggled => {
                     feature_enabled(Feature.Shadows, self.checked)
+                }
+            }
+
+            preview_types := ComboBox {
+                height: 48px;
+                model: preview_type_items;
+                current-index: 0;
+                selected(value) => {
+                    preview_type(value)
                 }
             }
         }

@@ -1,4 +1,3 @@
-use std::cmp::max;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
@@ -6,14 +5,18 @@ use map::ShashlikMap;
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
 use slint::wgpu_28::{WGPUConfiguration, WGPUSettings};
-use slint::{GraphicsAPI, PhysicalSize, RenderingState};
+use slint::{GraphicsAPI, PhysicalSize, RenderingState, VecModel};
+use std::cmp::max;
+use std::rc::Rc;
+use std::str::FromStr;
 use std::sync::mpsc;
+use strum::IntoEnumIterator;
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
 use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
-use wgpu_canvas::{PREVIEW_ENABLED, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
+use wgpu_canvas::{PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
 
 slint::include_modules!();
 
@@ -48,6 +51,11 @@ fn main() {
     }
     ui.set_screen_width(screen_size.width as i32);
     ui.set_screen_height(screen_size.height as i32);
+
+    let items: Vec<slint::SharedString> = PreviewType::iter().map(move |preview_type| preview_type
+        .to_string()
+        .into()).collect();
+    ui.set_preview_type_items(Rc::new(VecModel::from(items)).into());
 
     if max(screen_size.width, screen_size.height) <= 1024 {
         unsafe { SHADOWS_TEX_SIZE = (1024, 1024); }
@@ -139,6 +147,10 @@ fn main() {
                                     .send(SlintMapEvent::BtnAction(action, cost_index))
                                     .unwrap()
                             });
+
+                            ui_weak.on_preview_type(move |preview_type| {
+                                unsafe { PREVIEW_TYPE = PreviewType::from_str(preview_type.as_str()).unwrap(); }
+                            });
                         }
 
                         let mut map =
@@ -197,9 +209,6 @@ fn main() {
                                     },
                                     Feature::Shadows => unsafe {
                                         SHADOWS_ENABLED = enabled;
-                                    },
-                                    Feature::Preview => unsafe {
-                                        PREVIEW_ENABLED = enabled;
                                     },
                                 },
                             };
