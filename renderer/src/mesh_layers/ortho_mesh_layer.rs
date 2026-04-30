@@ -46,7 +46,6 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
     // FIXME Positioning should not be here
     pub fn set_texture(&mut self, texture_view: &TextureView, offset: (f32, f32), global_context: &GlobalContext) {
         let screen_size = global_context.view_projection.screen_size;
-        let texture_size = texture_view.texture().size();
 
         if screen_size.0 == 0.0 || screen_size.1 == 0.0 {
             error!(
@@ -79,24 +78,32 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
 
         let device = global_context.device();
 
+        let mesh_size;
         if self.full_screen_mesh {
+            mesh_size = (screen_size.0 as f32, screen_size.1 as f32);
             self.mesh = Some(Mesh::quad(
                 device,
                 screen_size.0 as f32,
                 screen_size.1 as f32,
             ));
         } else {
+            let texture_size = texture_view.texture().size();
+            let aspect = texture_size.height as f32 / texture_size.width as f32;
+            let width = screen_size.0 as f32 * 0.35;
+            let height = aspect * width;
+            mesh_size = (width, height);
+
             self.mesh = Some(Mesh::quad(
                 device,
-                texture_size.width as f32,
-                texture_size.height as f32,
+                mesh_size.0,
+                mesh_size.1
             ));
 
         }
         let queue = global_context.queue();
 
         let position = [
-            if self.is_bottom_right { screen_size.0 as f32 - texture_size.width as f32 } else { 0.0 } + offset.0,
+            if self.is_bottom_right { screen_size.0 as f32 - mesh_size.0 } else { 0.0 } + offset.0,
             screen_size.1 as f32 + offset.1,
             0.0,
         ];
