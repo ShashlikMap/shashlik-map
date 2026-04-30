@@ -38,11 +38,13 @@ with Android/iOS mobile apps(Android is priority for now)
 - [x] Initial SSAO(Screen Space Ambient Occlusion)
 - [x] Running on pure Linux via KMS with Slint UI
 - [x] Simple shadow mapping
+- [x] Integration with WESL
 
 ### Now
 - [ ] _In progress_ General Renderer refactoring
-- [ ] _In progress_ Improve WGSL modularity
+- [ ] _In progress_ Improve text layout and positioning
 ### Next
+- [ ] Post-processing AA
 - [ ] Implement an initial geometric Map-matching POC
 - [ ] CI for KMP mobile SDK + Screenshot rendering
 - [ ] Integrate a simple search
