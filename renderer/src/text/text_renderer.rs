@@ -7,7 +7,7 @@ use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::vertex_attrs::TextInstanceInput;
 use crate::view_projection::ViewProjection;
-use geo_types::{coord, point};
+use geo_types::{coord, point, Point};
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use glam::{vec3, DVec3, Mat4, Quat, Vec2, Vec3};
 use num::clamp;
+use rstar::RTreeObject;
 use wgpu::RenderPass;
 
 #[derive(Clone)]
@@ -139,10 +140,10 @@ impl TextRendererCollisionHandler {
 impl ColliderTask for TextRendererCollisionHandler {
     fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler) {
         let render_data_holder = self.task_wrapper.update_holder();
-        
 
         let mut glyph_data: FxHashMap<GlyphId, Vec<GlyphData>> = FxHashMap::default();
         render_data_holder.run_mut_action(|data| {
+
             let glyph_buffer = data
                 .glyph_buffer
                 .get_or_insert_with(|| self.default_face.shape(data.text.as_str()));
@@ -155,15 +156,28 @@ impl ColliderTask for TextRendererCollisionHandler {
 
             let mut glyphs_to_draw = vec![];
 
-            let middle_point_index = data.positions.len() / 2;
-            let initial_position: DVec3 = *data
-                .positions
-                .get(middle_point_index)
-                .unwrap();
-            let origin = view_projection.screen_position(&initial_position)
-                + coord! { x: data.screen_offset.x as f64, y: data.screen_offset.y as f64};
-
             if data.positions.len() > 1 {
+                let positions_segments: Vec<_> = data.positions
+                    .windows(2)
+                    .map(|pair| pair[1] - pair[0]).collect();
+
+                let positions_segments_sum = positions_segments.iter().map(|it| it.length() as f32).sum::<f32>();
+                let sp0 = positions_segments_sum * 0.5;
+                let mut temp_l = 0f32;
+                let iiii = positions_segments.iter().position(|it| {
+                    temp_l += it.length() as f32;
+                    temp_l >= sp0
+                }).unwrap_or(0);
+
+                // let zxc = view_projection.screen_position(&(data.positions[iiii] + positions_segments[iiii].length() * 0.5));
+                //
+                // if collision_handler.point_within_screen(Point::new(zxc.x as f32, zxc.x as f32)) {
+                //     ttt += 1;
+                // } else {
+                //     // self.id_to_alpha_map.clear();
+                //     // self.task_wrapper.send_result(glyph_data);
+                //     return;
+                // }
                 let projected: Vec<_> = data.positions.iter()
                     .map(|&p| {
                         let c = view_projection.screen_position(&p);
@@ -175,16 +189,17 @@ impl ColliderTask for TextRendererCollisionHandler {
                     .windows(2)
                     .map(|pair| pair[1] - pair[0]).collect();
 
-                let sum = projected_segments.iter().map(|it| it.length()).sum::<f32>();
-                let sp = (sum - width) * 0.5;
-
-                let mut temp_l = 0f32;
-                let ii = projected_segments.iter().position(|it| {
-                    temp_l += it.length();
-                    temp_l >= sp
-                }).unwrap_or(0);
-                let np = projected[ii] + projected_segments[ii].normalize() * (projected_segments[ii].length() - (temp_l - sp));
+                let mut ll = projected_segments[iiii].length() * 0.5;
+                let mut ii = iiii as i32;
+                while ii > 0 && ll < (width*0.5) {
+                    ii -= 1;
+                    ll += projected_segments[ii as usize].length();
+                };
+                let ii = ii as usize;
+                let yy = (ll - width*0.5);
+                let np = projected[ii] + projected_segments[ii].normalize_or_zero() * yy;
                 let origin = np;
+
                 let np = vec![np];
                 let new_list = np.iter().chain(projected[(ii + 1)..].iter());
 
@@ -312,6 +327,14 @@ impl ColliderTask for TextRendererCollisionHandler {
                     glyphs_to_draw.clear();
                 }
             } else {
+                let middle_point_index = data.positions.len() / 2;
+                let initial_position: DVec3 = *data
+                    .positions
+                    .get(middle_point_index)
+                    .unwrap();
+                let origin = view_projection.screen_position(&initial_position)
+                    + coord! { x: data.screen_offset.x as f64, y: data.screen_offset.y as f64};
+
                 let origin = origin + coord! { x: (-width/2.0) as f64, y: 0.0 };
 
                 let mut glyph_total_x_advance = 0.0;
@@ -378,6 +401,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                     .or_insert(vec![item.clone()]);
             }
         });
+        // println!("ttt = {}, ttt2 = {}",ttt, ttt2);
 
         self.id_to_alpha_map.clear();
         self.task_wrapper.send_result(glyph_data);
