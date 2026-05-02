@@ -156,18 +156,8 @@ impl ColliderTask for TextRendererCollisionHandler {
 
             let mut glyphs_to_draw = vec![];
 
-            if data.positions.len() > 1 {
-                let positions_segments: Vec<_> = data.positions
-                    .windows(2)
-                    .map(|pair| pair[1] - pair[0]).collect();
-
-                let positions_segments_sum = positions_segments.iter().map(|it| it.length() as f32).sum::<f32>();
-                let sp0 = positions_segments_sum * 0.5;
-                let mut temp_l = 0f32;
-                let iiii = positions_segments.iter().position(|it| {
-                    temp_l += it.length() as f32;
-                    temp_l >= sp0
-                }).unwrap_or(0);
+            if data.line_data.positions.len() > 1 {
+                let iiii = data.line_data.get_center_segment_index();
 
                 // let zxc = view_projection.screen_position(&(data.positions[iiii] + positions_segments[iiii].length() * 0.5));
                 //
@@ -178,7 +168,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                 //     // self.task_wrapper.send_result(glyph_data);
                 //     return;
                 // }
-                let projected: Vec<_> = data.positions.iter()
+                let projected: Vec<_> = data.line_data.positions.iter()
                     .map(|&p| {
                         let c = view_projection.screen_position(&p);
                         Vec2::new(c.x as f32, c.y as f32)
@@ -327,8 +317,8 @@ impl ColliderTask for TextRendererCollisionHandler {
                     glyphs_to_draw.clear();
                 }
             } else {
-                let middle_point_index = data.positions.len() / 2;
-                let initial_position: DVec3 = *data
+                let middle_point_index = data.line_data.positions.len() / 2;
+                let initial_position: DVec3 = *data.line_data
                     .positions
                     .get(middle_point_index)
                     .unwrap();

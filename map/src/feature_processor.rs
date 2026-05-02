@@ -9,7 +9,7 @@ use osm::map::{
 };
 use rand::RngExt;
 use renderer::draw_commands::{GeometryType, PolylineOptions};
-use renderer::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgBackground, SvgData, TextData};
+use renderer::geometry_data::{ExtrudedPolygonData, GeometryData, LineData, ShapeData, SvgBackground, SvgData, TextData};
 use renderer::mesh::mesh::StyledRangeInfo;
 use renderer::styles::style_id::StyleId;
 use seahash::hash;
@@ -128,9 +128,9 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 poi.text.to_uppercase(),
                 Vec2::new(0.0, y_offset * dpi_scale),
                 40.0 * dpi_scale,
-                vec![
+                LineData::new(vec![
                     DVec3::from((local_position.x, local_position.y, 0.0)),
-                ],
+                ])
             )));
         }
     }
@@ -263,10 +263,10 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                                 name.to_uppercase(),
                                 Vec2::new(0.0, 0.0),
                                 30.0 * dpi_scale,
-                                line
+                                LineData::new(line
                                     .iter()
                                     .map(|item| DVec3::new(item.x, item.y, 0.0))
-                                    .collect(),
+                                    .collect())
                             )));
                         }
                     }

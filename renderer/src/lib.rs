@@ -1,7 +1,7 @@
 extern crate core;
 
 use crate::fps::FpsCounter;
-use crate::geometry_data::TextData;
+use crate::geometry_data::{LineData, TextData};
 use crate::mesh_layers::feature_layers::FeatureLayerTag;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
@@ -100,6 +100,7 @@ impl ShashlikRenderer {
 
         let mut layers = Layers::new(feature_tags, &mut global_context, font);
 
+        
         layers.text_layer.add(
             "fps_info".to_string(),
             vec![TextData {
@@ -107,7 +108,7 @@ impl ShashlikRenderer {
                 text: "FPS 0".to_string(),
                 size: 40.0,
                 alpha: 1.0,
-                positions: vec![dvec3(100.0, 120.0, 0.0)],
+                line_data: LineData::new(vec![dvec3(100.0, 120.0, 0.0)]),
                 screen_offset: vec2(0.0, 0.0),
                 screen_space: true,
                 glyph_buffer: None,
