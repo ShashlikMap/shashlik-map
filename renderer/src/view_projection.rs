@@ -1,7 +1,7 @@
 use std::f64::consts::PI;
 use crate::{RendererUpdateData, LIGHT_POS};
 use geo_types::{coord, Coord};
-use glam::{DMat2, DMat4, DVec2, DVec3, DVec4, Mat4, Vec3Swizzles};
+use glam::{DMat2, DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec3Swizzles};
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 
 #[rustfmt::skip]
@@ -189,7 +189,7 @@ impl ViewProjection {
         p2_scale as f32
     }
 
-pub fn screen_position(&self, world_position: &DVec3) -> Coord<f64> {
+    pub fn screen_position(&self, world_position: &DVec3) -> Coord<f64> {
         let matrix: Mat4 = Mat4::from_cols_array_2d(&self.uniform.view_proj);
         let world_position = world_position - self.cs_offset;
         let pos = matrix.as_dmat4() * DVec4::new(world_position.x, world_position.y, 0.0, 1.0);
@@ -208,6 +208,11 @@ pub fn screen_position(&self, world_position: &DVec3) -> Coord<f64> {
 
         self.screen_size = (width as f64, height as f64);
         self.uniform.inv_screen_size = [1.0 / width as f32, 1.0 / height as f32];
+    }
+
+    pub fn screen_to_world(&self, coord: &Vec2) -> Option<DVec2> {
+        self.clip_to_world(&coord! { x : (coord.x as f64 / self.screen_size.0) * 2.0 - 1.0,
+            y : (coord.y as f64 / self.screen_size.1) * 2.0 - 1.0})
     }
 
     pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<DVec2> {

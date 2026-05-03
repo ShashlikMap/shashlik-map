@@ -13,7 +13,7 @@ use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
 use std::collections::HashMap;
 use std::sync::Arc;
-use glam::{vec3, DVec3, Mat4, Quat, Vec2, Vec3};
+use glam::{dvec3, vec3, DVec3, Mat4, Quat, Vec2, Vec3};
 use num::clamp;
 use rstar::RTreeObject;
 use wgpu::RenderPass;
@@ -21,7 +21,7 @@ use wgpu::RenderPass;
 #[derive(Clone)]
 pub struct GlyphData {
     pub glyph_id: GlyphId,
-    pub position: (f32, f32),
+    pub position: (f64, f64),
     pub alpha: f32,
     pub matrix: Mat4,
     pub screen_space: bool,
@@ -69,12 +69,12 @@ impl TextRenderer {
         glyph_data.iter().for_each(|(key, list)| {
             let mut attrs = vec![];
             list.iter().for_each(|glyph_data| {
-                let mut position = Vec3::new(glyph_data.position.0, glyph_data.position.1, 0.0);
+                let mut position = DVec3::new(glyph_data.position.0, glyph_data.position.1, 0.0);
                 if !glyph_data.screen_space {
-                    position -= vec3(cs_offset.x as f32, cs_offset.y as f32, 0.0)
+                    position -= dvec3(cs_offset.x, cs_offset.y, 0.0)
                 }
                 let instance_input = TextInstanceInput {
-                    position: position.into(),
+                    position: position.as_vec3().into(),
                     color_alpha: glyph_data.alpha,
                     matrix: glyph_data.matrix.to_cols_array_2d(),
                     screen_space: glyph_data.screen_space.into(),
@@ -189,6 +189,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                 let yy = (ll - width*0.5);
                 let np = projected[ii] + projected_segments[ii].normalize_or_zero() * yy;
                 let origin = np;
+                let init_pos = view_projection.screen_to_world(&np).unwrap();
 
                 let np = vec![np];
                 let new_list = np.iter().chain(projected[(ii + 1)..].iter());
@@ -281,9 +282,9 @@ impl ColliderTask for TextRendererCollisionHandler {
                             let item = GlyphData {
                                 glyph_id: GlyphId(glyph_info.glyph_id as u16),
                                 alpha: 1.0,
-                                position: (origin.x as f32, origin.y as f32),
+                                position: (init_pos.x, init_pos.y),
                                 matrix,
-                                screen_space: true,
+                                screen_space: data.screen_space,
                             };
                             glyphs_to_draw.push((glyph_rect, item));
 
@@ -369,7 +370,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                             let item = GlyphData {
                                 glyph_id: GlyphId(glyph_info.glyph_id as u16),
                                 alpha: data.alpha,
-                                position: (initial_position.x as f32, initial_position.y as f32),
+                                position: (initial_position.x, initial_position.y),
                                 matrix,
                                 screen_space: data.screen_space,
                             };
