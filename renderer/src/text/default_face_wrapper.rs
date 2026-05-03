@@ -7,6 +7,15 @@ use rustybuzz::ttf_parser::GlyphId;
 use rustybuzz::{Direction, Face, GlyphBuffer, ShapePlan, UnicodeBuffer, Script};
 use wgpu::{Color, Device};
 
+#[derive(Clone)]
+pub struct FaceTextParams {
+    pub scale_matrix: Mat4,
+    pub half_height_translation: Mat4,
+    pub width: f32,
+    pub height: f32,
+    pub scale: f32,
+}
+
 pub struct DefaultFaceWrapper {
     face: Face<'static>,
     face_shape_plan: ShapePlan,
@@ -85,7 +94,7 @@ impl DefaultFaceWrapper {
         &self,
         glyph_buffer: &GlyphBuffer,
         font_size: f32,
-    ) -> (Mat4, f32, f32, f32) {
+    ) -> FaceTextParams {
         let scale = self.get_scale_by_font_size(font_size);
 
         let width = glyph_buffer
@@ -95,8 +104,17 @@ impl DefaultFaceWrapper {
             * scale;
         let height = self.glyph_height * scale;
 
-        let scale_m = Mat4::from_scale(Vec3::splat(scale / Self::MAX_SCALE));
+        let scale_matrix = Mat4::from_scale(Vec3::splat(scale / Self::MAX_SCALE));
 
-        (scale_m, width, height, scale)
+        let half_height_translation =
+            Mat4::from_translation(Vec3::new(0.0, -height / 2.0, 0.0));
+        
+        FaceTextParams {
+            scale_matrix,
+            half_height_translation,
+            width,
+            height,
+            scale,
+        }
     }
 }

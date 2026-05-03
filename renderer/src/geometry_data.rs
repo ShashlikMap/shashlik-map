@@ -5,7 +5,7 @@ use glam::{DVec3, Vec2};
 use lyon::lyon_tessellation::VertexBuffers;
 use lyon::path::Path;
 use rustybuzz::GlyphBuffer;
-use std::cell::{LazyCell, OnceCell};
+use std::cell::OnceCell;
 
 pub enum GeometryData {
     Shape(ShapeData),
@@ -91,7 +91,7 @@ pub struct TextData {
     pub(crate) alpha: f32,
     pub line_data: LineData,
     pub(crate) screen_space: bool,
-    pub(crate) glyph_buffer: Option<GlyphBuffer>,
+    pub glyph_buffer: Option<GlyphBuffer>,
 }
 
 impl TextData {
@@ -110,6 +110,24 @@ impl TextData {
             alpha: 1.0f32,
             line_data,
             screen_space: false,
+            glyph_buffer: None,
+        }
+    }
+    pub fn screen_space_new(
+        id: u64,
+        text: String,
+        screen_offset: Vec2,
+        size: f32,
+        line_data: LineData,
+    ) -> Self {
+        Self {
+            id,
+            text,
+            screen_offset,
+            size,
+            alpha: 1.0f32,
+            line_data,
+            screen_space: true,
             glyph_buffer: None,
         }
     }

@@ -4,19 +4,18 @@ use crate::geometry_data::TextData;
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
-use crate::text::default_face_wrapper::DefaultFaceWrapper;
+use crate::text::default_face_wrapper::{DefaultFaceWrapper, FaceTextParams};
 use crate::vertex_attrs::TextInstanceInput;
 use crate::view_projection::ViewProjection;
-use geo_types::{coord, point, Point};
+use geo_types::{coord, point};
+use glam::{dvec3, DVec3, Mat4, Quat, Vec2, Vec3};
+use num::clamp;
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
 use std::collections::HashMap;
 use std::f32::consts::PI;
 use std::sync::Arc;
-use glam::{dvec3, vec3, DVec3, Mat4, Quat, Vec2, Vec3};
-use num::clamp;
-use rstar::RTreeObject;
 use wgpu::RenderPass;
 
 #[derive(Clone)]
@@ -121,7 +120,8 @@ impl TextRenderer {
 struct TextRendererCollisionHandler {
     id_to_alpha_map: HashMap<u64, f32>,
     default_face: Arc<DefaultFaceWrapper>,
-    task_wrapper: CollisionTaskWrapper<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>
+    task_wrapper: CollisionTaskWrapper<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
+    face_text_params_cache: HashMap<u16, FaceTextParams>
 }
 
 impl TextRendererCollisionHandler {
@@ -133,42 +133,37 @@ impl TextRendererCollisionHandler {
         TextRendererCollisionHandler {
             id_to_alpha_map: HashMap::new(),
             default_face,
-            task_wrapper
+            task_wrapper,
+            face_text_params_cache: HashMap::default()
         }
     }
 }
 
 impl ColliderTask for TextRendererCollisionHandler {
+
     fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler) {
         let render_data_holder = self.task_wrapper.update_holder();
 
+        let flip_rot_m = Mat4::from_rotation_z(PI);
+
         let mut glyph_data: FxHashMap<GlyphId, Vec<GlyphData>> = FxHashMap::default();
         render_data_holder.run_mut_action(|data| {
-
-            let glyph_buffer = data
-                .glyph_buffer
+            let glyph_buffer = data.glyph_buffer
                 .get_or_insert_with(|| self.default_face.shape(data.text.as_str()));
 
             let glyphs_positions = glyph_buffer.glyph_positions();
             let glyphs_infos = glyph_buffer.glyph_infos();
 
-            let (scale_m, width, height, scale) =
-                self.default_face.get_text_params(&glyph_buffer, data.size);
+            let glyphs_len = glyph_buffer.len();
+
+            let face_text_params = self.face_text_params_cache.entry(data.size as u16).or_insert_with(||
+                self.default_face.get_text_params(&glyph_buffer, data.size)).clone();
 
             let mut glyphs_to_draw = vec![];
 
             if data.line_data.positions.len() > 1 {
                 let iiii = data.line_data.get_center_segment_index();
 
-                // let zxc = view_projection.screen_position(&(data.positions[iiii] + positions_segments[iiii].length() * 0.5));
-                //
-                // if collision_handler.point_within_screen(Point::new(zxc.x as f32, zxc.x as f32)) {
-                //     ttt += 1;
-                // } else {
-                //     // self.id_to_alpha_map.clear();
-                //     // self.task_wrapper.send_result(glyph_data);
-                //     return;
-                // }
                 let projected: Vec<_> = data.line_data.positions.iter()
                     .map(|&p| {
                         let c = view_projection.screen_position(&p);
@@ -182,12 +177,12 @@ impl ColliderTask for TextRendererCollisionHandler {
 
                 let mut ll = projected_segments[iiii].length() * 0.5;
                 let mut ii = iiii as i32;
-                while ii > 0 && ll < (width*0.5) {
+                while ii > 0 && ll < (face_text_params.width * 0.5) {
                     ii -= 1;
                     ll += projected_segments[ii as usize].length();
                 };
                 let ii = ii as usize;
-                let yy = (ll - width*0.5);
+                let yy = (ll - face_text_params.width * 0.5);
                 let np = projected[ii] + projected_segments[ii].normalize_or_zero() * yy;
                 let origin = np;
                 let init_pos = view_projection.screen_to_world(&np).unwrap();
@@ -198,17 +193,12 @@ impl ColliderTask for TextRendererCollisionHandler {
                 let mut prev: Option<Vec3> = None;
                 let mut prev_angle_rad: Option<f32> = None;
                 let mut glyph_index = 0;
-                let glyphs_len = glyph_buffer.len();
 
                 let mut segments_len = 0.0;
                 let mut segments_vector = Vec3::new(0.0, 0.0, 0.0);
                 let mut segments_vector_length = 0.0;
 
                 let mut backward = false;
-
-                let flip_rot_m = Mat4::from_rotation_z(PI);
-                let half_height_translation =
-                    Mat4::from_translation(Vec3::new(0.0, -height / 2.0, 0.0));
 
                 let mut discard_animated = false;
 
@@ -250,7 +240,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                         prev_angle_rad = Some(curr_angle);
 
                         let rot_m: Mat4 = Mat4::from_quat(seg_rotation);
-                        let scale_rot_height_m = scale_m * rot_m * half_height_translation;
+                        let scale_rot_height_m = face_text_params.scale_matrix * rot_m * face_text_params.half_height_translation;
 
                         while glyph_index < glyphs_len {
                             if segments_vector_length > segments_len
@@ -267,7 +257,8 @@ impl ColliderTask for TextRendererCollisionHandler {
                             let position = glyphs_positions[real_glyph_index];
                             let glyph_info = glyphs_infos[real_glyph_index];
 
-                            let x_advance = position.x_advance as f32 * scale;
+
+                            let x_advance = position.x_advance as f32 * face_text_params.scale;
                             let x_advance_vector = Vec3::new(x_advance, 0.0, 0.0);
                             let rotated_glyph_vector = seg_rotation * x_advance_vector;
 
@@ -283,9 +274,10 @@ impl ColliderTask for TextRendererCollisionHandler {
                             };
 
                             // note: segments_vector.y goes negative so we should diff y-axis!
+                            let height = face_text_params.height;
                             let glyph_rect = Rectangle::from_corners(
-                                point! { x: origin.x as f32 + segments_vector.x - height, y: origin.y as f32 - segments_vector.y - height },
-                                point! { x: origin.x as f32 + segments_vector.x + height, y: origin.y as f32 - segments_vector.y + height},
+                                point! { x: origin.x + segments_vector.x - height, y: origin.y - segments_vector.y - height },
+                                point! { x: origin.x + segments_vector.x + height, y: origin.y - segments_vector.y + height},
                             );
 
                             segments_vector_length += rotated_glyph_vector.length();
@@ -341,13 +333,13 @@ impl ColliderTask for TextRendererCollisionHandler {
                 let origin = view_projection.screen_position(&initial_position)
                     + coord! { x: data.screen_offset.x as f64, y: data.screen_offset.y as f64};
 
-                let origin = origin + coord! { x: (-width/2.0) as f64, y: 0.0 };
+                let origin = origin + coord! { x: (-face_text_params.width/2.0) as f64, y: 0.0 };
 
                 let mut glyph_total_x_advance = 0.0;
 
                 let section_rect = Rectangle::from_corners(
                     point! { x: origin.x as f32, y: origin.y as f32 },
-                    point! { x: origin.x as f32 + width, y: origin.y as f32 + height },
+                    point! { x: origin.x as f32 + face_text_params.width, y: origin.y as f32 + face_text_params.height },
                 );
 
                 let within_screen = collision_handler.within_screen(section_rect);
@@ -371,16 +363,16 @@ impl ColliderTask for TextRendererCollisionHandler {
                     if data.alpha > 0.0 {
                         let stub_rect =
                             Rectangle::from_corners(point!(x: 0.0, y: 0.0), point!(x: 0.0, y: 0.0));
-                        for index in 0..glyph_buffer.len() {
+                        for index in 0..glyphs_len {
                             let position = glyphs_positions[index];
                             let glyph_info = glyphs_infos[index];
                             let matrix = Mat4::from_translation(Vec3::new(
-                                glyph_total_x_advance + data.screen_offset.x + (-width / 2.0),
-                                -height - data.screen_offset.y,
+                                glyph_total_x_advance + data.screen_offset.x + (-face_text_params.width / 2.0),
+                                -face_text_params.height - data.screen_offset.y,
                                 0.0,
-                            )) * scale_m;
+                            )) * face_text_params.scale_matrix;
 
-                            glyph_total_x_advance += position.x_advance as f32 * scale;
+                            glyph_total_x_advance += position.x_advance as f32 * face_text_params.scale;
 
                             let item = GlyphData {
                                 glyph_id: GlyphId(glyph_info.glyph_id as u16),
@@ -407,7 +399,6 @@ impl ColliderTask for TextRendererCollisionHandler {
                     .or_insert(vec![item.clone()]);
             }
         });
-        // println!("ttt = {}, ttt2 = {}",ttt, ttt2);
 
         self.id_to_alpha_map.clear();
         self.task_wrapper.send_result(glyph_data);
