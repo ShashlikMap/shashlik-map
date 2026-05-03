@@ -36,7 +36,13 @@ impl Collider {
     ) {
         spawn(move || {
             loop {
-                if let Some(msg) = receiver.recv().ok() {
+                // drop all ViewProj but the last one
+                let mut last_msg = None;
+                while let Ok(msg) = receiver.try_recv() {
+                    last_msg = Some(msg);
+                }
+
+                if let Some(msg) = last_msg {
                     match msg {
                         ColliderMsg::ViewProj(view_projection) => {
                             let (width, height) = view_projection.screen_size;

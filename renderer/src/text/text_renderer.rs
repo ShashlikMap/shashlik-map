@@ -12,6 +12,7 @@ use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
 use std::collections::HashMap;
+use std::f32::consts::PI;
 use std::sync::Arc;
 use glam::{dvec3, vec3, DVec3, Mat4, Quat, Vec2, Vec3};
 use num::clamp;
@@ -195,6 +196,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                 let new_list = np.iter().chain(projected[(ii + 1)..].iter());
 
                 let mut prev: Option<Vec3> = None;
+                let mut prev_angle_rad: Option<f32> = None;
                 let mut glyph_index = 0;
                 let glyphs_len = glyph_buffer.len();
 
@@ -204,9 +206,11 @@ impl ColliderTask for TextRendererCollisionHandler {
 
                 let mut backward = false;
 
-                let flip_rot_m = Mat4::from_rotation_z(std::f32::consts::PI);
+                let flip_rot_m = Mat4::from_rotation_z(PI);
                 let half_height_translation =
                     Mat4::from_translation(Vec3::new(0.0, -height / 2.0, 0.0));
+
+                let mut discard_animated = false;
 
                 for (index, current) in new_list.enumerate() {
                     if glyph_index >= glyphs_len {
@@ -236,6 +240,14 @@ impl ColliderTask for TextRendererCollisionHandler {
                                 Vec3::X,
                             );
 
+                        let curr_angle = seg_rotation.to_axis_angle().1;
+                        if let Some(prev_angle_rad) = prev_angle_rad {
+                            if (curr_angle - prev_angle_rad).abs() >= PI * 0.15 {
+                                discard_animated = true;
+                                break;
+                            }
+                        }
+                        prev_angle_rad = Some(curr_angle);
 
                         let rot_m: Mat4 = Mat4::from_quat(seg_rotation);
                         let scale_rot_height_m = scale_m * rot_m * half_height_translation;
@@ -314,6 +326,9 @@ impl ColliderTask for TextRendererCollisionHandler {
                         alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
                     };
                     data.alpha = alpha;
+                } else if discard_animated {
+                    // let alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
+                    data.alpha = clamp(data.alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
                 } else {
                     glyphs_to_draw.clear();
                 }
