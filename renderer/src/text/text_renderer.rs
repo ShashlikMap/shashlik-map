@@ -8,7 +8,7 @@ use crate::text::default_face_wrapper::{DefaultFaceWrapper, FaceTextParams};
 use crate::vertex_attrs::TextInstanceInput;
 use crate::view_projection::ViewProjection;
 use geo_types::{coord, point};
-use glam::{dvec3, DVec3, Mat4, Quat, Vec2, Vec3};
+use glam::{DVec3, Mat4, Quat, Vec2, Vec3, dvec3};
 use num::clamp;
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
@@ -29,7 +29,8 @@ pub struct GlyphData {
 
 pub struct TextRenderer {
     default_face: Arc<DefaultFaceWrapper>,
-    collision_task_controller: CollisionTaskController<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
+    collision_task_controller:
+        CollisionTaskController<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
     instance_buffer_map: FxHashMap<GlyphId, InstanceBuffer<TextInstanceInput>>,
 }
 
@@ -41,7 +42,7 @@ impl TextRenderer {
         let device = global_context.device();
         let default_face = Arc::new(DefaultFaceWrapper::new(device, font));
         let (task_wrapper, collision_task_controller) = CollisionTaskWrapper::new();
-        
+
         let task = TextRendererCollisionHandler::new(Arc::clone(&default_face), task_wrapper);
         global_context.collider.register_task(Box::new(task));
         TextRenderer {
@@ -121,26 +122,25 @@ struct TextRendererCollisionHandler {
     id_to_alpha_map: HashMap<u64, f32>,
     default_face: Arc<DefaultFaceWrapper>,
     task_wrapper: CollisionTaskWrapper<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
-    face_text_params_cache: HashMap<u16, FaceTextParams>
+    face_text_params_cache: HashMap<u16, FaceTextParams>,
 }
 
 impl TextRendererCollisionHandler {
     const FADE_ANIM_SPEED: f32 = 0.05;
     pub fn new(
         default_face: Arc<DefaultFaceWrapper>,
-        task_wrapper: CollisionTaskWrapper<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>
+        task_wrapper: CollisionTaskWrapper<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
     ) -> Self {
         TextRendererCollisionHandler {
             id_to_alpha_map: HashMap::new(),
             default_face,
             task_wrapper,
-            face_text_params_cache: HashMap::default()
+            face_text_params_cache: HashMap::default(),
         }
     }
 }
 
 impl ColliderTask for TextRendererCollisionHandler {
-
     fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler) {
         let render_data_holder = self.task_wrapper.update_holder();
 
@@ -162,7 +162,7 @@ impl ColliderTask for TextRendererCollisionHandler {
             let mut glyphs_to_draw = vec![];
 
             if data.line_data.positions.len() > 1 {
-                let iiii = data.line_data.get_center_segment_index();
+                let mut index_of_center_segment = data.line_data.get_center_segment_index();
 
                 let projected: Vec<_> = data.line_data.positions.iter()
                     .map(|&p| {
@@ -175,20 +175,17 @@ impl ColliderTask for TextRendererCollisionHandler {
                     .windows(2)
                     .map(|pair| pair[1] - pair[0]).collect();
 
-                let mut ll = projected_segments[iiii].length() * 0.5;
-                let mut ii = iiii as i32;
-                while ii > 0 && ll < (face_text_params.width * 0.5) {
-                    ii -= 1;
-                    ll += projected_segments[ii as usize].length();
+                let mut total_length = projected_segments[index_of_center_segment].length() * 0.5;
+                while index_of_center_segment > 0 && total_length < (face_text_params.width * 0.5) {
+                    index_of_center_segment -= 1;
+                    total_length += projected_segments[index_of_center_segment].length();
                 };
-                let ii = ii as usize;
-                let yy = (ll - face_text_params.width * 0.5);
-                let np = projected[ii] + projected_segments[ii].normalize_or_zero() * yy;
-                let origin = np;
-                let init_pos = view_projection.screen_to_world(&np).unwrap();
+                let length_remainder = total_length - face_text_params.width * 0.5;
+                let origin = projected[index_of_center_segment] + projected_segments[index_of_center_segment].normalize_or_zero() * length_remainder;
+                let unprojected_origin = view_projection.screen_to_world(&origin).unwrap();
 
-                let np = vec![np];
-                let new_list = np.iter().chain(projected[(ii + 1)..].iter());
+                let origin_vec = vec![origin];
+                let new_list = origin_vec.iter().chain(projected[(index_of_center_segment + 1)..].iter());
 
                 let mut prev: Option<Vec3> = None;
                 let mut prev_angle_rad: Option<f32> = None;
@@ -286,7 +283,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                             let item = GlyphData {
                                 glyph_id: GlyphId(glyph_info.glyph_id as u16),
                                 alpha: 1.0,
-                                position: (init_pos.x, init_pos.y),
+                                position: (unprojected_origin.x, unprojected_origin.y),
                                 matrix,
                                 screen_space: data.screen_space,
                             };
