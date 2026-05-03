@@ -1,10 +1,11 @@
-use glam::{DVec3, Vec2};
 use crate::draw_commands::{GeometryType, MeshVertex};
+use crate::mesh::mesh::StyledRangeInfo;
 use crate::styles::style_id::StyleId;
+use glam::{DVec3, Vec2};
 use lyon::lyon_tessellation::VertexBuffers;
 use lyon::path::Path;
 use rustybuzz::GlyphBuffer;
-use crate::mesh::mesh::StyledRangeInfo;
+use std::cell::OnceCell;
 
 pub enum GeometryData {
     Shape(ShapeData),
@@ -18,7 +19,7 @@ pub struct ShapeData {
     pub geometry_type: GeometryType,
     pub style_id: StyleId,
     pub index_layer_level: i8,
-    pub styled_range_info: StyledRangeInfo
+    pub styled_range_info: StyledRangeInfo,
 }
 
 pub struct ExtrudedPolygonData {
@@ -32,7 +33,7 @@ pub struct Mesh3d {
 
 pub struct SvgBackground {
     pub style_id: StyleId,
-    pub padding: f32
+    pub padding: f32,
 }
 
 pub struct SvgData {
@@ -44,15 +45,53 @@ pub struct SvgData {
     pub background: Option<SvgBackground>,
 }
 
+pub struct LineData {
+    pub positions: Vec<DVec3>,
+    center_segment_index: OnceCell<usize>,
+}
+
+impl LineData {
+    pub fn new(positions: Vec<DVec3>) -> Self {
+        Self {
+            positions,
+            center_segment_index: OnceCell::new(),
+        }
+    }
+
+    pub fn get_center_segment_index(&self) -> usize {
+        *self.center_segment_index.get_or_init(|| {
+            let positions_segments: Vec<_> = self
+                .positions
+                .windows(2)
+                .map(|pair| pair[1] - pair[0])
+                .collect();
+
+            let positions_segments_sum = positions_segments
+                .iter()
+                .map(|it| it.length() as f32)
+                .sum::<f32>();
+            let sp0 = positions_segments_sum * 0.5;
+            let mut temp_l = 0f32;
+            positions_segments
+                .iter()
+                .position(|it| {
+                    temp_l += it.length() as f32;
+                    temp_l >= sp0
+                })
+                .unwrap_or(0)
+        })
+    }
+}
+
 pub struct TextData {
     pub id: u64,
     pub text: String,
     pub screen_offset: Vec2,
     pub size: f32,
     pub(crate) alpha: f32,
-    pub positions: Vec<DVec3>,
+    pub line_data: LineData,
     pub(crate) screen_space: bool,
-    pub(crate) glyph_buffer: Option<GlyphBuffer>,
+    pub glyph_buffer: Option<GlyphBuffer>,
 }
 
 impl TextData {
@@ -61,7 +100,7 @@ impl TextData {
         text: String,
         screen_offset: Vec2,
         size: f32,
-        positions: Vec<DVec3>,
+        line_data: LineData,
     ) -> Self {
         Self {
             id,
@@ -69,8 +108,26 @@ impl TextData {
             screen_offset,
             size,
             alpha: 1.0f32,
-            positions,
+            line_data,
             screen_space: false,
+            glyph_buffer: None,
+        }
+    }
+    pub fn screen_space_new(
+        id: u64,
+        text: String,
+        screen_offset: Vec2,
+        size: f32,
+        line_data: LineData,
+    ) -> Self {
+        Self {
+            id,
+            text,
+            screen_offset,
+            size,
+            alpha: 1.0f32,
+            line_data,
+            screen_space: true,
             glyph_buffer: None,
         }
     }

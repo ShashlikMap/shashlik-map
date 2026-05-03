@@ -1,4 +1,4 @@
-use crate::geometry_data::TextData;
+use crate::geometry_data::{LineData, TextData};
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::modifier::render_modifier::SpatialData;
@@ -29,11 +29,11 @@ impl<P: RenderPipeline> TextMeshLayer<P> {
         self.text_renderer.update_data(move |holder| {
             text_data.iter_mut().for_each(|item| {
                 item.alpha = 0.0;
-                item.positions = item
+                item.line_data = LineData::new(item.line_data
                     .positions
                     .iter()
                     .map(|pos| pos + spatial_data.transform)
-                    .collect();
+                    .collect())
             });
             holder.set(key.clone(), text_data)
         });
