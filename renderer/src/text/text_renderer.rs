@@ -203,30 +203,34 @@ impl ColliderTask for TextRendererCollisionHandler {
                 let mut glyph_index = 0;
 
                 // let mut segments_len = 0.0;
-                let mut segments_vector = Vec3::new(0.0, 0.0, 0.0);
-                // let mut segments_vector_length = 0.0;
+                // let mut segments_vector = Vec3::new(0.0, 0.0, 0.0);
+                let mut segments_vector_length: f32 = 0.0;
 
                 let mut backward = false;
 
                 let mut discard_animated = false;
 
+                let mut ppp = &origin;
+                let mut zxc = 0.0;
                 let spline = Spline::from_iter(origin_vec.iter().chain(new_list).enumerate().map(|(index, item)| {
                     let rr = item - origin;
-                    let len = rr.length();
+                    zxc += (item - ppp).length();
+                    if !backward && item != ppp && &origin != ppp && item.x < ppp.x {
+                        backward = true;
+                    }
+                    ppp = item;
                     // if data.text == "SURUGADAIDOKANDOSURUGADAIDOK" {
                     //     println!("len = {}",len);
                     // }
                     // let iii = if len == 0.0 { Interpolation::Linear } else  { Interpolation::CatmullRom };
-                    Key::new(len, rr, Interpolation::CatmullRom)
+                    Key::new(zxc, rr, Interpolation::CatmullRom)
                 }));
 
-                // let mut ooo = origin;
                 let stub_rect =
                     Rectangle::from_corners(point!(x: 0.0, y: 0.0), point!(x: 0.0, y: 0.0));
                 while glyph_index < glyphs_len {
-                    // println!("kiol {}, {}", ooo.x, ooo.x + 0.1);
-                    let kll = segments_vector.length() ;
-                    if !kll.is_nan() && let (Some(p1), Some(p2)) = (spline.sample(kll), spline.sample(kll+1f32)) {
+                    let kll = segments_vector_length;
+                    if !kll.is_nan() && let (Some(p1), Some(p2)) = (spline.sample(kll), spline.sample(kll+2f32)) {
 
                         let real_glyph_index = if backward {
                             glyphs_len - glyph_index - 1
@@ -253,20 +257,24 @@ impl ColliderTask for TextRendererCollisionHandler {
                         let x_advance_vector = Vec3::new(x_advance, 0.0, 0.0);
                         // let rotated_glyph_vector = seg_rotation * x_advance_vector;
 
+                        let rr = p1;
                         let matrix = if backward {
                             let x_advance_translation =
-                                Mat4::from_translation(-x_advance_vector);
-                            Mat4::from_translation(segments_vector)
-                                * flip_rot_m
-                                * scale_rot_height_m
-                                * x_advance_translation
+                                Mat4::from_translation(x_advance_vector * 0.5);
+                            // Mat4::from_translation(vec3(-rr.x, rr.y, 0.0)) *
+                            // flip_rot_m
+                            //     * x_advance_translation
+                            //     * scale_rot_height_m
+
+                            Mat4::from_translation(-x_advance_vector * 0.5) * Mat4::from_translation(vec3(rr.x, -rr.y, 0.0)) * flip_rot_m * x_advance_translation * scale_rot_height_m
                         } else {
-                            let rr = p1;
-                            Mat4::from_translation(vec3(rr.x, -rr.y, 0.0)) *scale_rot_height_m
+                            Mat4::from_translation(vec3(rr.x, -rr.y, 0.0))
+                                * face_text_params.scale_matrix * rot_m
+                                * Mat4::from_translation(x_advance_vector * 4.0)
+                                // * face_text_params.half_height_translation
                         };
 
-                        segments_vector += x_advance_vector;
-                        // ooo += vec2(rotated_glyph_vector.x, rotated_glyph_vector.y);
+                        segments_vector_length += x_advance;
 
                         // // note: segments_vector.y goes negative so we should diff y-axis!
                         // let height = face_text_params.height;
