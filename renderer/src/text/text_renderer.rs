@@ -8,7 +8,7 @@ use crate::text::default_face_wrapper::{DefaultFaceWrapper, FaceTextParams};
 use crate::vertex_attrs::TextInstanceInput;
 use crate::view_projection::ViewProjection;
 use geo_types::{coord, point};
-use glam::{DVec3, Mat4, Quat, Vec2, Vec3, dvec3};
+use glam::{DVec3, Mat4, Quat, Vec2, Vec3, dvec3, vec2, vec3, DMat4};
 use num::clamp;
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
@@ -16,6 +16,7 @@ use rustybuzz::ttf_parser::GlyphId;
 use std::collections::HashMap;
 use std::f32::consts::PI;
 use std::sync::Arc;
+use splines::{Interpolation, Key, Spline};
 use wgpu::RenderPass;
 
 #[derive(Clone)]
@@ -140,6 +141,13 @@ impl TextRendererCollisionHandler {
     }
 }
 
+const FLIP_Y: DMat4 = DMat4::from_cols_array(
+    &[1.0, 0.0, 0.0, 0.0,
+        0.0, -1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0],
+);
+
 impl ColliderTask for TextRendererCollisionHandler {
     fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler) {
         let render_data_holder = self.task_wrapper.update_holder();
@@ -148,6 +156,9 @@ impl ColliderTask for TextRendererCollisionHandler {
 
         let mut glyph_data: FxHashMap<GlyphId, Vec<GlyphData>> = FxHashMap::default();
         render_data_holder.run_mut_action(|data| {
+            if data.text == "SURUGADAI DOKANDO" {
+                data.text = "SURUGADAIDOKANDOSURUGADAIDOK".to_string();
+            }
             let glyph_buffer = data.glyph_buffer
                 .get_or_insert_with(|| self.default_face.shape(data.text.as_str()));
 
@@ -191,110 +202,193 @@ impl ColliderTask for TextRendererCollisionHandler {
                 let mut prev_angle_rad: Option<f32> = None;
                 let mut glyph_index = 0;
 
-                let mut segments_len = 0.0;
+                // let mut segments_len = 0.0;
                 let mut segments_vector = Vec3::new(0.0, 0.0, 0.0);
-                let mut segments_vector_length = 0.0;
+                // let mut segments_vector_length = 0.0;
 
                 let mut backward = false;
 
                 let mut discard_animated = false;
 
-                for (index, current) in new_list.enumerate() {
-                    if glyph_index >= glyphs_len {
-                        break;
-                    }
+                let spline = Spline::from_iter(origin_vec.iter().chain(new_list).enumerate().map(|(index, item)| {
+                    let rr = item - origin;
+                    let len = rr.length();
+                    // if data.text == "SURUGADAIDOKANDOSURUGADAIDOK" {
+                    //     println!("len = {}",len);
+                    // }
+                    // let iii = if len == 0.0 { Interpolation::Linear } else  { Interpolation::CatmullRom };
+                    Key::new(len, rr, Interpolation::CatmullRom)
+                }));
 
-                    let current = current - origin;
-                    let current = Vec3::new(current.x, current.y, 0.0);
+                // let mut ooo = origin;
+                let stub_rect =
+                    Rectangle::from_corners(point!(x: 0.0, y: 0.0), point!(x: 0.0, y: 0.0));
+                while glyph_index < glyphs_len {
+                    // println!("kiol {}, {}", ooo.x, ooo.x + 0.1);
+                    let kll = segments_vector.length() ;
+                    if !kll.is_nan() && let (Some(p1), Some(p2)) = (spline.sample(kll), spline.sample(kll+1f32)) {
 
-                    // skip if two point are the same
-                    if let Some(prev) = prev
-                        && prev != current
-                    {
-                        // check if we need to render text backward to
-                        if index == 1 {
-                            if current.x < prev.x {
-                                backward = true;
-                            }
-                        }
-                        let seg_vector = current - prev;
+                        let real_glyph_index = if backward {
+                            glyphs_len - glyph_index - 1
+                        } else {
+                            glyph_index
+                        };
 
-                        segments_len += seg_vector.length();
+                        let position = glyphs_positions[real_glyph_index];
+                        let glyph_info = glyphs_infos[real_glyph_index];
+
+
+                        let tangent = (p2 - p1).normalize();
 
                         let seg_rotation: Quat =
                             Quat::from_rotation_arc(
-                                seg_vector.normalize(),
+                                vec3(tangent.x, tangent.y, 0.0),
                                 Vec3::X,
                             );
-
-                        let curr_angle = seg_rotation.to_axis_angle().1;
-                        if let Some(prev_angle_rad) = prev_angle_rad {
-                            if (curr_angle - prev_angle_rad).abs() >= PI * 0.15 {
-                                discard_animated = true;
-                                break;
-                            }
-                        }
-                        prev_angle_rad = Some(curr_angle);
 
                         let rot_m: Mat4 = Mat4::from_quat(seg_rotation);
                         let scale_rot_height_m = face_text_params.scale_matrix * rot_m * face_text_params.half_height_translation;
 
-                        while glyph_index < glyphs_len {
-                            if segments_vector_length > segments_len
-                            {
-                                break;
-                            }
+                        let x_advance = position.x_advance as f32 * face_text_params.scale;
+                        let x_advance_vector = Vec3::new(x_advance, 0.0, 0.0);
+                        // let rotated_glyph_vector = seg_rotation * x_advance_vector;
 
-                            let real_glyph_index = if backward {
-                                glyphs_len - glyph_index - 1
-                            } else {
-                                glyph_index
-                            };
+                        let matrix = if backward {
+                            let x_advance_translation =
+                                Mat4::from_translation(-x_advance_vector);
+                            Mat4::from_translation(segments_vector)
+                                * flip_rot_m
+                                * scale_rot_height_m
+                                * x_advance_translation
+                        } else {
+                            let rr = p1;
+                            Mat4::from_translation(vec3(rr.x, -rr.y, 0.0)) *scale_rot_height_m
+                        };
 
-                            let position = glyphs_positions[real_glyph_index];
-                            let glyph_info = glyphs_infos[real_glyph_index];
+                        segments_vector += x_advance_vector;
+                        // ooo += vec2(rotated_glyph_vector.x, rotated_glyph_vector.y);
 
+                        // // note: segments_vector.y goes negative so we should diff y-axis!
+                        // let height = face_text_params.height;
+                        // let glyph_rect = Rectangle::from_corners(
+                        //     point! { x: origin.x + segments_vector.x - height, y: origin.y - segments_vector.y - height },
+                        //     point! { x: origin.x + segments_vector.x + height, y: origin.y - segments_vector.y + height},
+                        // );
+                        //
+                        // segments_vector_length += rotated_glyph_vector.length();
+                        // segments_vector += rotated_glyph_vector;
 
-                            let x_advance = position.x_advance as f32 * face_text_params.scale;
-                            let x_advance_vector = Vec3::new(x_advance, 0.0, 0.0);
-                            let rotated_glyph_vector = seg_rotation * x_advance_vector;
+                        let item = GlyphData {
+                            glyph_id: GlyphId(glyph_info.glyph_id as u16),
+                            alpha: 1.0,
+                            position: (unprojected_origin.x, unprojected_origin.y),
+                            matrix,
+                            screen_space: data.screen_space,
+                        };
+                        glyphs_to_draw.push((stub_rect, item));
 
-                            let matrix = if backward {
-                                let x_advance_translation =
-                                    Mat4::from_translation(-x_advance_vector);
-                                Mat4::from_translation(segments_vector)
-                                    * flip_rot_m
-                                    * scale_rot_height_m
-                                    * x_advance_translation
-                            } else {
-                                Mat4::from_translation(segments_vector) * scale_rot_height_m
-                            };
-
-                            // note: segments_vector.y goes negative so we should diff y-axis!
-                            let height = face_text_params.height;
-                            let glyph_rect = Rectangle::from_corners(
-                                point! { x: origin.x + segments_vector.x - height, y: origin.y - segments_vector.y - height },
-                                point! { x: origin.x + segments_vector.x + height, y: origin.y - segments_vector.y + height},
-                            );
-
-                            segments_vector_length += rotated_glyph_vector.length();
-                            segments_vector += rotated_glyph_vector;
-
-                            let item = GlyphData {
-                                glyph_id: GlyphId(glyph_info.glyph_id as u16),
-                                alpha: 1.0,
-                                position: (unprojected_origin.x, unprojected_origin.y),
-                                matrix,
-                                screen_space: data.screen_space,
-                            };
-                            glyphs_to_draw.push((glyph_rect, item));
-
-                            glyph_index += 1;
-                        }
+                        glyph_index += 1;
+                    } else {
+                        break;
                     }
-
-                    prev = Some(current);
                 }
+
+                // for (index, current) in new_list.enumerate() {
+                //     if glyph_index >= glyphs_len {
+                //         break;
+                //     }
+                //
+                //     let current = current - origin;
+                //     let current = Vec3::new(current.x, current.y, 0.0);
+                //
+                //     // skip if two point are the same
+                //     if let Some(prev) = prev
+                //         && prev != current
+                //     {
+                //         // check if we need to render text backward to
+                //         if index == 1 {
+                //             if current.x < prev.x {
+                //                 backward = false;
+                //             }
+                //         }
+                //         let seg_vector = current - prev;
+                //
+                //         segments_len += seg_vector.length();
+                //
+                //         let seg_rotation: Quat =
+                //             Quat::from_rotation_arc(
+                //                 seg_vector.normalize(),
+                //                 Vec3::X,
+                //             );
+                //
+                //         let curr_angle = seg_rotation.to_axis_angle().1;
+                //         if let Some(prev_angle_rad) = prev_angle_rad {
+                //             if (curr_angle - prev_angle_rad).abs() >= PI * 0.15 {
+                //                 discard_animated = true;
+                //                 break;
+                //             }
+                //         }
+                //         prev_angle_rad = Some(curr_angle);
+                //
+                //         let rot_m: Mat4 = Mat4::from_quat(seg_rotation);
+                //         let scale_rot_height_m = face_text_params.scale_matrix * rot_m * face_text_params.half_height_translation;
+                //
+                //         while glyph_index < glyphs_len {
+                //             if segments_vector_length > segments_len
+                //             {
+                //                 break;
+                //             }
+                //
+                //             let real_glyph_index = if backward {
+                //                 glyphs_len - glyph_index - 1
+                //             } else {
+                //                 glyph_index
+                //             };
+                //
+                //             let position = glyphs_positions[real_glyph_index];
+                //             let glyph_info = glyphs_infos[real_glyph_index];
+                //
+                //
+                //             let x_advance = position.x_advance as f32 * face_text_params.scale;
+                //             let x_advance_vector = Vec3::new(x_advance, 0.0, 0.0);
+                //             let rotated_glyph_vector = seg_rotation * x_advance_vector;
+                //
+                //             let matrix = if backward {
+                //                 let x_advance_translation =
+                //                     Mat4::from_translation(-x_advance_vector);
+                //                 Mat4::from_translation(segments_vector)
+                //                     * flip_rot_m
+                //                     * scale_rot_height_m
+                //                     * x_advance_translation
+                //             } else {
+                //                 Mat4::from_translation(segments_vector) * scale_rot_height_m
+                //             };
+                //
+                //             // note: segments_vector.y goes negative so we should diff y-axis!
+                //             let height = face_text_params.height;
+                //             let glyph_rect = Rectangle::from_corners(
+                //                 point! { x: origin.x + segments_vector.x - height, y: origin.y - segments_vector.y - height },
+                //                 point! { x: origin.x + segments_vector.x + height, y: origin.y - segments_vector.y + height},
+                //             );
+                //
+                //             segments_vector_length += rotated_glyph_vector.length();
+                //             segments_vector += rotated_glyph_vector;
+                //
+                //             let item = GlyphData {
+                //                 glyph_id: GlyphId(glyph_info.glyph_id as u16),
+                //                 alpha: 1.0,
+                //                 position: (unprojected_origin.x, unprojected_origin.y),
+                //                 matrix,
+                //                 screen_space: data.screen_space,
+                //             };
+                //             glyphs_to_draw.push((glyph_rect, item));
+                //
+                //             glyph_index += 1;
+                //         }
+                //     }
+                //
+                //     prev = Some(current);
+                // }
 
                 // render only completed text
                 if glyph_index >= glyphs_len {
@@ -315,9 +409,11 @@ impl ColliderTask for TextRendererCollisionHandler {
                         alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
                     };
                     data.alpha = alpha;
+                    data.alpha = 1.0;
                 } else if discard_animated {
                     // let alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
                     data.alpha = clamp(data.alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                    data.alpha = 1.0;
                 } else {
                     glyphs_to_draw.clear();
                 }

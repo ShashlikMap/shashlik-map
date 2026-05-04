@@ -23,6 +23,7 @@ linked-hash-map = "0.5.6"
 wesl = { git = "https://github.com/wgsl-tooling-wg/wesl-rs", features = ["naga-ext"]}
 rand = { workspace = true }
 strum = { workspace = true }
+splines = {  version = "5.0.0", features = ["glam"] }
 
 [build-dependencies]
 anyhow = "1.0"
