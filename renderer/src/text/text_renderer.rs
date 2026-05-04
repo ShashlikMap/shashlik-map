@@ -149,16 +149,13 @@ const FLIP_Y: DMat4 = DMat4::from_cols_array(
 );
 
 impl ColliderTask for TextRendererCollisionHandler {
-    fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler) {
+    fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler)  {
         let render_data_holder = self.task_wrapper.update_holder();
 
         let flip_rot_m = Mat4::from_rotation_z(PI);
 
         let mut glyph_data: FxHashMap<GlyphId, Vec<GlyphData>> = FxHashMap::default();
         render_data_holder.run_mut_action(|data| {
-            if data.text == "SURUGADAI DOKANDO" {
-                data.text = "SURUGADAIDOKANDOSURUGADAIDOK".to_string();
-            }
             let glyph_buffer = data.glyph_buffer
                 .get_or_insert_with(|| self.default_face.shape(data.text.as_str()));
 
@@ -195,6 +192,10 @@ impl ColliderTask for TextRendererCollisionHandler {
                 let origin = projected[index_of_center_segment] + projected_segments[index_of_center_segment].normalize_or_zero() * length_remainder;
                 let unprojected_origin = view_projection.screen_to_world(&origin).unwrap();
 
+                let has_sharp_angle = projected[(index_of_center_segment + 1)..].windows(2).any(|items| {
+                    items[0].angle_to(items[1]).abs() > PI * 0.20
+                });
+
                 let origin_vec = vec![origin];
                 let new_list = origin_vec.iter().chain(projected[(index_of_center_segment + 1)..].iter());
 
@@ -208,27 +209,24 @@ impl ColliderTask for TextRendererCollisionHandler {
 
                 let mut backward = false;
 
-                let mut discard_animated = false;
+                let mut discard_animated = has_sharp_angle;
 
                 let mut ppp = &origin;
                 let mut zxc = 0.0;
+
                 let spline = Spline::from_iter(origin_vec.iter().chain(new_list).enumerate().map(|(index, item)| {
                     let rr = item - origin;
                     zxc += (item - ppp).length();
-                    if !backward && item != ppp && &origin != ppp && item.x < ppp.x {
+                    if !backward && item.x < ppp.x && ppp == &origin  {
                         backward = true;
                     }
                     ppp = item;
-                    // if data.text == "SURUGADAIDOKANDOSURUGADAIDOK" {
-                    //     println!("len = {}",len);
-                    // }
-                    // let iii = if len == 0.0 { Interpolation::Linear } else  { Interpolation::CatmullRom };
                     Key::new(zxc, rr, Interpolation::CatmullRom)
                 }));
 
                 let stub_rect =
                     Rectangle::from_corners(point!(x: 0.0, y: 0.0), point!(x: 0.0, y: 0.0));
-                while glyph_index < glyphs_len {
+                while !has_sharp_angle && glyph_index < glyphs_len {
                     let kll = segments_vector_length;
                     if !kll.is_nan() && let (Some(p1), Some(p2)) = (spline.sample(kll), spline.sample(kll+2f32)) {
 
@@ -250,6 +248,15 @@ impl ColliderTask for TextRendererCollisionHandler {
                                 Vec3::X,
                             );
 
+                        let curr_angle = seg_rotation.to_axis_angle().1;
+                        if let Some(prev_angle_rad) = prev_angle_rad {
+                            if (curr_angle - prev_angle_rad).abs() >= PI * 0.20 {
+                                discard_animated = true;
+                                break;
+                            }
+                        }
+                        prev_angle_rad = Some(curr_angle);
+
                         let rot_m: Mat4 = Mat4::from_quat(seg_rotation);
                         let scale_rot_height_m = face_text_params.scale_matrix * rot_m * face_text_params.half_height_translation;
 
@@ -260,18 +267,11 @@ impl ColliderTask for TextRendererCollisionHandler {
                         let rr = p1;
                         let matrix = if backward {
                             let x_advance_translation =
-                                Mat4::from_translation(x_advance_vector * 0.5);
-                            // Mat4::from_translation(vec3(-rr.x, rr.y, 0.0)) *
-                            // flip_rot_m
-                            //     * x_advance_translation
-                            //     * scale_rot_height_m
-
-                            Mat4::from_translation(-x_advance_vector * 0.5) * Mat4::from_translation(vec3(rr.x, -rr.y, 0.0)) * flip_rot_m * x_advance_translation * scale_rot_height_m
+                                Mat4::from_translation(-x_advance_vector);
+                            Mat4::from_translation(vec3(rr.x, -rr.y, 0.0)) * flip_rot_m * scale_rot_height_m * x_advance_translation
                         } else {
                             Mat4::from_translation(vec3(rr.x, -rr.y, 0.0))
-                                * face_text_params.scale_matrix * rot_m
-                                * Mat4::from_translation(x_advance_vector * 4.0)
-                                // * face_text_params.half_height_translation
+                                * scale_rot_height_m
                         };
 
                         segments_vector_length += x_advance;
@@ -421,7 +421,6 @@ impl ColliderTask for TextRendererCollisionHandler {
                 } else if discard_animated {
                     // let alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
                     data.alpha = clamp(data.alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
-                    data.alpha = 1.0;
                 } else {
                     glyphs_to_draw.clear();
                 }
