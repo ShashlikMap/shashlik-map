@@ -8,15 +8,15 @@ use crate::text::default_face_wrapper::{DefaultFaceWrapper, FaceTextParams};
 use crate::vertex_attrs::TextInstanceInput;
 use crate::view_projection::ViewProjection;
 use geo_types::{coord, point};
-use glam::{DVec3, Mat4, Quat, Vec2, Vec3, dvec3, vec2, vec3, DMat4};
+use glam::{dvec3, vec3, DVec3, Mat4, Quat, Vec2, Vec3};
 use num::clamp;
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
+use splines::{Interpolation, Key, Spline};
 use std::collections::HashMap;
 use std::f32::consts::PI;
 use std::sync::Arc;
-use splines::{Interpolation, Key, Spline};
 use wgpu::RenderPass;
 
 #[derive(Clone)]
@@ -141,13 +141,6 @@ impl TextRendererCollisionHandler {
     }
 }
 
-const FLIP_Y: DMat4 = DMat4::from_cols_array(
-    &[1.0, 0.0, 0.0, 0.0,
-        0.0, -1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0],
-);
-
 impl ColliderTask for TextRendererCollisionHandler {
     fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler)  {
         let render_data_holder = self.task_wrapper.update_holder();
@@ -192,15 +185,39 @@ impl ColliderTask for TextRendererCollisionHandler {
                 let origin = projected[index_of_center_segment] + projected_segments[index_of_center_segment].normalize_or_zero() * length_remainder;
                 let unprojected_origin = view_projection.screen_to_world(&origin).unwrap();
 
-                let has_sharp_angle = projected[(index_of_center_segment + 1)..].windows(2).any(|items| {
-                    items[0].angle_to(items[1]).abs() > PI * 0.20
-                });
-
                 let origin_vec = vec![origin];
                 let new_list = origin_vec.iter().chain(projected[(index_of_center_segment + 1)..].iter());
 
+                // projected_segments.insert(0, projected[index_of_center_segment + 1] - origin);
+
+                // if data.text == "ROUTE 5 IKEBUKURO LINE" {
+                //     println!("ROUTE 5 IKEBUKURO LINE: START, len: {}",projected_segments.len());
+                // }
+                // let mut ll = 0.0;
+                // let has_sharp_angle = projected_segments.windows(2).enumerate().any(|(index, items)| {
+                //     if index == 0 {
+                //         ll += items[0].length();
+                //     }
+                //     ll += items[1].length();
+                //
+                //     if items[0].length() <= 0.0 || items[1].length() <= 0.0 {
+                //         return false;
+                //     }
+                //
+                //     let angle = items[0].angle_to(items[1]).abs();
+                //     if data.text == "ROUTE 5 IKEBUKURO LINE" {
+                //         println!("ROUTE 5 IKEBUKURO LINE: origin: {}, {},..{}, {}", origin, angle.to_degrees(), items[0], items[1]);
+                //         println!("ROUTE 5 IKEBUKURO LINE: origin: {}, len: {}, width: {}", origin, ll, face_text_params.width);
+                //     }
+                //     ll <= face_text_params.width && !angle.is_nan() && angle >= PI * 0.30
+                // });
+                //
+                // if data.text == "ROUTE 5 IKEBUKURO LINE" {
+                //     // println!("ROUTE 5 IKEBUKURO LINE: origin: {}, {}", origin, has_sharp_angle);
+                // }
+
                 let mut prev: Option<Vec3> = None;
-                let mut prev_angle_rad: Option<f32> = None;
+                let mut prev_angle_rad: Option<Quat> = None;
                 let mut glyph_index = 0;
 
                 // let mut segments_len = 0.0;
@@ -209,7 +226,7 @@ impl ColliderTask for TextRendererCollisionHandler {
 
                 let mut backward = false;
 
-                let mut discard_animated = has_sharp_angle;
+                let mut discard_animated = false;
 
                 let mut ppp = &origin;
                 let mut zxc = 0.0;
@@ -224,9 +241,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                     Key::new(zxc, rr, Interpolation::CatmullRom)
                 }));
 
-                let stub_rect =
-                    Rectangle::from_corners(point!(x: 0.0, y: 0.0), point!(x: 0.0, y: 0.0));
-                while !has_sharp_angle && glyph_index < glyphs_len {
+                while glyph_index < glyphs_len {
                     let kll = segments_vector_length;
                     if !kll.is_nan() && let (Some(p1), Some(p2)) = (spline.sample(kll), spline.sample(kll+2f32)) {
 
@@ -248,14 +263,14 @@ impl ColliderTask for TextRendererCollisionHandler {
                                 Vec3::X,
                             );
 
-                        let curr_angle = seg_rotation.to_axis_angle().1;
                         if let Some(prev_angle_rad) = prev_angle_rad {
-                            if (curr_angle - prev_angle_rad).abs() >= PI * 0.20 {
+                            let gg = seg_rotation.angle_between(prev_angle_rad).to_degrees();
+                            if gg >= 30.0 {
                                 discard_animated = true;
                                 break;
                             }
                         }
-                        prev_angle_rad = Some(curr_angle);
+                        prev_angle_rad = Some(seg_rotation);
 
                         let rot_m: Mat4 = Mat4::from_quat(seg_rotation);
                         let scale_rot_height_m = face_text_params.scale_matrix * rot_m * face_text_params.half_height_translation;
@@ -277,14 +292,11 @@ impl ColliderTask for TextRendererCollisionHandler {
                         segments_vector_length += x_advance;
 
                         // // note: segments_vector.y goes negative so we should diff y-axis!
-                        // let height = face_text_params.height;
-                        // let glyph_rect = Rectangle::from_corners(
-                        //     point! { x: origin.x + segments_vector.x - height, y: origin.y - segments_vector.y - height },
-                        //     point! { x: origin.x + segments_vector.x + height, y: origin.y - segments_vector.y + height},
-                        // );
-                        //
-                        // segments_vector_length += rotated_glyph_vector.length();
-                        // segments_vector += rotated_glyph_vector;
+                        let height = face_text_params.height;
+                        let glyph_rect = Rectangle::from_corners(
+                            point! { x: origin.x + rr.x - height, y: origin.y + rr.y - height },
+                            point! { x: origin.x + rr.x + height, y: origin.y + rr.y + height},
+                        );
 
                         let item = GlyphData {
                             glyph_id: GlyphId(glyph_info.glyph_id as u16),
@@ -293,10 +305,11 @@ impl ColliderTask for TextRendererCollisionHandler {
                             matrix,
                             screen_space: data.screen_space,
                         };
-                        glyphs_to_draw.push((stub_rect, item));
+                        glyphs_to_draw.push((glyph_rect, item));
 
                         glyph_index += 1;
                     } else {
+                        discard_animated = true;
                         break;
                     }
                 }
@@ -417,9 +430,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                         alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
                     };
                     data.alpha = alpha;
-                    data.alpha = 1.0;
                 } else if discard_animated {
-                    // let alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
                     data.alpha = clamp(data.alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
                 } else {
                     glyphs_to_draw.clear();
