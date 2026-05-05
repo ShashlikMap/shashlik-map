@@ -127,6 +127,8 @@ struct TextRendererCollisionHandler {
 
 impl TextRendererCollisionHandler {
     const FADE_ANIM_SPEED: f32 = 0.05;
+    const SHARP_ANGLE_THRESHOLD: f32 = 30.0;
+    const SPLINE_TANGENT_OFFSET: f32 = 2.0;
     pub fn new(
         default_face: Arc<DefaultFaceWrapper>,
         task_wrapper: CollisionTaskWrapper<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
@@ -211,7 +213,7 @@ impl ColliderTask for TextRendererCollisionHandler {
 
                 while glyph_index < glyphs_len {
                     if !segments_vector_length.is_nan() && let (Some(spline_position), Some(spline_position_offset))
-                        = (spline.sample(segments_vector_length), spline.sample(segments_vector_length + 2f32)) {
+                        = (spline.sample(segments_vector_length), spline.sample(segments_vector_length + Self::SPLINE_TANGENT_OFFSET)) {
                         let real_glyph_index = if backward {
                             glyphs_len - glyph_index - 1
                         } else {
@@ -230,7 +232,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                             );
 
                         if let Some(prev_angle_rad) = prev_angle_rad {
-                            if seg_rotation.angle_between(prev_angle_rad).to_degrees() >= 30.0 {
+                            if seg_rotation.angle_between(prev_angle_rad).to_degrees() >= Self::SHARP_ANGLE_THRESHOLD {
                                 discard_animated = true;
                                 break;
                             }
