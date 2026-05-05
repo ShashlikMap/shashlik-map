@@ -78,6 +78,11 @@ impl ShapePipeline {
         } else {
             ShaderStages::VERTEX
         };
+        let label = if is_compute_pipeline {
+            "shape_indirect_compute_buffer_layout"
+        } else {
+            "shape_indirect_buffer_layout"
+        };
         global_context.device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -99,7 +104,7 @@ impl ShapePipeline {
                     },
                     count: None,
                 }],
-            label: Some("shape_indirect_buffer_layout"),
+            label: Some(label),
         })
     }
 }
