@@ -132,7 +132,7 @@ impl RenderPipeline for ScreenMeshPipeline {
     fn set_instance_bind_group_render(&mut self, _render_pass: &mut RenderPass, _instance_bind_group: &BindGroup) {
     }
 
-    fn get_instances_layouts(&self) -> Option<IndirectInstancesLayout> {
+    fn get_instances_layouts(&self) -> Option<IndirectInstancesLayout<'_>> {
         None
     }
 

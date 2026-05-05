@@ -131,7 +131,7 @@ impl MeshPipeline {
 }
 
 impl WithSSAOTexture for MeshPipeline {
-    fn update_ssao_texture(&mut self, texture_view: &TextureView, global_context: &GlobalContext) {
+    fn update_ssao_texture(&mut self, _texture_view: &TextureView, _global_context: &GlobalContext) {
         // TODO
     }
 }
@@ -226,7 +226,7 @@ impl RenderPipeline for MeshPipeline {
     fn set_instance_bind_group_render(&mut self, _render_pass: &mut RenderPass, _instance_bind_group: &BindGroup) {
     }
 
-    fn get_instances_layouts(&self) -> Option<IndirectInstancesLayout> {
+    fn get_instances_layouts(&self) -> Option<IndirectInstancesLayout<'_>> {
         None
     }
 

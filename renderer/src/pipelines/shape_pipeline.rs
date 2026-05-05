@@ -181,7 +181,7 @@ impl RenderPipeline for ShapePipeline {
         render_pass.set_bind_group(2, instance_bind_group, &[]);
     }
 
-    fn get_instances_layouts(&self) -> Option<IndirectInstancesLayout> {
+    fn get_instances_layouts(&self) -> Option<IndirectInstancesLayout<'_>> {
         if self.indirect {
             Some(IndirectInstancesLayout {
                 vertex_layout: &self.indirect_instances_layout,

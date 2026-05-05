@@ -32,7 +32,7 @@ pub trait RenderPipeline {
     fn set_instance_bind_group_compute(&mut self, compute_pass: &mut ComputePass, instance_bind_group: &BindGroup, instance_args_bind_group: &BindGroup);
     fn set_instance_bind_group_render(&mut self, render_pass: &mut RenderPass, instance_bind_group: &BindGroup);
 
-    fn get_instances_layouts(&self) -> Option<IndirectInstancesLayout>;
+    fn get_instances_layouts(&self) -> Option<IndirectInstancesLayout<'_>>;
 
     fn is_indirect(&self) -> bool;
     fn support_g_buf(&self) -> bool;
