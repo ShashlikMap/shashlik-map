@@ -4,7 +4,7 @@ use crate::geometry_data::TextData;
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
-use crate::text::default_face_wrapper::{DefaultFaceWrapper, FaceTextParams};
+use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::vertex_attrs::TextInstanceInput;
 use crate::view_projection::ViewProjection;
 use geo_types::{coord, point};
@@ -123,7 +123,6 @@ struct TextRendererCollisionHandler {
     id_to_alpha_map: HashMap<u64, f32>,
     default_face: Arc<DefaultFaceWrapper>,
     task_wrapper: CollisionTaskWrapper<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
-    face_text_params_cache: HashMap<u16, FaceTextParams>,
 }
 
 impl TextRendererCollisionHandler {
@@ -136,7 +135,6 @@ impl TextRendererCollisionHandler {
             id_to_alpha_map: HashMap::new(),
             default_face,
             task_wrapper,
-            face_text_params_cache: HashMap::default(),
         }
     }
 }
@@ -157,9 +155,8 @@ impl ColliderTask for TextRendererCollisionHandler {
 
             let glyphs_len = glyph_buffer.len();
 
-            let face_text_params = self.default_face.get_text_params(&glyph_buffer, data.size);
-            // let face_text_params = self.face_text_params_cache.entry(data.size as u16).or_insert_with(||
-            //     self.default_face.get_text_params(&glyph_buffer, data.size)).clone();
+            let face_text_params = data.face_text_params
+                .get_or_insert_with(|| self.default_face.get_text_params(&glyph_buffer, data.size));
 
             let mut glyphs_to_draw = vec![];
 
@@ -189,63 +186,31 @@ impl ColliderTask for TextRendererCollisionHandler {
                 let origin_vec = vec![origin];
                 let new_list = origin_vec.iter().chain(projected[(index_of_center_segment + 1)..].iter());
 
-                // projected_segments.insert(0, projected[index_of_center_segment + 1] - origin);
-
-                // if data.text == "ROUTE 5 IKEBUKURO LINE" {
-                //     println!("ROUTE 5 IKEBUKURO LINE: START, len: {}",projected_segments.len());
-                // }
-                // let mut ll = 0.0;
-                // let has_sharp_angle = projected_segments.windows(2).enumerate().any(|(index, items)| {
-                //     if index == 0 {
-                //         ll += items[0].length();
-                //     }
-                //     ll += items[1].length();
-                //
-                //     if items[0].length() <= 0.0 || items[1].length() <= 0.0 {
-                //         return false;
-                //     }
-                //
-                //     let angle = items[0].angle_to(items[1]).abs();
-                //     if data.text == "ROUTE 5 IKEBUKURO LINE" {
-                //         println!("ROUTE 5 IKEBUKURO LINE: origin: {}, {},..{}, {}", origin, angle.to_degrees(), items[0], items[1]);
-                //         println!("ROUTE 5 IKEBUKURO LINE: origin: {}, len: {}, width: {}", origin, ll, face_text_params.width);
-                //     }
-                //     ll <= face_text_params.width && !angle.is_nan() && angle >= PI * 0.30
-                // });
-                //
-                // if data.text == "ROUTE 5 IKEBUKURO LINE" {
-                //     // println!("ROUTE 5 IKEBUKURO LINE: origin: {}, {}", origin, has_sharp_angle);
-                // }
-
-                let mut prev: Option<Vec3> = None;
                 let mut prev_angle_rad: Option<Quat> = None;
                 let mut glyph_index = 0;
 
-                // let mut segments_len = 0.0;
-                // let mut segments_vector = Vec3::new(0.0, 0.0, 0.0);
                 let mut segments_vector_length: f32 = 0.0;
 
                 let mut backward = false;
 
                 let mut discard_animated = false;
 
-                let mut ppp = &origin;
-                let mut zxc = 0.0;
+                let mut previous_spline_segment = &origin;
+                let mut accum_length = 0.0;
 
-                let spline = Spline::from_iter(origin_vec.iter().chain(new_list).enumerate().map(|(index, item)| {
-                    let rr = item - origin;
-                    zxc += (item - ppp).length();
-                    if !backward && item.x < ppp.x && ppp == &origin  {
+                let spline = Spline::from_iter(origin_vec.iter().chain(new_list).map(|item| {
+                    let current_length = item - origin;
+                    accum_length += (item - previous_spline_segment).length();
+                    if !backward && item.x < previous_spline_segment.x && previous_spline_segment == &origin  {
                         backward = true;
                     }
-                    ppp = item;
-                    Key::new(zxc, rr, Interpolation::CatmullRom)
+                    previous_spline_segment = item;
+                    Key::new(accum_length, current_length, Interpolation::CatmullRom)
                 }));
 
                 while glyph_index < glyphs_len {
-                    let kll = segments_vector_length;
-                    if !kll.is_nan() && let (Some(p1), Some(p2)) = (spline.sample(kll), spline.sample(kll+2f32)) {
-
+                    if !segments_vector_length.is_nan() && let (Some(spline_position), Some(position_offset))
+                        = (spline.sample(segments_vector_length), spline.sample(segments_vector_length + 2f32)) {
                         let real_glyph_index = if backward {
                             glyphs_len - glyph_index - 1
                         } else {
@@ -255,8 +220,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                         let position = glyphs_positions[real_glyph_index];
                         let glyph_info = glyphs_infos[real_glyph_index];
 
-
-                        let tangent = (p2 - p1).normalize();
+                        let tangent = (position_offset - spline_position).normalize();
 
                         let seg_rotation: Quat =
                             Quat::from_rotation_arc(
@@ -265,8 +229,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                             );
 
                         if let Some(prev_angle_rad) = prev_angle_rad {
-                            let gg = seg_rotation.angle_between(prev_angle_rad).to_degrees();
-                            if gg >= 30.0 {
+                            if seg_rotation.angle_between(prev_angle_rad).to_degrees() >= 30.0 {
                                 discard_animated = true;
                                 break;
                             }
@@ -278,15 +241,13 @@ impl ColliderTask for TextRendererCollisionHandler {
 
                         let x_advance = position.x_advance as f32 * face_text_params.scale;
                         let x_advance_vector = Vec3::new(x_advance, 0.0, 0.0);
-                        // let rotated_glyph_vector = seg_rotation * x_advance_vector;
 
-                        let rr = p1;
                         let matrix = if backward {
                             let x_advance_translation =
                                 Mat4::from_translation(-x_advance_vector);
-                            Mat4::from_translation(vec3(rr.x, -rr.y, 0.0)) * flip_rot_m * scale_rot_height_m * x_advance_translation
+                            Mat4::from_translation(vec3(spline_position.x, -spline_position.y, 0.0)) * flip_rot_m * scale_rot_height_m * x_advance_translation
                         } else {
-                            Mat4::from_translation(vec3(rr.x, -rr.y, 0.0))
+                            Mat4::from_translation(vec3(spline_position.x, -spline_position.y, 0.0))
                                 * scale_rot_height_m
                         };
 
@@ -295,8 +256,8 @@ impl ColliderTask for TextRendererCollisionHandler {
                         // // note: segments_vector.y goes negative so we should diff y-axis!
                         let height = face_text_params.height;
                         let glyph_rect = Rectangle::from_corners(
-                            point! { x: origin.x + rr.x - height, y: origin.y + rr.y - height },
-                            point! { x: origin.x + rr.x + height, y: origin.y + rr.y + height},
+                            point! { x: origin.x + spline_position.x - height, y: origin.y + spline_position.y - height },
+                            point! { x: origin.x + spline_position.x + height, y: origin.y + spline_position.y + height},
                         );
 
                         let item = GlyphData {
@@ -314,103 +275,6 @@ impl ColliderTask for TextRendererCollisionHandler {
                         break;
                     }
                 }
-
-                // for (index, current) in new_list.enumerate() {
-                //     if glyph_index >= glyphs_len {
-                //         break;
-                //     }
-                //
-                //     let current = current - origin;
-                //     let current = Vec3::new(current.x, current.y, 0.0);
-                //
-                //     // skip if two point are the same
-                //     if let Some(prev) = prev
-                //         && prev != current
-                //     {
-                //         // check if we need to render text backward to
-                //         if index == 1 {
-                //             if current.x < prev.x {
-                //                 backward = false;
-                //             }
-                //         }
-                //         let seg_vector = current - prev;
-                //
-                //         segments_len += seg_vector.length();
-                //
-                //         let seg_rotation: Quat =
-                //             Quat::from_rotation_arc(
-                //                 seg_vector.normalize(),
-                //                 Vec3::X,
-                //             );
-                //
-                //         let curr_angle = seg_rotation.to_axis_angle().1;
-                //         if let Some(prev_angle_rad) = prev_angle_rad {
-                //             if (curr_angle - prev_angle_rad).abs() >= PI * 0.15 {
-                //                 discard_animated = true;
-                //                 break;
-                //             }
-                //         }
-                //         prev_angle_rad = Some(curr_angle);
-                //
-                //         let rot_m: Mat4 = Mat4::from_quat(seg_rotation);
-                //         let scale_rot_height_m = face_text_params.scale_matrix * rot_m * face_text_params.half_height_translation;
-                //
-                //         while glyph_index < glyphs_len {
-                //             if segments_vector_length > segments_len
-                //             {
-                //                 break;
-                //             }
-                //
-                //             let real_glyph_index = if backward {
-                //                 glyphs_len - glyph_index - 1
-                //             } else {
-                //                 glyph_index
-                //             };
-                //
-                //             let position = glyphs_positions[real_glyph_index];
-                //             let glyph_info = glyphs_infos[real_glyph_index];
-                //
-                //
-                //             let x_advance = position.x_advance as f32 * face_text_params.scale;
-                //             let x_advance_vector = Vec3::new(x_advance, 0.0, 0.0);
-                //             let rotated_glyph_vector = seg_rotation * x_advance_vector;
-                //
-                //             let matrix = if backward {
-                //                 let x_advance_translation =
-                //                     Mat4::from_translation(-x_advance_vector);
-                //                 Mat4::from_translation(segments_vector)
-                //                     * flip_rot_m
-                //                     * scale_rot_height_m
-                //                     * x_advance_translation
-                //             } else {
-                //                 Mat4::from_translation(segments_vector) * scale_rot_height_m
-                //             };
-                //
-                //             // note: segments_vector.y goes negative so we should diff y-axis!
-                //             let height = face_text_params.height;
-                //             let glyph_rect = Rectangle::from_corners(
-                //                 point! { x: origin.x + segments_vector.x - height, y: origin.y - segments_vector.y - height },
-                //                 point! { x: origin.x + segments_vector.x + height, y: origin.y - segments_vector.y + height},
-                //             );
-                //
-                //             segments_vector_length += rotated_glyph_vector.length();
-                //             segments_vector += rotated_glyph_vector;
-                //
-                //             let item = GlyphData {
-                //                 glyph_id: GlyphId(glyph_info.glyph_id as u16),
-                //                 alpha: 1.0,
-                //                 position: (unprojected_origin.x, unprojected_origin.y),
-                //                 matrix,
-                //                 screen_space: data.screen_space,
-                //             };
-                //             glyphs_to_draw.push((glyph_rect, item));
-                //
-                //             glyph_index += 1;
-                //         }
-                //     }
-                //
-                //     prev = Some(current);
-                // }
 
                 // render only completed text
                 if glyph_index >= glyphs_len {
