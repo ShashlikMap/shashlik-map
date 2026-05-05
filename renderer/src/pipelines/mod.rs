@@ -10,6 +10,12 @@ pub mod mesh_pipeline;
 pub mod shape_pipeline;
 pub mod screen_mesh_pipeline;
 
+pub struct IndirectInstancesLayout<'a> {
+    pub vertex_layout: &'a BindGroupLayout,
+    pub compute_layout: &'a BindGroupLayout,
+    pub common_args_layout: &'a BindGroupLayout,
+}
+
 pub trait RenderPipeline {
     type InstanceInputType: MeshInstanceInput;
 
@@ -26,7 +32,7 @@ pub trait RenderPipeline {
     fn set_instance_bind_group_compute(&mut self, compute_pass: &mut ComputePass, instance_bind_group: &BindGroup, instance_args_bind_group: &BindGroup);
     fn set_instance_bind_group_render(&mut self, render_pass: &mut RenderPass, instance_bind_group: &BindGroup);
 
-    fn get_instances_layouts(&self) -> Option<(&BindGroupLayout, &BindGroupLayout)>;
+    fn get_instances_layouts(&self) -> Option<IndirectInstancesLayout>;
 
     fn is_indirect(&self) -> bool;
     fn support_g_buf(&self) -> bool;

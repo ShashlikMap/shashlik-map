@@ -33,8 +33,7 @@ fn main() {
     let (slint_map_event_sender, slint_map_event_receiver) = mpsc::channel();
 
     let mut wgpu_settings = WGPUSettings::default();
-    wgpu_settings.device_required_features =
-        Features::VERTEX_WRITABLE_STORAGE | Features::CLEAR_TEXTURE | Features::IMMEDIATES;
+    wgpu_settings.device_required_features = Features::CLEAR_TEXTURE | Features::IMMEDIATES;
     wgpu_settings.device_required_limits = Limits::downlevel_defaults();
     wgpu_settings.device_required_limits.max_immediate_size = 4;
 

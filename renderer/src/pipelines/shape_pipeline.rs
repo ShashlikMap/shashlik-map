@@ -1,6 +1,6 @@
 use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
-use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
+use crate::pipelines::{IndirectInstancesLayout, OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex, VertexAttrib};
 use std::borrow::Cow;
 use wesl::include_wesl;
@@ -10,6 +10,7 @@ pub struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
     vs_func_name: Option<&'static str>,
     indirect_instances_layout: BindGroupLayout,
+    indirect_compute_instances_layout: BindGroupLayout,
     indirect_instances_args_layout: BindGroupLayout,
     culling_compute_pipeline: ComputePipeline,
     indirect: bool
@@ -20,30 +21,8 @@ impl ShapePipeline {
     const SHADER_STYLE_GROUP_INDEX: u32 = 1;
 
     pub fn new(global_context: &GlobalContext, vs_func_name: Option<&'static str>, indirect: bool) -> Self {
-        let indirect_instances_layout = global_context.device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::VERTEX | ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: ShaderStages::VERTEX | ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-            label: Some("shape_indirect_buffer_layout"),
-        });
-
+        let indirect_instances_layout = Self::create_indirect_layout(global_context, false);
+        let indirect_compute_instances_layout = Self::create_indirect_layout(global_context, true);
         let indirect_instances_args_layout = global_context.device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -64,9 +43,12 @@ impl ShapePipeline {
             source: ShaderSource::Wgsl(Cow::from(include_wesl!("shape_culling"))),
         });
 
+
         let culling_pipeline_layout = global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shape Compute Pipeline Layout"),
-            bind_group_layouts: &[&mesh_pipeline.bind_group_layout, &indirect_instances_layout, &indirect_instances_args_layout],
+            bind_group_layouts: &[&mesh_pipeline.bind_group_layout,
+                &indirect_compute_instances_layout,
+                &indirect_instances_args_layout],
             ..Default::default()
         });
 
@@ -83,10 +65,42 @@ impl ShapePipeline {
             mesh_pipeline,
             vs_func_name,
             indirect_instances_layout,
+            indirect_compute_instances_layout,
             indirect_instances_args_layout,
             culling_compute_pipeline,
             indirect
         }
+    }
+
+    fn create_indirect_layout(global_context: &GlobalContext, is_compute_pipeline: bool) -> BindGroupLayout {
+        let visibility = if is_compute_pipeline {
+            ShaderStages::COMPUTE
+        } else {
+            ShaderStages::VERTEX
+        };
+        global_context.device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: !is_compute_pipeline },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: !is_compute_pipeline },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            label: Some("shape_indirect_buffer_layout"),
+        })
     }
 }
 
@@ -162,9 +176,13 @@ impl RenderPipeline for ShapePipeline {
         render_pass.set_bind_group(2, instance_bind_group, &[]);
     }
 
-    fn get_instances_layouts(&self) -> Option<(&BindGroupLayout, &BindGroupLayout)> {
+    fn get_instances_layouts(&self) -> Option<IndirectInstancesLayout> {
         if self.indirect {
-            Some((&self.indirect_instances_layout, &self.indirect_instances_args_layout))
+            Some(IndirectInstancesLayout {
+                vertex_layout: &self.indirect_instances_layout,
+                compute_layout: &self.indirect_compute_instances_layout,
+                common_args_layout: &self.indirect_instances_args_layout,
+            })
         } else {
             None
         }
