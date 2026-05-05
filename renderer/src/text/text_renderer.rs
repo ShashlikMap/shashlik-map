@@ -157,8 +157,9 @@ impl ColliderTask for TextRendererCollisionHandler {
 
             let glyphs_len = glyph_buffer.len();
 
-            let face_text_params = self.face_text_params_cache.entry(data.size as u16).or_insert_with(||
-                self.default_face.get_text_params(&glyph_buffer, data.size)).clone();
+            let face_text_params = self.default_face.get_text_params(&glyph_buffer, data.size);
+            // let face_text_params = self.face_text_params_cache.entry(data.size as u16).or_insert_with(||
+            //     self.default_face.get_text_params(&glyph_buffer, data.size)).clone();
 
             let mut glyphs_to_draw = vec![];
 
