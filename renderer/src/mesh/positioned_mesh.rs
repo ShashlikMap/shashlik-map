@@ -8,6 +8,7 @@ use crate::utils::ReceiverExt;
 use tokio::sync::broadcast::Receiver;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, ComputePass, RenderPass};
 use wgpu::util::{DeviceExt, DrawIndexedIndirectArgs};
+use crate::pipelines::IndirectInstancesLayout;
 
 pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
@@ -21,6 +22,7 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     pub instances_args_buffer: Option<Buffer>,
     instances_args_buffer_data: Vec<u8>,
     pub instances_bind_group: Option<BindGroup>,
+    pub instances_compute_bind_group: Option<BindGroup>,
     pub instances_args_bind_group: Option<BindGroup>,
 }
 
@@ -55,6 +57,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             instances_args_buffer: None,
             instances_args_buffer_data: vec![],
             instances_bind_group: None,
+            instances_compute_bind_group: None,
             instances_args_bind_group: None
         }
     }
@@ -62,7 +65,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
     pub fn update(
         &mut self,
         global_context: &mut GlobalContext,
-        instances_bind_group_layout: Option<(&BindGroupLayout, &BindGroupLayout)>,
+        instances_bind_group_layout: Option<IndirectInstancesLayout>,
     ) {
         let cs_offset_updated = global_context.view_projection.cs_offset != self.cs_offset;
         self.cs_offset = global_context.view_projection.cs_offset;
@@ -96,28 +99,19 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                     usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
                 });
 
-                self.instances_bind_group = Some(
-                    global_context
-                        .device()
-                        .create_bind_group(&wgpu::BindGroupDescriptor {
-                            layout: instances_bind_group_layout.0,
-                            entries: &[wgpu::BindGroupEntry {
-                                binding: 0,
-                                resource: self
-                                    .instance_buffer
-                                    .buffer
-                                    .as_ref()
-                                    .expect("Buffer should exist")
-                                    .as_entire_binding(),
-                            },
-                                wgpu::BindGroupEntry {
-                                    binding: 1,
-                                    resource: culled_buffer.as_entire_binding(),
-                                }],
-                            label: Some("instances_bind_group"),
-                        }),
-                );
 
+                self.instances_bind_group = Some(self.create_instance_bind_group(global_context, 
+                                                                                 instances_bind_group_layout.vertex_layout,
+                                                                                 &culled_buffer,
+                                                                                 "instances_bind_group",
+                ));
+
+                self.instances_compute_bind_group = Some(self.create_instance_bind_group(global_context,
+                                                                                 instances_bind_group_layout.compute_layout,
+                                                                                 &culled_buffer,
+                                                                                 "instances_compute_bind_group",
+                ));
+                
                 let instance_count = if self.attrs.len() <= 2 {
                     self.attrs.len()
                 } else {
@@ -146,7 +140,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                     global_context
                         .device()
                         .create_bind_group(&wgpu::BindGroupDescriptor {
-                            layout: instances_bind_group_layout.1,
+                            layout: instances_bind_group_layout.common_args_layout,
                             entries: &[wgpu::BindGroupEntry {
                                 binding: 0,
                                 resource: indirect_args
@@ -162,6 +156,31 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 self.instances_args_bind_group = None;
             }
         }
+    }
+
+    fn create_instance_bind_group(&mut self, global_context: &mut GlobalContext,
+                                  instance_layout: &BindGroupLayout,
+                                  culled_buffer: &Buffer,
+                                  label: &'static str) -> BindGroup {
+        global_context
+            .device()
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: instance_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self
+                        .instance_buffer
+                        .buffer
+                        .as_ref()
+                        .expect("Buffer should exist")
+                        .as_entire_binding(),
+                },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: culled_buffer.as_entire_binding(),
+                    }],
+                label: Some(label),
+            })
     }
 
     pub fn compute_instanced(

@@ -1,6 +1,6 @@
 use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
-use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline, WithTexture};
+use crate::pipelines::{IndirectInstancesLayout, OwnedRenderPipelineDescriptor, RenderPipeline, WithTexture};
 use crate::textures::{create_simple_texture, TextureData};
 use crate::vertex_attrs::{MeshVertexWithUV, ShapeInstanceInput, TextInstanceInput, VertexAttrib};
 use std::borrow::Cow;
@@ -132,7 +132,7 @@ impl RenderPipeline for ScreenMeshPipeline {
     fn set_instance_bind_group_render(&mut self, _render_pass: &mut RenderPass, _instance_bind_group: &BindGroup) {
     }
 
-    fn get_instances_layouts(&self) -> Option<(&BindGroupLayout, &BindGroupLayout)> {
+    fn get_instances_layouts(&self) -> Option<IndirectInstancesLayout<'_>> {
         None
     }
 

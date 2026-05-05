@@ -1,6 +1,6 @@
 use crate::draw_commands::MeshVertex;
 use crate::global_context::GlobalContext;
-use crate::pipelines::{OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline, WithSSAOTexture};
+use crate::pipelines::{IndirectInstancesLayout, OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline, WithSSAOTexture};
 use crate::textures::{create_simple_texture, TextureData, SAMPLE_COUNT};
 use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
 use std::borrow::Cow;
@@ -131,7 +131,7 @@ impl MeshPipeline {
 }
 
 impl WithSSAOTexture for MeshPipeline {
-    fn update_ssao_texture(&mut self, texture_view: &TextureView, global_context: &GlobalContext) {
+    fn update_ssao_texture(&mut self, _texture_view: &TextureView, _global_context: &GlobalContext) {
         // TODO
     }
 }
@@ -226,7 +226,7 @@ impl RenderPipeline for MeshPipeline {
     fn set_instance_bind_group_render(&mut self, _render_pass: &mut RenderPass, _instance_bind_group: &BindGroup) {
     }
 
-    fn get_instances_layouts(&self) -> Option<(&BindGroupLayout, &BindGroupLayout)> {
+    fn get_instances_layouts(&self) -> Option<IndirectInstancesLayout<'_>> {
         None
     }
 

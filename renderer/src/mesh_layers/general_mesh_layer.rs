@@ -123,11 +123,11 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
             });
             self.render_pipeline.compute(&mut compute_pass, global_context);
             self.render_data_holder.run_mut_action(|mesh| {
-                if let (Some(instance_bind_group),
-                    Some(instance_args_bind_group)) = (mesh.instances_bind_group.as_ref(),
+                if let (Some(instances_compute_bind_group),
+                    Some(instance_args_bind_group)) = (mesh.instances_compute_bind_group.as_ref(),
                                                        mesh.instances_args_bind_group.as_ref()) {
                     self.render_pipeline.set_instance_bind_group_compute(&mut compute_pass,
-                                                                         instance_bind_group,
+                                                                         instances_compute_bind_group,
                                                                          instance_args_bind_group);
                     mesh.compute_instanced(&mut compute_pass, global_context);
                 }
