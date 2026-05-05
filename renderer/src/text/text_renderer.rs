@@ -198,6 +198,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                 let mut previous_spline_segment = &origin;
                 let mut accum_length = 0.0;
 
+                // there should be an extra "ghost" origin_vec since CatmullRom requires more points
                 let spline = Spline::from_iter(origin_vec.iter().chain(new_list).map(|item| {
                     let current_length = item - origin;
                     accum_length += (item - previous_spline_segment).length();
@@ -209,7 +210,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                 }));
 
                 while glyph_index < glyphs_len {
-                    if !segments_vector_length.is_nan() && let (Some(spline_position), Some(position_offset))
+                    if !segments_vector_length.is_nan() && let (Some(spline_position), Some(spline_position_offset))
                         = (spline.sample(segments_vector_length), spline.sample(segments_vector_length + 2f32)) {
                         let real_glyph_index = if backward {
                             glyphs_len - glyph_index - 1
@@ -220,7 +221,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                         let position = glyphs_positions[real_glyph_index];
                         let glyph_info = glyphs_infos[real_glyph_index];
 
-                        let tangent = (position_offset - spline_position).normalize();
+                        let tangent = (spline_position_offset - spline_position).normalize();
 
                         let seg_rotation: Quat =
                             Quat::from_rotation_arc(
@@ -240,20 +241,19 @@ impl ColliderTask for TextRendererCollisionHandler {
                         let scale_rot_height_m = face_text_params.scale_matrix * rot_m * face_text_params.half_height_translation;
 
                         let x_advance = position.x_advance as f32 * face_text_params.scale;
-                        let x_advance_vector = Vec3::new(x_advance, 0.0, 0.0);
 
+                        let spline_pos_translation = Mat4::from_translation(vec3(spline_position.x, -spline_position.y, 0.0));
                         let matrix = if backward {
-                            let x_advance_translation =
-                                Mat4::from_translation(-x_advance_vector);
-                            Mat4::from_translation(vec3(spline_position.x, -spline_position.y, 0.0)) * flip_rot_m * scale_rot_height_m * x_advance_translation
+                            let x_advance_translation = Mat4::from_translation(-Vec3::new(x_advance, 0.0, 0.0));
+                            spline_pos_translation * flip_rot_m * scale_rot_height_m * x_advance_translation
                         } else {
-                            Mat4::from_translation(vec3(spline_position.x, -spline_position.y, 0.0))
+                            spline_pos_translation
                                 * scale_rot_height_m
                         };
 
                         segments_vector_length += x_advance;
 
-                        // // note: segments_vector.y goes negative so we should diff y-axis!
+                        // note: segments_vector.y goes negative so we should diff y-axis!
                         let height = face_text_params.height;
                         let glyph_rect = Rectangle::from_corners(
                             point! { x: origin.x + spline_position.x - height, y: origin.y + spline_position.y - height },
