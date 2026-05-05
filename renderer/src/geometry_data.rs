@@ -6,6 +6,7 @@ use lyon::lyon_tessellation::VertexBuffers;
 use lyon::path::Path;
 use rustybuzz::GlyphBuffer;
 use std::cell::OnceCell;
+use crate::text::default_face_wrapper::FaceTextParams;
 
 pub enum GeometryData {
     Shape(ShapeData),
@@ -92,6 +93,7 @@ pub struct TextData {
     pub line_data: LineData,
     pub(crate) screen_space: bool,
     pub glyph_buffer: Option<GlyphBuffer>,
+    pub face_text_params: Option<FaceTextParams>,
 }
 
 impl TextData {
@@ -111,6 +113,7 @@ impl TextData {
             line_data,
             screen_space: false,
             glyph_buffer: None,
+            face_text_params: None,
         }
     }
     pub fn screen_space_new(
@@ -129,6 +132,7 @@ impl TextData {
             line_data,
             screen_space: true,
             glyph_buffer: None,
+            face_text_params: None,
         }
     }
 
