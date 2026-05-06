@@ -1,10 +1,6 @@
-use crate::mesh::mesh::{Mesh, StyledRangeInfo};
-use crate::text::glyph_tesselator::GlyphTesselator;
-use glam::{Mat4, Vec2, Vec3};
-use rustc_hash::FxHashMap;
-use rustybuzz::ttf_parser::GlyphId;
+use glam::{Mat4, Vec3};
+use rustybuzz::ttf_parser::{GlyphId, OutlineBuilder};
 use rustybuzz::{Face, GlyphBuffer, UnicodeBuffer};
-use wgpu::{Color, Device};
 
 #[derive(Clone)]
 pub struct FaceTextParams {
@@ -17,19 +13,16 @@ pub struct FaceTextParams {
 
 pub struct DefaultFaceWrapper {
     face: Face<'static>,
-    pub glyph_height: f32,
+    glyph_height: f32,
 }
 
 impl DefaultFaceWrapper {
-    const MAX_SCALE: f32 = 0.035;
+    pub const MAX_SCALE: f32 = 0.035;
     pub fn new(font: &'static rustybuzz::ttf_parser::Face) -> DefaultFaceWrapper {
         let face = rustybuzz::Face::from_face(font.clone());
         let glyph_height = (face.ascender() + face.descender()) as f32;
 
-        DefaultFaceWrapper {
-            face,
-            glyph_height,
-        }
+        DefaultFaceWrapper { face, glyph_height }
     }
 
     fn get_scale_by_font_size(&self, font_size: f32) -> f32 {
@@ -43,23 +36,11 @@ impl DefaultFaceWrapper {
         rustybuzz::shape(&self.face, &[], buffer)
     }
 
-    pub fn get_or_tessellate<'a>(&self, device: &Device, glyph_id: &GlyphId, cache: &'a mut FxHashMap<GlyphId, Mesh>) -> &'a mut Mesh {
-        let glyph_id = glyph_id.clone();
-        let mesh = cache.entry(glyph_id).or_insert_with(|| {
-            let mut path_builder = GlyphTesselator::new(Self::MAX_SCALE);
-            self.face.outline_glyph(glyph_id, &mut path_builder);
-            let glyph_buf = path_builder.tessellate_fill(Vec2::new(0.0, 0.0f32), Color::RED);
-            Mesh::create(&device, &glyph_buf, StyledRangeInfo(0, ""))
-        });
-
-        mesh
+    pub fn outline_glyph(&self, glyph_id: GlyphId, builder: &mut dyn OutlineBuilder) {
+        self.face.outline_glyph(glyph_id, builder);
     }
 
-    pub fn get_text_params(
-        &self,
-        glyph_buffer: &GlyphBuffer,
-        font_size: f32,
-    ) -> FaceTextParams {
+    pub fn get_text_params(&self, glyph_buffer: &GlyphBuffer, font_size: f32) -> FaceTextParams {
         let scale = self.get_scale_by_font_size(font_size);
 
         let width = glyph_buffer
@@ -71,9 +52,8 @@ impl DefaultFaceWrapper {
 
         let scale_matrix = Mat4::from_scale(Vec3::splat(scale / Self::MAX_SCALE));
 
-        let half_height_translation =
-            Mat4::from_translation(Vec3::new(0.0, -height / 2.0, 0.0));
-        
+        let half_height_translation = Mat4::from_translation(Vec3::new(0.0, -height / 2.0, 0.0));
+
         FaceTextParams {
             scale_matrix,
             half_height_translation,
