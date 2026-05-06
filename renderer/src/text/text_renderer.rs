@@ -5,6 +5,7 @@ use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
+use crate::text::glyph_cache::GlyphCache;
 use crate::vertex_attrs::TextInstanceInput;
 use crate::view_projection::ViewProjection;
 use geo_types::{coord, point};
@@ -29,10 +30,10 @@ pub struct GlyphData {
 }
 
 pub struct TextRenderer {
-    default_face: Arc<DefaultFaceWrapper>,
     collision_task_controller:
         CollisionTaskController<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
     instance_buffer_map: FxHashMap<GlyphId, InstanceBuffer<TextInstanceInput>>,
+    glyph_cache: GlyphCache
 }
 
 impl TextRenderer {
@@ -40,16 +41,16 @@ impl TextRenderer {
         global_context: &mut GlobalContext,
         font: &'static rustybuzz::ttf_parser::Face,
     ) -> TextRenderer {
-        let device = global_context.device();
-        let default_face = Arc::new(DefaultFaceWrapper::new(device, font));
+        let default_face = Arc::new(DefaultFaceWrapper::new(font));
         let (task_wrapper, collision_task_controller) = CollisionTaskWrapper::new();
 
+        let glyph_cache = GlyphCache::new(Arc::clone(&default_face));
         let task = TextRendererCollisionHandler::new(Arc::clone(&default_face), task_wrapper);
         global_context.collider.register_task(Box::new(task));
         TextRenderer {
-            default_face,
             collision_task_controller,
             instance_buffer_map: FxHashMap::default(),
+            glyph_cache,
         }
     }
 
@@ -100,10 +101,12 @@ impl TextRenderer {
         self.update_attrs(global_context, &glyph_data);
 
         if !self.instance_buffer_map.is_empty() && !glyph_data.is_empty() {
+            let device = global_context.device();
             glyph_data.iter().for_each(|(glyph_id, list)| {
-                if let Some(mesh) = self.default_face.glyph_mesh_map.get(glyph_id) {
-                    let v_buf = &mesh.vertex_buf;
-                    let (i_buf, i_buf_len) = &mesh.index_buf;
+                let glyph_mesh = self.glyph_cache.get_or_tessellate(device, glyph_id);
+                let v_buf = &glyph_mesh.vertex_buf;
+                if v_buf.size() > 0 {
+                    let (i_buf, i_buf_len) = &glyph_mesh.index_buf;
                     let instance_buffer = self.instance_buffer_map.get(glyph_id).unwrap();
                     if let Some(instance_buffer) = instance_buffer.buffer.as_ref() {
                         render_pass.set_vertex_buffer(0, v_buf.slice(..));
@@ -246,11 +249,11 @@ impl ColliderTask for TextRendererCollisionHandler {
 
                         let spline_pos_translation = Mat4::from_translation(vec3(spline_position.x, -spline_position.y, 0.0));
                         let matrix = if backward {
-                            let x_advance_translation = Mat4::from_translation(-Vec3::new(x_advance, 0.0, 0.0));
+                            // FIXME 1.5 somehow depends on the font size
+                            let x_advance_translation = Mat4::from_translation(-Vec3::new(1.5 * x_advance, 0.0, 0.0));
                             spline_pos_translation * flip_rot_m * scale_rot_height_m * x_advance_translation
                         } else {
-                            spline_pos_translation
-                                * scale_rot_height_m
+                            spline_pos_translation * scale_rot_height_m
                         };
 
                         segments_vector_length += x_advance;
