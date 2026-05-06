@@ -127,7 +127,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 id,
                 poi.text.to_uppercase(),
                 Vec2::new(0.0, y_offset * dpi_scale),
-                40.0 * dpi_scale,
+                30.0 * dpi_scale,
                 LineData::new(vec![
                     DVec3::from((local_position.x, local_position.y, 0.0)),
                 ])
@@ -262,7 +262,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                                 hash(name.as_bytes()),
                                 name.to_uppercase(),
                                 Vec2::new(0.0, 0.0),
-                                30.0 * dpi_scale,
+                                22.0 * dpi_scale,
                                 LineData::new(line
                                     .iter()
                                     .map(|item| DVec3::new(item.x, item.y, 0.0))
