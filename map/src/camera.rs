@@ -1,11 +1,11 @@
-use glam::dvec3;
 use glam::DMat2;
 use glam::DMat3;
 use glam::DMat4;
 use glam::DVec2;
 use glam::DVec3;
-use std::f64::consts::PI;
+use glam::Vec3Swizzles;
 use renderer::LIGHT_POS;
+use std::f64::consts::PI;
 
 pub struct Camera {
     pub eye: DVec3,
@@ -86,15 +86,15 @@ pub struct CameraController {
 }
 
 impl CameraController {
-    const ORIGIN_REBASE_THRESHOLD: f64 = 99999.0; // random now, big enough between US/JAPAN
+    const ORIGIN_REBASE_THRESHOLD: f64 = 999.0; // random now, big enough between US/JAPAN
 
     pub fn new() -> Self {
         Self {
             zoom_delta: 0.0,
-            pan_delta: DVec2::new(0.0, 0.0),
+            pan_delta: DVec2::splat(0.0),
             camera_z: 200.0,
             forward_len: 200.0,
-            position: DVec3::new(0.0, 0.0, 0.0),
+            position: DVec3::splat(0.0),
             yaw: 0.0,
             pitch: 90.0,
         }
@@ -122,18 +122,16 @@ impl CameraController {
         camera.eye -= pan_vec * speed_koef;
         camera.target -= pan_vec * speed_koef;
 
-        let distance_from_origin = (camera.offset
-            - DVec3::new(camera.target.x, camera.target.y, camera.target.z))
-        .length();
+        let distance_from_origin = camera.offset.xy().distance(camera.target.xy());
         if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {
             println!("Origin rebase!");
-            camera.offset = DVec3::new(camera.target.x, camera.target.y, camera.target.z);
+            camera.offset = camera.target.xy().extend(0.0);
         }
 
         let rotation_matrix = DMat3::from_rotation_z(self.yaw.to_radians());
         camera.up = rotation_matrix * DVec3::Y;
 
-        self.pan_delta = DVec2::new(0.0, 0.0);
+        self.pan_delta = DVec2::splat(0.0);
         self.zoom_delta = 0.0;
 
         self.forward_len = len;
