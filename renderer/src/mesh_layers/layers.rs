@@ -63,7 +63,7 @@ impl Layers {
         }
     }
 
-    pub fn feature_layers(&mut self, tag: &String) -> Option<&mut GeneralMeshLayer<ShapePipeline>> {
+    pub fn feature_layers(&mut self, tag: &str) -> Option<&mut GeneralMeshLayer<ShapePipeline>> {
         self.feature_layers.get_layer(tag)
     }
 }

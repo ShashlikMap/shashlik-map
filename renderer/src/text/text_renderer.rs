@@ -9,7 +9,7 @@ use crate::text::glyph_cache::GlyphCache;
 use crate::vertex_attrs::TextInstanceInput;
 use crate::view_projection::ViewProjection;
 use geo_types::{coord, point};
-use glam::{dvec3, vec3, DVec3, Mat4, Quat, Vec2, Vec3};
+use glam::{dvec3, vec3, DVec3, Mat4, Vec2, Vec3};
 use num::clamp;
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
@@ -149,6 +149,7 @@ impl ColliderTask for TextRendererCollisionHandler {
         let render_data_holder = self.task_wrapper.update_holder();
 
         let flip_rot_m = Mat4::from_rotation_z(PI);
+        let tangent_basis = Vec2::X;
 
         let mut glyph_data: FxHashMap<GlyphId, Vec<GlyphData>> = FxHashMap::default();
         render_data_holder.run_mut_action(|data| {
@@ -191,7 +192,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                 let origin_vec = vec![origin];
                 let new_list = origin_vec.iter().chain(projected[(index_of_center_segment + 1)..].iter());
 
-                let mut prev_angle_rad: Option<Quat> = None;
+                let mut prev_tangent: Option<Vec2> = None;
                 let mut glyph_index = 0;
 
                 let mut segments_vector_length: f32 = 0.0;
@@ -228,21 +229,17 @@ impl ColliderTask for TextRendererCollisionHandler {
 
                         let tangent = (spline_position_offset - spline_position).normalize();
 
-                        let seg_rotation: Quat =
-                            Quat::from_rotation_arc(
-                                vec3(tangent.x, tangent.y, 0.0),
-                                Vec3::X,
-                            );
+                        let seg_rot = tangent.angle_to(tangent_basis);
 
-                        if let Some(prev_angle_rad) = prev_angle_rad {
-                            if seg_rotation.angle_between(prev_angle_rad).to_degrees() >= Self::SHARP_ANGLE_THRESHOLD {
+                        if let Some(prev_tangent) = prev_tangent {
+                            if tangent.angle_to(prev_tangent).to_degrees().abs() >= Self::SHARP_ANGLE_THRESHOLD {
                                 discard_animated = true;
                                 break;
                             }
                         }
-                        prev_angle_rad = Some(seg_rotation);
+                        prev_tangent = Some(tangent);
 
-                        let rot_m: Mat4 = Mat4::from_quat(seg_rotation);
+                        let rot_m: Mat4 = Mat4::from_rotation_z(seg_rot);
                         let scale_rot_height_m = face_text_params.scale_matrix * rot_m * face_text_params.half_height_translation;
 
                         let x_advance = position.x_advance as f32 * face_text_params.scale;

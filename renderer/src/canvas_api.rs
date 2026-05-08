@@ -153,7 +153,7 @@ impl CanvasApi {
             return;
         }
         self.draw_commands.push(Box::new(TextDrawCommand {
-            data: mem::replace(&mut self.text_vec, Vec::new()),
+            data: mem::take(&mut self.text_vec),
         }));
     }
 
