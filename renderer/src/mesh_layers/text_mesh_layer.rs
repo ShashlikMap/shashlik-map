@@ -35,6 +35,11 @@ impl<P: RenderPipeline> TextMeshLayer<P> {
                     .map(|pos| pos + spatial_data.transform)
                     .collect())
             });
+            text_data.sort_by(|a, b| {
+                let a_len = a.line_data.positions.len();
+                let b_len = b.line_data.positions.len();
+                a_len.cmp(&b_len)
+            });
             holder.set(key.clone(), text_data)
         });
     }
