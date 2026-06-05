@@ -51,10 +51,9 @@ impl AppSurface {
         };
         log::info!("{:?}", default_backends);
         let backends = wgpu::Backends::from_env().unwrap_or(default_backends);
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends,
-            ..Default::default()
-        });
+        let mut descrtiptor = wgpu::InstanceDescriptor::new_without_display_handle();
+        descrtiptor.backends = backends;
+        let instance = wgpu::Instance::new(descrtiptor);
 
         let surface = instance.create_surface(view.clone());
         let surface = match surface {

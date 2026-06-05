@@ -177,7 +177,7 @@ impl MainPassNode {
 
         let ssao_pipeline_layout = global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("SSAO Pipeline Layout"),
-            bind_group_layouts: &[&ssao_bind_group_layout, &camera_ssao_bind_group_layout],
+            bind_group_layouts: &[Some(&ssao_bind_group_layout), Some(&camera_ssao_bind_group_layout)],
             ..Default::default()
         });
         

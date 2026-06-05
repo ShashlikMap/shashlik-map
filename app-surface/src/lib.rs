@@ -1,5 +1,5 @@
 use core::ops::Deref;
-use wgpu::{Instance, Surface};
+use wgpu::{CurrentSurfaceTexture, Instance, Surface};
 
 mod touch;
 pub use touch::*;
@@ -83,13 +83,8 @@ pub trait SurfaceFrame {
         view_format: Option<wgpu::TextureFormat>,
     ) -> (wgpu::SurfaceTexture, wgpu::TextureView) {
         let frame = match surface.get_current_texture() {
-            Ok(frame) => frame,
-            Err(_) => {
-                surface.configure(device, config);
-                surface
-                    .get_current_texture()
-                    .expect("Failed to acquire next swap chain texture!")
-            }
+            CurrentSurfaceTexture::Success(frame) => frame,
+            _ => panic!("Failed to acquire next swap chain texture!"),
         };
         let view = frame.texture.create_view(&wgpu::TextureViewDescriptor {
             label: Some("frame texture view"),

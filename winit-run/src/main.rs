@@ -4,7 +4,7 @@ use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
 use map::ShashlikMap;
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
-use slint::wgpu_28::{WGPUConfiguration, WGPUSettings};
+use slint::wgpu_29::{WGPUConfiguration, WGPUSettings};
 use slint::{GraphicsAPI, PhysicalSize, RenderingState, VecModel};
 use std::cmp::max;
 use std::rc::Rc;
@@ -38,7 +38,7 @@ fn main() {
     wgpu_settings.device_required_limits.max_immediate_size = 4;
 
     slint::BackendSelector::new()
-        .require_wgpu_28(WGPUConfiguration::Automatic(wgpu_settings))
+        .require_wgpu_29(WGPUConfiguration::Automatic(wgpu_settings))
         .select()
         .expect("Unable to create Slint backend with WGPU based renderer");
 
@@ -78,7 +78,7 @@ fn main() {
         .set_rendering_notifier(move |state, graphics_api: &GraphicsAPI| {
             match state {
                 RenderingState::RenderingSetup => match graphics_api {
-                    GraphicsAPI::WGPU28 { device, queue, .. } => {
+                    GraphicsAPI::WGPU29 { device, queue, .. } => {
                         let target_texture = device.create_texture(&wgpu::TextureDescriptor {
                             label: None,
                             size: wgpu::Extent3d {

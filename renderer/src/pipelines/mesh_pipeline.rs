@@ -163,7 +163,7 @@ impl RenderPipeline for MeshPipeline {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Mesh Render Pipeline Layout"),
-            bind_group_layouts: &[&self.bind_group_layout, &self.depth_bind_group_layout],
+            bind_group_layouts: &[Some(&self.bind_group_layout), Some(&self.depth_bind_group_layout)],
             immediate_size: 4,
             ..Default::default()
         });
@@ -200,8 +200,8 @@ impl RenderPipeline for MeshPipeline {
             depth_stencil: Some({
                 DepthStencilState {
                     format: TextureFormat::Depth24Plus,
-                    depth_write_enabled: true,
-                    depth_compare: CompareFunction::Less,
+                    depth_write_enabled: Some(true),
+                    depth_compare: Some(CompareFunction::Less),
                     stencil: Default::default(),
                     bias: Default::default(),
                 }
