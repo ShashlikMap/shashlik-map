@@ -26,7 +26,7 @@ impl GlyphCache {
         let mesh = self.glyph_mesh_map.entry(glyph_id).or_insert_with(|| {
             let mut path_builder = GlyphTesselator::new(DefaultFaceWrapper::MAX_SCALE);
             self.face.outline_glyph(glyph_id, &mut path_builder);
-            let glyph_buf = path_builder.tessellate_fill(Vec2::new(0.0, 0.0f32), Color::RED);
+            let glyph_buf = path_builder.tessellate_fill(Vec2::new(0.0, 0.0f32), Color::BLUE);
             Mesh::create(&device, &glyph_buf, StyledRangeInfo(0, ""))
         });
 
