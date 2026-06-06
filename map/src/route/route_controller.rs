@@ -10,6 +10,8 @@ use std::thread::spawn;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
 use valhalla_client::route::{DirectionsType, Location, Manifest};
+#[cfg(target_os = "android")]
+extern crate valhalla_client_android as valhalla_client;
 
 pub struct RouteController {
     current_lon_lat: Option<(f64, f64)>,
