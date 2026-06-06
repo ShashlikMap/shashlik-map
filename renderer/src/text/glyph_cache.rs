@@ -1,7 +1,7 @@
 use crate::mesh::mesh::{Mesh, StyledRangeInfo};
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::text::glyph_tesselator::GlyphTesselator;
-use glam::Vec2;
+use lyon::lyon_tessellation::VertexBuffers;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
 use std::sync::Arc;
@@ -26,8 +26,11 @@ impl GlyphCache {
         let mesh = self.glyph_mesh_map.entry(glyph_id).or_insert_with(|| {
             let mut path_builder = GlyphTesselator::new(DefaultFaceWrapper::MAX_SCALE);
             self.face.outline_glyph(glyph_id, &mut path_builder);
-            let glyph_buf = path_builder.tessellate_fill(Vec2::new(0.0, 0.0f32), Color::RED);
-            Mesh::create(&device, &glyph_buf, StyledRangeInfo(0, ""))
+            let mut buffer = VertexBuffers::new();
+            let path = path_builder.create_path();
+            path_builder.tessellate_stroke(&mut buffer, &path, 4.0, Color::WHITE);
+            path_builder.tessellate_fill(&mut buffer, &path, Color::BLACK);
+            Mesh::create(&device, &buffer, StyledRangeInfo(0, ""))
         });
 
         mesh

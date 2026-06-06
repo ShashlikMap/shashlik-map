@@ -1,12 +1,11 @@
-use glam::Vec2;
 use crate::draw_commands::MeshVertex;
 use crate::vertex_attrs::MeshVertexWithUV;
-use lyon::lyon_tessellation::{
-    BuffersBuilder, FillOptions, FillTessellator, FillVertex, FillVertexConstructor,
-    StrokeVertexConstructor, VertexBuffers,
-};
+use glam::Vec2;
+use lyon::lyon_tessellation::{BuffersBuilder, FillOptions, FillTessellator, FillVertex, FillVertexConstructor, LineCap, LineJoin, StrokeVertexConstructor, VertexBuffers};
 use lyon::path::{Builder, Path};
+use lyon::tessellation::{StrokeOptions, StrokeTessellator};
 use rustybuzz::ttf_parser::OutlineBuilder;
+use std::mem;
 use wgpu::Color;
 #[derive(Clone)]
 pub struct GlyphTesselator {
@@ -15,25 +14,50 @@ pub struct GlyphTesselator {
 }
 
 impl GlyphTesselator {
+    pub(crate) fn create_path(&mut self) -> Path {
+        mem::replace(&mut self.builder, Builder::new()).build()
+    }
     pub(crate) fn tessellate_fill(
-        self,
-        offset: Vec2,
+        &self,
+        buffer: &mut VertexBuffers<MeshVertexWithUV, u32>,
+        path: &Path,
         color: Color,
-    ) -> VertexBuffers<MeshVertexWithUV, u32> {
-        let mut buffer = VertexBuffers::new();
-        let vertex_constructor = GlyphVertexConstructor { offset, color };
+    ) {
+        let vertex_constructor = GlyphVertexConstructor { offset: Vec2::new(0.0, 0.0), color };
         let mut tessellator = FillTessellator::new();
-        if tessellator
+        if !tessellator
             .tessellate(
-                &self.builder.build(),
+                path,
                 &FillOptions::default().with_fill_rule(lyon::path::FillRule::NonZero),
-                &mut BuffersBuilder::new(&mut buffer, vertex_constructor),
+                &mut BuffersBuilder::new(buffer, vertex_constructor),
             )
             .is_ok()
         {
-            buffer
-        } else {
-            panic!("Tessellate failed.");
+            panic!("Glyph fill tessellate failed.");
+        }
+    }
+
+    pub(crate) fn tessellate_stroke(
+        &self,
+        buffer: &mut VertexBuffers<MeshVertexWithUV, u32>,
+        path: &Path,
+        size: f32,
+        color: Color,
+    ) {
+        let vertex_constructor = GlyphVertexConstructor { offset: Vec2::new(0.0, 0.0), color };
+        let mut tessellator = StrokeTessellator::new();
+        if !tessellator
+            .tessellate(
+                path,
+                &StrokeOptions::default()
+                    .with_line_join(LineJoin::Round)
+                    .with_line_cap(LineCap::Round)
+                    .with_line_width(size),
+                &mut BuffersBuilder::new(buffer, vertex_constructor),
+            )
+            .is_ok()
+        {
+            panic!("GLyph stroke tessellate failed.");
         }
     }
 }
@@ -94,6 +118,7 @@ impl FillVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
                 ],
                 normals: [0.0, 0.0, 0.0],
             },
+            color: [self.color.r as f32, self.color.g as f32, self.color.b as f32],
             uv: [0.0, 0.0],
         }
     }
@@ -110,6 +135,7 @@ impl StrokeVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
                 ],
                 normals: [0.0, 0.0, 0.0],
             },
+            color: [self.color.r as f32, self.color.g as f32, self.color.b as f32],
             uv: [0.0, 0.0],
         }
     }
