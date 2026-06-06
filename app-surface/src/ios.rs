@@ -40,10 +40,9 @@ impl AppSurface {
             (s.size.height as f32 * scale_factor) as u32,
         );
         let backends = wgpu::Backends::METAL;
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends,
-            ..Default::default()
-        });
+        let mut descrtiptor = wgpu::InstanceDescriptor::new_without_display_handle();
+        descrtiptor.backends = backends;
+        let mut instance = wgpu::Instance::new(descrtiptor);
         let surface = unsafe {
             instance
                 .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::CoreAnimationLayer(
