@@ -92,8 +92,8 @@ impl RenderPipeline for ScreenMeshPipeline {
                 &wgpu::PipelineLayoutDescriptor {
                     label: Some("Texture Render Pipeline Layout"),
                     bind_group_layouts: &[
-                        &self.mesh_pipeline.bind_group_layout,
-                        &self.texture_bind_group_layout,
+                        Some(&self.mesh_pipeline.bind_group_layout),
+                        Some(&self.texture_bind_group_layout),
                     ],
                     immediate_size: 4,
                     ..Default::default()
@@ -102,8 +102,8 @@ impl RenderPipeline for ScreenMeshPipeline {
         }
 
         let mut stencil = mesh_descriptor.depth_stencil.unwrap();
-        stencil.depth_compare = CompareFunction::Always;
-        stencil.depth_write_enabled = false;
+        stencil.depth_compare = Some(CompareFunction::Always);
+        stencil.depth_write_enabled = Some(false);
         mesh_descriptor.depth_stencil = Some(stencil);
 
         let shader_module = device.create_shader_module(ShaderModuleDescriptor {

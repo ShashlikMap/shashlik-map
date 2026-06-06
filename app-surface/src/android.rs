@@ -15,22 +15,27 @@ pub struct AppSurface {
     pub callback_to_app: Option<extern "C" fn(arg: i32)>,
 }
 
+impl std::fmt::Debug for NativeWindow {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NativeWindow").finish()
+    }
+}
+
 impl AppSurface {
     pub async fn new(env: *mut JNIEnv<'_>, surface: jobject, is_emulator: bool) -> Self {
         let native_window = Arc::new(NativeWindow::new(env, surface));
         let init_backend = if is_emulator { wgpu::Backends::GL } else { wgpu::Backends::VULKAN };
-        let mut instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: init_backend,
-            ..Default::default()
-        });
+
+        let mut descrtiptor = wgpu::InstanceDescriptor::new_with_display_handle(Box::new(native_window.clone()));
+        descrtiptor.backends = init_backend;
+        let mut instance = wgpu::Instance::new(descrtiptor);
         // TODO This is workaround for the similar issue.
         // https://github.com/gfx-rs/wgpu/issues/2384
         if instance.enumerate_adapters(init_backend).await.len() <= 0 {
             error!("No init_backend adapters found! GL will be used!");
-            instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-                backends: wgpu::Backends::GL,
-                ..Default::default()
-            });
+            let mut descrtiptor = wgpu::InstanceDescriptor::new_with_display_handle(Box::new(native_window.clone()));
+            descrtiptor.backends =wgpu::Backends::GL;
+            instance = wgpu::Instance::new(descrtiptor);
         }
 
         let handle: Box<dyn wgpu::WindowHandle> = Box::new(native_window.clone());

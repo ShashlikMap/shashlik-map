@@ -16,7 +16,7 @@ use std::mem;
 use std::sync::{Arc, RwLock};
 use wgpu::naga::compact::KeepUnused::No;
 use wgpu::{
-    Device, Queue, SurfaceConfiguration, SurfaceError, SurfaceTexture, Texture, TextureView,
+    Device, Queue, CurrentSurfaceTexture, SurfaceConfiguration, SurfaceTexture, Texture, TextureView,
 };
 use wgpu_canvas::{PreviewType, PREVIEW_TYPE};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
@@ -55,7 +55,11 @@ impl WgpuCanvas for AndroidSurfaceAppSurface {
     }
 
     fn create_texture_view(&mut self) -> TextureView {
-        let surface_texture = self.app_surface.surface.get_current_texture().unwrap();
+        let surface_texture = match self.app_surface.surface.get_current_texture() {
+            CurrentSurfaceTexture::Success(surface_texture) => surface_texture,
+            _ => panic!("Failed to acquire next swap chain texture!"),
+        };
+
         let texture_view = surface_texture
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());

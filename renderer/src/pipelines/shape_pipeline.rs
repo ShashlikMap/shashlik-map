@@ -46,9 +46,9 @@ impl ShapePipeline {
 
         let culling_pipeline_layout = global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shape Compute Pipeline Layout"),
-            bind_group_layouts: &[&mesh_pipeline.bind_group_layout,
-                &indirect_compute_instances_layout,
-                &indirect_instances_args_layout],
+            bind_group_layouts: &[Some(&mesh_pipeline.bind_group_layout),
+                Some(&indirect_compute_instances_layout),
+                Some(&indirect_instances_args_layout)],
             ..Default::default()
         });
 
@@ -127,11 +127,11 @@ impl RenderPipeline for ShapePipeline {
     fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
         let device = global_context.device();
         let mut layouts = vec![
-            &self.mesh_pipeline.bind_group_layout,
-            &global_context.styles_bind_group_layout,
+            Some(&self.mesh_pipeline.bind_group_layout),
+            Some(&global_context.styles_bind_group_layout),
         ];
         if self.indirect {
-            layouts.push(&self.indirect_instances_layout)
+            layouts.push(Some(&self.indirect_instances_layout))
         }
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shape Render Pipeline Layout"),
@@ -142,8 +142,8 @@ impl RenderPipeline for ShapePipeline {
 
         let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context);
         let mut stencil = mesh_descriptor.depth_stencil.unwrap();
-        stencil.depth_compare = CompareFunction::Always;
-        stencil.depth_write_enabled = false;
+        stencil.depth_compare = Some(CompareFunction::Always);
+        stencil.depth_write_enabled = Some(false);
         mesh_descriptor.depth_stencil = Some(stencil);
 
 
