@@ -143,7 +143,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         Self::run_tiles(renderer.api.clone(), zero_zoom_level_loaded.clone(), tiles_stream);
 
         let mut camera_controller = CameraController::new();
-        camera_controller.pitch = 45.0;
+        camera_controller.pitch = CameraController::MIN_PITCH;
         camera_controller.position = camera_offset;
 
         let (map_event_sender, map_event_receiver) = mpsc::channel();
@@ -157,7 +157,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             last_area_lon_lat: Rect::new((0.0, 0.0), (0.0, 0.0)),
             current_world_position: camera_offset,
             current_bearing: 0.0,
-            current_pitch: 45.0,
+            current_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
             cam_follow_mode: true,
             cam_follow_zoom_lock: Some(30.0),
@@ -358,7 +358,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     pub fn pitch_delta(&mut self, delta: f32) {
         self.reset_last_interaction();
-        self.camera_controller.pitch = clamp(self.camera_controller.pitch + delta as f64, 45.0, 90.0);
+        self.camera_controller.pitch = clamp(self.camera_controller.pitch + delta as f64, CameraController::MIN_PITCH, CameraController::MAX_PITCH);
     }
 
     fn reset_last_interaction(&mut self) {
@@ -375,7 +375,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         if self.cam_follow_mode {
             self.cam_follow_zoom_lock = Some(30.0);
-            self.current_pitch = 45.0;
+            self.current_pitch = CameraController::MIN_PITCH;
         }
     }
 
