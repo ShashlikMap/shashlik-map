@@ -184,8 +184,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         if in.vertex_pos_xy.x < in.bbox.x || in.vertex_pos_xy.x > in.bbox.x + in.bbox.z {
             discard;
         }
-        // carefull with sings, they are different from X axis
-        if in.vertex_pos_xy.y > in.bbox.y || in.vertex_pos_xy.y < in.bbox.y - in.bbox.w  {
+        if in.vertex_pos_xy.y < in.bbox.y || in.vertex_pos_xy.y > in.bbox.y + in.bbox.w {
             discard;
         }
     }
