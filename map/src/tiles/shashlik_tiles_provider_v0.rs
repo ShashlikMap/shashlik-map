@@ -2,7 +2,7 @@ use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use futures::Stream;
 use futures::channel::mpsc::{UnboundedSender, unbounded};
-use geo::{Convert, Intersects};
+use geo::{Convert, Intersects, Scale};
 use geo::Winding;
 use geo_types::{coord, LineString, Rect};
 use googleprojection::Mercator;
@@ -11,7 +11,7 @@ use osm::map::{
     MapGeomObjectKind, MapGeometry, MapPointInfo,
 };
 use osm::source::TileSource;
-use osm::tiles::{TILES_COUNT, TileKey, TileStore, calc_tile_ranges};
+use osm::tiles::{TILES_COUNT, TileKey, TileStore, calc_tile_ranges, TILE_OVERLAP_PERCENT};
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use renderer::geometry_data::{GeometryData};
@@ -54,6 +54,7 @@ pub struct ShashlikTilesProviderV0<S: TileSource, FP: FeatureProcessor> {
 }
 
 impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, FP> {
+    const BBOX_OVERLAP_OFFSET_SCALE: f64 = 1.005;
     pub fn new(source: S, feature_processor: FP, dpi_scale: f32) -> ShashlikTilesProviderV0<S, FP> {
         Self {
             sender: None,
@@ -75,15 +76,17 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
         dpi_scale: f32,
     ) -> TileData {
         let zoom_level = tile_key.zoom_level;
-        let tile_rect = tile_key.calc_tile_boundary(1.0);
+        let tile_rect = tile_key.calc_tile_boundary(TILE_OVERLAP_PERCENT);
 
         let tile_rect_origin = Self::lon_lat_to_world(&tile_rect.min());
-        let tile_rect_max = Self::lon_lat_to_world(&tile_rect.max());
-        let tile_rect_size = tile_rect_max - tile_rect_origin;
+        let tile_position = [tile_rect_origin.x, tile_rect_origin.y, 0.0].into();
+
+        let tile_rect_original = tile_key.calc_tile_boundary(1.00);
+        let tile_rect_original_min = Self::lon_lat_to_world(&tile_rect_original.min());
+        let tile_rect_original_max = Self::lon_lat_to_world(&tile_rect_original.max());
+        let bbox = Rect::new(tile_rect_original_min, tile_rect_original_max).scale(Self::BBOX_OVERLAP_OFFSET_SCALE);
 
         let geom = tile_store.load_geometries(&tile_key);
-
-        let tile_position = [tile_rect_origin.x, tile_rect_origin.y, 0.0].into();
 
         let mut geometry_data: Vec<GeometryData> = vec![];
         let mut line_text_map = HashMap::new();
@@ -135,8 +138,7 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
             key: tile_key.as_string_key(),
             position: tile_position,
             zoom_level,
-            // can be negative
-            size: (tile_rect_size.x.abs(), tile_rect_size.y.abs()),
+            bbox,
             geometry_data,
         };
 

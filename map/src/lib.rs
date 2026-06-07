@@ -202,7 +202,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
                                 data.into_iter().for_each(|item| {
                                     renderer_api.add_render_group(
                                         item.key.to_string(),
-                                        SpatialData::transform(item.position).size(item.size),
+                                        SpatialData::transform(item.position).bbox(item.bbox),
                                         Box::new(item),
                                     );
                                 });
