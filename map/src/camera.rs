@@ -20,6 +20,8 @@ pub struct Camera {
 
 impl Camera {
     const INITIAL_Z: f64 = 200.0;
+    pub(crate) const MAX_Z_FAR: f64 = 2000000.0;
+
     pub fn new(initial_world: DVec3) -> Self {
         Camera {
             eye: (initial_world.x, initial_world.y, Self::INITIAL_Z).into(),
@@ -27,7 +29,7 @@ impl Camera {
             up: DVec3::Y,
             fovy: 45.0,
             znear: 1.0,
-            zfar: 2000000.0,
+            zfar: Self::MAX_Z_FAR,
             perspective_matrix: DMat4::IDENTITY,
             offset: DVec3::new(initial_world.x, initial_world.y, 0.0),
         }
@@ -86,6 +88,9 @@ pub struct CameraController {
 }
 
 impl CameraController {
+    pub const MIN_PITCH: f64 = 45.0;
+    pub const MAX_PITCH: f64 = 90.0;
+
     const ORIGIN_REBASE_THRESHOLD: f64 = 999.0; // random now, big enough between US/JAPAN
 
     pub fn new() -> Self {
@@ -96,7 +101,7 @@ impl CameraController {
             forward_len: 200.0,
             position: DVec3::splat(0.0),
             yaw: 0.0,
-            pitch: 90.0,
+            pitch: Self::MAX_PITCH,
         }
     }
 
@@ -107,16 +112,23 @@ impl CameraController {
     pub(crate) fn update_camera(&mut self, camera: &mut Camera) {
         let speed_koef = self.camera_z / 150.0;
 
-        let (sin_pitch, cos_pitch) = self.pitch.to_radians().sin_cos();
+        // prevent sharp pitch for a high zoom level to reduce z_far artifacts
+        let min_pitch = Self::MIN_PITCH + Self::MIN_PITCH * (self.camera_z * 10.0 / Camera::MAX_Z_FAR).clamp(0.0, 1.0);
+        let (sin_pitch, cos_pitch) = self.pitch.max(min_pitch).to_radians().sin_cos();
         let (sin_yaw, cos_yaw) = (-self.yaw).to_radians().sin_cos();
 
         let dir = DVec3::new(cos_pitch * sin_yaw, cos_pitch * cos_yaw, sin_pitch).normalize();
 
-        camera.eye += (camera.target - camera.eye).normalize() * self.zoom_delta * speed_koef;
-        let len = (camera.target - camera.eye).length();
+        let new_eye = camera.eye + (camera.target - camera.eye).normalize() * self.zoom_delta * speed_koef;
+        let len = (camera.target - new_eye).length();
 
         camera.target = self.position;
-        camera.eye = camera.target + (dir * len);
+
+        let new_eye = camera.target + (dir * len);
+        // don't go too far to reduce z_far artifacts
+        if (camera.target - new_eye).length() <= 0.9 * Camera::MAX_Z_FAR {
+            camera.eye = new_eye;
+        }
 
         let pan_vec = (DMat2::from_angle(self.yaw.to_radians() - PI) * self.pan_delta).extend(0.0);
         camera.eye -= pan_vec * speed_koef;
