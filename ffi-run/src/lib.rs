@@ -6,8 +6,9 @@ use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
 use map::ShashlikMap;
 use osm::source::reqwest_source::ReqwestSource;
 use std::sync::RwLock;
+use log::__private_api::enabled;
 use map::feature_processor::ShashlikFeatureProcessor;
-use wgpu_canvas::SSAO_ENABLED;
+use wgpu_canvas::{PreviewType, PREVIEW_TYPE, SSAO_ENABLED};
 
 #[derive(uniffi::Object)]
 pub struct ShashlikMapApi {
@@ -74,6 +75,15 @@ impl ShashlikMapApi {
 
     fn set_ssao_mode(&self, enabled: bool) {
         unsafe { SSAO_ENABLED = enabled };
+    }
+
+    fn set_preview_enabled(&self, enabled: bool) {
+        // TODO Better config manager
+        if enabled {
+            unsafe { PREVIEW_TYPE = PreviewType::Camera }
+        } else {
+            unsafe { PREVIEW_TYPE = PreviewType::None }
+        }
     }
 
     fn calculate_route_to_lat_lon(&self, lat: f64, lon: f64, route_costing: RouteCosting) {

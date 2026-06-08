@@ -76,13 +76,21 @@ fun App() {
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        var checkedState by remember { mutableStateOf(false) }
+                        var ssaoCheckedState by remember { mutableStateOf(false) }
                         Checkbox(
-                            checkedState, onCheckedChange = {
+                            ssaoCheckedState, onCheckedChange = {
                                 ShashlikMapApiHolder.shashlikMapApi?.setSsaoMode(it)
-                                checkedState = it
+                                ssaoCheckedState = it
                             })
-                        Text("SSAO Mode")
+                        Text("SSAO")
+
+                        var previewCheckedState by remember { mutableStateOf(false) }
+                        Checkbox(
+                            previewCheckedState, onCheckedChange = {
+                                ShashlikMapApiHolder.shashlikMapApi?.setPreviewEnabled(it)
+                                previewCheckedState = it
+                            })
+                        Text("Preview")
                     }
                 }
 
