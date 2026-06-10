@@ -1,4 +1,5 @@
 use geo_types::Point;
+use glam::Vec2;
 use rstar::primitives::Rectangle;
 use rstar::{Envelope, RTree, RTreeObject};
 
@@ -24,6 +25,14 @@ impl CollisionHandler {
         rectangle: Rectangle<Point<f32>>,
     ) -> bool {
         let envelope = rectangle.envelope();
+        self.screen_rect.envelope().intersects(&envelope)
+    }
+
+    pub fn point_within_screen(
+        &self,
+        point: &Vec2,
+    ) -> bool {
+        let envelope = Point::new(point.x, point.y).envelope();
         self.screen_rect.envelope().intersects(&envelope)
     }
 

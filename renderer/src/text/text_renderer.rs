@@ -176,6 +176,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                     })
                     .collect();
 
+
                 let projected_segments: Vec<_> = projected
                     .windows(2)
                     .map(|pair| pair[1] - pair[0]).collect();
@@ -186,121 +187,134 @@ impl ColliderTask for TextRendererCollisionHandler {
                     total_length += projected_segments[index_of_center_segment].length();
                 };
                 let length_remainder = total_length - face_text_params.width * 0.5;
-                let origin = projected[index_of_center_segment] + projected_segments[index_of_center_segment].normalize_or_zero() * length_remainder;
-                let unprojected_origin = view_projection.screen_to_world(&origin).unwrap();
 
-                let origin_vec = vec![origin];
-                let new_list = origin_vec.iter().chain(projected[(index_of_center_segment + 1)..].iter());
-
-                let mut prev_tangent: Option<Vec2> = None;
-                let mut glyph_index = 0;
-
-                let mut segments_vector_length: f32 = 0.0;
-
-                let mut backward = false;
-
-                let mut discard_animated = false;
-
-                let mut previous_spline_segment = &origin;
-                let mut accum_length = 0.0;
-
-                // there should be an extra "ghost" origin_vec since CatmullRom requires more points
-                let spline = Spline::from_iter(origin_vec.iter().chain(new_list).map(|item| {
-                    let current_length = item - origin;
-                    accum_length += (item - previous_spline_segment).length();
-                    if !backward && item.x < previous_spline_segment.x && previous_spline_segment == &origin  {
-                        backward = true;
-                    }
-                    previous_spline_segment = item;
-                    Key::new(accum_length, current_length, Interpolation::CatmullRom)
-                }));
-
-                while glyph_index < glyphs_len {
-                    if !segments_vector_length.is_nan() && let (Some(spline_position), Some(spline_position_offset))
-                        = (spline.sample(segments_vector_length), spline.sample(segments_vector_length + Self::SPLINE_TANGENT_OFFSET)) {
-                        let real_glyph_index = if backward {
-                            glyphs_len - glyph_index - 1
-                        } else {
-                            glyph_index
-                        };
-
-                        let position = glyphs_positions[real_glyph_index];
-                        let glyph_info = glyphs_infos[real_glyph_index];
-
-                        let tangent = (spline_position_offset - spline_position).normalize();
-
-                        let seg_rot = tangent.angle_to(tangent_basis);
-
-                        if let Some(prev_tangent) = prev_tangent {
-                            if tangent.angle_to(prev_tangent).to_degrees().abs() >= Self::SHARP_ANGLE_THRESHOLD {
-                                discard_animated = true;
-                                break;
-                            }
-                        }
-                        prev_tangent = Some(tangent);
-
-                        let rot_m: Mat4 = Mat4::from_rotation_z(seg_rot);
-                        let scale_rot_height_m = face_text_params.scale_matrix * rot_m * face_text_params.half_height_translation;
-
-                        let x_advance = position.x_advance as f32 * face_text_params.scale;
-
-                        let spline_pos_translation = Mat4::from_translation(vec3(spline_position.x, -spline_position.y, 0.0));
-                        let matrix = if backward {
-                            // FIXME 1.5 somehow depends on the font size
-                            let x_advance_translation = Mat4::from_translation(-Vec3::new(1.5 * x_advance, 0.0, 0.0));
-                            spline_pos_translation * flip_rot_m * scale_rot_height_m * x_advance_translation
-                        } else {
-                            spline_pos_translation * scale_rot_height_m
-                        };
-
-                        segments_vector_length += x_advance;
-
-                        // note: segments_vector.y goes negative so we should diff y-axis!
-                        let height = face_text_params.height;
-                        let glyph_rect = Rectangle::from_corners(
-                            point! { x: origin.x + spline_position.x - height, y: origin.y + spline_position.y - height },
-                            point! { x: origin.x + spline_position.x + height, y: origin.y + spline_position.y + height},
-                        );
-
-                        let item = GlyphData {
-                            glyph_id: GlyphId(glyph_info.glyph_id as u16),
-                            alpha: 1.0,
-                            position: (unprojected_origin.x, unprojected_origin.y),
-                            matrix,
-                            screen_space: data.screen_space,
-                        };
-                        glyphs_to_draw.push((glyph_rect, item));
-
-                        glyph_index += 1;
-                    } else {
-                        discard_animated = true;
-                        break;
+                let mut skip_process = false;
+                // skip if the text is about to exceed the line and the text already invisible
+                if data.alpha == 0.0 {
+                    skip_process = total_length - face_text_params.width * 0.5 < 0.0;
+                    if !skip_process {
+                        let mmm = collision_handler.point_within_screen(projected.first().unwrap())
+                            || collision_handler.point_within_screen(projected.last().unwrap());
+                        skip_process = !mmm;
                     }
                 }
 
-                // render only completed text
-                if glyph_index >= glyphs_len {
-                    let contains = self.id_to_alpha_map.contains_key(&data.id);
-                    let mut alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
-                    if contains {
-                        data.alpha = alpha;
-                        return;
+                if !skip_process {
+                    let origin = projected[index_of_center_segment] + projected_segments[index_of_center_segment].normalize_or_zero() * length_remainder;
+                    let unprojected_origin = view_projection.screen_to_world(&origin).unwrap();
+
+                    let origin_vec = vec![origin];
+                    let new_list = origin_vec.iter().chain(projected[(index_of_center_segment + 1)..].iter());
+
+                    let mut prev_tangent: Option<Vec2> = None;
+                    let mut glyph_index = 0;
+
+                    let mut segments_vector_length: f32 = 0.0;
+
+                    let mut backward = false;
+
+                    let mut discard_animated = false;
+
+                    let mut previous_spline_segment = &origin;
+                    let mut accum_length = 0.0;
+
+                    // there should be an extra "ghost" origin_vec since CatmullRom requires more points
+                    let spline = Spline::from_iter(origin_vec.iter().chain(new_list).map(|item| {
+                        let current_length = item - origin;
+                        accum_length += (item - previous_spline_segment).length();
+                        if !backward && item.x < previous_spline_segment.x && previous_spline_segment == &origin {
+                            backward = true;
+                        }
+                        previous_spline_segment = item;
+                        Key::new(accum_length, current_length, Interpolation::CatmullRom)
+                    }));
+
+                    while glyph_index < glyphs_len {
+                        if !segments_vector_length.is_nan() && let (Some(spline_position), Some(spline_position_offset))
+                            = (spline.sample(segments_vector_length), spline.sample(segments_vector_length + Self::SPLINE_TANGENT_OFFSET)) {
+                            let real_glyph_index = if backward {
+                                glyphs_len - glyph_index - 1
+                            } else {
+                                glyph_index
+                            };
+
+                            let position = glyphs_positions[real_glyph_index];
+                            let glyph_info = glyphs_infos[real_glyph_index];
+
+                            let tangent = (spline_position_offset - spline_position).normalize();
+
+                            let seg_rot = tangent.angle_to(tangent_basis);
+
+                            if let Some(prev_tangent) = prev_tangent {
+                                if tangent.angle_to(prev_tangent).to_degrees().abs() >= Self::SHARP_ANGLE_THRESHOLD {
+                                    discard_animated = true;
+                                    break;
+                                }
+                            }
+                            prev_tangent = Some(tangent);
+
+                            let rot_m: Mat4 = Mat4::from_rotation_z(seg_rot);
+                            let scale_rot_height_m = face_text_params.scale_matrix * rot_m * face_text_params.half_height_translation;
+
+                            let x_advance = position.x_advance as f32 * face_text_params.scale;
+
+                            let spline_pos_translation = Mat4::from_translation(vec3(spline_position.x, -spline_position.y, 0.0));
+                            let matrix = if backward {
+                                // FIXME 1.5 somehow depends on the font size
+                                let x_advance_translation = Mat4::from_translation(-Vec3::new(1.5 * x_advance, 0.0, 0.0));
+                                spline_pos_translation * flip_rot_m * scale_rot_height_m * x_advance_translation
+                            } else {
+                                spline_pos_translation * scale_rot_height_m
+                            };
+
+                            segments_vector_length += x_advance;
+
+                            // note: segments_vector.y goes negative so we should diff y-axis!
+                            let height = face_text_params.height;
+                            let glyph_rect = Rectangle::from_corners(
+                                point! { x: origin.x + spline_position.x - height, y: origin.y + spline_position.y - height },
+                                point! { x: origin.x + spline_position.x + height, y: origin.y + spline_position.y + height},
+                            );
+
+                            let item = GlyphData {
+                                glyph_id: GlyphId(glyph_info.glyph_id as u16),
+                                alpha: 1.0,
+                                position: (unprojected_origin.x, unprojected_origin.y),
+                                matrix,
+                                screen_space: data.screen_space,
+                            };
+                            glyphs_to_draw.push((glyph_rect, item));
+
+                            glyph_index += 1;
+                        } else {
+                            discard_animated = true;
+                            break;
+                        }
                     }
 
-                    let rects = glyphs_to_draw
-                        .iter()
-                        .map(|(rect, _)| rect.clone())
-                        .collect();
-                    if collision_handler.insert_rectangles(rects) {
-                        alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                    // render only completed text
+                    if glyph_index >= glyphs_len {
+                        let contains = self.id_to_alpha_map.contains_key(&data.id);
+                        let mut alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
+                        if contains {
+                            data.alpha = alpha;
+                            return;
+                        }
+                        let rects = glyphs_to_draw
+                            .iter()
+                            .map(|(rect, _)| rect.clone())
+                            .collect();
+                        if collision_handler.insert_rectangles(rects) {
+                            alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                        } else {
+                            alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                        };
+                        data.alpha = alpha;
+                    } else if discard_animated {
+                        data.alpha = clamp(data.alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
                     } else {
-                        alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
-                    };
-                    data.alpha = alpha;
-                } else if discard_animated {
-                    data.alpha = clamp(data.alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
-                } else {
-                    glyphs_to_draw.clear();
+                        glyphs_to_draw.clear();
+                    }
                 }
             } else {
                 let middle_point_index = data.line_data.positions.len() / 2;
