@@ -121,7 +121,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
                 label: Some("Indirect General Mesh Layer Compute Pass"),
                 timestamp_writes: None,
             });
-            self.render_pipeline.compute(&mut compute_pass, global_context);
+
             self.render_data_holder.run_mut_action(|mesh| {
                 if let (Some(instances_compute_bind_group),
                     Some(instance_args_bind_group)) = (mesh.instances_compute_bind_group.as_ref(),
@@ -129,7 +129,8 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
                     self.render_pipeline.set_instance_bind_group_compute(&mut compute_pass,
                                                                          instances_compute_bind_group,
                                                                          instance_args_bind_group);
-                    mesh.compute_instanced(&mut compute_pass, global_context);
+                    self.render_pipeline.compute(&mut compute_pass, global_context);
+                    mesh.compute_instanced(&mut compute_pass);
                 }
             });
         }

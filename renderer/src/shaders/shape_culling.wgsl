@@ -30,13 +30,25 @@ var<storage, read_write> culled: array<u32>;
 @group(2) @binding(0)
 var<storage, read_write> args: IndirectArgs;
 
+@compute @workgroup_size(1)
+fn compute_reset_main(@builtin(global_invocation_id) id: vec3<u32>) {
+    atomicStore(&args.instanceCount, 0u);
+}
+
 @compute @workgroup_size(64)
 fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
+    let instances_size = arrayLength(&indirect_instances);
+    // a bit ugly but fast exit to skip culling for only 2 instances
+    if(instances_size <= 2) {
+        args.instanceCount = instances_size;
+        return;
+    }
+
     let i = id.x;
 
     let p2_scale = camera.p2_scale;
 
-    if(i % u32(p2_scale) != 0 || i >= arrayLength(&indirect_instances)) {
+    if(i % u32(p2_scale) != 0 || i >= instances_size) {
         return;
     }
 

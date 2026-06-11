@@ -13,6 +13,7 @@ pub struct ShapePipeline {
     indirect_compute_instances_layout: BindGroupLayout,
     indirect_instances_args_layout: BindGroupLayout,
     culling_compute_pipeline: ComputePipeline,
+    reset_culling_compute_pipeline: ComputePipeline,
     indirect: bool
 
 }
@@ -52,11 +53,27 @@ impl ShapePipeline {
             ..Default::default()
         });
 
+        let reset_culling_pipeline_layout = global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Shape Compute Reset Pipeline Layout"),
+            bind_group_layouts: &[None, None,
+                Some(&indirect_instances_args_layout)],
+            ..Default::default()
+        });
+
         let culling_compute_pipeline = global_context.device().create_compute_pipeline(&ComputePipelineDescriptor {
             label: Some("shape_compute_pipeline"),
             layout: Some(&culling_pipeline_layout),
             module: &compute_cull_shader,
-            entry_point: None,
+            entry_point: Some("compute_main"),
+            compilation_options: Default::default(),
+            cache: None,
+        });
+
+        let reset_culling_compute_pipeline = global_context.device().create_compute_pipeline(&ComputePipelineDescriptor {
+            label: Some("shape_reset_compute_pipeline"),
+            layout: Some(&reset_culling_pipeline_layout),
+            module: &compute_cull_shader,
+            entry_point: Some("compute_reset_main"),
             compilation_options: Default::default(),
             cache: None,
         });
@@ -68,6 +85,7 @@ impl ShapePipeline {
             indirect_compute_instances_layout,
             indirect_instances_args_layout,
             culling_compute_pipeline,
+            reset_culling_compute_pipeline,
             indirect
         }
     }
@@ -113,6 +131,9 @@ impl RenderPipeline for ShapePipeline {
     type InstanceInputType = ShapeInstanceInput;
 
     fn compute(&mut self, compute_pass: &mut ComputePass, _global_context: &GlobalContext) {
+        compute_pass.set_pipeline(&self.reset_culling_compute_pipeline);
+        compute_pass.dispatch_workgroups(1, 1, 1);
+
         compute_pass.set_pipeline(&self.culling_compute_pipeline);
         compute_pass.set_bind_group(0, &self.mesh_pipeline.bind_group, &[]);
     }
