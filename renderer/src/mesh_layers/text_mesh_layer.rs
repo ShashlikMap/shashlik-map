@@ -60,8 +60,11 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
     }
 
-    fn update(&mut self, _global_context: &mut GlobalContext) {
-        // no-op
+    fn update(&mut self, global_context: &mut GlobalContext) {
+        if global_context.is_g_buffer_render {
+            return;
+        }
+        self.text_renderer.update(global_context);
     }
 
     fn compute(&mut self, _encoder: &mut CommandEncoder, _global_context: &mut GlobalContext) {}

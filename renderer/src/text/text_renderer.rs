@@ -17,6 +17,7 @@ use rustybuzz::ttf_parser::GlyphId;
 use splines::{Interpolation, Key, Spline};
 use std::collections::HashMap;
 use std::f32::consts::PI;
+use std::mem;
 use std::sync::Arc;
 use wgpu::RenderPass;
 
@@ -33,7 +34,8 @@ pub struct TextRenderer {
     collision_task_controller:
         CollisionTaskController<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
     instance_buffer_map: FxHashMap<GlyphId, InstanceBuffer<TextInstanceInput>>,
-    glyph_cache: GlyphCache
+    glyph_cache: GlyphCache,
+    glyph_data: FxHashMap<GlyphId, Vec<GlyphData>>
 }
 
 impl TextRenderer {
@@ -51,6 +53,7 @@ impl TextRenderer {
             collision_task_controller,
             instance_buffer_map: FxHashMap::default(),
             glyph_cache,
+            glyph_data: FxHashMap::default()
         }
     }
 
@@ -93,12 +96,16 @@ impl TextRenderer {
         });
     }
 
-    pub fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+    pub fn update(&mut self, global_context: &mut GlobalContext) {
         let Ok(glyph_data) = self.collision_task_controller.receiver.try_recv() else {
             return;
         };
-
         self.update_attrs(global_context, &glyph_data);
+        self.glyph_data = glyph_data;
+    }
+
+    pub fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        let glyph_data = mem::take(&mut self.glyph_data);
 
         if !self.instance_buffer_map.is_empty() && !glyph_data.is_empty() {
             let device = global_context.device();
@@ -381,14 +388,14 @@ impl ColliderTask for TextRendererCollisionHandler {
 
             for (_, mut item) in glyphs_to_draw {
                 item.alpha = data.alpha;
-                glyph_data
-                    .entry(item.glyph_id)
-                    .and_modify(|list| {
-                        if data.alpha > 0.0 {
+                if data.alpha > 0.0 {
+                    glyph_data
+                        .entry(item.glyph_id)
+                        .and_modify(|list| {
                             list.push(item.clone());
-                        }
-                    })
-                    .or_insert(vec![item.clone()]);
+                        })
+                        .or_insert(vec![item]);
+                }
             }
         });
 
