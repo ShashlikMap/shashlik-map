@@ -101,8 +101,7 @@ pub fn createShashlikMapApi(
     let map_api = ShashlikMapApi {
         shashlik_map: RwLock::new(shashlik_map),
     };
-    // TODO Better config manager
-    unsafe { PREVIEW_TYPE = PreviewType::Camera }
+
     Arc::into_raw(Arc::new(map_api)) as jlong
 }
 

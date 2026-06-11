@@ -100,6 +100,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     const TEMP_ANIMATION_SPEED: f64 = 0.03;
 
     const FOLLOW_ANIMATION_DELAY_MS: u64 = 2000;
+    const TELEPORT_THRESHOLD: f64 = 300.0;
 
     pub async fn new(
         canvas: Box<dyn WgpuCanvas>,
@@ -301,8 +302,13 @@ impl<T: TilesProvider> ShashlikMap<T> {
             .api
             .update_spatial_data("puck".to_string(), move |spatial_data| {
                 spatial_data.scale = DVec3::splat(cam_zoom);
-                spatial_data.transform +=
-                    (puck_location - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED;
+                let puck_location_offset = puck_location - spatial_data.transform;
+                if puck_location_offset.length() >= Self::TELEPORT_THRESHOLD {
+                    spatial_data.transform = puck_location;
+                } else {
+                    spatial_data.transform +=
+                        (puck_location - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED;
+                }
                 spatial_data.yaw +=
                     ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
             });
@@ -314,7 +320,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             let transform_cam_offset = (self.current_world_position) - cam_pos;
             let transform_cam_offset_anim = transform_cam_offset * Self::TEMP_ANIMATION_SPEED;
             // TODO Animation framework. Now it just fixes teleport bug
-            let new_cam_pos = if transform_cam_offset_anim.length() >= 300.0 {
+            let new_cam_pos = if transform_cam_offset_anim.length() >= Self::TELEPORT_THRESHOLD {
                 cam_pos + transform_cam_offset
             } else {
                 cam_pos + transform_cam_offset_anim

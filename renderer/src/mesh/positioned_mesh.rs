@@ -1,14 +1,14 @@
-use glam::DVec3;
 use crate::global_context::GlobalContext;
-use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh::InstanceBuffer;
 use crate::modifier::render_modifier::SpatialData;
-use crate::utils::ReceiverExt;
-use tokio::sync::broadcast::Receiver;
-use wgpu::{BindGroup, BindGroupLayout, Buffer, ComputePass, RenderPass};
-use wgpu::util::{DeviceExt, DrawIndexedIndirectArgs};
 use crate::pipelines::IndirectInstancesLayout;
+use crate::utils::ReceiverExt;
+use glam::DVec3;
+use tokio::sync::broadcast::Receiver;
+use wgpu::util::{DeviceExt, DrawIndexedIndirectArgs};
+use wgpu::{BindGroup, BindGroupLayout, Buffer, ComputePass, RenderPass};
 
 pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
@@ -186,21 +186,14 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
     pub fn compute_instanced(
         &mut self,
         compute_pass: &mut ComputePass,
-        global_context: &mut GlobalContext,
     ) {
-        if let Some(instances_args_buffer) = self.instances_args_buffer.as_ref() {
-            // TODO would it be faster to use encoder.clear_buffer?
-            global_context.queue().write_buffer(instances_args_buffer,
-                                                0,
-                                                bytemuck::cast_slice(self.instances_args_buffer_data.as_slice()));
-            if self.attrs.len() > 2 {
-                // workgroups are batches by 64/128
-                let mut x = self.instance_buffer.length as u32 / 64;
-                if self.instance_buffer.length as u32 % 64 != 0 {
-                    x += 64;
-                }
-                compute_pass.dispatch_workgroups(x, 1, 1);
+        if self.instances_args_buffer.is_some() {
+            // workgroups are batches by 64/128
+            let mut x = self.instance_buffer.length as u32 / 64;
+            if self.instance_buffer.length as u32 % 64 != 0 {
+                x += 64;
             }
+            compute_pass.dispatch_workgroups(x, 1, 1);
         }
     }
 
