@@ -149,12 +149,13 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         let (map_event_sender, map_event_receiver) = mpsc::channel();
 
+        let route_controller = RouteController::new(renderer.api.clone());
         let mut map = ShashlikMap {
             renderer: Box::new(renderer),
             camera: cam,
             camera_controller,
             tiles_provider,
-            route_controller: RouteController::new(),
+            route_controller,
             last_area_lon_lat: Rect::new((0.0, 0.0), (0.0, 0.0)),
             current_world_position: camera_offset,
             current_bearing: 0.0,
@@ -430,7 +431,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
             to_lon_lat,
             route_costing,
             self.create_location_coord_converter(),
-            self.renderer.api.clone(),
         );
     }
 
