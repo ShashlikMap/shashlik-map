@@ -2,7 +2,6 @@ extern crate core;
 
 use crate::fps::FpsCounter;
 use crate::geometry_data::{LineData, TextData};
-use crate::mesh_layers::feature_layers::FeatureLayerTag;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
 use crate::modifier::render_modifier::SpatialData;
@@ -30,6 +29,7 @@ use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use wgpu_canvas::{PreviewType, PREVIEW_TYPE};
+use crate::mesh_layers::layers::{WorldShapeFeatureLayerTag, SCREEN_TEXT_LAYER};
 
 pub mod canvas_api;
 mod collision_handler;
@@ -90,7 +90,7 @@ pub struct ShashlikRenderer {
 
 impl ShashlikRenderer {
     pub async fn new(
-        feature_tags: Vec<FeatureLayerTag>,
+        feature_tags: Vec<WorldShapeFeatureLayerTag>,
         canvas: Box<dyn WgpuCanvas>,
         font: &'static ttf_parser::Face<'static>,
     ) -> anyhow::Result<ShashlikRenderer> {
@@ -100,7 +100,7 @@ impl ShashlikRenderer {
 
         let mut layers = Layers::new(feature_tags, &mut global_context, font);
         
-        layers.text_layer.add(
+        layers.text_feature_layers.get_layer(SCREEN_TEXT_LAYER).unwrap().add(
             "fps_info".to_string(),
             vec![TextData::screen_space_new(0, "FPS 0".to_string(),
                                             vec2(0.0, 0.0), 40.0,
@@ -275,7 +275,7 @@ impl ShashlikRenderer {
 
         let fps = format!("FPS {}", self.fps_counter.update() as i32);
         self.layers
-            .text_layer
+            .text_feature_layers.get_layer(SCREEN_TEXT_LAYER)?
             .run_mut_action_with_key("fps_info", move |item| {
                 item.update_text(fps.as_str(), 1.0);
             });

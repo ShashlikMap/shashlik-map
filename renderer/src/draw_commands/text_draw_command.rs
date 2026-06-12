@@ -1,7 +1,7 @@
 use crate::draw_commands::DrawCommand;
 use crate::geometry_data::TextData;
 use crate::global_context::GlobalContext;
-use crate::mesh_layers::layers::Layers;
+use crate::mesh_layers::layers::{Layers, WORLD_TEXT_LAYER};
 use crate::modifier::render_modifier::SpatialData;
 use std::mem;
 
@@ -19,7 +19,7 @@ impl DrawCommand for TextDrawCommand {
         layers: &mut Layers,
     ) {
         layers
-            .text_layer
+            .text_feature_layers.get_layer(WORLD_TEXT_LAYER).unwrap()
             .add(key, mem::take(&mut self.data), spatial_data);
     }
 }
