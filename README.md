@@ -42,7 +42,6 @@ with Android/iOS mobile apps(Android is priority for now)
 
 ### Now
 - [ ] _In progress_ General Renderer refactoring
-- [ ] _In progress_ Improve text layout and positioning
 ### Next
 - [ ] Post-processing AA
 - [ ] Implement an initial geometric Map-matching POC
@@ -53,6 +52,7 @@ with Android/iOS mobile apps(Android is priority for now)
 - [ ] Software Dead-reckoning
 - [ ] Complete iOS counter-part
 - [ ] Move TextRenderer to the separate repo
+- [ ] Explore Mesh Shader
 
 ## Running examples
 ### macOS
