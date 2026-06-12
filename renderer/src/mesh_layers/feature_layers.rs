@@ -1,10 +1,10 @@
+use indexmap::IndexMap;
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::BaseMeshLayer;
-use linked_hash_map::LinkedHashMap;
 use wgpu::{CommandEncoder, RenderPass};
 
 pub struct FeatureLayers<ML: BaseMeshLayer> {
-    feature_shape_layers: LinkedHashMap<&'static str, ML>,
+    feature_shape_layers: IndexMap<&'static str, ML>,
 }
 
 pub trait FeatureLayerTag {
@@ -25,7 +25,7 @@ impl<ML: BaseMeshLayer> FeatureLayers<ML> {
         C: FnMut(&TAG) -> ML,
     {
         let mut layers = FeatureLayers {
-            feature_shape_layers: LinkedHashMap::new(),
+            feature_shape_layers: IndexMap::new(),
         };
 
         tags.into_iter().for_each(|tag| {
