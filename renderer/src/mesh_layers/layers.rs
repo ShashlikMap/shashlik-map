@@ -1,5 +1,4 @@
 use crate::global_context::GlobalContext;
-use crate::mesh_layers::feature_layers::{FeatureLayerTag, FeatureLayers};
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
 use crate::mesh_layers::ortho_mesh_layer::OrthoMeshLayer;
 use crate::mesh_layers::screen_shape_layer::ScreenShapeLayer;
@@ -11,25 +10,59 @@ use crate::pipelines::shape_pipeline::ShapePipeline;
 use rustybuzz::ttf_parser;
 use wgpu::{CommandEncoder, RenderPass};
 use wgpu_canvas::{PREVIEW_TYPE, SHADOWS_ENABLED, SSAO_ENABLED};
+use crate::mesh_layers::feature_layers::{FeatureLayerTag, FeatureLayers, NameLayerTag};
+
+pub(crate) const WORLD_TEXT_LAYER: &'static str = "world_text_layer";
+pub(crate) const SCREEN_TEXT_LAYER: &'static str = "screen_text_layer";
+
+#[derive(Default)]
+pub struct WorldShapeFeatureLayerTag {
+    pub name: &'static str,
+    pub vertex_shader: Option<&'static str>,
+    pub indirect: bool,
+}
+
+impl FeatureLayerTag for WorldShapeFeatureLayerTag {
+    fn name(&self) -> &'static str {
+        self.name
+    }
+}
 
 pub(crate) struct Layers {
-    feature_layers: FeatureLayers,
+    feature_layers: FeatureLayers<GeneralMeshLayer<ShapePipeline>>,
     pub shape_layer: GeneralMeshLayer<ShapePipeline>,
     pub mesh_layer: GeneralMeshLayer<MeshPipeline>,
     pub shadow_map_layer: OrthoMeshLayer<ScreenMeshPipeline>,
     pub screen_shape_layer: ScreenShapeLayer<ShapePipeline>,
-    pub text_layer: TextMeshLayer<ScreenMeshPipeline>,
+    pub text_feature_layers: FeatureLayers<TextMeshLayer<ScreenMeshPipeline>>,
     pub preview_mesh_layer: OrthoMeshLayer<ScreenMeshPipeline>,
     pub post_process_layer: OrthoMeshLayer<ScreenMeshPipeline>,
 }
 
 impl Layers {
     pub fn new(
-        feature_tags: Vec<FeatureLayerTag>,
+        world_shapes_feature_tags: Vec<WorldShapeFeatureLayerTag>,
         global_context: &mut GlobalContext,
         font: &'static ttf_parser::Face<'static>,
     ) -> Layers {
-        let feature_layers = FeatureLayers::new(feature_tags, global_context);
+        let feature_layers = FeatureLayers::new(world_shapes_feature_tags,
+                                                |tag| {
+                                                    GeneralMeshLayer::new(ShapePipeline::new(global_context, tag.vertex_shader, tag.indirect))
+                                                });
+        let text_feature_layers = FeatureLayers::new(vec![
+            NameLayerTag(WORLD_TEXT_LAYER),
+            NameLayerTag(SCREEN_TEXT_LAYER)], |_| {
+            TextMeshLayer::new(
+                ScreenMeshPipeline::new(global_context, TextureInfo {
+                    use_texture: false,
+                    filterable: false,
+                    fs_shader: "",
+                }),
+                global_context,
+                font,
+            )
+        });
+
         Layers {
             feature_layers,
             mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context)),
@@ -41,15 +74,7 @@ impl Layers {
                 filterable: false,
                 fs_shader: "fs_main_sm",
             }), true, false),
-            text_layer: TextMeshLayer::new(
-                ScreenMeshPipeline::new(global_context, TextureInfo {
-                    use_texture: false,
-                    filterable: false,
-                    fs_shader: "",
-                }),
-                global_context,
-                font,
-            ),
+            text_feature_layers,
             preview_mesh_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
                 use_texture: true,
                 filterable: true,
@@ -75,7 +100,7 @@ impl BaseMeshLayer for Layers {
         self.mesh_layer.prepare(global_context);
         self.shadow_map_layer.prepare(global_context);
         self.screen_shape_layer.prepare(global_context);
-        self.text_layer.prepare(global_context);
+        self.text_feature_layers.prepare(global_context);
         self.feature_layers.prepare(global_context);
         self.preview_mesh_layer.prepare(global_context);
         self.post_process_layer.prepare(global_context);
@@ -86,7 +111,7 @@ impl BaseMeshLayer for Layers {
         self.mesh_layer.update(global_context);
         self.shadow_map_layer.update(global_context);
         self.screen_shape_layer.update(global_context);
-        self.text_layer.update(global_context);
+        self.text_feature_layers.update(global_context);
         self.feature_layers.update(global_context);
         self.preview_mesh_layer.update(global_context);
         self.post_process_layer.update(global_context);
@@ -114,7 +139,7 @@ impl BaseMeshLayer for Layers {
             if not_shadow_or_g_buf {
                 self.screen_shape_layer
                     .render(render_pass, global_context);
-                self.text_layer.render(render_pass, global_context);
+                self.text_feature_layers.render(render_pass, global_context);
             }
         }
         if !global_context.is_g_buffer_render && !global_context.is_shadow_render {
@@ -130,7 +155,7 @@ impl BaseMeshLayer for Layers {
         self.mesh_layer.clear_by_key(key);
         self.shadow_map_layer.clear_by_key(key);
         self.screen_shape_layer.clear_by_key(key);
-        self.text_layer.clear_by_key(key);
+        self.text_feature_layers.clear_by_key(key);
         self.feature_layers.clear_by_key(key);
         self.preview_mesh_layer.clear_by_key(key);
         self.post_process_layer.clear_by_key(key);

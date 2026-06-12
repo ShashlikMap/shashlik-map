@@ -1,41 +1,47 @@
+use indexmap::IndexMap;
 use crate::global_context::GlobalContext;
-use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
 use crate::mesh_layers::BaseMeshLayer;
-use crate::pipelines::shape_pipeline::ShapePipeline;
-use linked_hash_map::LinkedHashMap;
 use wgpu::{CommandEncoder, RenderPass};
 
-pub struct FeatureLayers {
-    feature_shape_layers: LinkedHashMap<String, GeneralMeshLayer<ShapePipeline>>,
+pub struct FeatureLayers<ML: BaseMeshLayer> {
+    feature_shape_layers: IndexMap<&'static str, ML>,
 }
 
-#[derive(Default)]
-pub struct FeatureLayerTag {
-    pub name: &'static str,
-    pub vertex_shader: Option<&'static str>,
-    pub indirect: bool
+pub trait FeatureLayerTag {
+    fn name(&self) -> &'static str;
 }
 
-impl FeatureLayers {
-    pub fn new(tags: Vec<FeatureLayerTag>, global_context: &GlobalContext) -> FeatureLayers {
+pub struct NameLayerTag(pub &'static str);
+
+impl FeatureLayerTag for NameLayerTag {
+    fn name(&self) -> &'static str {
+        self.0
+    }
+}
+
+impl<ML: BaseMeshLayer> FeatureLayers<ML> {
+    pub fn new<TAG: FeatureLayerTag, C>(tags: Vec<TAG>, mut ctor: C) -> FeatureLayers<ML>
+    where
+        C: FnMut(&TAG) -> ML,
+    {
         let mut layers = FeatureLayers {
-            feature_shape_layers: LinkedHashMap::new(),
+            feature_shape_layers: IndexMap::new(),
         };
 
         tags.into_iter().for_each(|tag| {
-            let layer = GeneralMeshLayer::new(ShapePipeline::new(global_context, tag.vertex_shader, tag.indirect));
-            layers.feature_shape_layers.insert(tag.name.to_string(), layer);
+            let layer = ctor(&tag);
+            layers.feature_shape_layers.insert(tag.name(), layer);
         });
 
         layers
     }
 
-    pub(crate) fn get_layer(&mut self, tag: &str) -> Option<&mut GeneralMeshLayer<ShapePipeline>> {
+    pub(crate) fn get_layer(&mut self, tag: &str) -> Option<&mut ML> {
         self.feature_shape_layers.get_mut(tag)
     }
 }
 
-impl BaseMeshLayer for FeatureLayers {
+impl<ML: BaseMeshLayer> BaseMeshLayer for FeatureLayers<ML> {
     fn prepare(&mut self, global_context: &GlobalContext) {
         self.feature_shape_layers.iter_mut().for_each(|(_, layer)| {
             layer.prepare(global_context);

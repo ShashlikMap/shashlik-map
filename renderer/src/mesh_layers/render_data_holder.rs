@@ -1,14 +1,14 @@
-use linked_hash_map::LinkedHashMap;
+use indexmap::IndexMap;
 
 #[derive(Clone)]
 pub struct RenderDataHolder<T> {
-    holder: LinkedHashMap<String, Vec<T>>,
+    holder: IndexMap<String, Vec<T>>,
 }
 
 impl<T> RenderDataHolder<T> {
     pub fn new() -> Self {
         Self {
-            holder: LinkedHashMap::new(),
+            holder: IndexMap::new(),
         }
     }
 
@@ -17,7 +17,8 @@ impl<T> RenderDataHolder<T> {
     }
     
     pub fn remove(&mut self, key: &str) {
-        self.holder.remove(&key.to_string());
+        // shift_remove is O(n) operation
+        self.holder.shift_remove(&key.to_string());
     }
 
     pub fn run_mut_action_with_key<F>(&mut self, key: &str, mut block: F)

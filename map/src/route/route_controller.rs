@@ -1,4 +1,4 @@
-use crate::route::RouteCosting;
+use crate::route::{RouteCosting};
 use crate::route::route_group::RouteGroup;
 use geo_types::{Point, point};
 use log::error;
@@ -6,7 +6,7 @@ use renderer::modifier::render_modifier::SpatialData;
 use renderer::renderer_api::RendererApi;
 use std::collections::HashSet;
 use std::sync::Arc;
-use std::thread::spawn;
+use std::thread::{spawn};
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
 use valhalla_client::route::{DirectionsType, Location, Manifest};
@@ -14,19 +14,30 @@ use valhalla_client::route::{DirectionsType, Location, Manifest};
 extern crate valhalla_client_android as valhalla_client;
 
 pub struct RouteController {
+    api: Arc<RendererApi>,
     current_lon_lat: Option<(f64, f64)>,
     valhalla: Arc<Valhalla>
 }
 
 impl RouteController {
-    pub fn new() -> RouteController {
-        RouteController {
+    pub fn new(api: Arc<RendererApi>) -> RouteController {
+        let mut route_controller = RouteController {
+            api: api.clone(),
             current_lon_lat: None,
             valhalla: Arc::new(Valhalla::default())
-        }
+        };
+        route_controller.warm_up();
+        route_controller
     }
     pub fn set_current_lon_lat(&mut self, lon_lat: (f64, f64)) {
         self.current_lon_lat = Some(lon_lat);
+    }
+
+    fn warm_up(&mut self) {
+        let route: Vec<Point> = vec![point!(x:0.0, y:0.0), point!(x: 1.0, y:0.0)];
+        let route = Box::new(RouteGroup::new(route, RouteCosting::Auto));
+        let spatial_data = SpatialData::transform(route.first_route_point());
+        self.api.add_render_group("route".to_string(), spatial_data, route);
     }
 
     pub fn calc_route(
@@ -34,10 +45,10 @@ impl RouteController {
         to_lon_lat: (f64, f64),
         route_costing: RouteCosting,
         converter: Box<dyn (Fn(&Point) -> Point) + Send>,
-        api: Arc<RendererApi>,
     ) {
         if let Some((lon, lat)) = self.current_lon_lat {
             let valhalla = Arc::clone(&self.valhalla);
+            let api = Arc::clone(&self.api);
             spawn(move || {
                 let source_loc = Location::new(lon as f32, lat as f32);
                 let destination_loc = Location::new(to_lon_lat.0 as f32, to_lon_lat.1 as f32);
@@ -52,6 +63,7 @@ impl RouteController {
                     .costing(costing);
 
                 Self::clear_routes_internal(api.clone());
+
                 match valhalla.route(manifest) {
                     Ok(trip) => {
                         // println!("Route calculated: {:?}", trip);
@@ -64,8 +76,9 @@ impl RouteController {
                                     point! { x: p.lon, y: p.lat }
                                 })
                                 .collect();
+                            let route: Vec<Point> = route.iter().map(|p| converter(p)).collect();
 
-                            let route = Box::new(RouteGroup::new(route, route_costing, converter));
+                            let route = Box::new(RouteGroup::new(route, route_costing));
                             let spatial_data = SpatialData::transform(route.first_route_point());
                             api.add_render_group("route".to_string(), spatial_data, route);
                         } else {

@@ -16,7 +16,6 @@ use num::{abs, clamp};
 use osm::styles::style_loader::StyleLoader;
 use osm::styles::{DashStyle, RenderStyle};
 use renderer::canvas_api::CanvasApi;
-use renderer::mesh_layers::feature_layers::FeatureLayerTag;
 use renderer::modifier::render_modifier::SpatialData;
 use renderer::render_group::RenderGroup;
 use renderer::renderer_api::RendererApi;
@@ -34,6 +33,7 @@ use std::thread::spawn;
 use std::time::{Duration, Instant};
 use ttf_parser::Face;
 use wgpu::Texture;
+use renderer::mesh_layers::layers::WorldShapeFeatureLayerTag;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use wgpu_canvas::SSAO_ENABLED;
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
@@ -109,16 +109,16 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
 
         let feature_layer_tags = vec![
-            FeatureLayerTag {
+            WorldShapeFeatureLayerTag {
                 name: "kml_layer",
                 ..Default::default()
             },
-            FeatureLayerTag {
+            WorldShapeFeatureLayerTag {
                 name: "route_layer",
                 vertex_shader: Some("vs_main_route"),
                 indirect: true,
             },
-            FeatureLayerTag {
+            WorldShapeFeatureLayerTag {
                 name: "puck_layer",
                 ..Default::default()
             },
@@ -149,12 +149,13 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         let (map_event_sender, map_event_receiver) = mpsc::channel();
 
+        let route_controller = RouteController::new(renderer.api.clone());
         let mut map = ShashlikMap {
             renderer: Box::new(renderer),
             camera: cam,
             camera_controller,
             tiles_provider,
-            route_controller: RouteController::new(),
+            route_controller,
             last_area_lon_lat: Rect::new((0.0, 0.0), (0.0, 0.0)),
             current_world_position: camera_offset,
             current_bearing: 0.0,
@@ -430,7 +431,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
             to_lon_lat,
             route_costing,
             self.create_location_coord_converter(),
-            self.renderer.api.clone(),
         );
     }
 
