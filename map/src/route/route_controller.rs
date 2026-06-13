@@ -34,10 +34,18 @@ impl RouteController {
     }
 
     fn warm_up(&mut self) {
-        let route: Vec<Point> = vec![point!(x:0.0, y:0.0), point!(x: 1.0, y:0.0)];
-        let route = Box::new(RouteGroup::new(route, RouteCosting::Auto));
-        let spatial_data = SpatialData::transform(route.first_route_point());
-        self.api.add_render_group("route".to_string(), spatial_data, route);
+        // Route rendering uses indirect drawing feature
+        // On Linux target(Rasp4 with Vulkan) indirect pipeline may take up to 2-3 seconds
+        // It's not clear if it's a bug or not.
+        // The below provides a dummy route to warm up a pipeline.
+        // Also, it's been found that indirect drawing doesn't seem to be working on iOS simulator,
+        // so it's better to isolate warming up only for linux for now
+        #[cfg(target_os = "linux")] {
+            let route: Vec<Point> = vec![point!(x:0.0, y:0.0), point!(x: 1.0, y:0.0)];
+            let route = Box::new(RouteGroup::new(route, RouteCosting::Auto));
+            let spatial_data = SpatialData::transform(route.first_route_point());
+            self.api.add_render_group("route".to_string(), spatial_data, route);
+        }
     }
 
     pub fn calc_route(

@@ -32,7 +32,7 @@ kotlin {
     }
     
     listOf(
-//        iosArm64(), // debug builds do not work due to some linked error
+        iosArm64(),
         iosSimulatorArm64()
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {

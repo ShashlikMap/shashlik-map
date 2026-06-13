@@ -25,7 +25,7 @@ fun shashlikMapInit() {
 @OptIn(ExperimentalPermissionsApi::class)
 @SuppressLint("MissingPermission")
 @Composable
-actual fun ShashlikMap(onLongTap: (x: Float, y: Float) -> Unit) {
+actual fun ShashlikMap() {
     val locationPermissionState = rememberMultiplePermissionsState(
         listOf(
             android.Manifest.permission.ACCESS_FINE_LOCATION,
@@ -34,7 +34,7 @@ actual fun ShashlikMap(onLongTap: (x: Float, y: Float) -> Unit) {
     )
 
     if (locationPermissionState.allPermissionsGranted) {
-        ShashlikMapComp(onLongTap)
+        ShashlikMapComp()
     } else {
         LaunchedEffect(Unit) {
             locationPermissionState.launchMultiplePermissionRequest()
@@ -44,7 +44,7 @@ actual fun ShashlikMap(onLongTap: (x: Float, y: Float) -> Unit) {
 
 @SuppressLint("MissingPermission")
 @Composable
-private fun ShashlikMapComp(onLongTap: (x: Float, y: Float) -> Unit) {
+private fun ShashlikMapComp() {
     val ctx = LocalContext.current
     val locationManager = remember {
         SimpleLocationManager(ctx) {
@@ -63,9 +63,7 @@ private fun ShashlikMapComp(onLongTap: (x: Float, y: Float) -> Unit) {
 
     AndroidView(
         factory = { ctx ->
-            WGPUTextureView(context = ctx).also {
-                it.onLongTap = onLongTap
-            }
+            WGPUTextureView(context = ctx)
         },
         modifier = Modifier.fillMaxSize()
     )
