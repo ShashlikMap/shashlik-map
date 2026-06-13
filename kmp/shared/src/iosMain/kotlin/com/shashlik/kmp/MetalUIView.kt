@@ -54,8 +54,9 @@ internal class MetalUIView : UIView(CGRectMake(0.0, 0.0, 0.0, 0.0)) {
     @ObjCAction
     override fun layoutSubviews() {
         super.layoutSubviews()
-        val boundsWidth = bounds.useContents { size.width }
-        val boundsHeight = bounds.useContents { size.height }
+        // fyi, size uses "points", not pixels
+        val boundsWidth = bounds.useContents { size.width } * UIScreen.mainScreen.scale
+        val boundsHeight = bounds.useContents { size.height } * UIScreen.mainScreen.scale
         if (boundsWidth > 0 && boundsWidth > 0) {
             initializeApiIfNeeded()
             shashlikMapApi?.resize(boundsWidth.toUInt(), boundsHeight.toUInt())
