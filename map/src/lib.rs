@@ -56,6 +56,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     last_area_lon_lat: Rect,
     current_world_position: DVec3,
     current_bearing: f64,
+    camera_bearing: f64,
     current_pitch: f64,
     transition_2d_3d_helper: Transition2d3dHelper,
     cam_follow_mode: bool,
@@ -159,6 +160,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             last_area_lon_lat: Rect::new((0.0, 0.0), (0.0, 0.0)),
             current_world_position: camera_offset,
             current_bearing: 0.0,
+            camera_bearing: 0.0,
             current_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
             cam_follow_mode: true,
@@ -328,9 +330,11 @@ impl<T: TilesProvider> ShashlikMap<T> {
             };
 
             self.camera_controller.set_new_position(new_cam_pos);
+        }
 
-            let new_cam_yaw = cam_yaw + ((self.current_bearing - cam_yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
-            self.camera_controller.yaw = new_cam_yaw
+        if self.should_animate() || !self.cam_follow_mode {
+            let new_cam_yaw = cam_yaw + ((self.camera_bearing - cam_yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
+            self.camera_controller.yaw = new_cam_yaw;
         }
 
         if self.should_animate() {
@@ -383,6 +387,10 @@ impl<T: TilesProvider> ShashlikMap<T> {
         if self.cam_follow_mode {
             self.cam_follow_zoom_lock = Some(30.0);
             self.current_pitch = CameraController::MIN_PITCH;
+            self.camera_bearing = self.current_bearing;
+        } else {
+            let new_bearing = Self::calc_nearest_bearing(0.0, self.camera_bearing);
+            self.camera_bearing = new_bearing;
         }
     }
 
@@ -398,14 +406,22 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.route_controller.set_current_lon_lat((lon, lat));
         let position = T::lon_lat_to_world(&coord! {x: lon, y: lat});
         self.current_world_position = DVec3::new(position.x, position.y, 0.0);
+
         if let Some(bearing) = bearing {
-            let bearing = bearing as f64;
-            let mut rot_diff = (bearing % 360.0) - (self.current_bearing % 360.0);
-            if rot_diff.abs() > 180.0 {
-                rot_diff -= rot_diff.signum() * 360.0;
+            let new_bearing = Self::calc_nearest_bearing(bearing as f64, self.current_bearing);
+            self.current_bearing = new_bearing;
+            if self.cam_follow_mode {
+                self.camera_bearing = new_bearing;
             }
-            self.current_bearing += rot_diff % 360.0;
         }
+    }
+
+    fn calc_nearest_bearing(new_bearing: f64, prev_bearing: f64) -> f64 {
+        let mut rot_diff = (new_bearing % 360.0) - (prev_bearing % 360.0);
+        if rot_diff.abs() > 180.0 {
+            rot_diff -= rot_diff.signum() * 360.0;
+        }
+        prev_bearing + rot_diff % 360.0
     }
 
     pub fn create_route_to_from_screen_center(&self, route_costing: RouteCosting) {
