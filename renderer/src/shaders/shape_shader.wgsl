@@ -218,7 +218,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             in.style4,
         );
     // FIXME Requires better solution for param type
-    let style_type = u32(round(style[0][0]));
+    let style_type = u32(style[0][0]);
 
     var res_color = vec4(0.0, 0.0, 0.0, 1.0);
     if(style_type == 0) {
