@@ -1,4 +1,3 @@
-use crate::consts::STYLE_SHADER_PARAMS_COUNT;
 use crate::styles::render_style::RenderStyle;
 use crate::styles::style_id::StyleId;
 use indexmap::IndexMap;
@@ -7,7 +6,7 @@ use tokio::sync::broadcast::{Receiver, Sender};
 
 #[derive(Clone)]
 pub struct StyleStore {
-    style_uniform_tx: Sender<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
+    style_uniform_tx: Sender<Vec<[[f32; 4]; 4]>>,
     style_map: IndexMap<StyleId, RenderStyle>,
 }
 
@@ -34,7 +33,7 @@ impl StyleStore {
         self.style_map.values().collect()
     }
 
-    pub fn subscribe(&self) -> Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>> {
+    pub fn subscribe(&self) -> Receiver<Vec<[[f32; 4]; 4]>> {
         let receiver = self.style_uniform_tx.subscribe();
         self.generate_uniforms_and_send();
         receiver

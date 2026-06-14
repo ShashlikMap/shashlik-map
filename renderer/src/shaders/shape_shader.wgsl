@@ -4,7 +4,7 @@ import super::common::CameraUniform;
 const PARAMS_COUNT : i32 = 12; // 12 is mat4x3!
 
 struct StyleUniform {
-    params: array<f32, PARAMS_COUNT>
+    params: mat4x3<f32>
 };
 
 @group(0) @binding(0)
@@ -54,11 +54,11 @@ struct VertexOutput {
 // TODO pass as a parameter
 const inflate_factor: f32 = 0.06;
 
-fn style_array_to_mat(out: ptr<function,VertexOutput>, arr: array<f32, PARAMS_COUNT>) {
-    (*out).style1 = vec3f(arr[0], arr[1], arr[2]);
-    (*out).style2 = vec3f(arr[3], arr[4], arr[5]);
-    (*out).style3 = vec3f(arr[6], arr[7], arr[8]);
-    (*out).style4 = vec3f(arr[9], arr[10], arr[11]);
+fn style_array_to_mat(out: ptr<function,VertexOutput>, params: mat4x3<f32>) {
+    (*out).style1 = params[0];
+    (*out).style2 = params[1];
+    (*out).style3 = params[2];
+    (*out).style4 = params[3];
 }
 
 @vertex

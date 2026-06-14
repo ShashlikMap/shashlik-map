@@ -45,8 +45,17 @@ impl RenderStyle {
 
         style
     }
-    
-    pub(crate) fn params(&self) -> [f32; STYLE_SHADER_PARAMS_COUNT] {
-        self.container
+
+    pub(crate) fn params(&self) -> [[f32; 4]; 4] {
+        Self::convert_to_wgsl_mat4x3(self.container)
+    }
+
+    fn convert_to_wgsl_mat4x3(flat_array: [f32; 12]) -> [[f32; 4]; 4] {
+        [
+            [flat_array[0], flat_array[1], flat_array[2], 0.0],  // Column 0
+            [flat_array[3], flat_array[4], flat_array[5], 0.0],  // Column 1
+            [flat_array[6], flat_array[7], flat_array[8], 0.0],  // Column 2
+            [flat_array[9], flat_array[10], flat_array[11], 0.0], // Column 3
+        ]
     }
 }
