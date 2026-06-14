@@ -18,8 +18,8 @@ pub trait VertexAttrib: Sized {
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ShapeVertex {
-    pub position: [f32; 3],
-    pub normals: [f32; 3],
+    pub position: [f32; 2],
+    pub normals: [f32; 2],
     pub uv_dist: [f32; 3],
     pub style_index: u32,
 }
@@ -42,7 +42,7 @@ impl VertexAttrib for MeshVertexWithUV {
 
 impl VertexAttrib for ShapeVertex {
     const ATTRIBUTES: &[VertexAttribute] =
-        &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x3, 3 => Uint32];
+        &wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x2, 2 => Float32x3, 3 => Uint32];
 
     const STEP_MODE: VertexStepMode = wgpu::VertexStepMode::Vertex;
 }

@@ -241,16 +241,16 @@ impl CanvasApi {
         match geom_type {
             GeometryType::Polyline(options) => {
                 self.tessellate_stroke_path(&data.path, options, |vertex| ShapeVertex {
-                    position: [vertex.position().x, vertex.position().y, 0.0f32],
-                    normals: [vertex.normal().x, vertex.normal().y, 0.0],
+                    position: [vertex.position().x, vertex.position().y],
+                    normals: [vertex.normal().x, vertex.normal().y],
                     uv_dist: [0.0, 0.0, vertex.advancement()],
                     style_index: style_index as u32,
                 });
             }
             GeometryType::Polygon => {
                 Self::tessellate_fill_path(&data.path, &mut self.geometry, |vertex| ShapeVertex {
-                    position: [vertex.position().x, vertex.position().y, 0.0f32],
-                    normals: [0.0, 0.0, 0.0],
+                    position: [vertex.position().x, vertex.position().y],
+                    normals: [0.0, 0.0],
                     uv_dist: [0.0, 0.0, 0.0], // fill doesn't have length
                     style_index: style_index as u32,
                 });
@@ -299,8 +299,8 @@ impl CanvasApi {
                     let path = builder.build();
 
                     Self::tessellate_fill_path(&path, &mut mesh, |vertex| ShapeVertex {
-                        position: [vertex.position().x, vertex.position().y, 0.0f32],
-                        normals: [0.0, 0.0, 0.0],
+                        position: [vertex.position().x, vertex.position().y],
+                        normals: [0.0, 0.0],
                         uv_dist: [0.0, 0.0, 0.0], // fill doesn't have length
                         style_index: background_style_index as u32,
                     });
