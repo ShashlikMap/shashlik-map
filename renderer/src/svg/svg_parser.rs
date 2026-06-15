@@ -320,9 +320,8 @@ impl VertexCtor {
                 (position.x - self.original_size.width() / 2.0) * self.scale,
                 // Y should be flipped since mercator coords are flipped
                 (self.original_size.height() / 2.0 - position.y) * self.scale,
-                0.0,
             ],
-            normals: [normal.x, normal.y, 0.0],
+            normals: [normal.x, normal.y],
             uv_dist: [position.x / self.original_size.width(), position.y / self.original_size.height(), 0.0],
             style_index: self.style_index,
         }

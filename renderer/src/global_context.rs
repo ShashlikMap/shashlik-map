@@ -1,5 +1,4 @@
 use crate::collider::Collider;
-use crate::consts::STYLE_SHADER_PARAMS_COUNT;
 use crate::styles::style_store::StyleStore;
 use crate::textures::{create_depth_texture, create_simple_texture, TextureData};
 use crate::utils::ReceiverExt;
@@ -7,8 +6,8 @@ use crate::view_projection::ViewProjection;
 use crate::RendererUpdateData;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Device, TextureFormat, TextureUsages, TextureView};
-use wgpu_canvas::SHADOWS_TEX_SIZE;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use wgpu_canvas::SHADOWS_TEX_SIZE;
 
 pub struct GlobalContext {
     pub canvas: Box<dyn WgpuCanvas>,
@@ -21,7 +20,7 @@ pub struct GlobalContext {
     pub is_shadow_render: bool,
     pub ssao_texture: TextureView,
     pub shadow_map_depth_texture: TextureView,
-    style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; STYLE_SHADER_PARAMS_COUNT]>>,
+    style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[[f32; 4]; 4]>>,
 }
 
 impl GlobalContext {
@@ -68,7 +67,7 @@ impl GlobalContext {
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStages::FRAGMENT,
+                visibility: wgpu::ShaderStages::VERTEX,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Storage { read_only: true },
                     has_dynamic_offset: false,

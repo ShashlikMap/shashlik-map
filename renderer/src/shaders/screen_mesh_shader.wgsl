@@ -30,6 +30,7 @@ struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) color: vec4<f32>,
     @location(1) uv: vec2<f32>,
+    @location(2) pos_from_light: vec4<f32>,
 }
 
 @vertex
@@ -60,6 +61,27 @@ fn vs_main(
     out.color = vec4f(model.color, pos.color_alpha);
     out.uv = model.uv;
     out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
+
+    return out;    
+}
+
+@vertex
+fn vs_main_sm(
+    model: VertexInput,
+    pos: InstanceInput
+) -> VertexOutput {
+    var out: VertexOutput;
+
+    let clip_pos2d = model.uv * 2.0 - 1.0;
+
+    let final_world_pos = (vec4<f32>(frag_pos_from_ray(camera, clip_pos2d), 1.0));
+
+    out.clip_position = camera.view_proj * final_world_pos;
+
+    // shift a bit ground shadows towards the light to create free contact shadow around building
+    out.pos_from_light = camera.light_view_proj * vec4<f32>((final_world_pos.xy - 0.003), final_world_pos.z, 1.0);
+    out.pos_from_light = vec4f(out.pos_from_light.xy * vec2f(0.5, -0.5) + 0.5, out.pos_from_light.zw);
+
     return out;
 }
 
@@ -129,16 +151,8 @@ fn fs_main_sm(in: VertexOutput) -> @location(0) vec4<f32> {
     if(camera.scale >= 1.0) {
         return vec4(0.0, 0.0, 0.0, 0.0);
     }
-    let uv = in.uv * 2.0 - 1.0;
 
-    // shift a bit ground shadows towards the light to create free contact shadow around building
-    let fragPos = frag_pos_from_ray(camera, uv) - 0.003;
-
-    let pos_from_light = camera.light_view_proj * vec4<f32>(fragPos, 1.0);
-    let currentDepth = pos_from_light.z;
-    let projCoords = (pos_from_light.xy * vec2f(0.5, -0.5)) + 0.5;
-
-    let shadow = shadow_map(t_depth, s_compare, projCoords, 2.0, currentDepth);
+    let shadow = shadow_map(t_depth, s_compare, in.pos_from_light.xy, 1.2, in.pos_from_light.z);
 
     return vec4(0.0, 0.0, 0.0, shadow * 0.5);
 }
