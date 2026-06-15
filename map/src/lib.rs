@@ -31,6 +31,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::spawn;
 use std::time::{Duration, Instant};
+use log::error;
 use ttf_parser::Face;
 use wgpu::Texture;
 use renderer::mesh_layers::layers::WorldShapeFeatureLayerTag;
@@ -459,7 +460,12 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     fn load_styles(&self) {
-        StyleLoader::load().into_iter().for_each(|style| {
+        let mut styles = StyleLoader::load();
+        if styles.is_empty() {
+            error!("No styles loaded! Trying again!");
+            styles = StyleLoader::load();
+        }
+        styles.into_iter().for_each(|style| {
             let style_id = StyleId(Box::leak(style.id.into_boxed_str()));
             let actual_render_style = match style.render_style {
                 RenderStyle::Fill(color) => {
