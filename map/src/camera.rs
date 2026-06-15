@@ -20,7 +20,8 @@ pub struct Camera {
 
 impl Camera {
     const INITIAL_Z: f64 = 200.0;
-    pub(crate) const MAX_Z_FAR: f64 = 2000000.0;
+    pub(crate) const Z_NEAR: f64 = 1.0;
+    pub(crate) const Z_FAR: f64 = 2000000.0;
 
     pub fn new(initial_world: DVec3) -> Self {
         Camera {
@@ -28,8 +29,8 @@ impl Camera {
             target: (initial_world.x, initial_world.y, 0.0).into(),
             up: DVec3::Y,
             fovy: 45.0,
-            znear: 1.0,
-            zfar: Self::MAX_Z_FAR,
+            znear: Self::Z_NEAR,
+            zfar: Self::Z_FAR,
             perspective_matrix: DMat4::IDENTITY,
             offset: DVec3::new(initial_world.x, initial_world.y, 0.0),
         }
@@ -113,7 +114,7 @@ impl CameraController {
         let speed_koef = self.camera_z / 150.0;
 
         // prevent sharp pitch for a high zoom level to reduce z_far artifacts
-        let min_pitch = Self::MIN_PITCH + Self::MIN_PITCH * (self.camera_z * 10.0 / Camera::MAX_Z_FAR).clamp(0.0, 1.0);
+        let min_pitch = Self::MIN_PITCH + Self::MIN_PITCH * (self.camera_z * 10.0 / Camera::Z_FAR).clamp(0.0, 1.0);
         let (sin_pitch, cos_pitch) = self.pitch.max(min_pitch).to_radians().sin_cos();
         let (sin_yaw, cos_yaw) = (-self.yaw).to_radians().sin_cos();
 
@@ -125,8 +126,9 @@ impl CameraController {
         camera.target = self.position;
 
         let new_eye = camera.target + (dir * len);
-        // don't go too far to reduce z_far artifacts
-        if (camera.target - new_eye).length() <= 0.9 * Camera::MAX_Z_FAR {
+        // don't go too far to reduce z_far artifacts, or too close
+        let new_eye_target_dist = (camera.target - new_eye).length();
+        if new_eye_target_dist <= 0.9 * Camera::Z_FAR && new_eye_target_dist >= 10.0 * Camera::Z_NEAR {
             camera.eye = new_eye;
         }
 
