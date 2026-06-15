@@ -102,7 +102,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     const FOLLOW_ANIMATION_DELAY_MS: u64 = 2000;
     const TELEPORT_THRESHOLD: f64 = 300.0;
-    const CAM_SCALE_MIN_THRESHOLD: f32 = 0.05;
 
     pub async fn new(
         canvas: Box<dyn WgpuCanvas>,
