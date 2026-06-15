@@ -115,8 +115,8 @@ fun App() {
             })
         }.pointerInput(Unit) {
             detectTransformGestures { _, pan, _, _ ->
-                val panX = pan.x / 15.0f
-                val panY = pan.y / 15.0f
+                val panX = pan.x / 24.0f
+                val panY = pan.y / 24.0f
                 ShashlikMapApiHolder.shashlikMapApi?.panDelta(-panX, -panY)
             }
         }
@@ -124,7 +124,7 @@ fun App() {
                 detectTwoFingersScrollZoom { centroid, scroll, zoom ->
                     if (zoom != 1.0f) {
                         // zoom is the scaleFactor relative to the previous frame (e.g., 1.05f)
-                        val zoomDelta = (zoom - 1.0f) * 150.0f
+                        val zoomDelta = (zoom - 1.0f) * 100.0f
 
                         ShashlikMapApiHolder.shashlikMapApi?.zoomDelta(
                             zoomDelta, centroid.x, centroid.y

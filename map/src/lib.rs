@@ -165,7 +165,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             current_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
             cam_follow_mode: true,
-            cam_follow_zoom_lock: Some(30.0),
+            cam_follow_zoom_lock: Some(60.0),
             screen_params: ScreenParam {
                 width: screen_size.0 as u32,
                 height: screen_size.1 as u32,
@@ -386,7 +386,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.cam_follow_mode = follow_mode;
 
         if self.cam_follow_mode {
-            self.cam_follow_zoom_lock = Some(30.0);
+            self.cam_follow_zoom_lock = Some(60.0);
             self.current_pitch = CameraController::MIN_PITCH;
             self.camera_bearing = self.current_bearing;
         } else {

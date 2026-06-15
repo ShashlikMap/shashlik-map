@@ -215,8 +215,8 @@ fn main() {
                         let curr_pan_state = app.get_current_pan_state();
                         if curr_pan_state.pressed {
                             if let Some(prev_pan) = &prev_pan_state {
-                                let delta_x = -(curr_pan_state.x - prev_pan.x) / (9.0 * dpi);
-                                let delta_y = -(curr_pan_state.y - prev_pan.y) / (9.0 * dpi);
+                                let delta_x = -(curr_pan_state.x - prev_pan.x) / (14.4 * dpi);
+                                let delta_y = -(curr_pan_state.y - prev_pan.y) / (14.4 * dpi);
                                 shashlik_map.pan_delta(delta_x, delta_y);
                             }
                             prev_pan_state = Some(curr_pan_state.clone());
@@ -228,7 +228,7 @@ fn main() {
                         if let Some(prev_scale) = &prev_pinch_scale {
                             let delta = curr_pinch_scale.value / prev_scale.value - 1.0;
                             if curr_pinch_scale.value > 0.0 && delta != 0.0 {
-                                shashlik_map.zoom_delta(150.0 * delta, (curr_pinch_scale.x, curr_pinch_scale.y));
+                                shashlik_map.zoom_delta(94.0 * delta, (curr_pinch_scale.x, curr_pinch_scale.y));
                             }
                         }
 

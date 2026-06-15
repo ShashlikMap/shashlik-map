@@ -28,7 +28,7 @@ impl Camera {
             eye: (initial_world.x, initial_world.y, Self::INITIAL_Z).into(),
             target: (initial_world.x, initial_world.y, 0.0).into(),
             up: DVec3::Y,
-            fovy: 45.0,
+            fovy: 36.87,
             znear: Self::Z_NEAR,
             zfar: Self::Z_FAR,
             perspective_matrix: DMat4::IDENTITY,
@@ -69,10 +69,15 @@ impl Camera {
 
     pub fn resize(&mut self, width: u32, height: u32) {
         let aspect = width as f64 / height as f64;
+        let mut fovy = self.fovy.to_radians();
+        if aspect > 1.0 {
+            fovy = 2.0 * ((fovy / 2.0).tan() / aspect).atan();
+            println!("Adjust fovy for landscape: {:?}", fovy.to_degrees());
+        }
 
         self.perspective_matrix =
             DMat4::perspective_rh(
-                self.fovy.to_radians(),
+                fovy,
                 aspect, self.znear, self.zfar
             )
     }
@@ -98,7 +103,7 @@ impl CameraController {
         Self {
             zoom_delta: 0.0,
             pan_delta: DVec2::splat(0.0),
-            camera_z: 200.0,
+            camera_z: Camera::INITIAL_Z,
             forward_len: 200.0,
             position: DVec3::splat(0.0),
             yaw: 0.0,
