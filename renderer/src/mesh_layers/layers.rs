@@ -56,6 +56,7 @@ impl Layers {
                 ScreenMeshPipeline::new(global_context, TextureInfo {
                     use_texture: false,
                     filterable: false,
+                    vs_shader: None,
                     fs_shader: "",
                 }),
                 global_context,
@@ -72,17 +73,20 @@ impl Layers {
             shadow_map_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
                 use_texture: true,
                 filterable: false,
+                vs_shader: Some("vs_main_sm"),
                 fs_shader: "fs_main_sm",
             }), true, false),
             text_feature_layers,
             preview_mesh_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
                 use_texture: true,
                 filterable: true,
+                vs_shader: None,
                 fs_shader: "fs_main_textured",
             }), false, true),
             post_process_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
                 use_texture: true,
                 filterable: true,
+                vs_shader: None,
                 fs_shader: "fs_main_tex_storage",
             }), true, false),
         }
