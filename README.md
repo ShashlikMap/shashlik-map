@@ -50,7 +50,6 @@ with Android/iOS mobile apps(Android is priority for now)
 ### Later
 - [ ] Support Mapbox [tilesets](https://docs.mapbox.com/data/tilesets/guides/vector-tiles-standards/)
 - [ ] Software Dead-reckoning
-- [ ] Complete iOS counter-part
 - [ ] Move TextRenderer to the separate repo
 - [ ] Explore Mesh Shader
 
@@ -117,7 +116,7 @@ implementation(libs.shashlikmap)
 - Note: Android app will ask for locations permissions.
 
 ## Known issues
-- Tileset on the Web Service is generated only for Japan(Kanto region) and USA(Bay Area)
+- Tileset on the Web Service is generated only for Japan and USA(Bay Area)
 - Android app might not work on Android Emulator with hardware GPU acceleration. Try to change GPU mode to `Software` one.
 - Debug build performance is significantly lower than Release build.
 - The latest unrealeased Slint UI (version 1.16.x) has a VSync issue that locks the frame rate to 60 FPS on macOS.

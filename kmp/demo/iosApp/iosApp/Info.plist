@@ -4,5 +4,9 @@
     <dict>
         <key>CADisableMinimumFrameDurationOnPhone</key>
         <true/>
+        <key>NSLocationWhenInUseUsageDescription</key>
+        <string>We need your location to display local data and fetch your current GPS coordinates.</string>
+        <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+        <string>We need your location to update metrics even when the app is in the background.</string>
     </dict>
 </plist>
