@@ -13,6 +13,7 @@ composeBom = "2025.11.01"
 accompanist = "0.37.3"
 koordxtract = "0.4.3"
 vanniktechMavenPublish = "0.34.0"
+playServicesLocation = "21.3.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -26,6 +27,7 @@ androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 accompanist = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
 koordxtract = { group = "io.github.shashlikmap", name = "koordxtract", version.ref = "koordxtract" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
