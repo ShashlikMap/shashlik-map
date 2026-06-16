@@ -1,6 +1,7 @@
 package com.shashlik.kmp
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -11,6 +12,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LifecycleStartEffect
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
+import com.shashlik.kmp.ShashlikMapApiHolder.shashlikMapApi
 import com.shashlik.kmp.shared.BuildConfig
 import timber.log.Timber
 import timber.log.Timber.DebugTree
@@ -47,8 +51,15 @@ actual fun ShashlikMap() {
 private fun ShashlikMapComp() {
     val ctx = LocalContext.current
     val locationManager = remember {
-        SimpleLocationManager(ctx) {
-            ShashlikMapApiHolder.shashlikMapApi?.setLatLonBearing(it.lat, it.lon, it.bearing)
+        val locationCallback: (LocationData) -> Unit = {
+            shashlikMapApi?.setLatLonBearing(it.lat, it.lon, it.bearing)
+        }
+        if (checkPlayServices(ctx as Activity)) {
+            Timber.i("PlayServicesLocationManager is used")
+            PlayServicesLocationManager(ctx, locationCallback)
+        } else {
+            Timber.i("AOSP pure location manager is used")
+            SimpleLocationManager(ctx, locationCallback)
         }
     }
     LifecycleStartEffect(Unit) {
@@ -67,4 +78,17 @@ private fun ShashlikMapComp() {
         },
         modifier = Modifier.fillMaxSize()
     )
+}
+
+private fun checkPlayServices(activity: Activity): Boolean {
+    val apiAvailability = GoogleApiAvailability.getInstance()
+    val resultCode = apiAvailability.isGooglePlayServicesAvailable(activity)
+
+    if (resultCode == ConnectionResult.SUCCESS) {
+        Timber.d("Google Play Services is available.")
+        return true
+    }
+
+    Timber.e("This device is not supported by Google Play Services(or outdated!).")
+    return false
 }

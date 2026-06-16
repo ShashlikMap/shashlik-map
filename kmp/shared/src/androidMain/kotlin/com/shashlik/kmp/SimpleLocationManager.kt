@@ -13,8 +13,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-data class LocationData(val lat: Double, val lon: Double, val bearing: Float?)
-class SimpleLocationManager(context: Context, private val callback: (LocationData) -> Unit) {
+
+class SimpleLocationManager(context: Context, callback: (LocationData) -> Unit) :
+    BaseLocationManager(callback) {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val locationService: LocationManager =
@@ -36,7 +37,7 @@ class SimpleLocationManager(context: Context, private val callback: (LocationDat
 
     // FIXME Permission can be revoked at any moment. It's fine now.
     @SuppressLint("MissingPermission")
-    fun start() {
+    override fun start() {
         locationService.requestLocationUpdates(
             LocationManager.GPS_PROVIDER,
             1000L,
@@ -53,7 +54,7 @@ class SimpleLocationManager(context: Context, private val callback: (LocationDat
         }
     }
 
-    fun stop() {
+    override fun stop() {
         scope.coroutineContext[Job]?.cancelChildren()
         locationService.removeUpdates(locationListener)
     }
