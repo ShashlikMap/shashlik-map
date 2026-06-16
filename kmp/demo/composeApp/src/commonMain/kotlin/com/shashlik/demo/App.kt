@@ -115,8 +115,8 @@ fun App() {
             })
         }.pointerInput(Unit) {
             detectTransformGestures { _, pan, _, _ ->
-                val panX = pan.x / 15.0f
-                val panY = pan.y / 15.0f
+                val panX = pan.x / 1.0f
+                val panY = pan.y / 1.0f
                 ShashlikMapApiHolder.shashlikMapApi?.panDelta(-panX, -panY)
             }
         }

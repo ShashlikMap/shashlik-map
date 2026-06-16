@@ -28,7 +28,7 @@ impl Camera {
             eye: (initial_world.x, initial_world.y, Self::INITIAL_Z).into(),
             target: (initial_world.x, initial_world.y, 0.0).into(),
             up: DVec3::Y,
-            fovy: 45.0,
+            fovy: 36.87,
             znear: Self::Z_NEAR,
             zfar: Self::Z_FAR,
             perspective_matrix: DMat4::IDENTITY,
@@ -69,10 +69,13 @@ impl Camera {
 
     pub fn resize(&mut self, width: u32, height: u32) {
         let aspect = width as f64 / height as f64;
-
+        let mut fovy = self.fovy.to_radians();
+        if aspect > 1.0 {
+            fovy = 2.0 * ((fovy / 2.0).tan() / aspect).atan();
+        }
         self.perspective_matrix =
             DMat4::perspective_rh(
-                self.fovy.to_radians(),
+                fovy,
                 aspect, self.znear, self.zfar
             )
     }
@@ -133,8 +136,9 @@ impl CameraController {
         }
 
         let pan_vec = (DMat2::from_angle(self.yaw.to_radians() - PI) * self.pan_delta).extend(0.0);
-        camera.eye -= pan_vec * speed_koef;
-        camera.target -= pan_vec * speed_koef;
+        camera.eye -= pan_vec;
+        camera.target -= pan_vec;
+        // println!("KIOL target = {:?}", camera.target);
 
         let distance_from_origin = camera.offset.xy().distance(camera.target.xy());
         if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {

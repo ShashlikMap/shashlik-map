@@ -65,6 +65,8 @@ pub struct ShashlikMap<T: TilesProvider> {
     screen_params: ScreenParam,
     map_event_receiver: Receiver<MapEvent>,
     last_interaction: Instant,
+    ddx: f64,
+    ddy: f64,
 }
 
 enum MapEvent {
@@ -172,6 +174,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
             },
             map_event_receiver,
             last_interaction: Instant::now(),
+            ddx: 0.0,
+            ddy: 0.0,
         };
         map.set_lon_lat_bearing(initial_coord.x, initial_coord.y, Some(0f32));
         map.load_styles();
@@ -260,6 +264,13 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     fn fetch_tiles(&mut self) {
+        let world_on_ground1 = self.renderer.clip_to_world(&coord! {x: -1.0, y: -1.0}).unwrap();
+        let world_on_ground2 = self.renderer.clip_to_world(&coord! {x: 1.0, y: 1.0}).unwrap();
+        let ddx = (world_on_ground1.x - world_on_ground2.x).abs();
+        let ddy = (world_on_ground1.y - world_on_ground2.y).abs();
+        self.ddx = ddx;
+        self.ddy = ddy;
+        // println!("KIOL ddx: {}, ddy: {}", ddx, ddy);
         let zoom_level = self.camera.scale();
         let zoom_level = ((zoom_level.log2() + 1.0) as i32).max(0);
 
@@ -365,7 +376,10 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     pub fn pan_delta(&mut self, delta_x: f32, delta_y: f32) {
         self.reset_last_interaction();
-        self.camera_controller.pan_delta = DVec2::new(delta_x as f64, delta_y as f64);
+        // println!("KIOL delta = {:?}", DVec2::new(delta_x as f64, delta_y as f64));
+        let ax = (delta_x / self.screen_params.width as f32) as f64;
+        let ay = (delta_y / self.screen_params.height as f32) as f64;
+        self.camera_controller.pan_delta = DVec2::new(self.ddx * ax as f64, self.ddy * ay as f64);
     }
 
     pub fn pitch_delta(&mut self, delta: f32) {

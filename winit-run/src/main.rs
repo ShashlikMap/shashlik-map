@@ -215,8 +215,8 @@ fn main() {
                         let curr_pan_state = app.get_current_pan_state();
                         if curr_pan_state.pressed {
                             if let Some(prev_pan) = &prev_pan_state {
-                                let delta_x = -(curr_pan_state.x - prev_pan.x) / (9.0 * dpi);
-                                let delta_y = -(curr_pan_state.y - prev_pan.y) / (9.0 * dpi);
+                                let delta_x = -(curr_pan_state.x - prev_pan.x);
+                                let delta_y = -(curr_pan_state.y - prev_pan.y);
                                 shashlik_map.pan_delta(delta_x, delta_y);
                             }
                             prev_pan_state = Some(curr_pan_state.clone());
