@@ -362,7 +362,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
         if self.should_animate() || !self.cam_follow_mode {
             let new_cam_yaw = cam_yaw + ((self.camera_bearing - cam_yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
             self.camera_controller.yaw = new_cam_yaw;
-            // error!("KIOL YAW: {}", self.camera_controller.yaw);
         }
 
         if self.should_animate() {
