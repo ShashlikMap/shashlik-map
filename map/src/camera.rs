@@ -28,7 +28,7 @@ impl Camera {
             eye: (initial_world.x, initial_world.y, Self::INITIAL_Z).into(),
             target: (initial_world.x, initial_world.y, 0.0).into(),
             up: DVec3::Y,
-            fovy: 45.0,
+            fovy: 36.87,
             znear: Self::Z_NEAR,
             zfar: Self::Z_FAR,
             perspective_matrix: DMat4::IDENTITY,
@@ -69,10 +69,13 @@ impl Camera {
 
     pub fn resize(&mut self, width: u32, height: u32) {
         let aspect = width as f64 / height as f64;
-
+        let mut fovy = self.fovy.to_radians();
+        if aspect > 1.0 {
+            fovy = 2.0 * ((fovy / 2.0).tan() / aspect).atan();
+        }
         self.perspective_matrix =
             DMat4::perspective_rh(
-                self.fovy.to_radians(),
+                fovy,
                 aspect, self.znear, self.zfar
             )
     }
@@ -89,7 +92,7 @@ pub struct CameraController {
 }
 
 impl CameraController {
-    pub const MIN_PITCH: f64 = 45.0;
+    pub const MIN_PITCH: f64 = 55.0;
     pub const MAX_PITCH: f64 = 90.0;
 
     const ORIGIN_REBASE_THRESHOLD: f64 = 999.0; // random now, big enough between US/JAPAN
@@ -111,16 +114,17 @@ impl CameraController {
     }
 
     pub(crate) fn update_camera(&mut self, camera: &mut Camera) {
-        let speed_koef = self.camera_z / 150.0;
-
         // prevent sharp pitch for a high zoom level to reduce z_far artifacts
-        let min_pitch = Self::MIN_PITCH + Self::MIN_PITCH * (self.camera_z * 10.0 / Camera::Z_FAR).clamp(0.0, 1.0);
+        let min_pitch = Self::MIN_PITCH + (Self::MAX_PITCH - Self::MIN_PITCH) * (self.camera_z * 10.0 / Camera::Z_FAR).clamp(0.0, 1.0);
         let (sin_pitch, cos_pitch) = self.pitch.max(min_pitch).to_radians().sin_cos();
         let (sin_yaw, cos_yaw) = (-self.yaw).to_radians().sin_cos();
 
         let dir = DVec3::new(cos_pitch * sin_yaw, cos_pitch * cos_yaw, sin_pitch).normalize();
-
-        let new_eye = camera.eye + (camera.target - camera.eye).normalize() * self.zoom_delta * speed_koef;
+        let new_eye = if self.zoom_delta == 0.0 {
+            camera.eye
+        } else {
+            camera.target + (dir * ((camera.target - camera.eye).length() * (1.0 / self.zoom_delta)))
+        };
         let len = (camera.target - new_eye).length();
 
         camera.target = self.position;
@@ -133,8 +137,8 @@ impl CameraController {
         }
 
         let pan_vec = (DMat2::from_angle(self.yaw.to_radians() - PI) * self.pan_delta).extend(0.0);
-        camera.eye -= pan_vec * speed_koef;
-        camera.target -= pan_vec * speed_koef;
+        camera.eye -= pan_vec;
+        camera.target -= pan_vec;
 
         let distance_from_origin = camera.offset.xy().distance(camera.target.xy());
         if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {

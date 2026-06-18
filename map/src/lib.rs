@@ -11,7 +11,7 @@ use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
 use geo_types::{coord, Coord, Point, Rect};
 use geo_types::{LineString, Polygon};
-use glam::{DVec2, DVec3, Vec2};
+use glam::{DMat2, DVec2, DVec3, Vec2};
 use num::{abs, clamp};
 use osm::styles::style_loader::StyleLoader;
 use osm::styles::{DashStyle, RenderStyle};
@@ -65,6 +65,8 @@ pub struct ShashlikMap<T: TilesProvider> {
     screen_params: ScreenParam,
     map_event_receiver: Receiver<MapEvent>,
     last_interaction: Instant,
+    world_width_on_screen: f64,
+    world_height_on_screen: f64,
 }
 
 enum MapEvent {
@@ -77,10 +79,6 @@ struct ScreenParam {
 }
 
 impl ScreenParam {
-    fn ratio(&self) -> f32 {
-        self.width as f32 / self.height as f32
-    }
-
     fn center(&self) -> Vec2 {
         Vec2::new(self.width as f32, self.height as f32) * 0.5f32
     }
@@ -103,6 +101,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     const FOLLOW_ANIMATION_DELAY_MS: u64 = 2000;
     const TELEPORT_THRESHOLD: f64 = 300.0;
+    const ZOOM_LOCK_DIST: f64 = 100.0;
 
     pub async fn new(
         canvas: Box<dyn WgpuCanvas>,
@@ -165,13 +164,15 @@ impl<T: TilesProvider> ShashlikMap<T> {
             current_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
             cam_follow_mode: true,
-            cam_follow_zoom_lock: Some(30.0),
+            cam_follow_zoom_lock: Some(Self::ZOOM_LOCK_DIST),
             screen_params: ScreenParam {
                 width: screen_size.0 as u32,
                 height: screen_size.1 as u32,
             },
             map_event_receiver,
             last_interaction: Instant::now(),
+            world_width_on_screen: 0.0,
+            world_height_on_screen: 0.0,
         };
         map.set_lon_lat_bearing(initial_coord.x, initial_coord.y, Some(0f32));
         map.load_styles();
@@ -186,6 +187,12 @@ impl<T: TilesProvider> ShashlikMap<T> {
         Some(T::world_to_lon_lat(
             &(world_on_ground.x, world_on_ground.y).into(),
         ))
+    }
+
+    fn world_to_lon_lat(&self, world_on_ground: &DVec2) -> Coord<f64> {
+        T::world_to_lon_lat(
+            &(world_on_ground.x, world_on_ground.y).into(),
+        )
     }
 
     fn run_tiles(
@@ -260,13 +267,32 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     fn fetch_tiles(&mut self) {
+        let world_on_ground_center = self.renderer.clip_to_world(&coord! {x: 0.0, y: 0.0}).unwrap();
+        let world_on_ground_left_top = self.renderer.clip_to_world(&coord! {x: -1.0, y: -1.0}).unwrap();
+        let world_on_ground_left_bottom = self.renderer.clip_to_world(&coord! {x: -1.0, y: 1.0}).unwrap();
+        let world_on_ground_right_bottom = self.renderer.clip_to_world(&coord! {x: 1.0, y: 1.0}).unwrap();
+        let world_on_ground_right_top = self.renderer.clip_to_world(&coord! {x: 1.0, y: -1.0}).unwrap();
+
+        let world_on_ground_center_left = self.renderer.clip_to_world(&coord! {x: -1.0, y: 0.0}).unwrap();
+        let world_on_ground_center_right = self.renderer.clip_to_world(&coord! {x: 1.0, y: 0.0}).unwrap();
+
+        let rotation_matrix = DMat2::from_angle(-self.camera_controller.yaw.to_radians());
+
+        let world_on_ground_rotated_left_top = rotation_matrix * (world_on_ground_left_top - world_on_ground_center) + world_on_ground_center;
+        let world_on_ground_rotated_bottom_right = rotation_matrix * (world_on_ground_right_bottom - world_on_ground_center) + world_on_ground_center;
+        let world_on_ground_center_left = rotation_matrix * (world_on_ground_center_left - world_on_ground_center) + world_on_ground_center;
+        let world_on_ground_center_right = rotation_matrix * (world_on_ground_center_right - world_on_ground_center) + world_on_ground_center;
+
+        self.world_width_on_screen = (world_on_ground_center_left.x - world_on_ground_center_right.x).abs();
+        self.world_height_on_screen = (world_on_ground_rotated_left_top.y - world_on_ground_rotated_bottom_right.y).abs();
+
         let zoom_level = self.camera.scale();
         let zoom_level = ((zoom_level.log2() + 1.0) as i32).max(0);
 
-        let p1 = self.clip_to_lon_lat(&coord! {x: -1.0, y: -1.0}).unwrap();
-        let p2 = self.clip_to_lon_lat(&coord! {x: 1.0, y: -1.0}).unwrap();
-        let p3 = self.clip_to_lon_lat(&coord! {x: 1.0, y: 1.0}).unwrap();
-        let p4 = self.clip_to_lon_lat(&coord! {x: -1.0, y: 1.0}).unwrap();
+        let p1 = self.world_to_lon_lat(&world_on_ground_left_top);
+        let p2 = self.world_to_lon_lat(&world_on_ground_right_top);
+        let p3 = self.world_to_lon_lat(&world_on_ground_right_bottom);
+        let p4 = self.world_to_lon_lat(&world_on_ground_left_bottom);
 
         // this will be compared for intersection later, it should have a correct winding
         let poly: Polygon<f64> = Polygon::new(LineString(vec![p1, p2, p3, p4]), Vec::new());
@@ -322,14 +348,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
             let cam_pos = DVec3::new(cam_pos.x, cam_pos.y, cam_pos.z);
 
             let transform_cam_offset = (self.current_world_position) - cam_pos;
-            let transform_cam_offset_anim = transform_cam_offset * Self::TEMP_ANIMATION_SPEED;
-            // TODO Animation framework. Now it just fixes teleport bug
-            let new_cam_pos = if transform_cam_offset_anim.length() >= Self::TELEPORT_THRESHOLD {
-                cam_pos + transform_cam_offset
-            } else {
-                cam_pos + transform_cam_offset_anim
-            };
-
+            let transform_cam_offset_anim = transform_cam_offset * Self::TEMP_ANIMATION_SPEED * 2.0;
+            let new_cam_pos = cam_pos + transform_cam_offset_anim;
             self.camera_controller.set_new_position(new_cam_pos);
         }
 
@@ -343,9 +363,10 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 (self.current_pitch - self.camera_controller.pitch) * Self::TEMP_ANIMATION_SPEED;
 
             if let Some(zoom_lock) = self.cam_follow_zoom_lock {
-                let current_delta = self.camera_controller.forward_len - zoom_lock;
-                if abs(current_delta) > 10.0 {
-                    self.camera_controller.zoom_delta = current_delta * Self::TEMP_ANIMATION_SPEED;
+                let current_dist = self.camera_controller.forward_len - zoom_lock;
+                if current_dist > 0.0 {
+                    let delta = 1.0 / (1.0 - (abs(current_dist) * 0.005 * Self::TEMP_ANIMATION_SPEED).min(0.05));
+                    self.camera_controller.zoom_delta = delta;
                 }
             }
         }
@@ -356,16 +377,22 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         self.camera_controller.zoom_delta = delta as f64;
 
-        let screen_center = self.screen_params.center();
-        let diff = (Vec2::from(point) - screen_center) * 0.5f32;
-        let px = diff.x / screen_center.x;
-        let py = diff.y / screen_center.y;
-        self.pan_delta(delta * px * self.screen_params.ratio(), delta * py);
+        if delta != 0.0 {
+            let screen_center = self.screen_params.center();
+            let diff = Vec2::from(point) - screen_center;
+
+            let delta = delta as f64;
+            let factor = 1.0 - (1.0 / delta);
+
+            self.pan_delta((factor * diff.x as f64) as f32, (factor * diff.y as f64) as f32);
+        }
     }
 
     pub fn pan_delta(&mut self, delta_x: f32, delta_y: f32) {
         self.reset_last_interaction();
-        self.camera_controller.pan_delta = DVec2::new(delta_x as f64, delta_y as f64);
+        let ax = (delta_x / self.screen_params.width as f32) as f64;
+        let ay = (delta_y / self.screen_params.height as f32) as f64;
+        self.camera_controller.pan_delta = DVec2::new(self.world_width_on_screen * ax, self.world_height_on_screen * ay);
     }
 
     pub fn pitch_delta(&mut self, delta: f32) {
@@ -386,7 +413,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.cam_follow_mode = follow_mode;
 
         if self.cam_follow_mode {
-            self.cam_follow_zoom_lock = Some(30.0);
+            self.cam_follow_zoom_lock = Some(Self::ZOOM_LOCK_DIST);
             self.current_pitch = CameraController::MIN_PITCH;
             self.camera_bearing = self.current_bearing;
         } else {
