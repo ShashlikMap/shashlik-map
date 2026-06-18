@@ -114,16 +114,17 @@ impl CameraController {
     }
 
     pub(crate) fn update_camera(&mut self, camera: &mut Camera) {
-        let speed_koef = self.camera_z / 150.0;
-
         // prevent sharp pitch for a high zoom level to reduce z_far artifacts
         let min_pitch = Self::MIN_PITCH + Self::MIN_PITCH * (self.camera_z * 10.0 / Camera::Z_FAR).clamp(0.0, 1.0);
         let (sin_pitch, cos_pitch) = self.pitch.max(min_pitch).to_radians().sin_cos();
         let (sin_yaw, cos_yaw) = (-self.yaw).to_radians().sin_cos();
 
         let dir = DVec3::new(cos_pitch * sin_yaw, cos_pitch * cos_yaw, sin_pitch).normalize();
-
-        let new_eye = camera.eye + (camera.target - camera.eye).normalize() * self.zoom_delta * speed_koef;
+        let new_eye = if self.zoom_delta == 0.0 {
+            camera.eye
+        } else {
+            camera.target + (dir * ((camera.target - camera.eye).length() * (1.0 / self.zoom_delta)))
+        };
         let len = (camera.target - new_eye).length();
 
         camera.target = self.position;

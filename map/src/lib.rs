@@ -105,6 +105,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     const FOLLOW_ANIMATION_DELAY_MS: u64 = 2000;
     const TELEPORT_THRESHOLD: f64 = 300.0;
+    const ZOOM_LOCK_DIST: f64 = 100.0;
 
     pub async fn new(
         canvas: Box<dyn WgpuCanvas>,
@@ -167,7 +168,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             current_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
             cam_follow_mode: true,
-            cam_follow_zoom_lock: Some(30.0),
+            cam_follow_zoom_lock: Some(Self::ZOOM_LOCK_DIST),
             screen_params: ScreenParam {
                 width: screen_size.0 as u32,
                 height: screen_size.1 as u32,
@@ -354,9 +355,10 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 (self.current_pitch - self.camera_controller.pitch) * Self::TEMP_ANIMATION_SPEED;
 
             if let Some(zoom_lock) = self.cam_follow_zoom_lock {
-                let current_delta = self.camera_controller.forward_len - zoom_lock;
-                if abs(current_delta) > 10.0 {
-                    self.camera_controller.zoom_delta = current_delta * Self::TEMP_ANIMATION_SPEED;
+                let current_dist = self.camera_controller.forward_len - zoom_lock;
+
+                if current_dist > 0.0 {
+                    self.camera_controller.zoom_delta = 1.0 / (1.0 - (abs(current_dist) * 0.005 * Self::TEMP_ANIMATION_SPEED));
                 }
             }
         }
@@ -368,10 +370,15 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.camera_controller.zoom_delta = delta as f64;
 
         let screen_center = self.screen_params.center();
-        let diff = (Vec2::from(point) - screen_center) * 0.5f32;
-        let px = diff.x / screen_center.x;
-        let py = diff.y / screen_center.y;
-        self.pan_delta(delta * px * self.screen_params.ratio(), delta * py);
+        let diff = (Vec2::from(point) - screen_center);
+        if delta != 0.0 {
+            let delta = delta as f64;
+            let factor = 1.0 - (1.0 / delta);
+
+            let ax = (diff.x / self.screen_params.width as f32) as f64;
+            let ay = (diff.y / self.screen_params.height as f32) as f64;
+            self.camera_controller.pan_delta = DVec2::new((factor * self.ddx * ax), (factor * self.ddy * ay));
+        }
     }
 
     pub fn pan_delta(&mut self, delta_x: f32, delta_y: f32) {
@@ -379,7 +386,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         // println!("KIOL delta = {:?}", DVec2::new(delta_x as f64, delta_y as f64));
         let ax = (delta_x / self.screen_params.width as f32) as f64;
         let ay = (delta_y / self.screen_params.height as f32) as f64;
-        self.camera_controller.pan_delta = DVec2::new(self.ddx * ax as f64, self.ddy * ay as f64);
+        self.camera_controller.pan_delta = DVec2::new(self.ddx * ax, self.ddy * ay);
     }
 
     pub fn pitch_delta(&mut self, delta: f32) {
@@ -400,7 +407,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.cam_follow_mode = follow_mode;
 
         if self.cam_follow_mode {
-            self.cam_follow_zoom_lock = Some(30.0);
+            self.cam_follow_zoom_lock = Some(Self::ZOOM_LOCK_DIST);
             self.current_pitch = CameraController::MIN_PITCH;
             self.camera_bearing = self.current_bearing;
         } else {

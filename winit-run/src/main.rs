@@ -225,10 +225,11 @@ fn main() {
                         }
 
                         let curr_pinch_scale = app.get_current_scale();
+                       
                         if let Some(prev_scale) = &prev_pinch_scale {
-                            let delta = curr_pinch_scale.value / prev_scale.value - 1.0;
+                            let delta = curr_pinch_scale.value / prev_scale.value;
                             if curr_pinch_scale.value > 0.0 && delta != 0.0 {
-                                shashlik_map.zoom_delta(150.0 * delta, (curr_pinch_scale.x, curr_pinch_scale.y));
+                                shashlik_map.zoom_delta(delta, (curr_pinch_scale.x, curr_pinch_scale.y));
                             }
                         }
 
