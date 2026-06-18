@@ -92,7 +92,7 @@ pub struct CameraController {
 }
 
 impl CameraController {
-    pub const MIN_PITCH: f64 = 45.0;
+    pub const MIN_PITCH: f64 = 55.0;
     pub const MAX_PITCH: f64 = 90.0;
 
     const ORIGIN_REBASE_THRESHOLD: f64 = 999.0; // random now, big enough between US/JAPAN
@@ -139,7 +139,6 @@ impl CameraController {
         let pan_vec = (DMat2::from_angle(self.yaw.to_radians() - PI) * self.pan_delta).extend(0.0);
         camera.eye -= pan_vec;
         camera.target -= pan_vec;
-        // println!("KIOL target = {:?}", camera.target);
 
         let distance_from_origin = camera.offset.xy().distance(camera.target.xy());
         if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {
