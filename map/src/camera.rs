@@ -115,7 +115,7 @@ impl CameraController {
 
     pub(crate) fn update_camera(&mut self, camera: &mut Camera) {
         // prevent sharp pitch for a high zoom level to reduce z_far artifacts
-        let min_pitch = Self::MIN_PITCH + Self::MIN_PITCH * (self.camera_z * 10.0 / Camera::Z_FAR).clamp(0.0, 1.0);
+        let min_pitch = Self::MIN_PITCH + (Self::MAX_PITCH - Self::MIN_PITCH) * (self.camera_z * 10.0 / Camera::Z_FAR).clamp(0.0, 1.0);
         let (sin_pitch, cos_pitch) = self.pitch.max(min_pitch).to_radians().sin_cos();
         let (sin_yaw, cos_yaw) = (-self.yaw).to_radians().sin_cos();
 

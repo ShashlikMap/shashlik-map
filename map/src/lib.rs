@@ -11,7 +11,7 @@ use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
 use geo_types::{coord, Coord, Point, Rect};
 use geo_types::{LineString, Polygon};
-use glam::{DVec2, DVec3, Vec2};
+use glam::{DMat2, DVec2, DVec3, Vec2};
 use num::{abs, clamp};
 use osm::styles::style_loader::StyleLoader;
 use osm::styles::{DashStyle, RenderStyle};
@@ -58,6 +58,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     current_world_position: DVec3,
     current_bearing: f64,
     camera_bearing: f64,
+    camera_bearing_locked: f64,
     current_pitch: f64,
     transition_2d_3d_helper: Transition2d3dHelper,
     cam_follow_mode: bool,
@@ -65,8 +66,8 @@ pub struct ShashlikMap<T: TilesProvider> {
     screen_params: ScreenParam,
     map_event_receiver: Receiver<MapEvent>,
     last_interaction: Instant,
-    ddx: f64,
-    ddy: f64,
+    world_width_on_screen: f64,
+    world_height_on_screen: f64,
 }
 
 enum MapEvent {
@@ -79,10 +80,6 @@ struct ScreenParam {
 }
 
 impl ScreenParam {
-    fn ratio(&self) -> f32 {
-        self.width as f32 / self.height as f32
-    }
-
     fn center(&self) -> Vec2 {
         Vec2::new(self.width as f32, self.height as f32) * 0.5f32
     }
@@ -165,6 +162,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             current_world_position: camera_offset,
             current_bearing: 0.0,
             camera_bearing: 0.0,
+            camera_bearing_locked: 0.0,
             current_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
             cam_follow_mode: true,
@@ -175,8 +173,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
             },
             map_event_receiver,
             last_interaction: Instant::now(),
-            ddx: 0.0,
-            ddy: 0.0,
+            world_width_on_screen: 0.0,
+            world_height_on_screen: 0.0,
         };
         map.set_lon_lat_bearing(initial_coord.x, initial_coord.y, Some(0f32));
         map.load_styles();
@@ -191,6 +189,12 @@ impl<T: TilesProvider> ShashlikMap<T> {
         Some(T::world_to_lon_lat(
             &(world_on_ground.x, world_on_ground.y).into(),
         ))
+    }
+
+    fn world_to_lon_lat(&self, world_on_ground: &DVec2) -> Coord<f64> {
+        T::world_to_lon_lat(
+            &(world_on_ground.x, world_on_ground.y).into(),
+        )
     }
 
     fn run_tiles(
@@ -265,20 +269,27 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     fn fetch_tiles(&mut self) {
-        let world_on_ground1 = self.renderer.clip_to_world(&coord! {x: -1.0, y: -1.0}).unwrap();
-        let world_on_ground2 = self.renderer.clip_to_world(&coord! {x: 1.0, y: 1.0}).unwrap();
-        let ddx = (world_on_ground1.x - world_on_ground2.x).abs();
-        let ddy = (world_on_ground1.y - world_on_ground2.y).abs();
-        self.ddx = ddx;
-        self.ddy = ddy;
-        // println!("KIOL ddx: {}, ddy: {}", ddx, ddy);
+        let world_on_ground_center = self.renderer.clip_to_world(&coord! {x: 0.0, y: 0.0}).unwrap();
+        let world_on_ground_left_top = self.renderer.clip_to_world(&coord! {x: -1.0, y: -1.0}).unwrap();
+        let world_on_ground_left_bottom = self.renderer.clip_to_world(&coord! {x: -1.0, y: 1.0}).unwrap();
+        let world_on_ground_right_bottom = self.renderer.clip_to_world(&coord! {x: 1.0, y: 1.0}).unwrap();
+        let world_on_ground_right_top = self.renderer.clip_to_world(&coord! {x: 1.0, y: -1.0}).unwrap();
+
+        let rotation_matrix = DMat2::from_angle(-self.camera_bearing_locked.to_radians());
+
+        let world_on_ground1 = rotation_matrix * (world_on_ground_left_top - world_on_ground_center) + world_on_ground_center;
+        let world_on_ground2 = rotation_matrix * (world_on_ground_right_bottom - world_on_ground_center) + world_on_ground_center;
+
+        self.world_width_on_screen = (world_on_ground1.x - world_on_ground2.x).abs();
+        self.world_height_on_screen = (world_on_ground1.y - world_on_ground2.y).abs();
+
         let zoom_level = self.camera.scale();
         let zoom_level = ((zoom_level.log2() + 1.0) as i32).max(0);
 
-        let p1 = self.clip_to_lon_lat(&coord! {x: -1.0, y: -1.0}).unwrap();
-        let p2 = self.clip_to_lon_lat(&coord! {x: 1.0, y: -1.0}).unwrap();
-        let p3 = self.clip_to_lon_lat(&coord! {x: 1.0, y: 1.0}).unwrap();
-        let p4 = self.clip_to_lon_lat(&coord! {x: -1.0, y: 1.0}).unwrap();
+        let p1 = self.world_to_lon_lat(&world_on_ground_left_top);
+        let p2 = self.world_to_lon_lat(&world_on_ground_right_top);
+        let p3 = self.world_to_lon_lat(&world_on_ground_right_bottom);
+        let p4 = self.world_to_lon_lat(&world_on_ground_left_bottom);
 
         // this will be compared for intersection later, it should have a correct winding
         let poly: Polygon<f64> = Polygon::new(LineString(vec![p1, p2, p3, p4]), Vec::new());
@@ -385,7 +396,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.reset_last_interaction();
         let ax = (delta_x / self.screen_params.width as f32) as f64;
         let ay = (delta_y / self.screen_params.height as f32) as f64;
-        self.camera_controller.pan_delta = DVec2::new(self.ddx * ax, self.ddy * ay);
+        self.camera_controller.pan_delta = DVec2::new(self.world_width_on_screen * ax, self.world_height_on_screen * ay);
     }
 
     pub fn pitch_delta(&mut self, delta: f32) {
@@ -413,6 +424,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             let new_bearing = Self::calc_nearest_bearing(0.0, self.camera_bearing);
             self.camera_bearing = new_bearing;
         }
+        self.camera_bearing_locked = self.camera_bearing;
     }
 
     pub fn set_current_pitch(&mut self, current_pitch: f64) {
@@ -433,6 +445,11 @@ impl<T: TilesProvider> ShashlikMap<T> {
             self.current_bearing = new_bearing;
             if self.cam_follow_mode {
                 self.camera_bearing = new_bearing;
+            }
+
+            // check that camera is in follow mode and there is no interaction
+            if self.should_animate() {
+                self.camera_bearing_locked = self.camera_bearing
             }
         }
     }
