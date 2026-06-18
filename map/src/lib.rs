@@ -58,7 +58,6 @@ pub struct ShashlikMap<T: TilesProvider> {
     current_world_position: DVec3,
     current_bearing: f64,
     camera_bearing: f64,
-    camera_bearing_locked: f64,
     current_pitch: f64,
     transition_2d_3d_helper: Transition2d3dHelper,
     cam_follow_mode: bool,
@@ -162,7 +161,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
             current_world_position: camera_offset,
             current_bearing: 0.0,
             camera_bearing: 0.0,
-            camera_bearing_locked: 0.0,
             current_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
             cam_follow_mode: true,
@@ -275,13 +273,18 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let world_on_ground_right_bottom = self.renderer.clip_to_world(&coord! {x: 1.0, y: 1.0}).unwrap();
         let world_on_ground_right_top = self.renderer.clip_to_world(&coord! {x: 1.0, y: -1.0}).unwrap();
 
-        let rotation_matrix = DMat2::from_angle(-self.camera_bearing_locked.to_radians());
+        let world_on_ground_center_left = self.renderer.clip_to_world(&coord! {x: -1.0, y: 0.0}).unwrap();
+        let world_on_ground_center_right = self.renderer.clip_to_world(&coord! {x: 1.0, y: 0.0}).unwrap();
 
-        let world_on_ground1 = rotation_matrix * (world_on_ground_left_top - world_on_ground_center) + world_on_ground_center;
-        let world_on_ground2 = rotation_matrix * (world_on_ground_right_bottom - world_on_ground_center) + world_on_ground_center;
+        let rotation_matrix = DMat2::from_angle(-self.camera_controller.yaw.to_radians());
 
-        self.world_width_on_screen = (world_on_ground1.x - world_on_ground2.x).abs();
-        self.world_height_on_screen = (world_on_ground1.y - world_on_ground2.y).abs();
+        let world_on_ground_rotated_left_top = rotation_matrix * (world_on_ground_left_top - world_on_ground_center) + world_on_ground_center;
+        let world_on_ground_rotated_bottom_right = rotation_matrix * (world_on_ground_right_bottom - world_on_ground_center) + world_on_ground_center;
+        let world_on_ground_center_left = rotation_matrix * (world_on_ground_center_left - world_on_ground_center) + world_on_ground_center;
+        let world_on_ground_center_right = rotation_matrix * (world_on_ground_center_right - world_on_ground_center) + world_on_ground_center;
+
+        self.world_width_on_screen = (world_on_ground_center_left.x - world_on_ground_center_right.x).abs();
+        self.world_height_on_screen = (world_on_ground_rotated_left_top.y - world_on_ground_rotated_bottom_right.y).abs();
 
         let zoom_level = self.camera.scale();
         let zoom_level = ((zoom_level.log2() + 1.0) as i32).max(0);
@@ -359,6 +362,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         if self.should_animate() || !self.cam_follow_mode {
             let new_cam_yaw = cam_yaw + ((self.camera_bearing - cam_yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
             self.camera_controller.yaw = new_cam_yaw;
+            // error!("KIOL YAW: {}", self.camera_controller.yaw);
         }
 
         if self.should_animate() {
@@ -424,7 +428,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
             let new_bearing = Self::calc_nearest_bearing(0.0, self.camera_bearing);
             self.camera_bearing = new_bearing;
         }
-        self.camera_bearing_locked = self.camera_bearing;
     }
 
     pub fn set_current_pitch(&mut self, current_pitch: f64) {
@@ -445,11 +448,6 @@ impl<T: TilesProvider> ShashlikMap<T> {
             self.current_bearing = new_bearing;
             if self.cam_follow_mode {
                 self.camera_bearing = new_bearing;
-            }
-
-            // check that camera is in follow mode and there is no interaction
-            if self.should_animate() {
-                self.camera_bearing_locked = self.camera_bearing
             }
         }
     }
