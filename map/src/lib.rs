@@ -348,14 +348,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
             let cam_pos = DVec3::new(cam_pos.x, cam_pos.y, cam_pos.z);
 
             let transform_cam_offset = (self.current_world_position) - cam_pos;
-            let transform_cam_offset_anim = transform_cam_offset * Self::TEMP_ANIMATION_SPEED;
-            // TODO Animation framework. Now it just fixes teleport bug
-            let new_cam_pos = if transform_cam_offset_anim.length() >= Self::TELEPORT_THRESHOLD {
-                cam_pos + transform_cam_offset
-            } else {
-                cam_pos + transform_cam_offset_anim
-            };
-
+            let transform_cam_offset_anim = transform_cam_offset * Self::TEMP_ANIMATION_SPEED * 2.0;
+            let new_cam_pos = cam_pos + transform_cam_offset_anim;
             self.camera_controller.set_new_position(new_cam_pos);
         }
 
@@ -370,9 +364,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
             if let Some(zoom_lock) = self.cam_follow_zoom_lock {
                 let current_dist = self.camera_controller.forward_len - zoom_lock;
-
                 if current_dist > 0.0 {
-                    let delta = 1.0 / (1.0 - (abs(current_dist) * 0.005 * Self::TEMP_ANIMATION_SPEED));
+                    let delta = 1.0 / (1.0 - (abs(current_dist) * 0.005 * Self::TEMP_ANIMATION_SPEED).min(0.05));
                     self.camera_controller.zoom_delta = delta;
                 }
             }
