@@ -29,7 +29,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc, LazyLock};
-use std::thread::spawn;
+use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use log::error;
 use ttf_parser::Face;
@@ -143,6 +143,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let zero_zoom_level_loaded = Arc::new(AtomicBool::new(false));
         let transition_2d_3d_helper = Transition2d3dHelper::new(zero_zoom_level_loaded.clone());
         Self::run_tiles(renderer.api.clone(), zero_zoom_level_loaded.clone(), tiles_stream);
+        Self::load_styles(renderer.api.clone());
 
         let mut camera_controller = CameraController::new();
         camera_controller.pitch = CameraController::MIN_PITCH;
@@ -175,7 +176,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             world_height_on_screen: 0.0,
         };
         map.set_lon_lat_bearing(initial_coord.x, initial_coord.y, Some(0f32));
-        map.load_styles();
+
 
         Self::start_sgnss_if_available(map_event_sender);
 
@@ -486,36 +487,38 @@ impl<T: TilesProvider> ShashlikMap<T> {
         })
     }
 
-    fn load_styles(&self) {
-        let mut styles = StyleLoader::load();
-        if styles.is_empty() {
-            error!("No styles loaded! Trying again!");
-            styles = StyleLoader::load();
-        }
-        styles.into_iter().for_each(|style| {
-            let style_id = StyleId(Box::leak(style.id.into_boxed_str()));
-            let actual_render_style = match style.render_style {
-                RenderStyle::Fill(color) => {
-                    renderer::styles::render_style::RenderStyle::fill(color.as_array())
-                }
-                RenderStyle::Border(color, percent) => {
-                    renderer::styles::render_style::RenderStyle::border(color.as_array(), percent)
-                }
-                RenderStyle::Dashed(color1, color2, dash_style) => {
-                    let dash_style_value = match dash_style {
-                        DashStyle::Solid => 0,
-                        DashStyle::Circles => 1,
-                    };
-                    renderer::styles::render_style::RenderStyle::dashed(
-                        color1.as_array(),
-                        color2.as_array(),
-                        dash_style_value,
-                    )
-                }
-            };
-            self.renderer
-                .api
-                .update_style(style_id, move |style| *style = actual_render_style);
+    fn load_styles(renderer_api: Arc<RendererApi>) {
+        spawn(move || {
+            let mut styles = StyleLoader::load();
+            if styles.is_empty() {
+                error!("No styles loaded! Trying again!");
+                sleep(Duration::from_millis(1000));
+                styles = StyleLoader::load();
+            }
+            styles.into_iter().for_each(|style| {
+                let style_id = StyleId(Box::leak(style.id.into_boxed_str()));
+                let actual_render_style = match style.render_style {
+                    RenderStyle::Fill(color) => {
+                        renderer::styles::render_style::RenderStyle::fill(color.as_array())
+                    }
+                    RenderStyle::Border(color, percent) => {
+                        renderer::styles::render_style::RenderStyle::border(color.as_array(), percent)
+                    }
+                    RenderStyle::Dashed(color1, color2, dash_style) => {
+                        let dash_style_value = match dash_style {
+                            DashStyle::Solid => 0,
+                            DashStyle::Circles => 1,
+                        };
+                        renderer::styles::render_style::RenderStyle::dashed(
+                            color1.as_array(),
+                            color2.as_array(),
+                            dash_style_value,
+                        )
+                    }
+                };
+                renderer_api
+                    .update_style(style_id, move |style| *style = actual_render_style);
+            });
         });
     }
 
