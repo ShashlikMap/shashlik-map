@@ -42,8 +42,8 @@ with Android/iOS mobile apps(Android is priority for now)
 
 ### Now
 - [ ] _In progress_ General Renderer refactoring
+- [ ] _In progress_ Post-processing AA
 ### Next
-- [ ] Post-processing AA
 - [ ] Implement an initial geometric Map-matching POC
 - [ ] CI for KMP mobile SDK + Screenshot rendering
 - [ ] Integrate a simple search
@@ -119,5 +119,3 @@ implementation(libs.shashlikmap)
 - Tileset on the Web Service is generated only for Japan and USA(Bay Area)
 - Android app might not work on Android Emulator with hardware GPU acceleration. Try to change GPU mode to `Software` one.
 - Debug build performance is significantly lower than Release build.
-- The latest unrealeased Slint UI (version 1.16.x) has a VSync issue that locks the frame rate to 60 FPS on macOS.
-- Slint UI currently has quite limited touch gesture support.
