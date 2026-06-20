@@ -9,7 +9,7 @@ pub(crate) struct TextureData {
     pub(crate) format: TextureFormat,
 }
 
-pub const SAMPLE_COUNT: u32 = 4;
+pub const SAMPLE_COUNT: u32 = 1;
 
 pub fn create_color_binding_texture(
     size: (u32, u32),

@@ -46,8 +46,8 @@ impl PassNode for RenderToTexturePassNode {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render To Texture Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &self.msaa_texture_view,
-                resolve_target: Some(&self.rt_texture_view),
+                view: &self.rt_texture_view,
+                resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
                         r: 0.0,

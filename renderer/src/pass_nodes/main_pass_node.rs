@@ -257,8 +257,8 @@ impl PassNode for MainPassNode {
         global_context: &mut GlobalContext,
     ) {
         let msaa_color_attachment = wgpu::RenderPassColorAttachment {
-            view: &self.msaa_texture_view,
-            resolve_target: Some(output_view),
+            view: &output_view,
+            resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(wgpu::Color {
                     r: 0.0,
