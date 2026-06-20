@@ -315,16 +315,16 @@ impl GpuPrimitive {
 
 impl VertexCtor {
     fn to_shape_vertex(&self, position: &Point, normal: &Vector) -> ShapeVertex {
-        ShapeVertex {
-            position: [
-                (position.x - self.original_size.width() / 2.0) * self.scale,
-                // Y should be flipped since mercator coords are flipped
-                (self.original_size.height() / 2.0 - position.y) * self.scale,
-            ],
-            normals: [normal.x, normal.y],
-            uv_dist: [position.x / self.original_size.width(), position.y / self.original_size.height(), 0.0],
-            style_index: self.style_index,
-        }
+        ShapeVertex::new([
+                             (position.x - self.original_size.width() / 2.0) * self.scale,
+                             // Y should be flipped since mercator coords are flipped
+                             (self.original_size.height() / 2.0 - position.y) * self.scale,
+                         ],
+                         [normal.x, normal.y],
+                         [position.x / self.original_size.width(), position.y / self.original_size.height()],
+                         0.0,
+                         self.style_index as u8,
+        )
     }
 }
 

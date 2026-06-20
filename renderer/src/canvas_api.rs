@@ -10,7 +10,7 @@ use crate::styles::style_id::StyleId;
 use crate::styles::style_store::StyleStore;
 use crate::svg::svg_parser::svg_parse;
 use crate::vertex_attrs::ShapeVertex;
-use glam::{DVec3, Vec3};
+use glam::{DVec3, Vec2, Vec3};
 use lyon::geom::euclid::{point2, Box2D};
 use lyon::lyon_tessellation::{
     BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator,
@@ -240,20 +240,24 @@ impl CanvasApi {
         let initial_index = self.geometry.indices.len();
         match geom_type {
             GeometryType::Polyline(options) => {
-                self.tessellate_stroke_path(&data.path, options, |vertex| ShapeVertex {
-                    position: [vertex.position().x, vertex.position().y],
-                    normals: [vertex.normal().x, vertex.normal().y],
-                    uv_dist: [0.0, 0.0, vertex.advancement()],
-                    style_index: style_index as u32,
+                self.tessellate_stroke_path(&data.path, options, |vertex| {
+                    ShapeVertex::new([vertex.position().x, vertex.position().y],
+                                     [vertex.normal().x, vertex.normal().y],
+                                     [0.0, 0.0],
+                                     vertex.advancement(),
+                                     style_index as u8,
+                    )
                 });
             }
             GeometryType::Polygon => {
-                Self::tessellate_fill_path(&data.path, &mut self.geometry, |vertex| ShapeVertex {
-                    position: [vertex.position().x, vertex.position().y],
-                    normals: [0.0, 0.0],
-                    uv_dist: [0.0, 0.0, 0.0], // fill doesn't have length
-                    style_index: style_index as u32,
-                });
+                Self::tessellate_fill_path(&data.path, &mut self.geometry, |vertex|
+                    ShapeVertex::new([vertex.position().x, vertex.position().y],
+                                     [0.0, 0.0],
+                                     [0.0, 0.0],
+                                     0.0,
+                                     style_index as u8,
+                    ),
+                );
             }
         }
         let last_index = self.geometry.indices.len();
@@ -298,12 +302,14 @@ impl CanvasApi {
                     builder.add_rounded_rectangle(&rect, &BorderRadii::new(10.0), Winding::Positive);
                     let path = builder.build();
 
-                    Self::tessellate_fill_path(&path, &mut mesh, |vertex| ShapeVertex {
-                        position: [vertex.position().x, vertex.position().y],
-                        normals: [0.0, 0.0],
-                        uv_dist: [0.0, 0.0, 0.0], // fill doesn't have length
-                        style_index: background_style_index as u32,
-                    });
+                    Self::tessellate_fill_path(&path, &mut mesh, |vertex|
+                        ShapeVertex::new([vertex.position().x, vertex.position().y],
+                                         [0.0, 0.0],
+                                         [0.0, 0.0],
+                                         0.0,
+                                         background_style_index as u8,
+                        )
+                    );
                 }
 
                 svg_parse(data.icon.1, &mut mesh, data.size, style_index);

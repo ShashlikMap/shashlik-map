@@ -24,18 +24,19 @@ struct VertexInput {
     @builtin(instance_index) instance_index : u32,
     @location(0) position: vec2<f32>,
     @location(1) normal: vec2<f32>,
-    @location(2) uv_dist: vec3<f32>,
-    @location(3) style_index: u32,
+    @location(2) uv: vec2<f32>,
+    @location(3) dist: u32,
+    @location(4) style_index: u32,
 }
 
 struct InstanceInput {
-    @location(4) position: vec3<f32>,
-    @location(5) color_alpha: f32,
-    @location(6) model_matrix_0: vec4<f32>,
-    @location(7) model_matrix_1: vec4<f32>,
-    @location(8) model_matrix_2: vec4<f32>,
-    @location(9) model_matrix_3: vec4<f32>,
-    @location(10) bbox: vec4<f32>,
+    @location(5) position: vec3<f32>,
+    @location(6) color_alpha: f32,
+    @location(7) model_matrix_0: vec4<f32>,
+    @location(8) model_matrix_1: vec4<f32>,
+    @location(9) model_matrix_2: vec4<f32>,
+    @location(10) model_matrix_3: vec4<f32>,
+    @location(11) bbox: vec4<f32>
 }
 
 struct VertexOutput {
@@ -90,7 +91,7 @@ fn vs_main(
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
-    out.uv_dist = model.uv_dist;
+    out.uv_dist = vec3f(model.uv, f32(model.dist));
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
@@ -146,7 +147,7 @@ fn vs_main_route(
     }
 
     out.vertex_pos_xy = pointPos.xy;
-    out.uv_dist = model.uv_dist;
+    out.uv_dist = vec3f(model.uv, f32(model.dist));
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
