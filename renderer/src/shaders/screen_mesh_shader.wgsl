@@ -11,7 +11,7 @@ var<immediate> texture_type: TextureType;
 
 struct VertexInput {
     @location(0) position: vec2<f32>,
-    @location(1) color: vec3<f32>,
+    @location(1) color: vec4<f32>,
     @location(2) uv: vec2<f32>,
 }
 
@@ -57,7 +57,7 @@ fn vs_main(
         coord.y *= camera.inv_screen_size.y;
         coord.y = 2.0*(coord.y - 0.5) * -1.0;
     }
-    out.color = vec4f(model.color, pos.color_alpha);
+    out.color = vec4f(model.color.rgb, pos.color_alpha);
     out.uv = model.uv;
     out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
 

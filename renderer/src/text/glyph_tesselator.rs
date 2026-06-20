@@ -108,26 +108,22 @@ struct GlyphVertexConstructor {
 
 impl FillVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
     fn new_vertex(&mut self, vertex: FillVertex) -> MeshVertexWithUV {
-        MeshVertexWithUV {
-            position: [
-                vertex.position().x + self.offset.x,
-                vertex.position().y + self.offset.y,
-            ],
-            color: [self.color.r as f32, self.color.g as f32, self.color.b as f32],
-            uv: [0.0, 0.0],
-        }
+        MeshVertexWithUV::new([
+                                  vertex.position().x + self.offset.x,
+                                  vertex.position().y + self.offset.y,
+                              ],
+                              [self.color.r as f32, self.color.g as f32, self.color.b as f32],
+                              [0.0, 0.0])
     }
 }
 
 impl StrokeVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
     fn new_vertex(&mut self, vertex: lyon::tessellation::StrokeVertex) -> MeshVertexWithUV {
-        MeshVertexWithUV {
-            position: [
-                vertex.position().x + self.offset.x,
-                vertex.position().y + self.offset.y,
-            ],
-            color: [self.color.r as f32, self.color.g as f32, self.color.b as f32],
-            uv: [0.0, 0.0],
-        }
+        MeshVertexWithUV::new([
+                                  vertex.position().x + self.offset.x,
+                                  vertex.position().y + self.offset.y,
+                              ],
+                              [self.color.r as f32, self.color.g as f32, self.color.b as f32],
+                              [0.0, 0.0])
     }
 }
