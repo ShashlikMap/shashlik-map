@@ -23,46 +23,66 @@ fn shadow_map(t_depth: texture_depth_2d, s_compare: sampler_comparison, coord: v
 @if(CASTANO)
 fn castano(t_depth: texture_depth_2d, s_compare: sampler_comparison, coord: vec2f, depth_with_bias: f32) -> f32 {
     let tex_size = vec2f(textureDimensions(t_depth));
-    let texelSize = 1.0 / tex_size;
+    let texel_size = 1.0 / tex_size;
 
     let uv = coord * tex_size;
-    var base_uv = floor(uv + 0.5);
-    let s = (uv.x + 0.5 - base_uv.x);
-    let t = (uv.y + 0.5 - base_uv.y);
-    base_uv -= 0.5;
-    base_uv *= texelSize;
+    let base_uv_pixels = floor(uv + 0.5);
 
-    let uw0 = (4.0 - 3.0 * s);
-    let uw1 = 7.0;
-    let uw2 = (1.0 + 3.0 * s);
+    let st = uv + 0.5 - base_uv_pixels;
+    let s = st.x;
+    let t = st.y;
+    let base_uv = (base_uv_pixels - 0.5) * texel_size;
 
-    let u0 = (3.0 - 2.0 * s) / uw0 - 2.0;
-    let u1 = (3.0 + s) / uw1;
-    let u2 = s / uw2 + 2.0;
+    let uw = vec3f(4.0 - 3.0 * s, 7.0, 1.0 + 3.0 * s);
+    let vw = vec3f(4.0 - 3.0 * t, 7.0, 1.0 + 3.0 * t);
 
-    let vw0 = (4.0 - 3.0 * t);
-    let vw1 = 7.0;
-    let vw2 = (1.0 + 3.0 * t);
+    let inv_uw = 1.0 / uw;
+    let inv_vw = 1.0 / vw;
 
-    let v0 = (3.0 - 2.0 * t) / vw0 - 2.0;
-    let v1 = (3.0 + t) / vw1;
-    let v2 = t / vw2 + 2.0;
+    let u_offsets = vec3f(3.0 - 2.0 * s, 3.0 + s, s) * inv_uw + vec3f(-2.0, 0.0, 2.0);
+    let v_offsets = vec3f(3.0 - 2.0 * t, 3.0 + t, t) * inv_vw + vec3f(-2.0, 0.0, 2.0);
+
+    let u_tex = u_offsets * texel_size.x;
+    let v_tex = v_offsets * texel_size.y;
+
+    let c_bl = textureSampleCompare(t_depth, s_compare, base_uv + vec2f(u_tex.x, v_tex.x), depth_with_bias); // Bottom-Left
+    let c_br = textureSampleCompare(t_depth, s_compare, base_uv + vec2f(u_tex.z, v_tex.x), depth_with_bias); // Bottom-Right
+    let c_tl = textureSampleCompare(t_depth, s_compare, base_uv + vec2f(u_tex.x, v_tex.z), depth_with_bias); // Top-Left
+    let c_tr = textureSampleCompare(t_depth, s_compare, base_uv + vec2f(u_tex.z, v_tex.z), depth_with_bias); // Top-Right
+
+    let corner_sum = c_bl + c_br + c_tl + c_tr;
+
+    // Out if fully unshadowed (4.0) or fully shadowed (0.0)
+    if (corner_sum == 4.0) {
+        return 1.0;
+    }
+    if (corner_sum == 0.0) {
+        return 0.0;
+    }
+
+    let c_bm = textureSampleCompare(t_depth, s_compare, base_uv + vec2f(u_tex.y, v_tex.x), depth_with_bias); // Bottom-Middle
+
+    let c_ml = textureSampleCompare(t_depth, s_compare, base_uv + vec2f(u_tex.x, v_tex.y), depth_with_bias); // Middle-Left
+    let c_mm = textureSampleCompare(t_depth, s_compare, base_uv + vec2f(u_tex.y, v_tex.y), depth_with_bias); // Middle-Middle
+    let c_mr = textureSampleCompare(t_depth, s_compare, base_uv + vec2f(u_tex.z, v_tex.y), depth_with_bias); // Middle-Right
+
+    let c_tm = textureSampleCompare(t_depth, s_compare, base_uv + vec2f(u_tex.y, v_tex.z), depth_with_bias); // Top-Middle
 
     var sum = 0.0;
+    sum += uw.x * vw.x * c_bl;
+    sum += uw.y * vw.x * c_bm;
+    sum += uw.z * vw.x * c_br;
 
-    sum += uw0 * vw0 * textureSampleCompare(t_depth, s_compare, base_uv + (vec2(u0, v0) * texelSize), depth_with_bias);
-    sum += uw1 * vw0 * textureSampleCompare(t_depth, s_compare, base_uv + (vec2(u1, v0) * texelSize), depth_with_bias);
-    sum += uw2 * vw0 * textureSampleCompare(t_depth, s_compare, base_uv + (vec2(u2, v0) * texelSize), depth_with_bias);
+    sum += uw.x * vw.y * c_ml;
+    sum += uw.y * vw.y * c_mm;
+    sum += uw.z * vw.y * c_mr;
 
-    sum += uw0 * vw1 * textureSampleCompare(t_depth, s_compare, base_uv + (vec2(u0, v1) * texelSize), depth_with_bias);
-    sum += uw1 * vw1 * textureSampleCompare(t_depth, s_compare, base_uv + (vec2(u1, v1) * texelSize), depth_with_bias);
-    sum += uw2 * vw1 * textureSampleCompare(t_depth, s_compare, base_uv + (vec2(u2, v1) * texelSize), depth_with_bias);
+    sum += uw.x * vw.z * c_tl;
+    sum += uw.y * vw.z * c_tm;
+    sum += uw.z * vw.z * c_tr;
 
-    sum += uw0 * vw2 * textureSampleCompare(t_depth, s_compare, base_uv + (vec2(u0, v2) * texelSize), depth_with_bias);
-    sum += uw1 * vw2 * textureSampleCompare(t_depth, s_compare, base_uv + (vec2(u1, v2) * texelSize), depth_with_bias);
-    sum += uw2 * vw2 * textureSampleCompare(t_depth, s_compare, base_uv + (vec2(u2, v2) * texelSize), depth_with_bias);
-
-    return sum * (1.0 / 144.0);
+    // 1.0 / 144.0
+    return sum * 0.006944444;
 }
 
 fn pcf(t_depth: texture_depth_2d, s_compare: sampler_comparison, coord: vec2f, blur_size: f32, depth_with_bias: f32) -> f32 {

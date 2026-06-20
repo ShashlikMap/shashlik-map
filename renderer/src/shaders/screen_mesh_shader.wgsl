@@ -10,10 +10,9 @@ var<uniform> camera: CameraUniform;
 var<immediate> texture_type: TextureType;
 
 struct VertexInput {
-    @location(0) position: vec3<f32>,
-    @location(1) normal: vec3<f32>,
-    @location(2) color: vec3<f32>,
-    @location(3) uv: vec2<f32>,
+    @location(0) position: vec2<f32>,
+    @location(1) color: vec3<f32>,
+    @location(2) uv: vec2<f32>,
 }
 
 struct InstanceInput {
@@ -46,7 +45,7 @@ fn vs_main(
             pos.model_matrix_2,
             pos.model_matrix_3,
     );
-    let model_position = model_matrix * vec4(model.position.xyz, 1.0);
+    let model_position = model_matrix * vec4(model.position, 0.0, 1.0);
     let ratio_fixed_modelpos = vec4(model_position.xy * vec2(2.0*camera.inv_screen_size.x, 2.0*camera.inv_screen_size.y), model_position.z, 1.0);
 
     var coord = vec4<f32>(pos.position.xy, 0.0, 1.0);

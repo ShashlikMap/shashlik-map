@@ -27,14 +27,14 @@ pub struct ShapeVertex {
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct MeshVertexWithUV {
-    pub mesh_vertex: MeshVertex,
+    pub position: [f32; 2],
     pub color: [f32; 3],
     pub uv: [f32; 2],
 }
 
 impl VertexAttrib for MeshVertexWithUV {
     const ATTRIBUTES: &[VertexAttribute] =
-        &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2=> Float32x3, 3 => Float32x2];
+        &wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x3, 2 => Float32x2];
 
     const STEP_MODE: VertexStepMode = wgpu::VertexStepMode::Vertex;
 }

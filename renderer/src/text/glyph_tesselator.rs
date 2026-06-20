@@ -1,4 +1,3 @@
-use crate::draw_commands::MeshVertex;
 use crate::vertex_attrs::MeshVertexWithUV;
 use glam::Vec2;
 use lyon::lyon_tessellation::{BuffersBuilder, FillOptions, FillTessellator, FillVertex, FillVertexConstructor, LineCap, LineJoin, StrokeVertexConstructor, VertexBuffers};
@@ -110,14 +109,10 @@ struct GlyphVertexConstructor {
 impl FillVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
     fn new_vertex(&mut self, vertex: FillVertex) -> MeshVertexWithUV {
         MeshVertexWithUV {
-            mesh_vertex: MeshVertex {
-                position: [
-                    vertex.position().x + self.offset.x,
-                    vertex.position().y + self.offset.y,
-                    0.0,
-                ],
-                normals: [0.0, 0.0, 0.0],
-            },
+            position: [
+                vertex.position().x + self.offset.x,
+                vertex.position().y + self.offset.y,
+            ],
             color: [self.color.r as f32, self.color.g as f32, self.color.b as f32],
             uv: [0.0, 0.0],
         }
@@ -127,14 +122,10 @@ impl FillVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
 impl StrokeVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
     fn new_vertex(&mut self, vertex: lyon::tessellation::StrokeVertex) -> MeshVertexWithUV {
         MeshVertexWithUV {
-            mesh_vertex: MeshVertex {
-                position: [
-                    vertex.position().x + self.offset.x,
-                    vertex.position().y + self.offset.y,
-                    0.0,
-                ],
-                normals: [0.0, 0.0, 0.0],
-            },
+            position: [
+                vertex.position().x + self.offset.x,
+                vertex.position().y + self.offset.y,
+            ],
             color: [self.color.r as f32, self.color.g as f32, self.color.b as f32],
             uv: [0.0, 0.0],
         }

@@ -266,7 +266,8 @@ impl PassNode for MainPassNode {
                     b: 0.961,
                     a: 1.0,
                 }),
-                store: wgpu::StoreOp::Store,
+                // FYI!! Discard output! It improves MSAA drastically on low-end devices
+                store: wgpu::StoreOp::Discard,
             },
             depth_slice: None,
         };

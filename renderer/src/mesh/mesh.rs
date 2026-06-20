@@ -1,4 +1,3 @@
-use crate::draw_commands::MeshVertex;
 use crate::mesh::InstanceBuffer;
 use crate::vertex_attrs::MeshVertexWithUV;
 use bytemuck::{NoUninit, Pod};
@@ -35,34 +34,22 @@ impl Mesh {
     pub fn quad(device: &Device, width: f32, height: f32) -> Self {
         let mut geometry_buffer: VertexBuffers<MeshVertexWithUV, u32> = VertexBuffers::new();
         geometry_buffer.vertices.push(MeshVertexWithUV {
-            mesh_vertex: MeshVertex {
-                position: [0.0, 0.0, 0.0],
-                normals: [0.0, 0.0, 0.0],
-            },
+            position: [0.0, 0.0],
             color: [0.0, 0.0, 0.0],
             uv: [0.0, 1.0],
         });
         geometry_buffer.vertices.push(MeshVertexWithUV {
-            mesh_vertex: MeshVertex {
-                position: [width, 0.0, 0.0],
-                normals: [0.0, 0.0, 0.0],
-            },
+            position: [width, 0.0],
             color: [0.0, 0.0, 0.0],
             uv: [1.0, 1.0],
         });
         geometry_buffer.vertices.push(MeshVertexWithUV {
-            mesh_vertex: MeshVertex {
-                position: [0.0, height, 0.0],
-                normals: [0.0, 0.0, 0.0],
-            },
+            position: [0.0, height],
             color: [0.0, 0.0, 0.0],
             uv: [0.0, 0.0],
         });
         geometry_buffer.vertices.push(MeshVertexWithUV {
-            mesh_vertex: MeshVertex {
-                position: [width, height, 0.0],
-                normals: [0.0, 0.0, 0.0],
-            },
+            position: [width, height],
             color: [0.0, 0.0, 0.0],
             uv: [1.0, 0.0],
         });
