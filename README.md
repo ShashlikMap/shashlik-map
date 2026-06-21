@@ -42,7 +42,6 @@ with Android/iOS mobile apps(Android is priority for now)
 
 ### Now
 - [ ] _In progress_ General Renderer refactoring
-- [ ] _In progress_ Post-processing AA
 ### Next
 - [ ] Implement an initial geometric Map-matching POC
 - [ ] CI for KMP mobile SDK + Screenshot rendering
@@ -52,6 +51,7 @@ with Android/iOS mobile apps(Android is priority for now)
 - [ ] Software Dead-reckoning
 - [ ] Move TextRenderer to the separate repo
 - [ ] Explore Mesh Shader
+- [ ] Post-processing AA(SMAA)
 
 ## Running examples
 ### macOS
