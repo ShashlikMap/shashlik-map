@@ -201,7 +201,7 @@ impl MainPassNode {
             non_msaa_texture_view_normals,
             depth_texture_view: create_depth_texture(size,
                                                      SAMPLE_COUNT,
-                                                     TextureFormat::Depth24Plus,
+                                                     TextureFormat::Depth24PlusStencil8,
                                                      global_context.device()),
             non_msaa_depth_texture_view,
             ssao_bind_group,
@@ -278,7 +278,10 @@ impl PassNode for MainPassNode {
                 load: wgpu::LoadOp::Clear(1.0),
                 store: wgpu::StoreOp::Store,
             }),
-            stencil_ops: None,
+            stencil_ops: Some(wgpu::Operations {
+                load: wgpu::LoadOp::Clear(0),
+                store: wgpu::StoreOp::Store,
+            }),
         };
 
         if unsafe { SSAO_ENABLED } {

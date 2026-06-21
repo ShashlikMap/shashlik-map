@@ -1,6 +1,5 @@
 use std::mem;
 use glam::{Vec2, Vec4};
-use num::traits::float::FloatCore;
 use wgpu::{BufferAddress, VertexAttribute, VertexStepMode};
 use crate::draw_commands::MeshVertex;
 

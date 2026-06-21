@@ -7,8 +7,8 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::modifier::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use std::mem;
-use wgpu::{CommandEncoder, ComputePassDescriptor, Face, RenderPass};
 use wgpu::TextureFormat::Rgba16Float;
+use wgpu::{CommandEncoder, ComputePassDescriptor, Face, RenderPass};
 
 pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
@@ -17,10 +17,11 @@ pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
     shadow_pipeline: Option<wgpu::RenderPipeline>,
     render_data_holder: RenderDataHolder<PositionedMesh<P::InstanceInputType>>,
     pub disable_skip_mesh_feature: bool,
+    write_to_stencil: bool,
 }
 
 impl<P: RenderPipeline> GeneralMeshLayer<P> {
-    pub fn new(render_pipeline: P) -> Self {
+    pub fn new(render_pipeline: P, write_to_stencil: bool) -> Self {
         GeneralMeshLayer {
             render_pipeline,
             pipeline: None,
@@ -28,6 +29,7 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
             shadow_pipeline: None,
             render_data_holder: RenderDataHolder::new(),
             disable_skip_mesh_feature: false,
+            write_to_stencil
         }
     }
     pub fn add(
@@ -78,9 +80,22 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
 
 impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
     fn prepare(&mut self, global_context: &GlobalContext) {
-        let descriptor = self.render_pipeline.prepare(global_context);
+        let mut descriptor = self.render_pipeline.prepare(global_context);
         let mut g_buffer_descriptor = descriptor.clone();
         let mut shadow_descriptor = descriptor.clone();
+        if self.write_to_stencil {
+            descriptor.depth_stencil.as_mut().unwrap().stencil = wgpu::StencilState {
+                front: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::Always,
+                    fail_op: wgpu::StencilOperation::Keep,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Replace,
+                },
+                back: wgpu::StencilFaceState::default(),
+                read_mask: 0xFF,
+                write_mask: 0xFF,
+            };
+        }
 
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
 
@@ -144,6 +159,9 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
                 render_pass.set_pipeline(self.shadow_pipeline.as_ref().unwrap());
             } else {
                 render_pass.set_pipeline(render_pipeline);
+                if self.write_to_stencil {
+                    render_pass.set_stencil_reference(1);
+                }
             }
 
             self.render_pipeline.render(render_pass, global_context);
