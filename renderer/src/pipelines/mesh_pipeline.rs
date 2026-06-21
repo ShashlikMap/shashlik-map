@@ -199,7 +199,7 @@ impl RenderPipeline for MeshPipeline {
             },
             depth_stencil: Some({
                 DepthStencilState {
-                    format: TextureFormat::Depth24Plus,
+                    format: TextureFormat::Depth24PlusStencil8,
                     depth_write_enabled: Some(true),
                     depth_compare: Some(CompareFunction::Less),
                     stencil: Default::default(),

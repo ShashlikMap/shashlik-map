@@ -47,7 +47,8 @@ impl Layers {
     ) -> Layers {
         let feature_layers = FeatureLayers::new(world_shapes_feature_tags,
                                                 |tag| {
-                                                    GeneralMeshLayer::new(ShapePipeline::new(global_context, tag.vertex_shader, tag.indirect))
+                                                    GeneralMeshLayer::new(ShapePipeline::new(global_context, tag.vertex_shader, tag.indirect),
+                                                    false)
                                                 });
         let text_feature_layers = FeatureLayers::new(vec![
             NameLayerTag(WORLD_TEXT_LAYER),
@@ -66,8 +67,8 @@ impl Layers {
 
         Layers {
             feature_layers,
-            mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context)),
-            shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, None, false)),
+            mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context), true),
+            shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, None, false), false),
             screen_shape_layer: ScreenShapeLayer::new(ShapePipeline::new(global_context, Some("vs_main_screen"), false),
                                                       global_context),
             shadow_map_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
@@ -75,20 +76,20 @@ impl Layers {
                 filterable: false,
                 vs_shader: Some("vs_main_sm"),
                 fs_shader: "fs_main_sm",
-            }), true, false),
+            }), true, false, true),
             text_feature_layers,
             preview_mesh_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
                 use_texture: true,
                 filterable: true,
                 vs_shader: None,
                 fs_shader: "fs_main_textured",
-            }), false, true),
+            }), false, true, false),
             post_process_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
                 use_texture: true,
                 filterable: true,
                 vs_shader: None,
                 fs_shader: "fs_main_tex_storage",
-            }), true, false),
+            }), true, false, false),
         }
     }
 
@@ -132,11 +133,13 @@ impl BaseMeshLayer for Layers {
             self.shape_layer.render(render_pass, global_context);
         }
         if !global_context.is_preview_render {
+            self.mesh_layer.render(render_pass, global_context);
+
             let not_shadow_or_g_buf = !global_context.is_g_buffer_render && !global_context.is_shadow_render;
             if unsafe { SHADOWS_ENABLED } && not_shadow_or_g_buf {
                 self.shadow_map_layer.render(render_pass, global_context);
             }
-            self.mesh_layer.render(render_pass, global_context);
+
             if unsafe { SSAO_ENABLED } && not_shadow_or_g_buf {
                 self.post_process_layer.render(render_pass, global_context);
             }

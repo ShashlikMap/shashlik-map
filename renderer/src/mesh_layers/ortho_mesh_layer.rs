@@ -6,7 +6,7 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::pipelines::{RenderPipeline, WithTexture};
 use crate::vertex_attrs::TextInstanceInput;
 use log::error;
-use wgpu::{BindGroup, CommandEncoder, RenderPass, TextureFormat, TextureUsages, TextureView};
+use wgpu::{BindGroup, CommandEncoder, RenderPass, StencilFaceState, TextureFormat, TextureUsages, TextureView};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone)]
@@ -25,12 +25,14 @@ pub struct OrthoMeshLayer<P: RenderPipeline + WithTexture> {
     full_screen_mesh: bool,
     is_bottom_right: bool,
     texture_type: TextureType,
+    read_stencil: bool
 }
 
 impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
     pub fn new(render_pipeline: P,
                full_screen_mesh: bool,
-               is_bottom_right: bool) -> Self {
+               is_bottom_right: bool,
+               read_stencil: bool) -> Self {
         Self {
             render_pipeline,
             pipeline: None,
@@ -40,6 +42,7 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
             full_screen_mesh,
             is_bottom_right,
             texture_type: TextureType::GeneralRgba,
+            read_stencil
         }
     }
 
@@ -120,7 +123,21 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
 
 impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
     fn prepare(&mut self, global_context: &GlobalContext) {
-        let descriptor = self.render_pipeline.prepare(global_context);
+        let mut descriptor = self.render_pipeline.prepare(global_context);
+        if self.read_stencil {
+            descriptor.depth_stencil.as_mut().unwrap().stencil = wgpu::StencilState {
+                front: StencilFaceState::IGNORE,
+                back: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::NotEqual,
+                    fail_op: wgpu::StencilOperation::Keep,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Keep,
+                },
+                read_mask: 0xFF,
+                write_mask: 0x00,
+            };
+        }
+
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
     }
 
@@ -135,6 +152,9 @@ impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
         }
         if let (Some(render_pipeline), Some(mesh)) = (self.pipeline.as_ref(), self.mesh.as_ref()) {
             render_pass.set_pipeline(render_pipeline);
+            if self.read_stencil {
+                render_pass.set_stencil_reference(1);
+            }
 
             self.render_pipeline.render(render_pass, global_context);
 
