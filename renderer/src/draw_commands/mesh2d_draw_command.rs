@@ -34,6 +34,7 @@ impl DrawCommand for Mesh2dDrawCommand {
         buffer_pool: &mut BufferPool
     ) {
         let device = global_context.device();
+        let queue = global_context.queue();
         if let Some(feature_layer) = self
             .feature_layer_tag
             .as_ref()
@@ -50,7 +51,8 @@ impl DrawCommand for Mesh2dDrawCommand {
             if let Some(first_batch) = self.batches.first_mut() {
                 let mesh = Mesh::create_layered(
                     Some(key.as_str()),
-                    &device,
+                    device,
+                    queue,
                     buffer_pool,
                     &first_batch.mesh,
                     mem::take(&mut first_batch.layers_indices),

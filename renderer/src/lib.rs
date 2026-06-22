@@ -127,7 +127,7 @@ impl ShashlikRenderer {
             api,
             fps_counter: FpsCounter::new(),
             global_context,
-            buffer_pool: BufferPool {},
+            buffer_pool: BufferPool::new(),
             preview_textures: HashMap::new(),
             current_preview_type: PreviewType::None
         })

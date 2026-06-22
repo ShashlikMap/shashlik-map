@@ -18,7 +18,7 @@ impl DrawCommand for TextDrawCommand {
         spatial_data: SpatialData,
         _spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         layers: &mut Layers,
-        buffer_pool: &mut BufferPool
+        _buffer_pool: &mut BufferPool
     ) {
         layers
             .text_feature_layers.get_layer(WORLD_TEXT_LAYER).unwrap()

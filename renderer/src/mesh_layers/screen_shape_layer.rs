@@ -56,6 +56,7 @@ impl<P: RenderPipeline> ScreenShapeLayer<P> {
         command: &mut Mesh2dDrawCommand,
     ) {
         let device = global_context.device();
+        let queue = global_context.queue();
 
         let mut data = vec![];
         command.batches.iter_mut().for_each(|batch| {
@@ -64,8 +65,9 @@ impl<P: RenderPipeline> ScreenShapeLayer<P> {
             self.meshes.entry(instance_key.clone()).or_insert({
                 (
                     Mesh::create_layered(
-                        Some(key),
-                        &device,
+                        None, // TODO icons cache itself here?
+                        device,
+                        queue,
                         buffer_pool,
                         &batch.mesh,
                         mem::take(&mut batch.layers_indices),

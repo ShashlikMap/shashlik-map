@@ -65,6 +65,7 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
 
         let texture_format = texture_view.texture().format();
         let texture_usage = texture_view.texture().usage();
+        let queue = global_context.queue();
         self.texture_type = if texture_format.is_depth_stencil_format() {
             TextureType::Depth
         } else if texture_format == TextureFormat::R16Float
@@ -87,6 +88,7 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
             mesh_size = (screen_size.0 as f32, screen_size.1 as f32);
             self.mesh = Some(Mesh::quad(
                 device,
+                queue,
                 buffer_pool,
                 screen_size.0 as f32,
                 screen_size.1 as f32,
@@ -100,6 +102,7 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
 
             self.mesh = Some(Mesh::quad(
                 device,
+                queue,
                 buffer_pool,
                 mesh_size.0,
                 mesh_size.1

@@ -56,7 +56,7 @@ impl TextRenderer {
             instance_buffer_map: FxHashMap::default(),
             glyph_cache,
             glyph_data: FxHashMap::default(),
-            buffer_pool: BufferPool {}
+            buffer_pool: BufferPool::new()
         }
     }
 
@@ -112,8 +112,9 @@ impl TextRenderer {
 
         if !self.instance_buffer_map.is_empty() && !glyph_data.is_empty() {
             let device = global_context.device();
+            let queue = global_context.queue();
             glyph_data.iter().for_each(|(glyph_id, list)| {
-                let glyph_mesh = self.glyph_cache.get_or_tessellate(device, &mut self.buffer_pool, glyph_id);
+                let glyph_mesh = self.glyph_cache.get_or_tessellate(device, queue, &mut self.buffer_pool, glyph_id);
                 let v_buf = &glyph_mesh.vertex_buf;
                 if v_buf.size() > 0 {
                     let (i_buf, i_buf_len) = &glyph_mesh.index_buf;

@@ -59,9 +59,11 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
         batch: &mut Mesh2dCommandBatch,
     ) {
         let device = global_context.device();
+        let queue = global_context.queue();
         let mesh = Mesh::create_layered(
             Some(key),
-            &device,
+            device,
+            queue,
             buffer_pool,
             &batch.mesh,
             mem::take(&mut batch.layers_indices),
