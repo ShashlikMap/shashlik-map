@@ -9,6 +9,7 @@ use crate::pipelines::RenderPipeline;
 use std::mem;
 use wgpu::TextureFormat::Rgba16Float;
 use wgpu::{CommandEncoder, ComputePassDescriptor, Face, RenderPass};
+use crate::buffer_pool::BufferPool;
 
 pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
@@ -54,11 +55,14 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
         key: &str,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         global_context: &mut GlobalContext,
+        buffer_pool: &mut BufferPool,
         batch: &mut Mesh2dCommandBatch,
     ) {
         let device = global_context.device();
         let mesh = Mesh::create_layered(
+            Some(key),
             &device,
+            buffer_pool,
             &batch.mesh,
             mem::take(&mut batch.layers_indices),
         );

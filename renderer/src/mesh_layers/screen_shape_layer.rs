@@ -16,6 +16,7 @@ use std::mem;
 use glam::DVec3;
 use num::clamp;
 use wgpu::{CommandEncoder, RenderPass};
+use crate::buffer_pool::BufferPool;
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
 pub(crate) struct ScreenShapeLayer<P: RenderPipeline> {
@@ -51,6 +52,7 @@ impl<P: RenderPipeline> ScreenShapeLayer<P> {
         key: &str,
         spatial_data: SpatialData,
         global_context: &mut GlobalContext,
+        buffer_pool: &mut BufferPool,
         command: &mut Mesh2dDrawCommand,
     ) {
         let device = global_context.device();
@@ -62,7 +64,9 @@ impl<P: RenderPipeline> ScreenShapeLayer<P> {
             self.meshes.entry(instance_key.clone()).or_insert({
                 (
                     Mesh::create_layered(
+                        Some(key),
                         &device,
+                        buffer_pool,
                         &batch.mesh,
                         mem::take(&mut batch.layers_indices),
                     ),

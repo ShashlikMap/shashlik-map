@@ -8,6 +8,7 @@ use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Device, TextureFormat, TextureUsages, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use wgpu_canvas::SHADOWS_TEX_SIZE;
+use crate::buffer_pool::BufferPool;
 
 pub struct GlobalContext {
     pub canvas: Box<dyn WgpuCanvas>,

@@ -7,6 +7,7 @@ use crate::pipelines::{RenderPipeline, WithTexture};
 use crate::vertex_attrs::TextInstanceInput;
 use log::error;
 use wgpu::{BindGroup, CommandEncoder, RenderPass, StencilFaceState, TextureFormat, TextureUsages, TextureView};
+use crate::buffer_pool::BufferPool;
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone)]
@@ -47,7 +48,7 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
     }
 
     // FIXME Positioning should not be here
-    pub fn set_texture(&mut self, texture_view: &TextureView, offset: (f32, f32), global_context: &GlobalContext) {
+    pub fn set_texture(&mut self, texture_view: &TextureView, offset: (f32, f32), global_context: &GlobalContext, buffer_pool: &mut BufferPool) {
         let screen_size = global_context.view_projection.screen_size;
 
         if screen_size.0 == 0.0 || screen_size.1 == 0.0 {
@@ -86,6 +87,7 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
             mesh_size = (screen_size.0 as f32, screen_size.1 as f32);
             self.mesh = Some(Mesh::quad(
                 device,
+                buffer_pool,
                 screen_size.0 as f32,
                 screen_size.1 as f32,
             ));
@@ -98,6 +100,7 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
 
             self.mesh = Some(Mesh::quad(
                 device,
+                buffer_pool,
                 mesh_size.0,
                 mesh_size.1
             ));

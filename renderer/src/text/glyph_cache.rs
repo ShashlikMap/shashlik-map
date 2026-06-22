@@ -6,6 +6,7 @@ use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
 use std::sync::Arc;
 use wgpu::{Color, Device};
+use crate::buffer_pool::BufferPool;
 
 pub(crate) struct GlyphCache {
     face: Arc<DefaultFaceWrapper>,
@@ -20,7 +21,7 @@ impl GlyphCache {
         }
     }
 
-    pub fn get_or_tessellate(&mut self, device: &Device, glyph_id: &GlyphId) -> &Mesh {
+    pub fn get_or_tessellate(&mut self, device: &Device, buffer_pool: &mut BufferPool, glyph_id: &GlyphId) -> &Mesh {
         let glyph_id = glyph_id.clone();
 
         let mesh = self.glyph_mesh_map.entry(glyph_id).or_insert_with(|| {
@@ -30,7 +31,7 @@ impl GlyphCache {
             let path = path_builder.create_path();
             path_builder.tessellate_stroke(&mut buffer, &path, 4.0, Color::WHITE);
             path_builder.tessellate_fill(&mut buffer, &path, Color::BLACK);
-            Mesh::create(&device, &buffer, StyledRangeInfo(0, ""))
+            Mesh::create(None, &device, buffer_pool, &buffer, StyledRangeInfo(0, ""))
         });
 
         mesh
