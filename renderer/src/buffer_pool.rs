@@ -3,7 +3,7 @@ use rustc_hash::FxHashMap;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{Buffer, BufferAddress, BufferUsages, Device, Queue, COPY_BUFFER_ALIGNMENT};
 
-pub(crate) struct BufferPool {
+pub struct BufferPool {
     recycled: Vec<Buffer>,
     used: FxHashMap<String, Vec<Buffer>>,
 }
