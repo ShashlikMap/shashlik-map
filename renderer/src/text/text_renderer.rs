@@ -37,7 +37,7 @@ pub struct TextRenderer {
     instance_buffer_map: FxHashMap<GlyphId, InstanceBuffer<TextInstanceInput>>,
     glyph_cache: GlyphCache,
     glyph_data: FxHashMap<GlyphId, Vec<GlyphData>>,
-    buffer_pool: BufferPool
+    buffer_pool: BufferPool // Just a convenient stub to create buffers for text
 }
 
 impl TextRenderer {

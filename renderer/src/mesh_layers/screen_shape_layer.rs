@@ -62,7 +62,7 @@ impl<P: RenderPipeline> ScreenShapeLayer<P> {
             self.meshes.entry(instance_key.clone()).or_insert({
                 (
                     Mesh::create_layered(
-                        None, // TODO icons cache itself here?
+                        None, // Icons cache itself here!
                         global_context,
                         buffer_pool,
                         &batch.mesh,
