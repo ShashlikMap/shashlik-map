@@ -1,18 +1,18 @@
 use bytemuck::NoUninit;
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use wgpu::{Buffer, BufferAddress, COPY_BUFFER_ALIGNMENT, Device, Queue, wgt, BufferUsages};
+use wgpu::{Buffer, BufferAddress, BufferUsages, COPY_BUFFER_ALIGNMENT, Device, Queue, wgt};
 
 pub(crate) struct BufferPool {
     recycled: Vec<Buffer>,
-    used: HashMap<String, Vec<Buffer>>,
+    used: FxHashMap<String, Vec<Buffer>>,
 }
 
 impl BufferPool {
     pub fn new() -> Self {
         Self {
             recycled: Vec::new(),
-            used: HashMap::default(),
+            used: FxHashMap::default(),
         }
     }
     pub fn create<'a, T: NoUninit>(
@@ -20,6 +20,7 @@ impl BufferPool {
         device: &Device,
         queue: &Queue,
         key: Option<&str>,
+        label: &'static str,
         usage: wgt::BufferUsages,
         data: &'a [T],
     ) -> Buffer {
@@ -27,12 +28,13 @@ impl BufferPool {
 
         if key.is_none() {
             return device.create_buffer_init(&BufferInitDescriptor {
-                label: Some(format!("{:?} Buffer", usage).as_str()),
+                label: Some(label),
                 contents: data,
                 usage,
             });
         }
 
+        // TODO Make it linear
         self.recycled
             .sort_by(|item1, item2| item1.size().cmp(&item2.size()));
 
@@ -42,7 +44,7 @@ impl BufferPool {
             .recycled
             .iter()
             .position(|item| item.size() >= padded_size && item.usage() == actual_usage)
-            .map(|index| self.recycled.remove(index));
+            .map(|index| self.recycled.swap_remove(index));
 
         let buffer = match new_buffer {
             Some(value) => {
@@ -51,7 +53,7 @@ impl BufferPool {
             }
             None => new_buffer
                 .insert(device.create_buffer_init(&BufferInitDescriptor {
-                    label: Some(format!("{:?} Buffer", usage).as_str()),
+                    label: Some(label),
                     contents: data,
                     usage: actual_usage,
                 }))

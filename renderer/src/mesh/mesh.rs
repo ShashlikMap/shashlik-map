@@ -70,8 +70,8 @@ impl Mesh {
         geometry: &VertexBuffers<T, u32>,
         layers_indices: Vec<StyledRange>,
     ) -> Self {
-        let vertex_buffer = buffer_pool.create(device, queue, key, wgpu::BufferUsages::VERTEX, geometry.vertices.as_slice());
-        let index_buffer = buffer_pool.create(device, queue, key, wgpu::BufferUsages::INDEX, geometry.indices.as_slice());
+        let vertex_buffer = buffer_pool.create(device, queue, key, "VertexBuffer", wgpu::BufferUsages::VERTEX, geometry.vertices.as_slice());
+        let index_buffer = buffer_pool.create(device, queue, key, "IndexBuffer", wgpu::BufferUsages::INDEX, geometry.indices.as_slice());
         let num_indices = geometry.indices.len() as u32;
 
         Mesh::new(
