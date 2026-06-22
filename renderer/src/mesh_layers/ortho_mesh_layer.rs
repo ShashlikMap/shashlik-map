@@ -65,7 +65,6 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
 
         let texture_format = texture_view.texture().format();
         let texture_usage = texture_view.texture().usage();
-        let queue = global_context.queue();
         self.texture_type = if texture_format.is_depth_stencil_format() {
             TextureType::Depth
         } else if texture_format == TextureFormat::R16Float
@@ -81,14 +80,12 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
             TextureType::GeneralRgba
         };
 
-        let device = global_context.device();
 
         let mesh_size;
         if self.full_screen_mesh {
             mesh_size = (screen_size.0 as f32, screen_size.1 as f32);
             self.mesh = Some(Mesh::quad(
-                device,
-                queue,
+                global_context,
                 buffer_pool,
                 screen_size.0 as f32,
                 screen_size.1 as f32,
@@ -101,15 +98,13 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
             mesh_size = (width, height);
 
             self.mesh = Some(Mesh::quad(
-                device,
-                queue,
+                global_context,
                 buffer_pool,
                 mesh_size.0,
                 mesh_size.1
             ));
 
         }
-        let queue = global_context.queue();
 
         let position = [
             if self.is_bottom_right { screen_size.0 as f32 - mesh_size.0 } else { 0.0 } + offset.0,
@@ -122,6 +117,9 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
             matrix: Mat4::IDENTITY.to_cols_array_2d(),
             screen_space: 1,
         };
+        
+        let device = global_context.device();
+        let queue = global_context.queue();
         self.instance_buffer
             .update("quad_instance_buffer", device, queue, &vec![attr]);
     }
