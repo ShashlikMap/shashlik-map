@@ -12,12 +12,12 @@ impl BufferPool {
         usage: wgt::BufferUsages,
         data: &'a [T],
     ) -> Buffer {
-        let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
+        let buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some(format!("{:?} Buffer", usage).as_str()),
             contents: bytemuck::cast_slice(data),
             usage,
         });
-        vertex_buffer
+        buffer
     }
     pub fn recycle(&mut self, key: &str) {}
 }
