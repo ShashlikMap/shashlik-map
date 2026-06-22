@@ -1,7 +1,7 @@
 use bytemuck::NoUninit;
 use rustc_hash::FxHashMap;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use wgpu::{Buffer, BufferAddress, BufferUsages, COPY_BUFFER_ALIGNMENT, Device, Queue, wgt};
+use wgpu::{Buffer, BufferAddress, BufferUsages, Device, Queue, COPY_BUFFER_ALIGNMENT};
 
 pub(crate) struct BufferPool {
     recycled: Vec<Buffer>,
@@ -21,43 +21,32 @@ impl BufferPool {
         queue: &Queue,
         key: Option<&str>,
         label: &'static str,
-        usage: wgt::BufferUsages,
+        usage: BufferUsages,
         data: &'a [T],
     ) -> Buffer {
         let data = bytemuck::cast_slice(data);
 
+        // special case, early exit
         if key.is_none() {
-            return device.create_buffer_init(&BufferInitDescriptor {
-                label: Some(label),
-                contents: data,
-                usage,
-            });
+            return Self::create_new(device, label, usage, data);
         }
-
-        // TODO Make it linear
-        self.recycled
-            .sort_by(|item1, item2| item1.size().cmp(&item2.size()));
 
         let actual_usage = usage | BufferUsages::COPY_DST;
         let padded_size = self.padded_size(data);
-        let mut new_buffer = self
+        let new_buffer_index = self
             .recycled
             .iter()
-            .position(|item| item.size() >= padded_size && item.usage() == actual_usage)
-            .map(|index| self.recycled.swap_remove(index));
+            .enumerate()
+            .filter(|(_, item)| item.size() >= padded_size && item.usage() == actual_usage)
+            .min_by_key(|(_, item)| item.size())
+            .map(|(index, _)| index);
+        let new_buffer = new_buffer_index.map(|index| self.recycled.swap_remove(index));
 
-        let buffer = match new_buffer {
-            Some(value) => {
-                queue.write_buffer(&value, 0, data);
-                value
-            }
-            None => new_buffer
-                .insert(device.create_buffer_init(&BufferInitDescriptor {
-                    label: Some(label),
-                    contents: data,
-                    usage: actual_usage,
-                }))
-                .clone(),
+        let buffer = if let Some(value) = new_buffer {
+            queue.write_buffer(&value, 0, data);
+            value
+        } else {
+            Self::create_new(device, label, actual_usage, data)
         };
 
         self.used
@@ -72,6 +61,20 @@ impl BufferPool {
             .extend(self.used.remove(key).into_iter().flatten());
     }
 
+    fn create_new(
+        device: &Device,
+        label: &str,
+        usage: BufferUsages,
+        data: &[u8],
+    ) -> Buffer {
+        device.create_buffer_init(&BufferInitDescriptor {
+            label: Some(label),
+            contents: data,
+            usage,
+        })
+    }
+
+    /// @see device.create_buffer_init. It uses the same approach to calculate padded size
     fn padded_size(&self, data: &[u8]) -> BufferAddress {
         let unpadded_size = data.len() as BufferAddress;
         let align_mask = COPY_BUFFER_ALIGNMENT - 1;
