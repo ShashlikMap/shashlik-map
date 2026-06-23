@@ -126,8 +126,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
 
                 instance_buffer.update(
                     "ScreenInstanceBuffer",
-                    global_context.device(),
-                    global_context.queue(),
+                    global_context,
                     &attrs,
                 )
             });

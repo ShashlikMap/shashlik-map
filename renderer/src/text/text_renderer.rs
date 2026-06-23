@@ -73,8 +73,6 @@ impl TextRenderer {
         glyph_data: &FxHashMap<GlyphId, Vec<GlyphData>>,
     ) {
         let cs_offset = global_context.view_projection.cs_offset;
-        let device = global_context.device();
-        let queue = global_context.queue();
         glyph_data.iter().for_each(|(key, list)| {
             let mut attrs = vec![];
             list.iter().for_each(|glyph_data| {
@@ -95,7 +93,7 @@ impl TextRenderer {
                 .instance_buffer_map
                 .entry(*key)
                 .or_insert(InstanceBuffer::default());
-            instance_buffer.update("TextInstanceBuffer", device, queue, &attrs);
+            instance_buffer.update("TextInstanceBuffer", global_context, &attrs);
         });
     }
 

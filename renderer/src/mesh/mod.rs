@@ -1,7 +1,8 @@
+use crate::global_context::GlobalContext;
 use bytemuck::Pod;
 use std::marker::PhantomData;
 use wgpu::util::DeviceExt;
-use wgpu::{Buffer, Device, Queue};
+use wgpu::Buffer;
 
 pub mod mesh;
 pub mod mesh_instance_input;
@@ -26,19 +27,21 @@ impl<T: Pod> Default for InstanceBuffer<T> {
 }
 
 impl<T: Pod> InstanceBuffer<T> {
-    pub fn update(&mut self, label: &'static str, device: &Device, queue: &Queue, data: &Vec<T>) {
+    pub fn update(&mut self, label: &'static str, global_context: &GlobalContext, data: &Vec<T>) {
         // don't recreate the buffer if its max length doesn't grow
         // TODO benchmark create_buffer_init vs write_buffer vs write_buffer_with
         let data_len = data.len();
         if data_len <= self.max_length
             && let Some(buffer) = self.buffer.as_ref()
         {
+            let queue = global_context.queue();
             queue.write_buffer(buffer, 0, bytemuck::cast_slice(data.as_slice()));
             // FIXME write_buffer_with doesn't work as expected, why?
             // if let Some(mut buf_view) = queue.write_buffer_with(buffer, 0, data_size) {
             //     buf_view.copy_from_slice(data);
             // }
         } else {
+            let device = global_context.device();
             self.buffer = Some(
                 device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some(label),
