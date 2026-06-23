@@ -8,7 +8,7 @@ use crate::modifier::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use std::mem;
 use wgpu::TextureFormat::Rgba16Float;
-use wgpu::{CommandEncoder, ComputePassDescriptor, Face, RenderPass};
+use wgpu::{CommandEncoder, ComputePassDescriptor, Face, RenderPass, TextureFormat};
 use crate::buffer_pool::BufferPool;
 
 pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
@@ -116,6 +116,8 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
             })];
             fragment.entry_point = Some("fs_main_g_buf");
             g_buffer_descriptor.multisample.count = 1;
+            // render pass for g buffer uses Depth24Plus but original descriptor Depth24PlusStencil8
+            g_buffer_descriptor.depth_stencil.as_mut().unwrap().format = TextureFormat::Depth24Plus;
             self.g_buffer_pipeline = Some(g_buffer_descriptor.to_render_pipeline(global_context.device()));
         }
 

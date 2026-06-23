@@ -21,7 +21,7 @@ impl RenderToTexturePassNode {
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
             depth_texture_view: create_depth_texture(size, SAMPLE_COUNT,
-                                                     TextureFormat::Depth24Plus,
+                                                     TextureFormat::Depth24PlusStencil8,
                                                      global_context.device()),
             rt_texture_view: create_color_binding_texture(size, global_context),
         }
