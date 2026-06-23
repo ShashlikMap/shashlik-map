@@ -311,7 +311,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                             .iter()
                             .map(|(rect, _)| rect.clone())
                             .collect();
-                        if collision_handler.insert_rectangles(rects) {
+                        if collision_handler.check_and_insert_rectangles(rects) {
                             alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
                         } else {
                             alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
@@ -352,7 +352,7 @@ impl ColliderTask for TextRendererCollisionHandler {
 
                     // calc only for non screen space
                     if !data.screen_space {
-                        if collision_handler.insert(section_rect) {
+                        if collision_handler.check_and_insert(section_rect) {
                             alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
                         } else {
                             alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
