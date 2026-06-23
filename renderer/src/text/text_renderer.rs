@@ -20,6 +20,7 @@ use std::f32::consts::PI;
 use std::mem;
 use std::sync::Arc;
 use wgpu::RenderPass;
+use crate::buffer_pool::BufferPool;
 
 #[derive(Clone)]
 pub struct GlyphData {
@@ -35,7 +36,8 @@ pub struct TextRenderer {
         CollisionTaskController<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
     instance_buffer_map: FxHashMap<GlyphId, InstanceBuffer<TextInstanceInput>>,
     glyph_cache: GlyphCache,
-    glyph_data: FxHashMap<GlyphId, Vec<GlyphData>>
+    glyph_data: FxHashMap<GlyphId, Vec<GlyphData>>,
+    buffer_pool: BufferPool // Just a convenient stub to create buffers for text
 }
 
 impl TextRenderer {
@@ -53,7 +55,8 @@ impl TextRenderer {
             collision_task_controller,
             instance_buffer_map: FxHashMap::default(),
             glyph_cache,
-            glyph_data: FxHashMap::default()
+            glyph_data: FxHashMap::default(),
+            buffer_pool: BufferPool::new()
         }
     }
 
@@ -108,9 +111,8 @@ impl TextRenderer {
         let glyph_data = mem::take(&mut self.glyph_data);
 
         if !self.instance_buffer_map.is_empty() && !glyph_data.is_empty() {
-            let device = global_context.device();
             glyph_data.iter().for_each(|(glyph_id, list)| {
-                let glyph_mesh = self.glyph_cache.get_or_tessellate(device, glyph_id);
+                let glyph_mesh = self.glyph_cache.get_or_tessellate(global_context, &mut self.buffer_pool, glyph_id);
                 let v_buf = &glyph_mesh.vertex_buf;
                 if v_buf.size() > 0 {
                     let (i_buf, i_buf_len) = &glyph_mesh.index_buf;

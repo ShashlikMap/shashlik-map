@@ -3,6 +3,7 @@ use crate::mesh::mesh::{Mesh, StyledRangeInfo};
 use crate::mesh_layers::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
 use lyon::lyon_tessellation::VertexBuffers;
+use crate::buffer_pool::BufferPool;
 use crate::global_context::GlobalContext;
 
 #[derive(Clone)]
@@ -18,9 +19,10 @@ impl DrawCommand for Mesh3dDrawCommand {
         _spatial_data: SpatialData,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         layers: &mut Layers,
+        buffer_pool: &mut BufferPool
     ) {
 
-        let mesh = Mesh::create(&global_context.device(), &self.mesh, StyledRangeInfo(0, ""));
+        let mesh = Mesh::create(Some(key.as_str()), global_context, buffer_pool, &self.mesh, StyledRangeInfo(0, ""));
         layers.mesh_layer.add(key, spatial_rx, false, mesh);
     }
 }

@@ -29,6 +29,7 @@ use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use wgpu_canvas::{PreviewType, PREVIEW_TYPE};
+use crate::buffer_pool::BufferPool;
 use crate::mesh_layers::layers::{WorldShapeFeatureLayerTag, SCREEN_TEXT_LAYER};
 
 pub mod canvas_api;
@@ -55,6 +56,7 @@ mod pass_nodes;
 pub mod pipelines;
 mod textures;
 mod utils;
+mod buffer_pool;
 
 /// should be the same as mesh_shader.wgsl
 pub static LIGHT_POS: DVec3 = dvec3(5.0, 5.0, 6.0);
@@ -84,6 +86,7 @@ pub struct ShashlikRenderer {
     pub api: Arc<RendererApi>,
     fps_counter: FpsCounter<100>,
     global_context: GlobalContext,
+    buffer_pool: BufferPool,
     preview_textures: HashMap<PreviewType, TextureView>,
     current_preview_type: PreviewType
 }
@@ -124,6 +127,7 @@ impl ShashlikRenderer {
             api,
             fps_counter: FpsCounter::new(),
             global_context,
+            buffer_pool: BufferPool::new(),
             preview_textures: HashMap::new(),
             current_preview_type: PreviewType::None
         })
@@ -211,11 +215,11 @@ impl ShashlikRenderer {
 
         self.layers
             .shadow_map_layer
-            .set_texture(&self.global_context.shadow_map_depth_texture, (0.0, 0.0), &self.global_context);
+            .set_texture(&self.global_context.shadow_map_depth_texture, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
 
         self.layers
             .post_process_layer
-            .set_texture(&self.global_context.ssao_texture, (0.0, 0.0), &self.global_context);
+            .set_texture(&self.global_context.ssao_texture, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
 
 
         self.pass_nodes = vec![Box::new(pre_pass_node)];
@@ -234,7 +238,7 @@ impl ShashlikRenderer {
                 if let Some(texture_view) = self.preview_textures.get(&self.current_preview_type) {
                     self.layers
                         .preview_mesh_layer
-                        .set_texture(texture_view, (-100.0, -100.0), &self.global_context);
+                        .set_texture(texture_view, (-100.0, -100.0), &self.global_context, &mut self.buffer_pool);
                 }
             }
         }
@@ -245,11 +249,12 @@ impl ShashlikRenderer {
         for message in self.renderer_rx.try_iter() {
             match message {
                 RendererMessage::Draw(mut draw_commands) => {
-                    draw_commands.execute(&mut self.global_context, &mut self.layers);
+                    draw_commands.execute(&mut self.global_context, &mut self.layers, &mut self.buffer_pool);
                 }
                 RendererMessage::ClearGroups(keys) => {
                     keys.into_iter().for_each(|key| {
                         self.layers.clear_by_key(&*key);
+                        self.buffer_pool.recycle(key.as_str())
                     });
                 }
             }

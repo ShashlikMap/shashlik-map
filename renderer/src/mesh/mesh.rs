@@ -4,8 +4,9 @@ use bytemuck::{NoUninit, Pod};
 use log::error;
 use lyon::lyon_tessellation::VertexBuffers;
 use std::ops::Range;
-use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use wgpu::{Buffer, Device, RenderPass};
+use wgpu::{Buffer, RenderPass};
+use crate::buffer_pool::BufferPool;
+use crate::global_context::GlobalContext;
 
 #[derive(Clone)]
 pub struct StyledRangeInfo(pub u8, pub &'static str);
@@ -31,7 +32,7 @@ impl Mesh {
         }
     }
 
-    pub fn quad(device: &Device, width: f32, height: f32) -> Self {
+    pub fn quad(global_context: &GlobalContext, buffer_pool: &mut BufferPool, width: f32, height: f32) -> Self {
         let mut geometry_buffer: VertexBuffers<MeshVertexWithUV, u32> = VertexBuffers::new();
         geometry_buffer.vertices.push(MeshVertexWithUV::new([0.0, 0.0],
                                                             [0.0, 0.0, 0.0],
@@ -55,28 +56,24 @@ impl Mesh {
         geometry_buffer.indices.push(1);
         geometry_buffer.indices.push(0);
         geometry_buffer.indices.push(3);
-        Self::create(device, &geometry_buffer, StyledRangeInfo(0, ""))
+        Self::create(None, global_context, buffer_pool, &geometry_buffer, StyledRangeInfo(0, ""))
     }
 
-    pub fn create<T: NoUninit>(device: &Device, geometry: &VertexBuffers<T, u32>, styled_range_info: StyledRangeInfo) -> Self {
-        Self::create_layered(device, geometry, vec![StyledRange(0..geometry.indices.len(), styled_range_info)])
+    pub fn create<T: NoUninit>(key: Option<&str>, global_context: &GlobalContext, buffer_pool: &mut BufferPool, geometry: &VertexBuffers<T, u32>, styled_range_info: StyledRangeInfo) -> Self {
+        Self::create_layered(key, global_context, buffer_pool, geometry, vec![StyledRange(0..geometry.indices.len(), styled_range_info)])
     }
 
     pub fn create_layered<T: NoUninit>(
-        device: &Device,
+        key: Option<&str>,
+        global_context: &GlobalContext,
+        buffer_pool: &mut BufferPool,
         geometry: &VertexBuffers<T, u32>,
         layers_indices: Vec<StyledRange>,
     ) -> Self {
-        let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(geometry.vertices.as_slice()),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-        let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(geometry.indices.as_slice()),
-            usage: wgpu::BufferUsages::INDEX,
-        });
+        let device = global_context.device();
+        let queue = global_context.queue();
+        let vertex_buffer = buffer_pool.create(device, queue, key, "VertexBuffer", wgpu::BufferUsages::VERTEX, geometry.vertices.as_slice());
+        let index_buffer = buffer_pool.create(device, queue, key, "IndexBuffer", wgpu::BufferUsages::INDEX, geometry.indices.as_slice());
         let num_indices = geometry.indices.len() as u32;
 
         Mesh::new(

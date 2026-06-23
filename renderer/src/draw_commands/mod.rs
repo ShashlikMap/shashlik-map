@@ -6,6 +6,7 @@ use crate::mesh_layers::layers::Layers;
 use crate::modifier::render_modifier::SpatialData;
 use lyon::lyon_tessellation::LineJoin;
 use lyon::path::LineCap;
+use crate::buffer_pool::BufferPool;
 use crate::global_context::GlobalContext;
 
 #[repr(C)]
@@ -65,6 +66,7 @@ impl DrawCommands {
         &mut self,
         global_context: &mut GlobalContext,
         layers: &mut Layers,
+        buffer_pool: &mut BufferPool
     ) {
         self.draw_commands.iter_mut().for_each(|command| {
             command.execute(
@@ -72,7 +74,8 @@ impl DrawCommands {
                 self.key.clone(),
                 self.spatial_data.clone(),
                 self.spatial_tx.subscribe(),
-                layers
+                layers,
+                buffer_pool
             )
         });
         if self.spatial_tx.receiver_count() > 0 {
@@ -88,6 +91,7 @@ pub(crate) trait DrawCommand: Send {
         key: String,
         spatial_data: SpatialData,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-        layers: &mut Layers
+        layers: &mut Layers,
+        buffer_pool: &mut BufferPool
     );
 }
