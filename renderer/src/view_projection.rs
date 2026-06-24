@@ -5,14 +5,6 @@ use glam::{DMat2, DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec3Swizzles};
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 
 #[rustfmt::skip]
-const OPENGL_TO_WGPU_MATRIX: DMat4 = DMat4::from_cols(
-    DVec4::new(1.0, 0.0, 0.0, 0.0),
-    DVec4::new(0.0, 1.0, 0.0, 0.0),
-    DVec4::new(0.0, 0.0, 0.5, 0.0),
-    DVec4::new(0.0, 0.0, 0.5, 1.0),
-);
-
-#[rustfmt::skip]
 const FLIP_Y: DMat4 = DMat4::from_cols_array(
     &[1.0, 0.0, 0.0, 0.0,
     0.0, -1.0, 0.0, 0.0,
@@ -60,6 +52,7 @@ pub struct ViewProjection {
 }
 
 impl ViewProjection {
+    const MAX_MESH_HEIGHT: f64 = 20.0;
     pub fn new(device: &Device) -> Self {
         // ViewProjection align is 16byte since vec4 is used
         let vec4size = size_of::<[f32; 4]>() as u64;
@@ -104,14 +97,14 @@ impl ViewProjection {
 
         self.uniform.view = data.view_matrix.as_mat4()
             .to_cols_array_2d();
-        self.uniform.proj = (FLIP_Y * OPENGL_TO_WGPU_MATRIX * data.proj_matrix)
+        self.uniform.proj = (FLIP_Y * data.proj_matrix)
             .as_mat4()
             .to_cols_array_2d();
-        let view_proj = FLIP_Y * OPENGL_TO_WGPU_MATRIX * data.view_proj_matrix;
+        let view_proj = FLIP_Y * data.view_proj_matrix;
 
-        self.ortho_for_shadow_map(&data);
+        self.ortho_for_shadow_map();
 
-        self.uniform.light_view_proj = (OPENGL_TO_WGPU_MATRIX * (self.ortho * data.view_light_matrix))
+        self.uniform.light_view_proj = (self.ortho * data.view_light_matrix)
             .as_mat4()
             .to_cols_array_2d();
 
@@ -119,7 +112,6 @@ impl ViewProjection {
             .as_mat4()
             .to_cols_array_2d();
         let view_proj_inv = view_proj.inverse();
-        // No need OPENGL_TO_WGPU_MATRIX?!
         self.uniform.view_proj_inv = (view_proj_inv * FLIP_Y)
             .as_mat4()
             .to_cols_array_2d();
@@ -143,40 +135,29 @@ impl ViewProjection {
     }
 
     /// calculate ortho matrix for shadow mapping
-    fn ortho_for_shadow_map(&mut self, data: &RendererUpdateData) {
+    fn ortho_for_shadow_map(&mut self) {
+
         let c1 = self.clip_to_world(&coord! {x: -1.0, y: -1.0});
         let c2 = self.clip_to_world(&coord! {x: 1.0, y: -1.0});
         let c3 = self.clip_to_world(&coord! {x: -1.0, y: 1.0});
         let c4 = self.clip_to_world(&coord! {x: 1.0, y: 1.0});
-        let center = self.clip_to_world(&coord! {x: 0.0, y: 0.0});
-        if let (Some(c1), Some(c2), Some(c3), Some(c4), Some(center)) = (c1, c2, c3, c4, center) {
-            let light_pos = LIGHT_POS.normalize();
-            let mut rad_to_light = (data.eye_direction.xy()).angle_to(light_pos.xy());
-            if rad_to_light.is_nan() {
-                rad_to_light = -data.up.xy().angle_to(light_pos.xy());
-            }
-            if rad_to_light > 0.0 {
-                rad_to_light += PI;
-            }
-            let rotation = DMat2::from_angle(rad_to_light);
+        if let (Some(c1), Some(c2), Some(c3), Some(c4)) = (c1, c2, c3, c4) {
+            let center = ((c1 + c2 + c3 + c4) / 4.0).extend(0.0);
+            let light_view = DMat4::look_at_rh(center + LIGHT_POS, center, DVec3::Z);
 
+            let p1 = light_view.transform_point3(c1.extend(0.0));
+            let p2 = light_view.transform_point3(c2.extend(0.0));
+            let p3 = light_view.transform_point3(c3.extend(0.0));
+            let p4 = light_view.transform_point3(c4.extend(0.0));
 
-            let p1 = rotation * (c1 - center);
-            let p2 = rotation * (c2 - center);
-            let p3 = rotation * (c3 - center);
-            let p4 = rotation * (c4 - center);
-
-            let y_offset = 1.0 / light_pos.z;
-
-            let min_x = min_f64!(p1.x, p2.x, p3.x, p4.x);
-            let min_y = min_f64!(p1.y, p2.y, p3.y, p4.y) * y_offset;
-
-            let max_x = max_f64!(p1.x, p2.x, p3.x, p4.x);
-            let max_y = max_f64!(p1.y, p2.y, p3.y, p4.y) * y_offset;
+            let min_x = min_f64!(p1.x, p2.x, p3.x, p4.x) - Self::MAX_MESH_HEIGHT;
+            let min_y = min_f64!(p1.y, p2.y, p3.y, p4.y) - Self::MAX_MESH_HEIGHT;
+            let max_x = max_f64!(p1.x, p2.x, p3.x, p4.x) + Self::MAX_MESH_HEIGHT;
+            let max_y = max_f64!(p1.y, p2.y, p3.y, p4.y) + Self::MAX_MESH_HEIGHT;
 
             self.ortho = DMat4::orthographic_rh(
                 min_x, max_x, min_y, max_y,
-                0.01, 1500.0);
+                0.01, 1600.0);
         }
     }
 
