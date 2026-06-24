@@ -158,7 +158,8 @@ fn create_style_index(style_store: &mut StyleStore, style_index: Option<u32>, co
             color.blue as f32 / 255.0,
             1.0,
         ];
-        let style_id = StyleId(Box::leak(format!("{:?}_dyn_color", color_array).into_boxed_str()));
+
+        let style_id = StyleId(format!("{:?}_dyn_color", color_array).into());
         style_store.update_style(&style_id, move |style| *style =
             crate::styles::render_style::RenderStyle::fill(color_array));
         style_store.get_index(&style_id) as u32

@@ -51,7 +51,7 @@ impl KmlGroup {
                     icon: ("kml", Self::CIRCLE_SVG),
                     position: DVec3::new(point.x(), point.y(), 0.0),
                     size: 2.0,
-                    style_id: Some(StyleId("kml_dots")),
+                    style_id: Some(StyleId::new("kml_dots")),
                     with_collision: false,
                     background: None
                 }));
