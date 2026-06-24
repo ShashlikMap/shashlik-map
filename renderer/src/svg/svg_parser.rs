@@ -7,6 +7,8 @@ use lyon::math::{Point, Vector};
 use lyon::path::PathEvent;
 use lyon::tessellation;
 use usvg::{tiny_skia_path, Group, Size, Transform};
+use crate::styles::style_id::StyleId;
+use crate::styles::style_store::StyleStore;
 // Taken from here https://github.com/nical/lyon/blob/main/examples/wgpu_svg/src/main.rs
 // with some minor changes
 
@@ -14,6 +16,7 @@ pub fn svg_parse(
     icon: &[u8],
     mesh: &mut VertexBuffers<ShapeVertex, u32>,
     width: f32,
+    style_store: &mut StyleStore,
     style_index: usize,
 ) {
     let mut fill_tess = FillTessellator::new();
@@ -46,6 +49,7 @@ pub fn svg_parse(
         mesh,
         &mut stroke_tess,
         original_size,
+        style_store,
         style_index as u32,
         scale,
     );
@@ -60,6 +64,7 @@ fn collect_geom(
     mesh: &mut VertexBuffers<ShapeVertex, u32>,
     stroke_tess: &mut StrokeTessellator,
     original_size: Size,
+    style_store: &mut StyleStore,
     style_index: u32,
     scale: f32,
 ) {
@@ -74,6 +79,7 @@ fn collect_geom(
                 mesh,
                 stroke_tess,
                 original_size,
+                style_store,
                 style_index,
                 scale,
             )
@@ -97,6 +103,16 @@ fn collect_geom(
                     _ => FALLBACK_COLOR,
                 };
 
+                let color_array: [f32; 4] = [
+                    color.red as f32 / 255.0,
+                    color.green as f32 / 255.0,
+                    color.blue as f32 / 255.0,
+                    1.0,
+                ];
+                let ll = StyleId(Box::leak(format!("{:?}_dyn_color",color_array).into_boxed_str()));
+                style_store.update_style(&ll, move |style| *style =
+                    crate::styles::render_style::RenderStyle::fill(color_array));
+                let ll_index = style_store.get_index(&ll);
                 primitives.push(GpuPrimitive::new(
                     transform_idx,
                     color,
@@ -112,7 +128,7 @@ fn collect_geom(
                             VertexCtor {
                                 original_size,
                                 scale,
-                                style_index,
+                                style_index: ll_index as u32,
                             },
                         ),
                     )
@@ -126,6 +142,18 @@ fn collect_geom(
                     stroke_color,
                     stroke.opacity().get(),
                 ));
+
+                let color_array: [f32; 4] = [
+                    stroke_color.red as f32 / 255.0,
+                    stroke_color.green as f32 / 255.0,
+                    stroke_color.blue as f32 / 255.0,
+                    1.0,
+                ];
+                let ll = StyleId(Box::leak(format!("{:?}_dyn_color",color_array).into_boxed_str()));
+                style_store.update_style(&ll, move |style| *style =
+                    crate::styles::render_style::RenderStyle::fill(color_array));
+                let ll_index = style_store.get_index(&ll);
+
                 let _ = stroke_tess.tessellate(
                     convert_path(p),
                     &stroke_opts.with_tolerance(0.5),
@@ -134,7 +162,7 @@ fn collect_geom(
                         VertexCtor {
                             original_size,
                             scale,
-                            style_index,
+                            style_index: ll_index as u32,
                         },
                     ),
                 );

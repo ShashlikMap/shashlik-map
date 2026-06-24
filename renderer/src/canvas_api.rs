@@ -312,7 +312,7 @@ impl CanvasApi {
                     );
                 }
 
-                svg_parse(data.icon.1, &mut mesh, data.size, style_index);
+                svg_parse(data.icon.1, &mut mesh, data.size, &mut self.style_store, style_index);
 
                 (
                     mesh,

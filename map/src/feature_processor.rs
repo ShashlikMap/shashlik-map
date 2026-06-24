@@ -112,10 +112,16 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 None
             };
 
+            let sss = if matches!(poi.kind, MapPointObjectKind::TrafficLight) {
+                33.0
+            } else {
+                30.0
+            };
+
             geometry_data.push(GeometryData::Svg(SvgData {
                 icon,
                 position: DVec3::from((local_position.x, local_position.y, 0.0)),
-                size: 30.0 * dpi_scale,
+                size: sss * dpi_scale,
                 style_id,
                 with_collision: true,
                 background

@@ -175,10 +175,6 @@ fn vs_main_screen(
     out.color_alpha = pos.color_alpha;
 
     var pointPos = ratio_fixed_modelpos.xyz;
-//    if(model.instance_index % 2 == 0) {
-        // only two components for normal
-//        pointPos += vec3(model.normal.xy * inflate_factor, 0.0);
-//    }
 
     let coord = camera.view_proj * vec4<f32>(pos.position.xy, 0.0, 1.0);
 
