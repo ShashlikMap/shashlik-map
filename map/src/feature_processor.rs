@@ -88,14 +88,6 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             MapPointObjectKind::PopArea(..) => None,
         };
         if let Some(icon) = icon {
-            let background = if !matches!(poi.kind, MapPointObjectKind::TrafficLight) {
-                Some(SvgBackground {
-                    style_id: StyleId("poi_background"),
-                    padding: 7.0 * dpi_scale,
-                })
-            } else {
-                None
-            };
             let style_id = match poi.kind {
                 MapPointObjectKind::TrainStation(is_train) => {
                     if is_train {
@@ -105,8 +97,19 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     }
                 }
                 MapPointObjectKind::TrafficLight => StyleId("poi_traffic_light"),
+                MapPointObjectKind::Parking => StyleId("poi_parking"),
                 MapPointObjectKind::Toilet => StyleId("poi_toilet"),
                 _ => StyleId("poi"),
+            };
+
+            let background = if !matches!(poi.kind, MapPointObjectKind::TrafficLight) {
+                Some(SvgBackground {
+                    // TODO Find a better way
+                    style_id: StyleId(Box::leak(format!("{}_icon_background",style_id.0).into_boxed_str())),
+                    padding: 7.0 * dpi_scale,
+                })
+            } else {
+                None
             };
 
             geometry_data.push(GeometryData::Svg(SvgData {
