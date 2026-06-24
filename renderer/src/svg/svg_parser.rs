@@ -159,7 +159,8 @@ fn create_style_index(style_store: &mut StyleStore, style_index: Option<u32>, co
             1.0,
         ];
 
-        let style_id = StyleId(format!("{:?}_dyn_color", color_array).into());
+        // TODO We may cache it by color value
+        let style_id = StyleId::new(format!("{:?}_dyn_color", color_array));
         style_store.update_style(&style_id, move |style| *style =
             crate::styles::render_style::RenderStyle::fill(color_array));
         style_store.get_index(&style_id) as u32
