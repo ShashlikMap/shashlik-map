@@ -289,7 +289,6 @@ impl CanvasApi {
                 mesh_info.with_collision = data.with_collision
             })
             .or_insert_with(|| {
-                let style_index = self.style_store.get_index(&data.style_id);
                 let mut mesh: VertexBuffers<ShapeVertex, u32> = VertexBuffers::new();
                 let mut mesh_size = data.size;
                 if let Some(svg_background) = data.background {
@@ -311,7 +310,8 @@ impl CanvasApi {
                         )
                     );
                 }
-
+                
+                let style_index = data.style_id.map(|id| self.style_store.get_index(&id) as u32);
                 svg_parse(data.icon.1, &mut mesh, data.size, &mut self.style_store, style_index);
 
                 (

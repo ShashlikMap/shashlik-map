@@ -1,7 +1,6 @@
-use std::f64::consts::PI;
 use crate::{RendererUpdateData, LIGHT_POS};
 use geo_types::{coord, Coord};
-use glam::{DMat2, DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec3Swizzles};
+use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2};
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 
 #[rustfmt::skip]

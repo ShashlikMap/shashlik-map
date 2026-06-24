@@ -73,7 +73,7 @@ impl RenderGroup for RouteGroup {
                             0.0,
                         ).as_dvec3(),
                         size: 2.5,
-                        style_id: style_id.clone(),
+                        style_id: Some(style_id.clone()),
                         with_collision: false,
                         background: None,
                     }));
