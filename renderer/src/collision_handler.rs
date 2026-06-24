@@ -36,7 +36,8 @@ impl CollisionHandler {
         self.screen_rect.envelope().intersects(&envelope)
     }
 
-    pub fn insert(&mut self, rectangle: Rectangle<Point<f32>>) -> bool {
+    /// Method first check if rectangle intersects anything and only then adds it to R-tree
+    pub fn check_and_insert(&mut self, rectangle: Rectangle<Point<f32>>) -> bool {
         if !self.check_rectangle(&rectangle) {
             return false
         }
@@ -45,7 +46,8 @@ impl CollisionHandler {
         true
     }
 
-    pub fn insert_rectangles(&mut self, rectangles: Vec<Rectangle<Point<f32>>>) -> bool {
+    /// Method first check if any of rectangles intersects anything and only then adds it to R-tree
+    pub fn check_and_insert_rectangles(&mut self, rectangles: Vec<Rectangle<Point<f32>>>) -> bool {
         for rect in &rectangles {
             if !self.check_rectangle(rect) {
                 return false

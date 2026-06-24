@@ -118,10 +118,8 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
             screen_space: 1,
         };
         
-        let device = global_context.device();
-        let queue = global_context.queue();
         self.instance_buffer
-            .update("quad_instance_buffer", device, queue, &vec![attr]);
+            .update("quad_instance_buffer", global_context, &vec![attr]);
     }
 }
 

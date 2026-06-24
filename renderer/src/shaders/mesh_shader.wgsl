@@ -54,25 +54,26 @@ fn vs_main(
 
     var out: VertexOutput;
     var modelpos = model_position.xyz + pos.position;
-    var modelnormal = model.normal;
-    // TODO
-        modelnormal.z = -abs(modelnormal.z);
-    out.world_position = modelpos;
-    out.world_normal = -modelnormal;
-
-    out.view_position = (camera.view * vec4f(modelpos, 1.0)).xyz;
-    out.view_normal = (camera.view_tr_inv * vec4f(modelnormal, 1.0)).xyz;
-    out.color_alpha = pos.color_alpha;
-    out.pos_from_light = camera.light_view_proj * vec4<f32>(modelpos, 1.0);
-    // check scale_2d_3d, when geometry is flat height = 1.0 gives a correct value for gradient in fragment shader
-    if(modelpos.z > 0.0 || camera.scale_2d_3d == 0.0) {
-        // technically, normalized z coord
-        out.height = 1.0;
-    }
 
     if((params & 1) > 0) {
-        out.clip_position = out.pos_from_light;
+        out.clip_position = camera.light_view_proj * vec4<f32>(modelpos, 1.0);
     } else {
+        var modelnormal = model.normal;
+        // TODO
+        modelnormal.z = -abs(modelnormal.z);
+        out.world_position = modelpos;
+        out.world_normal = -modelnormal;
+
+        out.view_position = (camera.view * vec4f(modelpos, 1.0)).xyz;
+        out.view_normal = (camera.view_tr_inv * vec4f(modelnormal, 1.0)).xyz;
+        out.color_alpha = pos.color_alpha;
+
+        // check scale_2d_3d, when geometry is flat height = 1.0 gives a correct value for gradient in fragment shader
+        if(modelpos.z > 0.0 || camera.scale_2d_3d == 0.0) {
+            // technically, normalized z coord
+            out.height = 1.0;
+        }
+        out.pos_from_light = camera.light_view_proj * vec4<f32>(modelpos, 1.0);
         out.clip_position = camera.view_proj * vec4<f32>(modelpos, 1.0);
     }
     return out;

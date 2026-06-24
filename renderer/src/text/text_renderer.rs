@@ -73,8 +73,6 @@ impl TextRenderer {
         glyph_data: &FxHashMap<GlyphId, Vec<GlyphData>>,
     ) {
         let cs_offset = global_context.view_projection.cs_offset;
-        let device = global_context.device();
-        let queue = global_context.queue();
         glyph_data.iter().for_each(|(key, list)| {
             let mut attrs = vec![];
             list.iter().for_each(|glyph_data| {
@@ -95,7 +93,7 @@ impl TextRenderer {
                 .instance_buffer_map
                 .entry(*key)
                 .or_insert(InstanceBuffer::default());
-            instance_buffer.update("TextInstanceBuffer", device, queue, &attrs);
+            instance_buffer.update("TextInstanceBuffer", global_context, &attrs);
         });
     }
 
@@ -313,7 +311,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                             .iter()
                             .map(|(rect, _)| rect.clone())
                             .collect();
-                        if collision_handler.insert_rectangles(rects) {
+                        if collision_handler.check_and_insert_rectangles(rects) {
                             alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
                         } else {
                             alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
@@ -354,7 +352,7 @@ impl ColliderTask for TextRendererCollisionHandler {
 
                     // calc only for non screen space
                     if !data.screen_space {
-                        if collision_handler.insert(section_rect) {
+                        if collision_handler.check_and_insert(section_rect) {
                             alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
                         } else {
                             alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);

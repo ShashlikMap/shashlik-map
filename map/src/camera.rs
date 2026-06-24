@@ -22,13 +22,15 @@ impl Camera {
     const INITIAL_Z: f64 = 200.0;
     pub(crate) const Z_NEAR: f64 = 1.0;
     pub(crate) const Z_FAR: f64 = 2000000.0;
+    const LIGHT_DISTANCE: f64 = 100.0;
+    const DEFAULT_FOV: f64 = 37.87;
 
     pub fn new(initial_world: DVec3) -> Self {
         Camera {
             eye: (initial_world.x, initial_world.y, Self::INITIAL_Z).into(),
             target: (initial_world.x, initial_world.y, 0.0).into(),
             up: DVec3::Y,
-            fovy: 36.87,
+            fovy: Self::DEFAULT_FOV,
             znear: Self::Z_NEAR,
             zfar: Self::Z_FAR,
             perspective_matrix: DMat4::IDENTITY,
@@ -52,7 +54,7 @@ impl Camera {
     pub fn build_view_light_matrix(&mut self) -> DMat4 {
         let target_offset = self.target - self.offset;
         let light_view = DMat4::look_at_rh(
-            target_offset + LIGHT_POS,
+            target_offset + Self::LIGHT_DISTANCE * LIGHT_POS,
             target_offset,
             DVec3::Z,
         );

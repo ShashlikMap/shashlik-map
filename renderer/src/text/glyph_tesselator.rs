@@ -5,6 +5,7 @@ use lyon::path::{Builder, Path};
 use lyon::tessellation::{StrokeOptions, StrokeTessellator};
 use rustybuzz::ttf_parser::OutlineBuilder;
 use std::mem;
+use lyon::math::Point;
 use wgpu::Color;
 #[derive(Clone)]
 pub struct GlyphTesselator {
@@ -106,24 +107,25 @@ struct GlyphVertexConstructor {
     color: Color,
 }
 
-impl FillVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
-    fn new_vertex(&mut self, vertex: FillVertex) -> MeshVertexWithUV {
+impl GlyphVertexConstructor {
+    fn new_vertex(&mut self, position: Point) -> MeshVertexWithUV {
         MeshVertexWithUV::new([
-                                  vertex.position().x + self.offset.x,
-                                  vertex.position().y + self.offset.y,
+                                  position.x + self.offset.x,
+                                  position.y + self.offset.y,
                               ],
                               [self.color.r as f32, self.color.g as f32, self.color.b as f32],
                               [0.0, 0.0])
     }
 }
 
+impl FillVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
+    fn new_vertex(&mut self, vertex: FillVertex) -> MeshVertexWithUV {
+        self.new_vertex(vertex.position())
+    }
+}
+
 impl StrokeVertexConstructor<MeshVertexWithUV> for GlyphVertexConstructor {
     fn new_vertex(&mut self, vertex: lyon::tessellation::StrokeVertex) -> MeshVertexWithUV {
-        MeshVertexWithUV::new([
-                                  vertex.position().x + self.offset.x,
-                                  vertex.position().y + self.offset.y,
-                              ],
-                              [self.color.r as f32, self.color.g as f32, self.color.b as f32],
-                              [0.0, 0.0])
+        self.new_vertex(vertex.position())
     }
 }

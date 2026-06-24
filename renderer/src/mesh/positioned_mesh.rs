@@ -86,8 +86,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             );
             self.instance_buffer.update(
                 "PositionedInstanceBuffer",
-                global_context.device(),
-                global_context.queue(),
+                global_context,
                 &self.attrs,
             );
 

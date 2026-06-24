@@ -126,8 +126,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
 
                 instance_buffer.update(
                     "ScreenInstanceBuffer",
-                    global_context.device(),
-                    global_context.queue(),
+                    global_context,
                     &attrs,
                 )
             });
@@ -191,7 +190,7 @@ impl ColliderTask for ScreenMeshCollisionHandler {
 
                 let within_screen = collision_handler.within_screen(bounds);
                 if within_screen {
-                    if collision_handler.insert(bounds) {
+                    if collision_handler.check_and_insert(bounds) {
                         *alpha = clamp(*alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
                     } else {
                         *alpha = clamp(*alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
