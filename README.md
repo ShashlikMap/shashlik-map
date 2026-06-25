@@ -9,11 +9,9 @@ I'm writing about the tech I've learned [here](https://hackmd.io/@agent10)
 ## Showcases
 Running on macOS, Android, iOS and Linux via KMS
 
-<img width="450" alt="Screenshot 2026-03-28 at 09 53 14" src="https://github.com/user-attachments/assets/0e75e0b3-a90d-41f3-9eef-66ad689f2d9e" />
-
-<img width="130" src="https://github.com/user-attachments/assets/eabb3468-6206-4dc9-b243-73bc34ce0dff" />
-<img width="130" src="https://github.com/user-attachments/assets/ed5a0121-1402-40a6-ab26-eb0c39853708" />
-<img width="450" src="https://github.com/user-attachments/assets/d52a4287-8551-43ed-8e4a-879457db9cce" />
+<img width="450" alt="Screenshot 2026-06-25 at 20 43 53" src="https://github.com/user-attachments/assets/6cb9f503-2145-41b3-85af-e274d27bfee9" />
+<img width="130" alt="Screenshot_20260625_204208" src="https://github.com/user-attachments/assets/59d29a03-5443-43f6-9dd1-7a451ee8ef89" />
+<img width="450" alt="Screenshot 2026-06-25 at 20 59 19" src="https://github.com/user-attachments/assets/10d8f87c-6072-440c-a169-0647b0e88dad" />
 
 ## Tech stack
 The stack leverages the following approaches and libraries:
