@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use crate::styles::render_style::RenderStyle;
 use crate::styles::style_id::StyleId;
 use indexmap::IndexMap;
@@ -11,7 +12,7 @@ pub struct StyleStore {
 }
 
 impl StyleStore {
-    const STUB_STYLE_ID: StyleId = StyleId("stub");
+    const STUB_STYLE_ID: StyleId = StyleId(Cow::Borrowed("stub"));
     pub fn new() -> StyleStore {
         let (uniform_tx, _) = tokio::sync::broadcast::channel(1);
         let mut store = StyleStore {

@@ -41,7 +41,7 @@ pub struct SvgData {
     pub icon: (&'static str, &'static [u8]),
     pub position: DVec3,
     pub size: f32,
-    pub style_id: StyleId,
+    pub style_id: Option<StyleId>,
     pub with_collision: bool,
     pub background: Option<SvgBackground>,
 }

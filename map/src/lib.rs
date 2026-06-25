@@ -496,7 +496,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 styles = StyleLoader::load();
             }
             styles.into_iter().for_each(|style| {
-                let style_id = StyleId(Box::leak(style.id.into_boxed_str()));
+                let style_id = StyleId::new(style.id);
                 let actual_render_style = match style.render_style {
                     RenderStyle::Fill(color) => {
                         renderer::styles::render_style::RenderStyle::fill(color.as_array())

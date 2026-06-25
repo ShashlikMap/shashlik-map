@@ -40,8 +40,8 @@ impl RenderGroup for RouteGroup {
         let first_route_point = self.route[0];
 
         let style_id = match self.route_costing {
-            RouteCosting::Pedestrian => StyleId("route_pedestrian"),
-            RouteCosting::Auto | RouteCosting::Motorbike => StyleId("route_motorbike"),
+            RouteCosting::Pedestrian => StyleId::new("route_pedestrian"),
+            RouteCosting::Auto | RouteCosting::Motorbike => StyleId::new("route_motorbike"),
         };
 
         if matches!(self.route_costing, RouteCosting::Pedestrian) {
@@ -73,7 +73,7 @@ impl RenderGroup for RouteGroup {
                             0.0,
                         ).as_dvec3(),
                         size: 2.5,
-                        style_id: style_id.clone(),
+                        style_id: Some(style_id.clone()),
                         with_collision: false,
                         background: None,
                     }));

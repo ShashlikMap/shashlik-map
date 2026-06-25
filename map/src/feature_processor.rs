@@ -28,13 +28,13 @@ impl ShashlikFeatureProcessor {
 
     fn highway_style_id(kind: &HighwayKind) -> StyleId {
         match kind {
-            HighwayKind::Motorway | HighwayKind::MotorwayLink => StyleId("highway_motorway"),
-            HighwayKind::Primary | HighwayKind::PrimaryLink => StyleId("highway_primary"),
-            HighwayKind::Trunk | HighwayKind::TrunkLink => StyleId("highway_trunk"),
-            HighwayKind::Secondary | HighwayKind::SecondaryLink => StyleId("highway_secondary"),
-            HighwayKind::Tertiary => StyleId("highway_tertiary"),
-            HighwayKind::Footway => StyleId("highway_footway"),
-            _ => StyleId("highway_default"),
+            HighwayKind::Motorway | HighwayKind::MotorwayLink => StyleId::new("highway_motorway"),
+            HighwayKind::Primary | HighwayKind::PrimaryLink => StyleId::new("highway_primary"),
+            HighwayKind::Trunk | HighwayKind::TrunkLink => StyleId::new("highway_trunk"),
+            HighwayKind::Secondary | HighwayKind::SecondaryLink => StyleId::new("highway_secondary"),
+            HighwayKind::Tertiary => StyleId::new("highway_tertiary"),
+            HighwayKind::Footway => StyleId::new("highway_footway"),
+            _ => StyleId::new("highway_default"),
         }
     }
 
@@ -88,32 +88,40 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             MapPointObjectKind::PopArea(..) => None,
         };
         if let Some(icon) = icon {
+            let style_id = match poi.kind {
+                MapPointObjectKind::TrainStation(is_train) => {
+                    if is_train {
+                        StyleId::new("train_station")
+                    } else {
+                        StyleId::new("railway_station")
+                    }
+                }
+                MapPointObjectKind::TrafficLight => StyleId::new("poi_traffic_light"),
+                MapPointObjectKind::Parking => StyleId::new("poi_parking"),
+                MapPointObjectKind::Toilet => StyleId::new("poi_toilet"),
+                _ => StyleId::new("poi"),
+            };
+
             let background = if !matches!(poi.kind, MapPointObjectKind::TrafficLight) {
                 Some(SvgBackground {
-                    style_id: StyleId("poi_background"),
+                    style_id: StyleId::new(format!("{}_icon_background",style_id.0)),
                     padding: 7.0 * dpi_scale,
                 })
             } else {
                 None
             };
-            let style_id = match poi.kind {
-                MapPointObjectKind::TrainStation(is_train) => {
-                    if is_train {
-                        StyleId("train_station")
-                    } else {
-                        StyleId("railway_station")
-                    }
-                }
-                MapPointObjectKind::TrafficLight => StyleId("poi_traffic_light"),
-                MapPointObjectKind::Toilet => StyleId("poi_toilet"),
-                _ => StyleId("poi"),
+
+            let icon_size = if matches!(poi.kind, MapPointObjectKind::TrafficLight) {
+                33.0
+            } else {
+                30.0
             };
 
             geometry_data.push(GeometryData::Svg(SvgData {
                 icon,
                 position: DVec3::from((local_position.x, local_position.y, 0.0)),
-                size: 30.0 * dpi_scale,
-                style_id,
+                size: icon_size * dpi_scale,
+                style_id: background.as_ref().map(|_| style_id),
                 with_collision: true,
                 background
             }));
@@ -180,7 +188,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         // TODO Ignore rails tunnels for a while
                         if info.layer_kind != LayerKind::Tunnel {
                             Some((
-                                StyleId("rails"),
+                                StyleId::new("rails"),
                                 info.layer,
                                 GeometryType::Polyline(PolylineOptions {
                                     width: 0.3 * zoom_level.max(1) as f32,
@@ -194,7 +202,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     }
                 },
                 MapGeomObjectKind::AdminLine => Some((
-                    StyleId("admin_line"),
+                    StyleId::new("admin_line"),
                     0,
                     GeometryType::Polyline(PolylineOptions {
                         width: 250.0f32,
@@ -204,15 +212,15 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 )),
                 MapGeomObjectKind::Nature(kind) => {
                     let style_id = match kind {
-                        NatureKind::Ground => StyleId("ground"),
-                        NatureKind::Park => StyleId("park"),
-                        NatureKind::Forest => StyleId("forest"),
-                        NatureKind::Water => StyleId("water"),
+                        NatureKind::Ground => StyleId::new("ground"),
+                        NatureKind::Park => StyleId::new("park"),
+                        NatureKind::Forest => StyleId::new("forest"),
+                        NatureKind::Water => StyleId::new("water"),
                     };
                     Some((style_id, -100, GeometryType::Polygon, None))
                 }
                 MapGeomObjectKind::Building(_) => {
-                    Some((StyleId("building"), -99, GeometryType::Polygon, None))
+                    Some((StyleId::new("building"), -99, GeometryType::Polygon, None))
                 }
                 _ => None,
             } {
