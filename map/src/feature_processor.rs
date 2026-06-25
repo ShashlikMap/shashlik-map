@@ -22,6 +22,7 @@ impl ShashlikFeatureProcessor {
     const PARKING_SVG: &'static [u8] = include_bytes!("../svg/parking.svg");
     const TOILETS_SVG: &'static [u8] = include_bytes!("../svg/toilet.svg");
     const TRAIN_STATION_SVG: &'static [u8] = include_bytes!("../svg/train_station.svg");
+    const EV_STATION_SVG: &'static [u8] = include_bytes!("../svg/ev_station.svg");
     pub fn new() -> Self {
         ShashlikFeatureProcessor {}
     }
@@ -85,6 +86,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             MapPointObjectKind::TrafficLight => Some(("traffic_light", Self::TRAFFIC_LIGHT_SVG)),
             MapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
             MapPointObjectKind::Parking => Some(("parking", Self::PARKING_SVG)),
+            MapPointObjectKind::EVCharging => Some(("ev_station", Self::EV_STATION_SVG)),
             MapPointObjectKind::PopArea(..) => None,
         };
         if let Some(icon) = icon {
@@ -97,6 +99,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     }
                 }
                 MapPointObjectKind::TrafficLight => StyleId::new("poi_traffic_light"),
+                MapPointObjectKind::EVCharging => StyleId::new("poi_ev_station"),
                 MapPointObjectKind::Parking => StyleId::new("poi_parking"),
                 MapPointObjectKind::Toilet => StyleId::new("poi_toilet"),
                 _ => StyleId::new("poi"),
