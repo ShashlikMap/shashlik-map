@@ -91,7 +91,8 @@ fn vs_main(
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
-    out.uv_dist = vec3f(model.uv, f32(model.dist));
+    // divide distance to scale, so dash shader works properly
+    out.uv_dist = vec3f(model.uv, f32(model.dist) / camera.p2_scale);
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
