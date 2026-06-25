@@ -153,5 +153,5 @@ fn fs_main_sm(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let shadow = shadow_map(t_depth, s_compare, in.pos_from_light.xy, 1.2, in.pos_from_light.z);
 
-    return vec4(0.0, 0.0, 0.0, shadow * 0.5);
+    return vec4(0.0, 0.0, 0.0, shadow * 0.25);
 }
