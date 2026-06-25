@@ -15,6 +15,19 @@ pub(crate) struct GlyphCache {
 }
 
 impl GlyphCache {
+
+    const PRIMARY_COLOR: Color = Color {
+        r: 0.2902,
+        g: 0.2902,
+        b: 0.2902,
+        a: 1.0,
+    };
+    const HALO_COLOR: Color = Color {
+        r: 0.9569,
+        g: 0.9529,
+        b: 0.9412,
+        a: 0.9,
+    };
     pub fn new(face: Arc<DefaultFaceWrapper>) -> Self {
         GlyphCache {
             face,
@@ -30,8 +43,8 @@ impl GlyphCache {
             self.face.outline_glyph(glyph_id, &mut path_builder);
             let mut buffer = VertexBuffers::new();
             let path = path_builder.create_path();
-            path_builder.tessellate_stroke(&mut buffer, &path, 4.0, Color::WHITE);
-            path_builder.tessellate_fill(&mut buffer, &path, Color::BLACK);
+            path_builder.tessellate_stroke(&mut buffer, &path, 4.0, Self::HALO_COLOR);
+            path_builder.tessellate_fill(&mut buffer, &path, Self::PRIMARY_COLOR);
             Mesh::create(None, global_context, buffer_pool, &buffer, StyledRangeInfo(0, ""))
         });
 

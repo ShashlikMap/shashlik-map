@@ -31,6 +31,8 @@ wgpu = { workspace = true}
 
 valhalla-client = "0.5.2"
 
+capitalize = "0.3"
+
 [patch.crates-io]
 ### 0.5.2+ doesn't work on android due to internal reqwest 0.13.0+ that uses
 ### rustls-platform-verifier that requires a tricky setup https://github.com/rustls/rustls-platform-verifier#android

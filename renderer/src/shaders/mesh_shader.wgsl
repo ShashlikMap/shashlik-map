@@ -79,9 +79,13 @@ fn vs_main(
     return out;
 }
 
-const light_dir = normalize(vec3(0.5, 0.5, 0.6));
-const default_color = vec3(0.4, 0.4, 0.4);
-const ambient_color = vec3(0.65, 0.65, 0.65);
+const light_dir = normalize(vec3(0.42, 0.56, 0.71));
+
+const sun_color = vec3<f32>(1.0, 0.98, 0.94);
+const ambient_color = vec3<f32>(0.86, 0.90, 0.96) * 0.7;
+
+const wall_color = vec3<f32>(0.918, 0.910, 0.894);
+const roof_color = vec3<f32>(0.843, 0.835, 0.816);
 
 @group(1) @binding(0)
 var t_depth: texture_depth_2d;
@@ -92,13 +96,10 @@ const dither_strength = 2.0 / 255.0;
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
-    let gradient_koef_ground = min(1.0, (0.9 + in.height * 7.0));
-    let gradient_koef_walls = 0.85 + in.height * 0.15;
-    let diffuse_color = max(dot(in.world_normal, light_dir), 0.0);
+    let diffuse_factor = max(dot(in.world_normal, light_dir), 0.15);
 
     var shadow = 0.0;
     if((params & 2) > 0) {
-
         let currentDepth = in.pos_from_light.z;
         let projCoords = (in.pos_from_light.xy * vec2f(0.5, -0.5)) + 0.5;
         let shadow_bias = 0.0007 * camera.scale;
@@ -107,7 +108,17 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
         shadow = shadow_map(t_depth, s_compare, projCoords, 1.2, depth_with_bias);
     }
 
-    let result_color = (ambient_color + (1.0 - shadow * 0.6) * (diffuse_color)) * default_color * gradient_koef_walls * gradient_koef_ground;
+    var base_color = roof_color;
+    if (in.world_normal.z < 0.8) {
+        // gradient only for walls
+        let gradient_koef_ground = min(1.0, (0.9 + in.height * 7.0));
+        let gradient_koef_walls = 0.85 + in.height * 0.15;
+        base_color = wall_color * gradient_koef_walls * gradient_koef_ground;
+    }
+
+    let direct_sun = sun_color * (0.5 * diffuse_factor) * (1.0 - shadow * 0.3);
+    let total_lighting = ambient_color + direct_sun;
+    let result_color = total_lighting * base_color;
 
     let noise = fract(sin(dot(in.clip_position.xy, vec2<f32>(12.9898, 78.233))) * 43758.5453);
     let final_color = (result_color) + (noise - 0.5) * dither_strength;
