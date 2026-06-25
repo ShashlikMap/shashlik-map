@@ -113,7 +113,7 @@ impl GlyphVertexConstructor {
                                   position.x + self.offset.x,
                                   position.y + self.offset.y,
                               ],
-                              [self.color.r as f32, self.color.g as f32, self.color.b as f32],
+                              [self.color.r as f32, self.color.g as f32, self.color.b as f32, self.color.a as f32],
                               [0.0, 0.0])
     }
 }

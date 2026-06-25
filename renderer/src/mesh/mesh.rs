@@ -35,18 +35,18 @@ impl Mesh {
     pub fn quad(global_context: &GlobalContext, buffer_pool: &mut BufferPool, width: f32, height: f32) -> Self {
         let mut geometry_buffer: VertexBuffers<MeshVertexWithUV, u32> = VertexBuffers::new();
         geometry_buffer.vertices.push(MeshVertexWithUV::new([0.0, 0.0],
-                                                            [0.0, 0.0, 0.0],
+                                                            [0.0, 0.0, 0.0, 1.0],
                                                             [0.0, 1.0]));
 
         geometry_buffer.vertices.push(MeshVertexWithUV::new([width, 0.0],
-                                                            [0.0, 0.0, 0.0],
+                                                            [0.0, 0.0, 0.0, 1.0],
                                                             [1.0, 1.0]));
 
         geometry_buffer.vertices.push(MeshVertexWithUV::new([0.0, height],
-                                                            [0.0, 0.0, 0.0],
+                                                            [0.0, 0.0, 0.0, 1.0],
                                                             [0.0, 0.0]));
         geometry_buffer.vertices.push(MeshVertexWithUV::new([width, height],
-                                                            [0.0, 0.0, 0.0],
+                                                            [0.0, 0.0, 0.0, 1.0],
                                                             [1.0, 0.0]));
 
         geometry_buffer.indices.push(0);

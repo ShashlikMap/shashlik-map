@@ -51,7 +51,7 @@ pub struct MeshVertexWithUV {
 }
 
 impl MeshVertexWithUV {
-    pub fn new(position: [f32; 2], color: [f32; 3], uv: [f32; 2]) -> Self {
+    pub fn new(position: [f32; 2], color: [f32; 4], uv: [f32; 2]) -> Self {
         let color = (Vec4::new(color[0], color[1], color[2], 1.0) * 255.0).round().as_u8vec4().into();
         let uv = (Vec2::new(uv[0], uv[1]) * 65535.0).round().as_u16vec2().into();
         Self {

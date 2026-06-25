@@ -79,9 +79,15 @@ fn vs_main(
     return out;
 }
 
-const light_dir = normalize(vec3(0.5, 0.5, 0.6));
-const default_color = vec3(0.4, 0.4, 0.4);
-const ambient_color = vec3(0.65, 0.65, 0.65);
+const light_dir = normalize(vec3(0.42, 0.56, 0.71));
+
+// 1. New Curated Lighting Palette
+const sun_color     = vec3<f32>(1.0, 0.98, 0.94);  // Warm sunlight ivory
+const ambient_color = vec3<f32>(0.86, 0.90, 0.96); // Cool sky ambient (fills shadows)
+
+// 2. Base Building Colors (Wall vs Roof separation using the vertex normal)
+const wall_color    = vec3<f32>(0.918, 0.910, 0.894); // Match your JSON building block
+const roof_color    = vec3<f32>(0.875, 0.867, 0.851); // Slightly darker for instant depth
 
 @group(1) @binding(0)
 var t_depth: texture_depth_2d;
@@ -94,11 +100,20 @@ const dither_strength = 2.0 / 255.0;
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
     let gradient_koef_ground = min(1.0, (0.9 + in.height * 7.0));
     let gradient_koef_walls = 0.85 + in.height * 0.15;
-    let diffuse_color = max(dot(in.world_normal, light_dir), 0.0);
+
+    // Calculate diffuse factor (how directly the sun hits the polygon face)
+    let diffuse_factor = max(dot(in.world_normal, light_dir), 0.0);
+
+    // 3. Smart Surface Selector: Detect if the face is flat (roof) or vertical (wall)
+    // If the world normal points mostly straight up (Y or Z depending on your coordinate system)
+    // Assuming Z-up or Y-up. If your engine uses Y-up, change .z to .y here:
+    var base_color = wall_color;
+    if (in.world_normal.z > 0.8) {
+        base_color = roof_color;
+    }
 
     var shadow = 0.0;
     if((params & 2) > 0) {
-
         let currentDepth = in.pos_from_light.z;
         let projCoords = (in.pos_from_light.xy * vec2f(0.5, -0.5)) + 0.5;
         let shadow_bias = 0.0007 * camera.scale;
@@ -107,8 +122,16 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
         shadow = shadow_map(t_depth, s_compare, projCoords, 1.2, depth_with_bias);
     }
 
-    let result_color = (ambient_color + (1.0 - shadow * 0.6) * (diffuse_color)) * default_color * gradient_koef_walls * gradient_koef_ground;
+    // 4. Physically Accurate Lighting Equation:
+    // Shadow only blocks the sun (diffuse), it NEVER blocks the ambient sky light.
+    let ambient_light = ambient_color * 0.35; // 35% Sky glow filling the dark sides
+    let direct_sun     = sun_color * diffuse_factor * (1.0 - shadow * 0.6);
 
+    // Combine light components and apply to the surface material
+    let total_lighting = ambient_light + direct_sun;
+    let result_color = total_lighting * base_color * gradient_koef_walls * gradient_koef_ground;
+
+    // Dithering pass
     let noise = fract(sin(dot(in.clip_position.xy, vec2<f32>(12.9898, 78.233))) * 43758.5453);
     let final_color = (result_color) + (noise - 0.5) * dither_strength;
 

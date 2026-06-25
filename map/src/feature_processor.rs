@@ -14,6 +14,7 @@ use renderer::mesh::mesh::StyledRangeInfo;
 use renderer::styles::style_id::StyleId;
 use seahash::hash;
 use std::collections::HashMap;
+use capitalize::Capitalize;
 
 pub struct ShashlikFeatureProcessor {}
 
@@ -43,10 +44,10 @@ impl ShashlikFeatureProcessor {
         // Relative width for zoom 19, OSM:
         // https://github.com/gravitystorm/openstreetmap-carto/blob/23b1cfa7284ac91bb78390fa4cb7f1c2c6350b92/style/roads.mss#L204
         // TODO Figure out the better way to bound line width to zoom
-        let motorway_width = 0.80;
+        let motorway_width = 0.85;
 
         // shows big road better with high zooms
-        let zoom = if zoom > 6.0 { zoom * zoom } else { zoom };
+        let zoom = if zoom >= 6.0 { zoom * zoom } else { zoom * zoom * 0.7 };
         match kind {
             HighwayKind::Motorway | HighwayKind::Primary => motorway_width * (zoom / 2.0).max(1.0),
             HighwayKind::Trunk => motorway_width * (zoom / 3.0).max(1.0),
@@ -138,7 +139,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 id,
                 poi.text.to_uppercase(),
                 Vec2::new(0.0, y_offset * dpi_scale),
-                30.0 * dpi_scale,
+                27.0 * dpi_scale,
                 LineData::new(vec![
                     DVec3::from((local_position.x, local_position.y, 0.0)),
                 ])
@@ -271,7 +272,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         if line.len() > 2 {
                             geometry_data.push(GeometryData::Text(TextData::new(
                                 hash(name.as_bytes()),
-                                name.to_uppercase(),
+                                name.capitalize(),
                                 Vec2::new(0.0, 0.0),
                                 22.0 * dpi_scale,
                                 LineData::new(line
