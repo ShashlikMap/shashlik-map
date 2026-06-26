@@ -23,6 +23,7 @@ wesl = { git = "https://github.com/wgsl-tooling-wg/wesl-rs", features = ["naga-e
 rand = { workspace = true }
 strum = { workspace = true }
 splines = {  version = "5.0.0", features = ["glam"] }
+tiny-skia = "0.12.0"
 
 [build-dependencies]
 anyhow = "1.0"

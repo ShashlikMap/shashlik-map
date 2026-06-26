@@ -32,6 +32,7 @@ use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use log::error;
+use tiny_skia::PixmapMut;
 use ttf_parser::Face;
 use wgpu::Texture;
 use renderer::mesh_layers::layers::WorldShapeFeatureLayerTag;
@@ -238,6 +239,16 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn update_and_render(&mut self) -> Option<Texture> {
+        self.internal_update();
+        self.renderer.render()
+    }
+
+    pub fn update_and_render_software(&mut self, pixmap: &mut PixmapMut) {
+        self.internal_update();
+        self.renderer.render_software(pixmap);
+    }
+
+    fn internal_update(&mut self) {
         self.consume_map_events();
         self.camera_controller.update_camera(&mut self.camera);
 
@@ -263,9 +274,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.renderer.update(update_data);
 
         self.fetch_tiles();
-
-        self.renderer.render()
     }
+
 
     fn fetch_tiles(&mut self) {
         let world_on_ground_center = self.renderer.clip_to_world(&coord! {x: 0.0, y: 0.0}).unwrap();

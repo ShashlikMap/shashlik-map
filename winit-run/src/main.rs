@@ -5,12 +5,14 @@ use map::ShashlikMap;
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
 use slint::wgpu_29::{WGPUConfiguration, WGPUSettings};
-use slint::{GraphicsAPI, PhysicalSize, RenderingState, VecModel};
+use slint::{GraphicsAPI, Image, PhysicalSize, RenderingState, Rgba8Pixel, SharedPixelBuffer, VecModel};
 use std::cmp::max;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::mpsc;
+use std::time::{Duration, Instant};
 use strum::IntoEnumIterator;
+use tiny_skia::{Color, Paint, PathBuilder, PixmapMut, Transform};
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
@@ -30,7 +32,7 @@ enum SlintMapEvent {
 fn main() {
     env_logger::init();
 
-    let (slint_map_event_sender, slint_map_event_receiver) = mpsc::channel();
+    // let (slint_map_event_sender, slint_map_event_receiver) = mpsc::channel();
 
     let mut wgpu_settings = WGPUSettings::default();
     wgpu_settings.device_required_features = Features::CLEAR_TEXTURE | Features::IMMEDIATES;
@@ -70,10 +72,11 @@ fn main() {
     let scale_factor = ui.window().scale_factor();
     println!("scale_factor: {}", scale_factor);
     let ui_weak = ui.as_weak();
-    let mut shashlik_map = None;
+    // let mut shashlik_map = None;
 
     let mut prev_pinch_scale: Option<Scale> = None;
     let mut prev_pan_state: Option<PanState> = None;
+
     ui.window()
         .set_rendering_notifier(move |state, graphics_api: &GraphicsAPI| {
             match state {
@@ -117,132 +120,173 @@ fn main() {
                             dpi,
                         );
 
-                        if let Some(ui_weak) = ui_weak.upgrade() {
-                            // TODO How to get rid of all this clones?
-                            let slint_map_event_sender_internal = slint_map_event_sender.clone();
-                            ui_weak.on_vert_scroll(move |delta_y| {
-                                slint_map_event_sender_internal
-                                    .send(SlintMapEvent::VerticalScroll(delta_y / 5.0))
+                        // if let Some(ui_weak) = ui_weak.upgrade() {
+                        //     // TODO How to get rid of all this clones?
+                        //     let slint_map_event_sender_internal = slint_map_event_sender.clone();
+                        //     ui_weak.on_vert_scroll(move |delta_y| {
+                        //         slint_map_event_sender_internal
+                        //             .send(SlintMapEvent::VerticalScroll(delta_y / 5.0))
+                        //             .unwrap();
+                        //     });
+                        //
+                        //     let slint_map_event_sender_internal = slint_map_event_sender.clone();
+                        //     ui_weak.on_follow_mode(move |enabled| {
+                        //         slint_map_event_sender_internal
+                        //             .send(SlintMapEvent::FollowMode(enabled))
+                        //             .unwrap();
+                        //     });
+                        //
+                        //     let slint_map_event_sender_internal = slint_map_event_sender.clone();
+                        //     ui_weak.on_feature_enabled(move |feature, enabled| {
+                        //         slint_map_event_sender_internal
+                        //             .send(SlintMapEvent::FeatureEnabled(feature, enabled))
+                        //             .unwrap();
+                        //     });
+                        //
+                        //     let slint_map_event_sender_internal = slint_map_event_sender.clone();
+                        //     ui_weak.on_btn_click(move |action, cost_index| {
+                        //         slint_map_event_sender_internal
+                        //             .send(SlintMapEvent::BtnAction(action, cost_index))
+                        //             .unwrap()
+                        //     });
+                        //
+                        //     ui_weak.on_preview_type(move |preview_type| {
+                        //         unsafe { PREVIEW_TYPE = PreviewType::from_str(preview_type.as_str()).unwrap(); }
+                        //     });
+                        // }
+
+
+                        // let shashlik_map = Some(map);
+
+                        let value = ui_weak.clone();
+                        std::thread::spawn(move || {
+                            let mut map =
+                                pollster::block_on(ShashlikMap::new(Box::new(canvas), tiles_provider))
                                     .unwrap();
-                            });
-                            
-                            let slint_map_event_sender_internal = slint_map_event_sender.clone();
-                            ui_weak.on_follow_mode(move |enabled| {
-                                slint_map_event_sender_internal
-                                    .send(SlintMapEvent::FollowMode(enabled))
-                                    .unwrap();
-                            });
+                            map.resize(texture_width as u32, texture_height as u32);
 
-                            let slint_map_event_sender_internal = slint_map_event_sender.clone();
-                            ui_weak.on_feature_enabled(move |feature, enabled| {
-                                slint_map_event_sender_internal
-                                    .send(SlintMapEvent::FeatureEnabled(feature, enabled))
-                                    .unwrap();
-                            });
+                            // Target framerate tracking variables (~60 FPS)
+                            let target_fps = 60;
+                            let frame_duration = Duration::from_secs_f64(1.0 / target_fps as f64);
+                            let mut frame_count = 0;
+                            loop {
+                                let start_time = Instant::now();
 
-                            let slint_map_event_sender_internal = slint_map_event_sender.clone();
-                            ui_weak.on_btn_click(move |action, cost_index| {
-                                slint_map_event_sender_internal
-                                    .send(SlintMapEvent::BtnAction(action, cost_index))
-                                    .unwrap()
-                            });
+                                // 2. Process frame generation using zero-copy allocation
+                                let mut pixel_buffer = SharedPixelBuffer::<Rgba8Pixel>::new(500, 500);
+                                let raw_bytes = pixel_buffer.make_mut_bytes();
 
-                            ui_weak.on_preview_type(move |preview_type| {
-                                unsafe { PREVIEW_TYPE = PreviewType::from_str(preview_type.as_str()).unwrap(); }
-                            });
-                        }
+                                if let Some(mut pixmap) = PixmapMut::from_bytes(raw_bytes, 500, 500) {
+                                    // Execute draw calls inside the thread
+                                    map.update_and_render_software(&mut pixmap);
+                                    // draw_dynamic_scene(&mut pixmap, frame_count,500, 500);
+                                }
 
-                        let mut map =
-                            pollster::block_on(ShashlikMap::new(Box::new(canvas), tiles_provider))
-                                .unwrap();
-                        map.resize(texture_width as u32, texture_height as u32);
-                        shashlik_map = Some(map);
+                                // Convert to a Slint Image handle
+
+                                // 3. Dispatch the calculated buffer to the UI Event Loop
+                                let app_clone = value.clone();
+                                let _ = slint::invoke_from_event_loop(move || {
+                                    if let Some(app) = app_clone.upgrade() {
+                                        let frame_image = Image::from_rgba8_premultiplied(pixel_buffer);
+                                        app.set_texture(frame_image);
+                                    }
+                                });
+
+                                frame_count += 1;
+                                let elapsed = start_time.elapsed();
+                                if elapsed < frame_duration {
+                                    std::thread::sleep(frame_duration - elapsed);
+                                }
+                            }
+                        });
+
                     }
                     _ => {}
                 },
                 RenderingState::BeforeRendering => {
-                    if let (Some(shashlik_map), Some(app)) =
-                        (shashlik_map.as_mut(), ui_weak.upgrade())
-                    {
-                        while let Ok(event) = slint_map_event_receiver.try_recv() {
-                            match event {
-                                SlintMapEvent::VerticalScroll(delta_y) => {
-                                    shashlik_map.pitch_delta(delta_y);
-                                }
-                                SlintMapEvent::FollowMode(enabled) => {
-                                    shashlik_map.set_camera_follow_mode(enabled);
-                                }
-                                SlintMapEvent::BtnAction(action, cost_index) => match action {
-                                    Action::DmOffice => {
-                                        shashlik_map.set_lon_lat_bearing(
-                                            139.74777078320227,
-                                            35.62298925839326,
-                                            Some(0f32),
-                                        );
-                                    }
-                                    Action::Route => {
-                                        let route_costing = match cost_index {
-                                            0 => RouteCosting::Pedestrian,
-                                            1 => RouteCosting::Auto,
-                                            2 => RouteCosting::Motorbike,
-                                            _ => panic!("{cost_index} cost index not supported"),
-                                        };
-                                        shashlik_map
-                                            .create_route_to_from_screen_center(route_costing);
-                                    }
-                                    Action::KML => {
-                                        let path = DialogBuilder::file()
-                                            .set_location("~/Desktop")
-                                            .add_filter("KML", ["kml"])
-                                            .open_single_file()
-                                            .show()
-                                            .unwrap();
-                                        if let Some(path) = path {
-                                            shashlik_map.load_kml_path(path)
-                                        }
-                                    }
-                                },
-                                SlintMapEvent::FeatureEnabled(feature, enabled) => match feature {
-                                    Feature::SSAO => unsafe {
-                                        SSAO_ENABLED = enabled;
-                                    },
-                                    Feature::Shadows => unsafe {
-                                        SHADOWS_ENABLED = enabled;
-                                    },
-                                },
-                            };
-                        }
-                        let curr_pan_state = app.get_current_pan_state();
-                        if curr_pan_state.pressed {
-                            if let Some(prev_pan) = &prev_pan_state {
-                                let delta_x = -(curr_pan_state.x - prev_pan.x);
-                                let delta_y = -(curr_pan_state.y - prev_pan.y);
-                                shashlik_map.pan_delta(delta_x, delta_y);
-                            }
-                            prev_pan_state = Some(curr_pan_state.clone());
-                        } else {
-                            prev_pan_state = None;
-                        }
-
-                        let curr_pinch_scale = app.get_current_scale();
-                       
-                        if let Some(prev_scale) = &prev_pinch_scale {
-                            let delta = curr_pinch_scale.value / prev_scale.value;
-                            if curr_pinch_scale.value > 0.0 && delta != 0.0 {
-                                shashlik_map.zoom_delta(delta, (curr_pinch_scale.x, curr_pinch_scale.y));
-                            }
-                        }
-
-                        if curr_pinch_scale.value > 0.0 {
-                            prev_pinch_scale = Some(curr_pinch_scale.clone());
-                        } else {
-                            prev_pinch_scale = None;
-                        }
-
-                        let target_texture = shashlik_map.update_and_render();
-                        app.set_texture(slint::Image::try_from(target_texture.unwrap()).unwrap());
-                        app.window().request_redraw();
-                    }
+                    // if let (Some(shashlik_map), Some(app)) =
+                    //     (shashlik_map.as_mut(), ui_weak.upgrade())
+                    // {
+                    //     while let Ok(event) = slint_map_event_receiver.try_recv() {
+                    //         match event {
+                    //             SlintMapEvent::VerticalScroll(delta_y) => {
+                    //                 shashlik_map.pitch_delta(delta_y);
+                    //             }
+                    //             SlintMapEvent::FollowMode(enabled) => {
+                    //                 shashlik_map.set_camera_follow_mode(enabled);
+                    //             }
+                    //             SlintMapEvent::BtnAction(action, cost_index) => match action {
+                    //                 Action::DmOffice => {
+                    //                     shashlik_map.set_lon_lat_bearing(
+                    //                         139.74777078320227,
+                    //                         35.62298925839326,
+                    //                         Some(0f32),
+                    //                     );
+                    //                 }
+                    //                 Action::Route => {
+                    //                     let route_costing = match cost_index {
+                    //                         0 => RouteCosting::Pedestrian,
+                    //                         1 => RouteCosting::Auto,
+                    //                         2 => RouteCosting::Motorbike,
+                    //                         _ => panic!("{cost_index} cost index not supported"),
+                    //                     };
+                    //                     shashlik_map
+                    //                         .create_route_to_from_screen_center(route_costing);
+                    //                 }
+                    //                 Action::KML => {
+                    //                     let path = DialogBuilder::file()
+                    //                         .set_location("~/Desktop")
+                    //                         .add_filter("KML", ["kml"])
+                    //                         .open_single_file()
+                    //                         .show()
+                    //                         .unwrap();
+                    //                     if let Some(path) = path {
+                    //                         shashlik_map.load_kml_path(path)
+                    //                     }
+                    //                 }
+                    //             },
+                    //             SlintMapEvent::FeatureEnabled(feature, enabled) => match feature {
+                    //                 Feature::SSAO => unsafe {
+                    //                     SSAO_ENABLED = enabled;
+                    //                 },
+                    //                 Feature::Shadows => unsafe {
+                    //                     SHADOWS_ENABLED = enabled;
+                    //                 },
+                    //             },
+                    //         };
+                    //     }
+                    //     let curr_pan_state = app.get_current_pan_state();
+                    //     if curr_pan_state.pressed {
+                    //         if let Some(prev_pan) = &prev_pan_state {
+                    //             let delta_x = -(curr_pan_state.x - prev_pan.x);
+                    //             let delta_y = -(curr_pan_state.y - prev_pan.y);
+                    //             shashlik_map.pan_delta(delta_x, delta_y);
+                    //         }
+                    //         prev_pan_state = Some(curr_pan_state.clone());
+                    //     } else {
+                    //         prev_pan_state = None;
+                    //     }
+                    //
+                    //     let curr_pinch_scale = app.get_current_scale();
+                    //
+                    //     if let Some(prev_scale) = &prev_pinch_scale {
+                    //         let delta = curr_pinch_scale.value / prev_scale.value;
+                    //         if curr_pinch_scale.value > 0.0 && delta != 0.0 {
+                    //             shashlik_map.zoom_delta(delta, (curr_pinch_scale.x, curr_pinch_scale.y));
+                    //         }
+                    //     }
+                    //
+                    //     if curr_pinch_scale.value > 0.0 {
+                    //         prev_pinch_scale = Some(curr_pinch_scale.clone());
+                    //     } else {
+                    //         prev_pinch_scale = None;
+                    //     }
+                    //
+                    //     let target_texture = shashlik_map.update_and_render();
+                    //     app.set_texture(slint::Image::try_from(target_texture.unwrap()).unwrap());
+                    //     app.window().request_redraw();
+                    // }
                 }
                 RenderingState::AfterRendering => {}
                 RenderingState::RenderingTeardown => {}

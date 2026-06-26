@@ -12,6 +12,7 @@ pollster = { workspace = true }
 wgpu = { workspace = true}
 strum = { workspace = true }
 native-dialog = "0.9.3"
+tiny-skia = "0.12.0"
 
 slint = { git = "https://github.com/slint-ui/slint", rev = "7ed12bb", features = ["unstable-wgpu-29"] }
 [target.'cfg(target_os = "linux")'.dependencies]

@@ -30,19 +30,19 @@ macro_rules! max_f64 {
 pub(crate) struct ViewProjUniform {
     view: [[f32; 4]; 4],
     proj: [[f32; 4]; 4],
-    view_proj: [[f32; 4]; 4],
+    pub view_proj: [[f32; 4]; 4],
     view_proj_inv: [[f32; 4]; 4],
     light_view_proj: [[f32; 4]; 4],
     view_tr_inv: [[f32; 4]; 4],
     inv_screen_size: [f32; 2],
-    scale: f32,
+    pub scale: f32,
     p2_scale: f32,
     scale_2d_3d: f32
 }
 
 #[derive(Clone)]
 pub struct ViewProjection {
-    uniform: ViewProjUniform,
+    pub uniform: ViewProjUniform,
     pub cs_offset: DVec3,
     pub screen_size: (f64, f64),
     inv_view_proj_matrix: DMat4,

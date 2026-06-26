@@ -25,6 +25,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread::spawn;
 use strum::IntoEnumIterator;
+use tiny_skia::{Color, Paint, PathBuilder, PixmapMut, Transform};
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
@@ -77,6 +78,8 @@ pub trait Renderer {
     fn resize(&mut self, width: u32, height: u32);
     fn update(&mut self, data: RendererUpdateData);
     fn render(&mut self) -> Option<Texture>;
+
+    fn render_software(&mut self, pixmap: &mut PixmapMut);
 }
 
 pub struct ShashlikRenderer {
@@ -263,6 +266,30 @@ impl ShashlikRenderer {
         self.layers.update(&mut self.global_context);
     }
 
+    fn draw_dynamic_scene(&self, pixmap: &mut PixmapMut, frame: i32, w: u32, h: u32) {
+        let qq = self.global_context.view_projection.uniform.scale;
+        // Clear viewport canvas
+        pixmap.fill(Color::from_rgba8(20, 24, 30, 255));
+
+        // Simple math example generating dynamic sine wave rotation
+        let time_factor = (qq as f32 * 0.04) % (std::f32::consts::TAU);
+        let center_x = w as f32 / 2.0;
+        let center_y = h as f32 / 2.0;
+        let pulse_radius = (w.min(h) as f32 / 4.0) * (1.0 / qq);
+
+        let mut pb = PathBuilder::new();
+        pb.push_circle(center_x, center_y, pulse_radius);
+
+
+        if let Some(path) = pb.finish() {
+            let mut paint = Paint::default();
+            paint.set_color_rgba8(0, 220, 160, 255); // Fluorescent neon green
+            paint.anti_alias = true;
+
+            pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+        }
+    }
+
     fn render(&mut self) -> Option<Texture> {
         // // We can't render unless the surface is configured
         // if !self.is_surface_configured {
@@ -317,5 +344,9 @@ impl Renderer for ShashlikRenderer {
 
     fn render(&mut self) -> Option<Texture> {
         self.render()
+    }
+
+    fn render_software(&mut self, pixmap: &mut PixmapMut) {
+        self.draw_dynamic_scene(pixmap, 30, 500, 500);
     }
 }

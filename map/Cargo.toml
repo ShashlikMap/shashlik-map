@@ -32,6 +32,7 @@ wgpu = { workspace = true}
 valhalla-client = "0.5.2"
 
 capitalize = "0.3"
+tiny-skia = "0.12.0"
 
 [patch.crates-io]
 ### 0.5.2+ doesn't work on android due to internal reqwest 0.13.0+ that uses
