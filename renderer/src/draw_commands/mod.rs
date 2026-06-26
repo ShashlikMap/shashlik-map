@@ -7,6 +7,7 @@ use crate::modifier::render_modifier::SpatialData;
 use lyon::lyon_tessellation::LineJoin;
 use lyon::path::LineCap;
 use crate::buffer_pool::BufferPool;
+use crate::geometry_data::ShapeData;
 use crate::global_context::GlobalContext;
 
 #[repr(C)]
@@ -46,6 +47,13 @@ pub(crate) struct DrawCommands {
     spatial_data: SpatialData,
     spatial_tx: tokio::sync::broadcast::Sender<SpatialData>,
     draw_commands: Vec<Box<dyn DrawCommand>>,
+}
+
+pub(crate) struct DrawCommands2 {
+    pub(crate) key: String,
+    pub(crate) spatial_data: SpatialData,
+    pub(crate) spatial_tx: tokio::sync::broadcast::Sender<SpatialData>,
+    pub(crate) shapes: Vec<ShapeData>,
 }
 
 impl DrawCommands {

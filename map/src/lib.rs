@@ -165,7 +165,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             camera_bearing: 0.0,
             current_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
-            cam_follow_mode: true,
+            cam_follow_mode: false,
             cam_follow_zoom_lock: Some(Self::ZOOM_LOCK_DIST),
             screen_params: ScreenParam {
                 width: screen_size.0 as u32,

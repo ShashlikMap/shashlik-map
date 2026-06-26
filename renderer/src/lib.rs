@@ -1,7 +1,7 @@
 extern crate core;
 
 use crate::fps::FpsCounter;
-use crate::geometry_data::{LineData, TextData};
+use crate::geometry_data::{LineData, ShapeData, TextData};
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
 use crate::modifier::render_modifier::SpatialData;
@@ -24,6 +24,7 @@ use std::iter;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread::spawn;
+use lyon::path::PathEvent;
 use strum::IntoEnumIterator;
 use tiny_skia::{Color, Paint, PathBuilder, PixmapMut, Transform};
 use tokio::sync::broadcast;
@@ -31,6 +32,7 @@ use wgpu::{Texture, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use wgpu_canvas::{PreviewType, PREVIEW_TYPE};
 use crate::buffer_pool::BufferPool;
+use crate::draw_commands::GeometryType;
 use crate::mesh_layers::layers::{WorldShapeFeatureLayerTag, SCREEN_TEXT_LAYER};
 
 pub mod canvas_api;
@@ -91,7 +93,8 @@ pub struct ShashlikRenderer {
     global_context: GlobalContext,
     buffer_pool: BufferPool,
     preview_textures: HashMap<PreviewType, TextureView>,
-    current_preview_type: PreviewType
+    current_preview_type: PreviewType,
+    shapes: Vec<(DVec3, Vec<ShapeData>)>,
 }
 
 impl ShashlikRenderer {
@@ -132,7 +135,8 @@ impl ShashlikRenderer {
             global_context,
             buffer_pool: BufferPool::new(),
             preview_textures: HashMap::new(),
-            current_preview_type: PreviewType::None
+            current_preview_type: PreviewType::None,
+            shapes: Vec::new()
         })
     }
 
@@ -154,9 +158,9 @@ impl ShashlikRenderer {
 
                             canvas_api.start_commands();
                             rg.content(&mut canvas_api);
-                            let commands = canvas_api.flush_commands(key, spatial_data, spatial_tx);
+                            let commands = canvas_api.flush_commands_shapes(key, spatial_data, spatial_tx);
 
-                            renderer_tx.send(RendererMessage::Draw(commands)).unwrap();
+                            renderer_tx.send(RendererMessage::DrawShapes(commands)).unwrap();
                         }
                         RendererApiMsg::UpdateStyle((style, block)) => {
                             canvas_api.update_style(&style, block);
@@ -259,6 +263,10 @@ impl ShashlikRenderer {
                         self.layers.clear_by_key(&*key);
                         self.buffer_pool.recycle(key.as_str())
                     });
+                },
+                RendererMessage::DrawShapes(commands) => {
+
+                    self.shapes.push((commands.spatial_data.transform, commands.shapes))
                 }
             }
         }
@@ -277,17 +285,59 @@ impl ShashlikRenderer {
         let center_y = h as f32 / 2.0;
         let pulse_radius = (w.min(h) as f32 / 4.0) * (1.0 / qq);
 
-        let mut pb = PathBuilder::new();
-        pb.push_circle(center_x, center_y, pulse_radius);
+
+        self.shapes.iter().for_each(|data| {
+            let xx = (data.0.x as f64 - self.global_context.view_projection.cs_offset.x) as f32;
+            let yy = (data.0.y as f64 - self.global_context.view_projection.cs_offset.y) as f32;
+            // println!("xx = {}, yy = {}", xx, yy);
+            // println!("xx = {}, yy = {}", xx, yy);
+            for shape_data in data.1.iter().filter(|shape| matches!(shape.geometry_type, GeometryType::Polygon)) {
 
 
-        if let Some(path) = pb.finish() {
-            let mut paint = Paint::default();
-            paint.set_color_rgba8(0, 220, 160, 255); // Fluorescent neon green
-            paint.anti_alias = true;
+                let mut pb = PathBuilder::new();
+                shape_data.path.iter().for_each(|path| {
+                    match path {
+                        PathEvent::Begin { at } => {
+                            // println!("xx = {}, yy = {}, at = {:?}", xx, yy, at);
+                            // pb.move_to((at.x as f64 - self.global_context.view_projection.cs_offset.x) as f32,
+                            //            (at.y as f64  - self.global_context.view_projection.cs_offset.y) as f32)
+                            pb.move_to(at.x - xx, -at.y + yy);
+                        }
+                        PathEvent::Line { from, to } => {
+                            // pb.move_to((to.x as f64 - self.global_context.view_projection.cs_offset.x) as f32,
+                            //            (to.y as f64  - self.global_context.view_projection.cs_offset.y) as f32)
+                            // println!("to = {:?}", to);
+                            pb.line_to(to.x - xx, -to.y + yy);
+                        }
+                        PathEvent::Quadratic { .. } => {}
+                        PathEvent::Cubic { .. } => {}
+                        PathEvent::End { .. } => {
+                            pb.close();
+                        }
+                    }
+                });
+                if let Some(path) = pb.finish() {
+                    let mut paint = Paint::default();
+                    if shape_data.style_id.0 == "building" {
+                        paint.set_color_rgba8(70, 70, 70, 255); // Fluorescent neon green
+                    } else if shape_data.style_id.0 == "water" {
+                        paint.set_color_rgba8(0, 0, 250, 255); // Fluorescent neon green
+                    } else if shape_data.style_id.0 == "forest" || shape_data.style_id.0 == "park" {
+                        paint.set_color_rgba8(0, 200, 0, 255); // Fluorescent neon green
+                    } else if shape_data.style_id.0 == "ground" {
+                        paint.set_color_rgba8(150, 130, 120, 255); // Fluorescent neon green
+                    } else {
+                        // println!("type = {:?}", shape_data.style_id);
+                    }
 
-            pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
-        }
+                    paint.anti_alias = true;
+
+                    pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+                }
+            }
+        });
+
+
     }
 
     fn render(&mut self) -> Option<Texture> {

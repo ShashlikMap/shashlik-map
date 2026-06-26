@@ -1,7 +1,7 @@
 use crate::draw_commands::mesh2d_draw_command::{Mesh2dCommandBatch, Mesh2dDrawCommand};
 use crate::draw_commands::mesh3d_draw_command::Mesh3dDrawCommand;
 use crate::draw_commands::text_draw_command::TextDrawCommand;
-use crate::draw_commands::{DrawCommand, DrawCommands, GeometryType, MeshVertex, PolylineOptions};
+use crate::draw_commands::{DrawCommand, DrawCommands, DrawCommands2, GeometryType, MeshVertex, PolylineOptions};
 use crate::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData, TextData};
 use crate::mesh::mesh::{StyledRange, StyledRangeInfo};
 use crate::modifier::render_modifier::SpatialData;
@@ -40,6 +40,7 @@ pub struct CanvasApi {
     text_vec: Vec<TextData>,
     mesh_info_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, MeshInfo)>,
     feature_layer_tag: Option<String>,
+    pub shapes_temp: Vec<ShapeData>,
 }
 
 impl CanvasApi {
@@ -55,6 +56,7 @@ impl CanvasApi {
             text_vec: Vec::new(),
             mesh_info_cache: HashMap::new(),
             feature_layer_tag: None,
+            shapes_temp: Vec::new(),
         }
     }
     pub(crate) fn start_commands(&mut self) {
@@ -64,6 +66,7 @@ impl CanvasApi {
         self.geometry.clear();
         self.geometry3d.clear();
         self.text_vec.clear();
+        self.shapes_temp.clear();
 
         // TODO Should be improved to per screen rather than per group
         self.mesh_info_cache
@@ -235,47 +238,48 @@ impl CanvasApi {
     }
 
     fn path(&mut self, data: ShapeData) {
-        let geom_type = data.geometry_type;
-        let style_index = self.style_store.get_index(&data.style_id);
-        let initial_index = self.geometry.indices.len();
-        match geom_type {
-            GeometryType::Polyline(options) => {
-                self.tessellate_stroke_path(&data.path, options, |vertex| {
-                    ShapeVertex::new([vertex.position().x, vertex.position().y],
-                                     [vertex.normal().x, vertex.normal().y],
-                                     [0.0, 0.0],
-                                     vertex.advancement(),
-                                     style_index as u8,
-                    )
-                });
-            }
-            GeometryType::Polygon => {
-                Self::tessellate_fill_path(&data.path, &mut self.geometry, |vertex|
-                    ShapeVertex::new([vertex.position().x, vertex.position().y],
-                                     [0.0, 0.0],
-                                     [0.0, 0.0],
-                                     0.0,
-                                     style_index as u8,
-                    ),
-                );
-            }
-        }
-        let last_index = self.geometry.indices.len();
-
-        let ranges = self
-            .indices_by_layers
-            .entry(data.index_layer_level)
-            .or_insert(Vec::new());
-        if let Some(last) = ranges.last_mut()
-            && last.0.end == initial_index
-        {
-            last.0.end = last_index;
-        } else {
-            ranges.push(StyledRange(
-                initial_index..last_index,
-                data.styled_range_info,
-            ));
-        }
+        self.shapes_temp.push(data.clone());
+        // let geom_type = data.geometry_type;
+        // let style_index = self.style_store.get_index(&data.style_id);
+        // let initial_index = self.geometry.indices.len();
+        // match geom_type {
+        //     GeometryType::Polyline(options) => {
+        //         self.tessellate_stroke_path(&data.path, options, |vertex| {
+        //             ShapeVertex::new([vertex.position().x, vertex.position().y],
+        //                              [vertex.normal().x, vertex.normal().y],
+        //                              [0.0, 0.0],
+        //                              vertex.advancement(),
+        //                              style_index as u8,
+        //             )
+        //         });
+        //     }
+        //     GeometryType::Polygon => {
+        //         Self::tessellate_fill_path(&data.path, &mut self.geometry, |vertex|
+        //             ShapeVertex::new([vertex.position().x, vertex.position().y],
+        //                              [0.0, 0.0],
+        //                              [0.0, 0.0],
+        //                              0.0,
+        //                              style_index as u8,
+        //             ),
+        //         );
+        //     }
+        // }
+        // let last_index = self.geometry.indices.len();
+        //
+        // let ranges = self
+        //     .indices_by_layers
+        //     .entry(data.index_layer_level)
+        //     .or_insert(Vec::new());
+        // if let Some(last) = ranges.last_mut()
+        //     && last.0.end == initial_index
+        // {
+        //     last.0.end = last_index;
+        // } else {
+        //     ranges.push(StyledRange(
+        //         initial_index..last_index,
+        //         data.styled_range_info,
+        //     ));
+        // }
     }
 
     fn svg(&mut self, data: SvgData) {
@@ -351,6 +355,28 @@ impl CanvasApi {
             spatial_tx,
             mem::take(&mut self.draw_commands),
         )
+    }
+
+    pub(crate) fn flush_commands_shapes(
+        &mut self,
+        key: String,
+        spatial_data: SpatialData,
+        spatial_tx: tokio::sync::broadcast::Sender<SpatialData>,
+    ) -> DrawCommands2 {
+        assert!(!self.flushed);
+        self.flushed = true;
+
+        // self.prepare_mesh2d_command();
+        // self.prepare_mesh3d_command();
+        // self.prepare_mesh2d_screen_space_command();
+        // self.prepare_text_command();
+
+        DrawCommands2 {
+            key,
+            spatial_data,
+            spatial_tx,
+            shapes: mem::take( & mut self.shapes_temp),
+        }
     }
 
     fn tessellate_fill_path<F, VT>(path: &Path, geometry: &mut VertexBuffers<VT, u32>, ctor: F)

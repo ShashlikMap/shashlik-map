@@ -15,6 +15,7 @@ pub enum GeometryData {
     Text(TextData),
 }
 
+#[derive(Clone)]
 pub struct ShapeData {
     pub path: Path,
     pub geometry_type: GeometryType,
