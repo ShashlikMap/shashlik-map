@@ -1,4 +1,5 @@
 use crate::global_context::GlobalContext;
+use crate::mesh_layers::feature_layers::{FeatureLayerTag, FeatureLayers, NameLayerTag};
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
 use crate::mesh_layers::ortho_mesh_layer::OrthoMeshLayer;
 use crate::mesh_layers::screen_shape_layer::ScreenShapeLayer;
@@ -9,8 +10,7 @@ use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use rustybuzz::ttf_parser;
 use wgpu::{CommandEncoder, RenderPass};
-use wgpu_canvas::{PREVIEW_TYPE, SHADOWS_ENABLED, SSAO_ENABLED};
-use crate::mesh_layers::feature_layers::{FeatureLayerTag, FeatureLayers, NameLayerTag};
+use wgpu_canvas::{PREVIEW_TYPE, SSAO_ENABLED};
 
 pub(crate) const WORLD_TEXT_LAYER: &'static str = "world_text_layer";
 pub(crate) const SCREEN_TEXT_LAYER: &'static str = "screen_text_layer";
@@ -136,7 +136,7 @@ impl BaseMeshLayer for Layers {
             self.mesh_layer.render(render_pass, global_context);
 
             let not_shadow_or_g_buf = !global_context.is_g_buffer_render && !global_context.is_shadow_render;
-            if unsafe { SHADOWS_ENABLED } && not_shadow_or_g_buf {
+            if global_context.is_shadow_mapping_enabled() && not_shadow_or_g_buf {
                 self.shadow_map_layer.render(render_pass, global_context);
             }
 

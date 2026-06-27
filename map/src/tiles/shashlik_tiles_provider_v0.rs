@@ -122,7 +122,7 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
                     let is_visible = !cfg!(target_os = "linux")
                         || zoom_level == 0
                         // reduce amount of buildings for linux
-                        || (zoom_level == 1 && is_building && poly.unsigned_area() >= 3.0);
+                        || (zoom_level == 1 && is_building && poly.unsigned_area() >= 2.0);
 
                     let is_visible = !is_building || is_visible;
 
