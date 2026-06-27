@@ -43,6 +43,7 @@ pub(crate) struct ViewProjUniform {
 #[derive(Clone)]
 pub struct ViewProjection {
     uniform: ViewProjUniform,
+    pub scale_2d_3d: f32,
     pub cs_offset: DVec3,
     pub screen_size: (f64, f64),
     inv_view_proj_matrix: DMat4,
@@ -82,6 +83,7 @@ impl ViewProjection {
                 p2_scale: 1.0,
                 scale_2d_3d: 1.0,
             },
+            scale_2d_3d: 0.0,
             screen_size: (0.0, 0.0),
             cs_offset: DVec3::new(0.0, 0.0, 0.0),
             inv_view_proj_matrix: DMat4::IDENTITY,
@@ -120,6 +122,7 @@ impl ViewProjection {
             .as_mat4()
             .to_cols_array_2d();
         self.uniform.scale = data.scale;
+        self.scale_2d_3d = data.scale_2d_3d;
         self.uniform.p2_scale = self.p2_scale(data.scale);
         self.uniform.scale_2d_3d = data.scale_2d_3d;
         self.cs_offset = data.cs_offset;
