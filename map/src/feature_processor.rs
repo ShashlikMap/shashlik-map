@@ -164,7 +164,11 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             for &p in line[1..].iter() {
                 path_builder.line_to(point(p.x as f32, p.y as f32));
             }
-            path_builder.end(false);
+            if matches!(kind, MapGeomObjectKind::Building {..}) {
+                path_builder.end(true);
+            } else {
+                path_builder.end(false);
+            }
 
             if let Some((style_id, layer_level, geometry_type, name)) = match &kind {
                 MapGeomObjectKind::Way(info) => match info.line_kind {

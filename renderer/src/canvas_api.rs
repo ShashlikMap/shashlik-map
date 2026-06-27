@@ -12,10 +12,7 @@ use crate::svg::svg_parser::svg_parse;
 use crate::vertex_attrs::ShapeVertex;
 use glam::{DVec3, Vec3};
 use lyon::geom::euclid::{point2, Box2D};
-use lyon::lyon_tessellation::{
-    BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator,
-    StrokeVertex, VertexBuffers,
-};
+use lyon::lyon_tessellation::{BuffersBuilder, FillOptions, FillTessellator, FillVertex, LineCap, LineJoin, StrokeOptions, StrokeTessellator, StrokeVertex, VertexBuffers};
 use lyon::path::builder::BorderRadii;
 use lyon::path::{Path, Winding};
 use std::collections::{BTreeMap, HashMap};
@@ -169,6 +166,20 @@ impl CanvasApi {
         let path = &data.path;
         let height = data.height;
         let mut geometry_buffer: VertexBuffers<MeshVertex, u32> = VertexBuffers::new();
+
+        self.geometry_data(GeometryData::Shape(ShapeData {
+            path: path.clone(),
+            geometry_type: GeometryType::Polyline(PolylineOptions {
+                width: 0.4,
+                line_cap: LineCap::Butt,
+                line_join: LineJoin::Round,
+                tolerance: 0.01,
+            }),
+            style_id: StyleId::new("building_stand"),
+            index_layer_level: -99,
+            styled_range_info: StyledRangeInfo(1, "skip"),
+        }));
+
         Self::tessellate_fill_path(path, &mut geometry_buffer, |vertex: FillVertex| {
             MeshVertex {
                 position: [vertex.position().x, vertex.position().y, height],
