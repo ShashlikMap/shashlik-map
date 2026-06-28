@@ -166,7 +166,6 @@ impl CanvasApi {
         let path = &data.path;
         let height = data.height;
         let mut geometry_buffer: VertexBuffers<MeshVertex, u32> = VertexBuffers::new();
-
         Self::tessellate_fill_path(path, &mut geometry_buffer, |vertex: FillVertex| {
             MeshVertex {
                 position: [vertex.position().x, vertex.position().y, height],
