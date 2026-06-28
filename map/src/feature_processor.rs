@@ -244,7 +244,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     geometry_data.push(GeometryData::Shape(ShapeData {
                         path: path_builder.clone().build(),
                         geometry_type: GeometryType::Polyline(PolylineOptions {
-                            width: 0.5,
+                            width: 0.4,
                             line_cap: LineCap::Butt,
                             line_join: LineJoin::Round,
                             tolerance: 0.02,
