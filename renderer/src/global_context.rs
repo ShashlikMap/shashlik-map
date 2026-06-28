@@ -7,7 +7,7 @@ use crate::RendererUpdateData;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Device, TextureFormat, TextureUsages, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use wgpu_canvas::{SHADOWS_ENABLED, SHADOWS_TEX_SIZE};
+use wgpu_canvas::SHADOWS_TEX_SIZE;
 
 pub struct GlobalContext {
     pub canvas: Box<dyn WgpuCanvas>,
@@ -133,6 +133,6 @@ impl GlobalContext {
     }
 
     pub fn is_shadow_mapping_enabled(&self) -> bool {
-         (self.view_projection.scale_2d_3d > 0.0) && unsafe { SHADOWS_ENABLED }
+        self.view_projection.is_shadow_mapping_enabled()
     }
 }
