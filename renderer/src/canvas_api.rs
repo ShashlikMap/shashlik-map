@@ -170,7 +170,7 @@ impl CanvasApi {
         self.geometry_data(GeometryData::Shape(ShapeData {
             path: path.clone(),
             geometry_type: GeometryType::Polyline(PolylineOptions {
-                width: 0.4,
+                width: 0.5,
                 line_cap: LineCap::Butt,
                 line_join: LineJoin::Round,
                 tolerance: 0.01,
