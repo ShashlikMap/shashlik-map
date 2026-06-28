@@ -322,6 +322,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         if scale_2d_3d > 0.0 && scale_2d_3d < 1.0 {
             self.renderer
                 .api.update_style(StyleId::new("building_stand"), move |style| {
+                // fyi, shift values to ensure a full opaque or transparent value
                 let new_value = ((scale_2d_3d - 0.05) * 1.1).clamp(0.0, 1.0);
                 style.set_alpha(new_value);
             });

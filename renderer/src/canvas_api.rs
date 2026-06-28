@@ -175,8 +175,8 @@ impl CanvasApi {
                 line_join: LineJoin::Round,
                 tolerance: 0.01,
             }),
-            style_id: StyleId::new("building_stand"),
-            index_layer_level: -99,
+            style_id: data.stand_style,
+            index_layer_level: data.stand_level,
             styled_range_info: StyledRangeInfo(1, "skip"),
         }));
 
