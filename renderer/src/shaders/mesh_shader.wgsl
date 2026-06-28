@@ -84,7 +84,7 @@ const light_dir = normalize(vec3(0.42, 0.56, 0.71));
 const sun_color = vec3<f32>(1.0, 0.98, 0.94);
 const ambient_color = vec3<f32>(0.86, 0.90, 0.96) * 0.7;
 
-const wall_color = vec3<f32>(0.918, 0.910, 0.894);
+const wall_color = vec3<f32>(0.9639, 0.9555, 0.9387);
 const roof_color = vec3<f32>(0.843, 0.835, 0.816);
 
 @group(1) @binding(0)

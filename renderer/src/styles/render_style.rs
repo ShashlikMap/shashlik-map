@@ -50,6 +50,10 @@ impl RenderStyle {
         Self::convert_to_wgsl_mat4x3(self.container)
     }
 
+    pub fn set_alpha(&mut self, alpha: f32) {
+        self.container[4] = alpha;
+    }
+
     fn convert_to_wgsl_mat4x3(flat_array: [f32; 12]) -> [[f32; 4]; 4] {
         [
             [flat_array[0], flat_array[1], flat_array[2], 0.0],  // Column 0

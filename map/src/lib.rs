@@ -242,6 +242,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.camera_controller.update_camera(&mut self.camera);
 
         self.update_entities();
+        self.update_styles();
 
         let cam_zoom = self.camera.scale();
         let scale_2d_3d = self.transition_2d_3d_helper.update(cam_zoom, Self::TEMP_ANIMATION_SPEED as f32);
@@ -313,6 +314,18 @@ impl<T: TilesProvider> ShashlikMap<T> {
                     self.set_lon_lat_bearing(lon, lat, None);
                 }
             }
+        }
+    }
+
+    fn update_styles(&mut self) {
+        let scale_2d_3d = self.transition_2d_3d_helper.scale_2d_3d();
+        if scale_2d_3d > 0.0 && scale_2d_3d < 1.0 {
+            self.renderer
+                .api.update_style(StyleId::new("building_stand"), move |style| {
+                // fyi, shift values to ensure a full opaque or transparent value
+                let new_value = ((scale_2d_3d - 0.05) * 1.1).clamp(0.0, 1.0);
+                style.set_alpha(new_value);
+            });
         }
     }
 
@@ -523,7 +536,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     pub fn load_kml_path(&self, path_buf: PathBuf) {
-        println!("Loading KMdL from {:?}", path_buf);
+        println!("Loading KML from {:?}", path_buf);
         let kml_group = KmlGroup::new(path_buf, self.create_location_coord_converter());
 
         self.renderer.api.add_render_group(

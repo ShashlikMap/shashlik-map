@@ -15,6 +15,7 @@ use renderer::styles::style_id::StyleId;
 use seahash::hash;
 use std::collections::HashMap;
 use capitalize::Capitalize;
+use lyon::lyon_tessellation::{LineCap, LineJoin};
 
 pub struct ShashlikFeatureProcessor {}
 
@@ -164,7 +165,10 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             for &p in line[1..].iter() {
                 path_builder.line_to(point(p.x as f32, p.y as f32));
             }
-            path_builder.end(false);
+
+            // fyi, we need to close the building path to properly build a closed stroke
+            let end_with_closing = matches!(kind, MapGeomObjectKind::Building {..});
+            path_builder.end(end_with_closing);
 
             if let Some((style_id, layer_level, geometry_type, name)) = match &kind {
                 MapGeomObjectKind::Way(info) => match info.line_kind {
@@ -236,6 +240,20 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     } else {
                         level
                     };
+
+                    geometry_data.push(GeometryData::Shape(ShapeData {
+                        path: path_builder.clone().build(),
+                        geometry_type: GeometryType::Polyline(PolylineOptions {
+                            width: 0.4,
+                            line_cap: LineCap::Butt,
+                            line_join: LineJoin::Round,
+                            tolerance: 0.02,
+                        }),
+                        style_id: StyleId::new("building_stand"),
+                        index_layer_level: -99, // same as just buildings
+                        styled_range_info: StyledRangeInfo(1, "skip"),
+                    }));
+
                     geometry_data.push(GeometryData::ExtrudedPolygon(ExtrudedPolygonData {
                         path: path_builder.build(),
                         height: level as f32 / 2.0,

@@ -12,10 +12,7 @@ use crate::svg::svg_parser::svg_parse;
 use crate::vertex_attrs::ShapeVertex;
 use glam::{DVec3, Vec3};
 use lyon::geom::euclid::{point2, Box2D};
-use lyon::lyon_tessellation::{
-    BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator,
-    StrokeVertex, VertexBuffers,
-};
+use lyon::lyon_tessellation::{BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator, StrokeVertex, VertexBuffers};
 use lyon::path::builder::BorderRadii;
 use lyon::path::{Path, Winding};
 use std::collections::{BTreeMap, HashMap};
