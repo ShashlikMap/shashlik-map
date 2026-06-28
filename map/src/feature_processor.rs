@@ -15,6 +15,7 @@ use renderer::styles::style_id::StyleId;
 use seahash::hash;
 use std::collections::HashMap;
 use capitalize::Capitalize;
+use lyon::lyon_tessellation::{LineCap, LineJoin};
 
 pub struct ShashlikFeatureProcessor {}
 
@@ -239,11 +240,23 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     } else {
                         level
                     };
+
+                    geometry_data.push(GeometryData::Shape(ShapeData {
+                        path: path_builder.clone().build(),
+                        geometry_type: GeometryType::Polyline(PolylineOptions {
+                            width: 0.5,
+                            line_cap: LineCap::Butt,
+                            line_join: LineJoin::Round,
+                            tolerance: 0.02,
+                        }),
+                        style_id: StyleId::new("building_stand"),
+                        index_layer_level: -99, // same as just buildings
+                        styled_range_info: StyledRangeInfo(1, "skip"),
+                    }));
+
                     geometry_data.push(GeometryData::ExtrudedPolygon(ExtrudedPolygonData {
                         path: path_builder.build(),
                         height: level as f32 / 2.0,
-                        stand_style: StyleId::new("building_stand"),
-                        stand_level: -99 // same as just buildings
                     }));
                 } else {
                     let double_style = match &kind {

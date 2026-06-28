@@ -26,8 +26,6 @@ pub struct ShapeData {
 pub struct ExtrudedPolygonData {
     pub path: Path,
     pub height: f32,
-    pub stand_style: StyleId,
-    pub stand_level: i8,
 }
 
 pub struct Mesh3d {
