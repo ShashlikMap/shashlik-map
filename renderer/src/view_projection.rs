@@ -1,7 +1,8 @@
 use crate::{RendererUpdateData, LIGHT_POS};
 use geo_types::{coord, Coord};
-use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2};
+use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec4Swizzles};
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
+use wgpu_canvas::{SHADOWS_ENABLED, SHADOWS_TEX_SIZE};
 
 #[rustfmt::skip]
 const FLIP_Y: DMat4 = DMat4::from_cols_array(
@@ -53,6 +54,9 @@ pub struct ViewProjection {
 
 impl ViewProjection {
     const MAX_MESH_HEIGHT: f64 = 20.0;
+
+    const ORTHO_STEP: f64 = 5.0;
+
     pub fn new(device: &Device) -> Self {
         // ViewProjection align is 16byte since vec4 is used
         let vec4size = size_of::<[f32; 4]>() as u64;
@@ -94,7 +98,7 @@ impl ViewProjection {
 
     pub fn update(&mut self, queue: &Queue,
                   config: &SurfaceConfiguration,
-                  data: RendererUpdateData) {
+                  mut data: RendererUpdateData) {
 
         self.uniform.view = data.view_matrix.as_mat4()
             .to_cols_array_2d();
@@ -103,7 +107,7 @@ impl ViewProjection {
             .to_cols_array_2d();
         let view_proj = FLIP_Y * data.view_proj_matrix;
 
-        self.ortho_for_shadow_map();
+        self.ortho_for_shadow_map(&mut data.view_light_matrix);
 
         self.uniform.light_view_proj = (self.ortho * data.view_light_matrix)
             .as_mat4()
@@ -137,8 +141,10 @@ impl ViewProjection {
     }
 
     /// calculate ortho matrix for shadow mapping
-    fn ortho_for_shadow_map(&mut self) {
-
+    fn ortho_for_shadow_map(&mut self, view_light_matrix: &mut DMat4) {
+        if !self.is_shadow_mapping_enabled() {
+            return;
+        }
         let c1 = self.clip_to_world(&coord! {x: -1.0, y: -1.0});
         let c2 = self.clip_to_world(&coord! {x: 1.0, y: -1.0});
         let c3 = self.clip_to_world(&coord! {x: -1.0, y: 1.0});
@@ -157,8 +163,20 @@ impl ViewProjection {
             let max_x = max_f64!(p1.x, p2.x, p3.x, p4.x) + Self::MAX_MESH_HEIGHT;
             let max_y = max_f64!(p1.y, p2.y, p3.y, p4.y) + Self::MAX_MESH_HEIGHT;
 
+            let depth_texture_size = unsafe { SHADOWS_TEX_SIZE.0 as f64 };
+            let ortho_width = ((max_x - min_x) / Self::ORTHO_STEP).round() * Self::ORTHO_STEP;
+            let ortho_height = ((max_y - min_y) / Self::ORTHO_STEP).round() * Self::ORTHO_STEP;
+
+            let texel_size_x = ortho_width / depth_texture_size;
+            let texel_size_y = ortho_height / depth_texture_size;
+
+            let mut light_space_translation = view_light_matrix.w_axis.xyz();
+            light_space_translation.x = (light_space_translation.x / texel_size_x).floor() * texel_size_x;
+            light_space_translation.y = (light_space_translation.y / texel_size_y).floor() * texel_size_y;
+            view_light_matrix.w_axis = light_space_translation.extend(1.0);
+
             self.ortho = DMat4::orthographic_rh(
-                min_x, max_x, min_y, max_y,
+                -ortho_width / 2.0, ortho_width / 2.0, -ortho_height / 2.0, ortho_height / 2.0,
                 0.01, 1600.0);
         }
     }
@@ -252,5 +270,9 @@ impl ViewProjection {
             unprojected.y / unprojected.w,
             unprojected.z / unprojected.w,
         )
+    }
+
+    pub fn is_shadow_mapping_enabled(&self) -> bool {
+        (self.scale_2d_3d > 0.0) && unsafe { SHADOWS_ENABLED }
     }
 }
