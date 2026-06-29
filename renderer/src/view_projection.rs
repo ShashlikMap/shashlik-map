@@ -1,7 +1,6 @@
 use crate::{RendererUpdateData, LIGHT_POS};
 use geo_types::{coord, Coord};
 use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2};
-use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 
 #[rustfmt::skip]
 const FLIP_Y: DMat4 = DMat4::from_cols_array(
@@ -46,24 +45,24 @@ pub struct ViewProjection {
     pub cs_offset: DVec3,
     pub screen_size: (f64, f64),
     inv_view_proj_matrix: DMat4,
-    pub uniform_buffer: Buffer,
+    // pub uniform_buffer: Buffer,
     ortho: DMat4
 }
 
 impl ViewProjection {
     const MAX_MESH_HEIGHT: f64 = 20.0;
-    pub fn new(device: &Device) -> Self {
+    pub fn new() -> Self {
         // ViewProjection align is 16byte since vec4 is used
         let vec4size = size_of::<[f32; 4]>() as u64;
         let size = size_of::<ViewProjUniform>() as u64;
         let align_mask = vec4size - 1;
         let size = ((size + align_mask) & !align_mask).max(vec4size);
-        let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("ViewProjection Buffer"),
-            size,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
-            mapped_at_creation: false,
-        });
+        // let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        //     label: Some("ViewProjection Buffer"),
+        //     size,
+        //     usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
+        //     mapped_at_creation: false,
+        // });
 
         let ortho = DMat4::orthographic_rh(
             -200.0, 200.0, -200.0, 200.0,
@@ -85,13 +84,12 @@ impl ViewProjection {
             screen_size: (0.0, 0.0),
             cs_offset: DVec3::new(0.0, 0.0, 0.0),
             inv_view_proj_matrix: DMat4::IDENTITY,
-            uniform_buffer,
+            // uniform_buffer,
             ortho
         }
     }
 
-    pub fn update(&mut self, queue: &Queue,
-                  config: &SurfaceConfiguration,
+    pub fn update(&mut self,
                   data: RendererUpdateData) {
 
         self.uniform.view = data.view_matrix.as_mat4()
@@ -124,13 +122,13 @@ impl ViewProjection {
         self.uniform.scale_2d_3d = data.scale_2d_3d;
         self.cs_offset = data.cs_offset;
         self.inv_view_proj_matrix = data.view_proj_matrix.inverse();
-        self.screen_size = (config.width as f64, config.height as f64);
+        self.screen_size = (500.0 as f64, 500.0 as f64);
 
-        queue.write_buffer(
-            &self.uniform_buffer,
-            0,
-            bytemuck::cast_slice(&[self.uniform]),
-        );
+        // queue.write_buffer(
+        //     &self.uniform_buffer,
+        //     0,
+        //     bytemuck::cast_slice(&[self.uniform]),
+        // );
     }
 
     /// calculate ortho matrix for shadow mapping

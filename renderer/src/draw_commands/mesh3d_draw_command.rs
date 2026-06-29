@@ -22,7 +22,7 @@ impl DrawCommand for Mesh3dDrawCommand {
         buffer_pool: &mut BufferPool
     ) {
 
-        let mesh = Mesh::create(Some(key.as_str()), global_context, buffer_pool, &self.mesh, StyledRangeInfo(0, ""));
-        layers.mesh_layer.add(key, spatial_rx, false, mesh);
+        // let mesh = Mesh::create(Some(key.as_str()), global_context, buffer_pool, &self.mesh, StyledRangeInfo(0, ""));
+        // layers.mesh_layer.add(key, spatial_rx, false, mesh);
     }
 }

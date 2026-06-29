@@ -5,6 +5,7 @@ use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex, VertexAttrib};
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
+use wgpu::naga::compact::KeepUnused::No;
 
 pub struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
@@ -131,11 +132,11 @@ impl RenderPipeline for ShapePipeline {
     type InstanceInputType = ShapeInstanceInput;
 
     fn compute(&mut self, compute_pass: &mut ComputePass, _global_context: &GlobalContext) {
-        compute_pass.set_pipeline(&self.reset_culling_compute_pipeline);
-        compute_pass.dispatch_workgroups(1, 1, 1);
-
-        compute_pass.set_pipeline(&self.culling_compute_pipeline);
-        compute_pass.set_bind_group(0, &self.mesh_pipeline.bind_group, &[]);
+        // compute_pass.set_pipeline(&self.reset_culling_compute_pipeline);
+        // compute_pass.dispatch_workgroups(1, 1, 1);
+        //
+        // compute_pass.set_pipeline(&self.culling_compute_pipeline);
+        // compute_pass.set_bind_group(0, &self.mesh_pipeline.bind_group, &[]);
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
@@ -149,7 +150,7 @@ impl RenderPipeline for ShapePipeline {
         let device = global_context.device();
         let mut layouts = vec![
             Some(&self.mesh_pipeline.bind_group_layout),
-            Some(&global_context.styles_bind_group_layout),
+            None,
         ];
         if self.indirect {
             layouts.push(Some(&self.indirect_instances_layout))

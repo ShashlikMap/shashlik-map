@@ -33,31 +33,31 @@ impl DrawCommand for Mesh2dDrawCommand {
         layers: &mut Layers,
         buffer_pool: &mut BufferPool
     ) {
-        if let Some(feature_layer) = self
-            .feature_layer_tag
-            .as_ref()
-            .and_then(|tag| layers.feature_layers(tag))
-        {
-            if let Some(first_batch) = self.batches.first_mut() {
-                feature_layer.submit_batch(key.as_str(), spatial_rx, global_context, buffer_pool, first_batch)
-            }
-        } else if self.is_screen {
-            layers
-                .screen_shape_layer
-                .submit(key.as_str(), spatial_data, global_context, buffer_pool, self);
-        } else {
-            if let Some(first_batch) = self.batches.first_mut() {
-                let mesh = Mesh::create_layered(
-                    Some(key.as_str()),
-                    global_context,
-                    buffer_pool,
-                    &first_batch.mesh,
-                    mem::take(&mut first_batch.layers_indices),
-                );
-                layers
-                    .shape_layer
-                    .add(key, spatial_rx, !self.is_screen, mesh);
-            }
-        };
+        // if let Some(feature_layer) = self
+        //     .feature_layer_tag
+        //     .as_ref()
+        //     .and_then(|tag| layers.feature_layers(tag))
+        // {
+        //     if let Some(first_batch) = self.batches.first_mut() {
+        //         feature_layer.submit_batch(key.as_str(), spatial_rx, global_context, buffer_pool, first_batch)
+        //     }
+        // } else if self.is_screen {
+        //     layers
+        //         .screen_shape_layer
+        //         .submit(key.as_str(), spatial_data, global_context, buffer_pool, self);
+        // } else {
+        //     if let Some(first_batch) = self.batches.first_mut() {
+        //         let mesh = Mesh::create_layered(
+        //             Some(key.as_str()),
+        //             global_context,
+        //             buffer_pool,
+        //             &first_batch.mesh,
+        //             mem::take(&mut first_batch.layers_indices),
+        //         );
+        //         layers
+        //             .shape_layer
+        //             .add(key, spatial_rx, !self.is_screen, mesh);
+        //     }
+        // };
     }
 }

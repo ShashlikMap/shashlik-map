@@ -40,41 +40,41 @@ impl PassNode for RenderToTexturePassNode {
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {
-        if unsafe { !PREVIEW_TYPE.is_enabled() } {
-            return;
-        }
-        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("Render To Texture Pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &self.msaa_texture_view,
-                resolve_target: Some(&self.rt_texture_view),
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.0,
-                        g: 0.741,
-                        b: 0.961,
-                        a: 1.0,
-                    }),
-                    store: wgpu::StoreOp::Store,
-                },
-                depth_slice: None,
-            })],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &self.depth_texture_view,
-                depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
-                    store: wgpu::StoreOp::Store,
-                }),
-                stencil_ops: None,
-            }),
-            occlusion_query_set: None,
-            timestamp_writes: None,
-            multiview_mask: None,
-        });
-
-        global_context.is_g_buffer_render = false;
-        global_context.is_preview_render = true;
-        global_context.is_shadow_render = false;
-        layers.render(&mut render_pass, global_context);
+        // if unsafe { !PREVIEW_TYPE.is_enabled() } {
+        //     return;
+        // }
+        // let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        //     label: Some("Render To Texture Pass"),
+        //     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+        //         view: &self.msaa_texture_view,
+        //         resolve_target: Some(&self.rt_texture_view),
+        //         ops: wgpu::Operations {
+        //             load: wgpu::LoadOp::Clear(wgpu::Color {
+        //                 r: 0.0,
+        //                 g: 0.741,
+        //                 b: 0.961,
+        //                 a: 1.0,
+        //             }),
+        //             store: wgpu::StoreOp::Store,
+        //         },
+        //         depth_slice: None,
+        //     })],
+        //     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+        //         view: &self.depth_texture_view,
+        //         depth_ops: Some(wgpu::Operations {
+        //             load: wgpu::LoadOp::Clear(1.0),
+        //             store: wgpu::StoreOp::Store,
+        //         }),
+        //         stencil_ops: None,
+        //     }),
+        //     occlusion_query_set: None,
+        //     timestamp_writes: None,
+        //     multiview_mask: None,
+        // });
+        //
+        // global_context.is_g_buffer_render = false;
+        // global_context.is_preview_render = true;
+        // global_context.is_shadow_render = false;
+        // layers.render(&mut render_pass, global_context);
     }
 }

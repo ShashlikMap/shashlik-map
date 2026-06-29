@@ -11,9 +11,9 @@ use wgpu_canvas::SHADOWS_ENABLED;
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,
     pub depth_bind_group_layout: BindGroupLayout,
-    pub bind_group: BindGroup,
-    depth_bind_group: BindGroup,
-    depth_dummy_bind_group: BindGroup,
+    // pub bind_group: BindGroup,
+    // depth_bind_group: BindGroup,
+    // depth_dummy_bind_group: BindGroup,
 }
 
 impl MeshPipeline {
@@ -34,19 +34,19 @@ impl MeshPipeline {
             label: Some("mesh_pipeline_group_layout"),
         });
         
-        let entries = vec![wgpu::BindGroupEntry {
-            binding: 0,
-            resource: global_context
-                .view_projection
-                .uniform_buffer
-                .as_entire_binding(),
-        }];
-        
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            entries: &entries,
-            label: Some("mesh_pipeline_bind_group"),
-        });
+        // let entries = vec![wgpu::BindGroupEntry {
+        //     binding: 0,
+        //     resource: global_context
+        //         .view_projection
+        //         .uniform_buffer
+        //         .as_entire_binding(),
+        // }];
+        //
+        // let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        //     layout: &bind_group_layout,
+        //     entries: &entries,
+        //     label: Some("mesh_pipeline_bind_group"),
+        // });
 
         let depth_bind_group_entries = vec![
             wgpu::BindGroupLayoutEntry {
@@ -89,43 +89,43 @@ impl MeshPipeline {
             device,
         );
 
-        let mut depth_entries = vec![
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::TextureView(
-                    &global_context.shadow_map_depth_texture,
-                ),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: wgpu::BindingResource::Sampler(&depth_sampler),
-            },
-        ];
+        // let mut depth_entries = vec![
+        //     wgpu::BindGroupEntry {
+        //         binding: 0,
+        //         resource: wgpu::BindingResource::TextureView(
+        //             &global_context.shadow_map_depth_texture,
+        //         ),
+        //     },
+        //     wgpu::BindGroupEntry {
+        //         binding: 1,
+        //         resource: wgpu::BindingResource::Sampler(&depth_sampler),
+        //     },
+        // ];
 
-        let depth_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &depth_bind_group_layout,
-            entries: &depth_entries,
-            label: Some("mesh_pipeline_depth_bind_group"),
-        });
-
-        depth_entries[0] = wgpu::BindGroupEntry {
-            binding: 0,
-            resource: wgpu::BindingResource::TextureView(
-                &dummy_texture,
-            ),
-        };
-        let depth_dummy_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &depth_bind_group_layout,
-            entries: &depth_entries,
-            label: Some("mesh_pipeline_dummy_depth_bind_group"),
-        });
+        // let depth_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        //     layout: &depth_bind_group_layout,
+        //     entries: &depth_entries,
+        //     label: Some("mesh_pipeline_depth_bind_group"),
+        // });
+        //
+        // depth_entries[0] = wgpu::BindGroupEntry {
+        //     binding: 0,
+        //     resource: wgpu::BindingResource::TextureView(
+        //         &dummy_texture,
+        //     ),
+        // };
+        // let depth_dummy_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        //     layout: &depth_bind_group_layout,
+        //     entries: &depth_entries,
+        //     label: Some("mesh_pipeline_dummy_depth_bind_group"),
+        // });
 
         MeshPipeline {
             bind_group_layout,
             depth_bind_group_layout,
-            bind_group,
-            depth_bind_group,
-            depth_dummy_bind_group,
+            // bind_group,
+            // depth_bind_group,
+            // depth_dummy_bind_group,
         }
     }
 }
@@ -137,24 +137,24 @@ impl RenderPipeline for MeshPipeline {
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
-        let mut mask = global_context.is_shadow_render as u32;
-        if unsafe { SHADOWS_ENABLED } {
-            mask |= 2;
-        }
-        render_pass.set_immediates(
-            0,
-            bytemuck::bytes_of(&mask),
-        );
-        render_pass.set_bind_group(0, &self.bind_group, &[]);
-
-        if unsafe { !SHADOWS_ENABLED } ||
-            global_context.is_shadow_render ||
-            global_context.is_preview_render ||
-            global_context.is_g_buffer_render {
-            render_pass.set_bind_group(1, &self.depth_dummy_bind_group, &[]);
-        } else {
-            render_pass.set_bind_group(1, &self.depth_bind_group, &[]);
-        }
+        // let mut mask = global_context.is_shadow_render as u32;
+        // if unsafe { SHADOWS_ENABLED } {
+        //     mask |= 2;
+        // }
+        // render_pass.set_immediates(
+        //     0,
+        //     bytemuck::bytes_of(&mask),
+        // );
+        // render_pass.set_bind_group(0, &self.bind_group, &[]);
+        //
+        // if unsafe { !SHADOWS_ENABLED } ||
+        //     global_context.is_shadow_render ||
+        //     global_context.is_preview_render ||
+        //     global_context.is_g_buffer_render {
+        //     render_pass.set_bind_group(1, &self.depth_dummy_bind_group, &[]);
+        // } else {
+        //     render_pass.set_bind_group(1, &self.depth_bind_group, &[]);
+        // }
     }
 
     fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {

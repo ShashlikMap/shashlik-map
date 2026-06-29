@@ -17,8 +17,8 @@ pub(crate) struct MainPassNode {
     pub non_msaa_texture_view_normals: TextureView,
     depth_texture_view: TextureView,
     pub non_msaa_depth_texture_view: TextureView,
-    ssao_bind_group: BindGroup,
-    camera_ssao_bind_group: BindGroup,
+    // ssao_bind_group: BindGroup,
+    // camera_ssao_bind_group: BindGroup,
     ssao_compute_pipeline: ComputePipeline
 }
 
@@ -138,42 +138,42 @@ impl MainPassNode {
             label: Some("camera_ssao_pipeline_group_layout"),
         });
 
-        let camera_ssao_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &camera_ssao_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: global_context
-                    .view_projection
-                    .uniform_buffer
-                    .as_entire_binding(),
-            }],
-            label: Some("ssao_camera_pipeline_bind_group"),
-        });
+        // let camera_ssao_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        //     layout: &camera_ssao_bind_group_layout,
+        //     entries: &[wgpu::BindGroupEntry {
+        //         binding: 0,
+        //         resource: global_context
+        //             .view_projection
+        //             .uniform_buffer
+        //             .as_entire_binding(),
+        //     }],
+        //     label: Some("ssao_camera_pipeline_bind_group"),
+        // });
 
-        let ssao_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &ssao_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::TextureView(&global_context.ssao_texture),
-            },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&non_msaa_texture_view_normals),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&non_msaa_texture_view_positions),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::TextureView(&noise_texture),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: wgpu::BindingResource::TextureView(&kernel_texture),
-                }],
-            label: Some("ssao_compute_bind_group"),
-        });
+        // let ssao_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        //     layout: &ssao_bind_group_layout,
+        //     entries: &[wgpu::BindGroupEntry {
+        //         binding: 0,
+        //         resource: wgpu::BindingResource::TextureView(&global_context.ssao_texture),
+        //     },
+        //         wgpu::BindGroupEntry {
+        //             binding: 1,
+        //             resource: wgpu::BindingResource::TextureView(&non_msaa_texture_view_normals),
+        //         },
+        //         wgpu::BindGroupEntry {
+        //             binding: 2,
+        //             resource: wgpu::BindingResource::TextureView(&non_msaa_texture_view_positions),
+        //         },
+        //         wgpu::BindGroupEntry {
+        //             binding: 3,
+        //             resource: wgpu::BindingResource::TextureView(&noise_texture),
+        //         },
+        //         wgpu::BindGroupEntry {
+        //             binding: 4,
+        //             resource: wgpu::BindingResource::TextureView(&kernel_texture),
+        //         }],
+        //     label: Some("ssao_compute_bind_group"),
+        // });
 
         let ssao_pipeline_layout = global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("SSAO Pipeline Layout"),
@@ -204,8 +204,8 @@ impl MainPassNode {
                                                      TextureFormat::Depth24PlusStencil8,
                                                      global_context.device()),
             non_msaa_depth_texture_view,
-            ssao_bind_group,
-            camera_ssao_bind_group,
+            // ssao_bind_group,
+            // camera_ssao_bind_group,
             ssao_compute_pipeline,
         }
     }
@@ -344,18 +344,18 @@ impl PassNode for MainPassNode {
                 layers.render(&mut render_pass, global_context);
             }
 
-            let ssao_texture = global_context.ssao_texture.texture();
-            encoder.clear_texture(ssao_texture, &ImageSubresourceRange::default());
-            let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("SSAO Compute Pass"),
-                timestamp_writes: None,
-            });
-            compute_pass.set_pipeline(&self.ssao_compute_pipeline);
-            compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
-            compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
-            let wg_x = (ssao_texture.size().width as f32 / 8.0).ceil() as u32;
-            let wg_y = (ssao_texture.size().height as f32 / 8.0).ceil() as u32;
-            compute_pass.dispatch_workgroups(wg_x, wg_y, 1);
+            // let ssao_texture = global_context.ssao_texture.texture();
+            // encoder.clear_texture(ssao_texture, &ImageSubresourceRange::default());
+            // let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+            //     label: Some("SSAO Compute Pass"),
+            //     timestamp_writes: None,
+            // });
+            // compute_pass.set_pipeline(&self.ssao_compute_pipeline);
+            // compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
+            // compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
+            // let wg_x = (ssao_texture.size().width as f32 / 8.0).ceil() as u32;
+            // let wg_y = (ssao_texture.size().height as f32 / 8.0).ceil() as u32;
+            // compute_pass.dispatch_workgroups(wg_x, wg_y, 1);
         }
 
         {

@@ -20,8 +20,8 @@ impl DrawCommand for TextDrawCommand {
         layers: &mut Layers,
         _buffer_pool: &mut BufferPool
     ) {
-        layers
-            .text_feature_layers.get_layer(WORLD_TEXT_LAYER).unwrap()
-            .add(key, mem::take(&mut self.data), spatial_data);
+        // layers
+        //     .text_feature_layers.get_layer(WORLD_TEXT_LAYER).unwrap()
+        //     .add(key, mem::take(&mut self.data), spatial_data);
     }
 }

@@ -100,22 +100,21 @@ pub struct ShashlikRenderer {
 impl ShashlikRenderer {
     pub async fn new(
         feature_tags: Vec<WorldShapeFeatureLayerTag>,
-        canvas: Box<dyn WgpuCanvas>,
         font: &'static ttf_parser::Face<'static>,
     ) -> anyhow::Result<ShashlikRenderer> {
         let style_store = StyleStore::new();
 
-        let mut global_context = GlobalContext::new(canvas, &style_store);
+        let mut global_context = GlobalContext::new(&style_store);
 
         let mut layers = Layers::new(feature_tags, &mut global_context, font);
         
-        layers.text_feature_layers.get_layer(SCREEN_TEXT_LAYER).unwrap().add(
-            "fps_info".to_string(),
-            vec![TextData::screen_space_new(0, "FPS 0".to_string(),
-                                            vec2(0.0, 0.0), 40.0,
-                                            LineData::new(vec![dvec3(100.0, 120.0, 0.0)]))],
-            SpatialData::new(),
-        );
+        // layers.text_feature_layers.get_layer(SCREEN_TEXT_LAYER).unwrap().add(
+        //     "fps_info".to_string(),
+        //     vec![TextData::screen_space_new(0, "FPS 0".to_string(),
+        //                                     vec2(0.0, 0.0), 40.0,
+        //                                     LineData::new(vec![dvec3(100.0, 120.0, 0.0)]))],
+        //     SpatialData::new(),
+        // );
 
         let (renderer_api_tx, renderer_api_rx) = channel();
 
@@ -124,7 +123,7 @@ impl ShashlikRenderer {
 
         let api = Arc::new(RendererApi::new(renderer_api_tx));
 
-        layers.prepare(&mut global_context);
+        // layers.prepare(&mut global_context);
 
         Ok(Self {
             layers,
@@ -163,15 +162,15 @@ impl ShashlikRenderer {
                             renderer_tx.send(RendererMessage::DrawShapes(commands)).unwrap();
                         }
                         RendererApiMsg::UpdateStyle((style, block)) => {
-                            canvas_api.update_style(&style, block);
+                            // canvas_api.update_style(&style, block);
                         }
                         RendererApiMsg::UpdateSpatialData((key, spatial_data_cb)) => {
-                            if let Some((spatial_data, tx)) = spatial_data_map.get_mut(&key) {
-                                spatial_data_cb(spatial_data);
-                                if tx.receiver_count() > 0 {
-                                    tx.send(spatial_data.clone()).unwrap();
-                                }
-                            }
+                            // if let Some((spatial_data, tx)) = spatial_data_map.get_mut(&key) {
+                            //     spatial_data_cb(spatial_data);
+                            //     if tx.receiver_count() > 0 {
+                            //         tx.send(spatial_data.clone()).unwrap();
+                            //     }
+                            // }
                         }
                         RendererApiMsg::ClearGroups(keys) => {
                             keys.iter().for_each(|key| {
@@ -195,59 +194,59 @@ impl ShashlikRenderer {
         if width > 0 && height > 0 {
             self.global_context.resize(width, height);
 
-            self.config_pass_nodes();
+            // self.config_pass_nodes();
         }
     }
 
     fn config_pass_nodes(&mut self) {
-        let pre_pass_node = PrepassNode::new();
-        let shadow_pass_node = ShadowPrepass::new();
+        // let pre_pass_node = PrepassNode::new();
+        // let shadow_pass_node = ShadowPrepass::new();
+        //
+        // let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
+        // let main_node = MainPassNode::new(&mut self.global_context);
 
-        let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
-        let main_node = MainPassNode::new(&mut self.global_context);
-
-        PreviewType::iter().for_each(|preview_type| {
-            if let Some(texture_view) = match preview_type {
-                PreviewType::None => None,
-                PreviewType::Camera => Some(rt_node.rt_texture_view.clone()),
-                PreviewType::SSAO => Some(self.global_context.ssao_texture.clone()),
-                PreviewType::SSAOPositions => Some(main_node.non_msaa_texture_view_positions.clone()),
-                PreviewType::SSAONormals => Some(main_node.non_msaa_texture_view_normals.clone()),
-                PreviewType::SSAODepth => Some(main_node.non_msaa_depth_texture_view.clone()),
-                PreviewType::ShadowMap => Some(self.global_context.shadow_map_depth_texture.clone()),
-            } {
-                self.preview_textures.insert(preview_type, texture_view);
-            }
-        });
-
-        self.layers
-            .shadow_map_layer
-            .set_texture(&self.global_context.shadow_map_depth_texture, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
-
-        self.layers
-            .post_process_layer
-            .set_texture(&self.global_context.ssao_texture, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
-
-
-        self.pass_nodes = vec![Box::new(pre_pass_node)];
-
-        self.pass_nodes.push(Box::new(rt_node));
-
-        self.pass_nodes.push(Box::new(shadow_pass_node));
-
-        self.pass_nodes.push(Box::new(main_node));
+        // PreviewType::iter().for_each(|preview_type| {
+        //     if let Some(texture_view) = match preview_type {
+        //         PreviewType::None => None,
+        //         PreviewType::Camera => Some(rt_node.rt_texture_view.clone()),
+        //         PreviewType::SSAO => Some(self.global_context.ssao_texture.clone()),
+        //         PreviewType::SSAOPositions => Some(main_node.non_msaa_texture_view_positions.clone()),
+        //         PreviewType::SSAONormals => Some(main_node.non_msaa_texture_view_normals.clone()),
+        //         PreviewType::SSAODepth => Some(main_node.non_msaa_depth_texture_view.clone()),
+        //         PreviewType::ShadowMap => Some(self.global_context.shadow_map_depth_texture.clone()),
+        //     } {
+        //         self.preview_textures.insert(preview_type, texture_view);
+        //     }
+        // });
+        //
+        // self.layers
+        //     .shadow_map_layer
+        //     .set_texture(&self.global_context.shadow_map_depth_texture, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
+        //
+        // self.layers
+        //     .post_process_layer
+        //     .set_texture(&self.global_context.ssao_texture, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
+        //
+        //
+        // self.pass_nodes = vec![Box::new(pre_pass_node)];
+        //
+        // self.pass_nodes.push(Box::new(rt_node));
+        //
+        // self.pass_nodes.push(Box::new(shadow_pass_node));
+        //
+        // self.pass_nodes.push(Box::new(main_node));
     }
 
     fn update(&mut self, data: RendererUpdateData) {
         unsafe {
-            if self.current_preview_type != PREVIEW_TYPE {
-                self.current_preview_type = PREVIEW_TYPE;
-                if let Some(texture_view) = self.preview_textures.get(&self.current_preview_type) {
-                    self.layers
-                        .preview_mesh_layer
-                        .set_texture(texture_view, (-100.0, -100.0), &self.global_context, &mut self.buffer_pool);
-                }
-            }
+            // if self.current_preview_type != PREVIEW_TYPE {
+            //     self.current_preview_type = PREVIEW_TYPE;
+            //     if let Some(texture_view) = self.preview_textures.get(&self.current_preview_type) {
+            //         self.layers
+            //             .preview_mesh_layer
+            //             .set_texture(texture_view, (-100.0, -100.0), &self.global_context, &mut self.buffer_pool);
+            //     }
+            // }
         }
 
         self.global_context.update(data);
@@ -271,12 +270,13 @@ impl ShashlikRenderer {
             }
         }
 
-        self.layers.update(&mut self.global_context);
+        // self.layers.update(&mut self.global_context);
     }
 
     fn draw_dynamic_scene(&self, pixmap: &mut PixmapMut, frame: i32, w: u32, h: u32) {
         // let qq = self.global_context.view_projection.uniform.scale;
         // Clear viewport canvas
+        println!("draw_dynamic_scene");
         pixmap.fill(Color::from_rgba8(20, 24, 30, 255));
 
         // Simple math example generating dynamic sine wave rotation
@@ -349,45 +349,46 @@ impl ShashlikRenderer {
     }
 
     fn render(&mut self) -> Option<Texture> {
+        return None;
         // // We can't render unless the surface is configured
         // if !self.is_surface_configured {
         //     return Ok(());
         // }
 
-        let output_view = self.global_context.canvas.create_texture_view();
-
-        let mut encoder =
-            self.global_context
-                .device()
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Render Encoder"),
-                });
-
-        let fps = format!("FPS {}", self.fps_counter.update() as i32);
-        self.layers
-            .text_feature_layers.get_layer(SCREEN_TEXT_LAYER)?
-            .run_mut_action_with_key("fps_info", move |item| {
-                item.update_text(fps.as_str(), 1.0);
-            });
-
-        self.pass_nodes.iter_mut().for_each(|node| {
-            node.compute(&mut encoder,
-                         &mut self.layers,
-                         &mut self.global_context);
-
-            node.render(
-                &mut encoder,
-                &output_view,
-                &mut self.layers,
-                &mut self.global_context,
-            );
-        });
-
-        self.global_context
-            .queue()
-            .submit(iter::once(encoder.finish()));
-
-        self.global_context.canvas.present()
+        // let output_view = self.global_context.canvas.create_texture_view();
+        //
+        // let mut encoder =
+        //     self.global_context
+        //         .device()
+        //         .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        //             label: Some("Render Encoder"),
+        //         });
+        //
+        // let fps = format!("FPS {}", self.fps_counter.update() as i32);
+        // self.layers
+        //     .text_feature_layers.get_layer(SCREEN_TEXT_LAYER)?
+        //     .run_mut_action_with_key("fps_info", move |item| {
+        //         item.update_text(fps.as_str(), 1.0);
+        //     });
+        //
+        // self.pass_nodes.iter_mut().for_each(|node| {
+        //     node.compute(&mut encoder,
+        //                  &mut self.layers,
+        //                  &mut self.global_context);
+        //
+        //     node.render(
+        //         &mut encoder,
+        //         &output_view,
+        //         &mut self.layers,
+        //         &mut self.global_context,
+        //     );
+        // });
+        //
+        // self.global_context
+        //     .queue()
+        //     .submit(iter::once(encoder.finish()));
+        //
+        // self.global_context.canvas.present()
     }
 }
 

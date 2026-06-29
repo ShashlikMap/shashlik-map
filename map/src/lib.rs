@@ -107,10 +107,9 @@ impl<T: TilesProvider> ShashlikMap<T> {
     const ZOOM_LOCK_DIST: f64 = 100.0;
 
     pub async fn new(
-        canvas: Box<dyn WgpuCanvas>,
         mut tiles_provider: T,
     ) -> anyhow::Result<ShashlikMap<T>> {
-        let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
+        let screen_size = (500.0 as f32, 500.0 as f32);
 
         let feature_layer_tags = vec![
             WorldShapeFeatureLayerTag {
@@ -127,7 +126,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 ..Default::default()
             },
         ];
-        let renderer = ShashlikRenderer::new(feature_layer_tags, canvas, &DEFAULT_FONT).await?;
+        let renderer = ShashlikRenderer::new(feature_layer_tags, &DEFAULT_FONT).await?;
         let tiles_stream = tiles_provider.tiles();
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
