@@ -26,7 +26,7 @@ use std::sync::Arc;
 use std::thread::spawn;
 use lyon::path::PathEvent;
 use strum::IntoEnumIterator;
-use tiny_skia::{Color, Paint, PathBuilder, PixmapMut, Transform};
+use tiny_skia::{Color, Paint, PathBuilder, PixmapMut, Stroke, Transform};
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
@@ -294,8 +294,9 @@ impl ShashlikRenderer {
             let xx = -tile_width - (data.0.x - self.global_context.view_projection.cs_offset.x) as f32;
             let yy = -tile_height - (data.0.y - self.global_context.view_projection.cs_offset.y) as f32;
             // println!("xx = {}, yy = {}", xx, yy);
-            for shape_data in data.1.iter().filter(|shape| matches!(shape.geometry_type, GeometryType::Polygon)) {
+            for shape_data in data.1.iter() {
                 let mut pb = PathBuilder::new();
+                let is_line = matches!(shape_data.geometry_type, GeometryType::Polyline {..});
                 shape_data.path.iter().for_each(|path| {
                     match path {
                         PathEvent::Begin { at } => {
@@ -307,7 +308,9 @@ impl ShashlikRenderer {
                         PathEvent::Quadratic { .. } => {}
                         PathEvent::Cubic { .. } => {}
                         PathEvent::End { .. } => {
-                            pb.close();
+                            if !is_line {
+                                pb.close();
+                            }
                         }
                     }
                 });
@@ -324,13 +327,20 @@ impl ShashlikRenderer {
                     } else if shape_data.style_id.0 == "ground" {
                         paint.set_color_rgba8(244, 243, 240, 255);
                     } else {
+                        paint.set_color_rgba8(159, 158, 156, 255);
                         // println!("type = {:?}", shape_data.style_id);
                     }
 
                     paint.anti_alias = true;
+                    let transform = Transform::from_scale(1.5, -1.5)
+                        .post_translate(translation.x, translation.y);
+                    if is_line {
+                        pixmap.stroke_path(&path, &paint, &Stroke::default(), transform, None)
+                    } else {
+                        pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, transform, None);
+                    }
 
-                    pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, Transform::from_scale(1.0, -1.0)
-                        .post_translate(translation.x, translation.y), None);
+
                 }
             }
         });

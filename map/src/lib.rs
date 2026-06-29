@@ -253,8 +253,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     fn internal_update(&mut self) {
         self.consume_map_events();
-        self.cur_location.y += 0.0001;
-        self.cur_location.x += 0.0001;
+        self.cur_location.y += 0.00006;
+        self.cur_location.x += 0.00006;
         self.set_lon_lat_bearing(self.cur_location.x, self.cur_location.y, Some(0f32));
 
         self.camera_controller.update_camera(&mut self.camera);
