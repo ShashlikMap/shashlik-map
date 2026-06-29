@@ -224,7 +224,8 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     Some((style_id, -100, GeometryType::Polygon, None))
                 }
                 MapGeomObjectKind::Building(_) => {
-                    Some((StyleId::new("building"), -99, GeometryType::Polygon, None))
+                    None
+                    // Some((StyleId::new("building"), -99, GeometryType::Polygon, None))
                 }
                 _ => None,
             } {
@@ -236,10 +237,10 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     } else {
                         level
                     };
-                    geometry_data.push(GeometryData::ExtrudedPolygon(ExtrudedPolygonData {
-                        path: path_builder.build(),
-                        height: level as f32 / 2.0,
-                    }));
+                    // geometry_data.push(GeometryData::ExtrudedPolygon(ExtrudedPolygonData {
+                    //     path: path_builder.build(),
+                    //     height: level as f32 / 2.0,
+                    // }));
                 } else {
                     let double_style = match &kind {
                         MapGeomObjectKind::Nature(_) |
@@ -263,25 +264,25 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 if let Some(name) = name {
                     // TODO When text render along the path is ready, it has to be decided how to reduce the repetitive data inside tile
                     //  So far just accept every 30 item. There might be more then 500 lines with the same name!
-                    let name_count = line_text_map
-                        .entry(name.clone())
-                        .and_modify(|entry| *entry += 1)
-                        .or_insert(0);
-                    if *name_count % 30 == 0 {
-                        // FIXME TextRenderer has a bug for only 2 coords line, let's skip it for now
-                        if line.len() > 2 {
-                            geometry_data.push(GeometryData::Text(TextData::new(
-                                hash(name.as_bytes()),
-                                name.capitalize(),
-                                Vec2::new(0.0, 0.0),
-                                22.0 * dpi_scale,
-                                LineData::new(line
-                                    .iter()
-                                    .map(|item| DVec3::new(item.x, item.y, 0.0))
-                                    .collect())
-                            )));
-                        }
-                    }
+                    // let name_count = line_text_map
+                    //     .entry(name.clone())
+                    //     .and_modify(|entry| *entry += 1)
+                    //     .or_insert(0);
+                    // if *name_count % 30 == 0 {
+                    //     // FIXME TextRenderer has a bug for only 2 coords line, let's skip it for now
+                    //     if line.len() > 2 {
+                    //         geometry_data.push(GeometryData::Text(TextData::new(
+                    //             hash(name.as_bytes()),
+                    //             name.capitalize(),
+                    //             Vec2::new(0.0, 0.0),
+                    //             22.0 * dpi_scale,
+                    //             LineData::new(line
+                    //                 .iter()
+                    //                 .map(|item| DVec3::new(item.x, item.y, 0.0))
+                    //                 .collect())
+                    //         )));
+                    //     }
+                    // }
                 }
             }
         }

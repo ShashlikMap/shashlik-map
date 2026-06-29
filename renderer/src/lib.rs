@@ -94,7 +94,7 @@ pub struct ShashlikRenderer {
     buffer_pool: BufferPool,
     preview_textures: HashMap<PreviewType, TextureView>,
     current_preview_type: PreviewType,
-    shapes: Vec<(DVec3, Vec<ShapeData>)>,
+    shapes: Vec<(String, DVec3, Vec<ShapeData>)>,
 }
 
 impl ShashlikRenderer {
@@ -255,17 +255,15 @@ impl ShashlikRenderer {
         for message in self.renderer_rx.try_iter() {
             match message {
                 RendererMessage::Draw(mut draw_commands) => {
-                    draw_commands.execute(&mut self.global_context, &mut self.layers, &mut self.buffer_pool);
+                    // draw_commands.execute(&mut self.global_context, &mut self.layers, &mut self.buffer_pool);
                 }
                 RendererMessage::ClearGroups(keys) => {
-                    keys.into_iter().for_each(|key| {
-                        self.layers.clear_by_key(&*key);
-                        self.buffer_pool.recycle(key.as_str())
-                    });
+                    // self.shapes.retain(|gg| {
+                    //     keys.contains(&gg.0)
+                    // });
                 },
                 RendererMessage::DrawShapes(commands) => {
-
-                    self.shapes.push((commands.spatial_data.transform, commands.shapes))
+                    self.shapes.push((commands.key, commands.spatial_data.transform, commands.shapes))
                 }
             }
         }
@@ -276,7 +274,6 @@ impl ShashlikRenderer {
     fn draw_dynamic_scene(&self, pixmap: &mut PixmapMut, frame: i32, w: u32, h: u32) {
         // let qq = self.global_context.view_projection.uniform.scale;
         // Clear viewport canvas
-        println!("draw_dynamic_scene");
         pixmap.fill(Color::from_rgba8(20, 24, 30, 255));
 
         // Simple math example generating dynamic sine wave rotation
@@ -290,59 +287,59 @@ impl ShashlikRenderer {
 
         let tile_width = 256.0;
         let tile_height = 144.29587 - 0.7179349;
-        self.shapes.iter().for_each(|data| {
-            let xx = -tile_width - (data.0.x - self.global_context.view_projection.cs_offset.x) as f32;
-            let yy = -tile_height - (data.0.y - self.global_context.view_projection.cs_offset.y) as f32;
-            // println!("xx = {}, yy = {}", xx, yy);
-            for shape_data in data.1.iter() {
-                let mut pb = PathBuilder::new();
-                let is_line = matches!(shape_data.geometry_type, GeometryType::Polyline {..});
-                shape_data.path.iter().for_each(|path| {
-                    match path {
-                        PathEvent::Begin { at } => {
-                            pb.move_to(at.x - xx, (-at.y + yy));
-                        }
-                        PathEvent::Line { from, to } => {
-                            pb.line_to(to.x - xx, (-to.y + yy));
-                        }
-                        PathEvent::Quadratic { .. } => {}
-                        PathEvent::Cubic { .. } => {}
-                        PathEvent::End { .. } => {
-                            if !is_line {
-                                pb.close();
+        self.shapes.iter().rev().take(6).for_each(|data| {
+            let qx = (data.1.x - self.global_context.view_projection.cs_offset.x) as f32;
+            let qy = (data.1.y - self.global_context.view_projection.cs_offset.y) as f32;
+            let xx = -tile_width - qx;
+            let yy = -tile_height - qy;
+
+                for shape_data in data.2.iter() {
+                    let mut pb = PathBuilder::new();
+                    let is_line = matches!(shape_data.geometry_type, GeometryType::Polyline {..});
+                    shape_data.path.iter().for_each(|path| {
+                        match path {
+                            PathEvent::Begin { at } => {
+                                pb.move_to(at.x - xx, (-at.y + yy));
+                            }
+                            PathEvent::Line { from, to } => {
+                                pb.line_to(to.x - xx, (-to.y + yy));
+                            }
+                            PathEvent::Quadratic { .. } => {}
+                            PathEvent::Cubic { .. } => {}
+                            PathEvent::End { .. } => {
+                                if !is_line {
+                                    pb.close();
+                                }
                             }
                         }
-                    }
-                });
-                if let Some(path) = pb.finish() {
-                    let mut paint = Paint::default();
-                    if shape_data.style_id.0 == "building" {
-                        paint.set_color_rgba8(206, 208, 209, 255);
-                    } else if shape_data.style_id.0 == "water" {
-                        paint.set_color_rgba8(165, 201, 235, 255);
-                    } else if shape_data.style_id.0 == "forest" {
-                        paint.set_color_rgba8(193, 232, 200, 255);
-                    } else if shape_data.style_id.0 == "park" {
-                        paint.set_color_rgba8(209, 241, 215, 255);
-                    } else if shape_data.style_id.0 == "ground" {
-                        paint.set_color_rgba8(244, 243, 240, 255);
-                    } else {
-                        paint.set_color_rgba8(159, 158, 156, 255);
-                        // println!("type = {:?}", shape_data.style_id);
-                    }
+                    });
+                    if let Some(path) = pb.finish() {
+                        let mut paint = Paint::default();
+                        if shape_data.style_id.0 == "building" {
+                            paint.set_color_rgba8(206, 208, 209, 255);
+                        } else if shape_data.style_id.0 == "water" {
+                            paint.set_color_rgba8(165, 201, 235, 255);
+                        } else if shape_data.style_id.0 == "forest" {
+                            paint.set_color_rgba8(193, 232, 200, 255);
+                        } else if shape_data.style_id.0 == "park" {
+                            paint.set_color_rgba8(209, 241, 215, 255);
+                        } else if shape_data.style_id.0 == "ground" {
+                            paint.set_color_rgba8(244, 243, 240, 255);
+                        } else {
+                            paint.set_color_rgba8(159, 158, 156, 255);
+                            // println!("type = {:?}", shape_data.style_id);
+                        }
 
-                    paint.anti_alias = true;
-                    let transform = Transform::from_scale(1.5, -1.5)
-                        .post_translate(translation.x, translation.y);
-                    if is_line {
-                        pixmap.stroke_path(&path, &paint, &Stroke::default(), transform, None)
-                    } else {
-                        pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, transform, None);
+                        paint.anti_alias = true;
+                        let transform = Transform::from_scale(1.5, -1.5)
+                            .post_translate(translation.x, translation.y);
+                        if is_line {
+                            pixmap.stroke_path(&path, &paint, &Stroke::default(), transform, None)
+                        } else {
+                            pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, transform, None);
+                        }
                     }
-
-
                 }
-            }
         });
 
 

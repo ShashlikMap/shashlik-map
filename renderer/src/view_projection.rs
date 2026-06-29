@@ -99,7 +99,7 @@ impl ViewProjection {
             .to_cols_array_2d();
         let view_proj = FLIP_Y * data.view_proj_matrix;
 
-        self.ortho_for_shadow_map();
+        // self.ortho_for_shadow_map();
 
         self.uniform.light_view_proj = (self.ortho * data.view_light_matrix)
             .as_mat4()

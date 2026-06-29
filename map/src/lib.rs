@@ -11,7 +11,7 @@ use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
 use geo_types::{coord, Coord, Point, Rect};
 use geo_types::{LineString, Polygon};
-use glam::{DMat2, DVec2, DVec3, Vec2};
+use glam::{DMat2, DMat4, DVec2, DVec3, Vec2};
 use num::{abs, clamp};
 use osm::styles::style_loader::StyleLoader;
 use osm::styles::{DashStyle, RenderStyle};
@@ -265,11 +265,11 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let scale_2d_3d = self.transition_2d_3d_helper.update(cam_zoom, Self::TEMP_ANIMATION_SPEED as f32);
 
         let (view, view_proj) = self.camera.build_view_projection_matrix();
-        let view_light = self.camera.build_view_light_matrix();
+        // let view_light = self.camera.build_view_light_matrix();
 
         let update_data = RendererUpdateData {
             view_matrix: view,
-            view_light_matrix: view_light,
+            view_light_matrix: DMat4::default(),
             proj_matrix: self.camera.perspective_matrix,
             view_proj_matrix: view_proj,
             cs_offset: self.camera.offset,
@@ -324,13 +324,13 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     fn consume_map_events(&mut self) {
-        if let Ok(event) = self.map_event_receiver.try_recv() {
-            match event {
-                MapEvent::LatLon(lat, lon) => {
-                    self.set_lon_lat_bearing(lon, lat, None);
-                }
-            }
-        }
+        // if let Ok(event) = self.map_event_receiver.try_recv() {
+        //     match event {
+        //         MapEvent::LatLon(lat, lon) => {
+        //             self.set_lon_lat_bearing(lon, lat, None);
+        //         }
+        //     }
+        // }
     }
 
     fn update_entities(&mut self) {
@@ -346,20 +346,20 @@ impl<T: TilesProvider> ShashlikMap<T> {
             unsafe { SSAO_ENABLED = self.camera.scale() < 1.0 };
         }
 
-        self.renderer
-            .api
-            .update_spatial_data("puck".to_string(), move |spatial_data| {
-                spatial_data.scale = DVec3::splat(cam_zoom);
-                let puck_location_offset = puck_location - spatial_data.transform;
-                if puck_location_offset.length() >= Self::TELEPORT_THRESHOLD {
-                    spatial_data.transform = puck_location;
-                } else {
-                    spatial_data.transform +=
-                        (puck_location - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED;
-                }
-                spatial_data.yaw +=
-                    ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
-            });
+        // self.renderer
+        //     .api
+        //     .update_spatial_data("puck".to_string(), move |spatial_data| {
+        //         spatial_data.scale = DVec3::splat(cam_zoom);
+        //         let puck_location_offset = puck_location - spatial_data.transform;
+        //         if puck_location_offset.length() >= Self::TELEPORT_THRESHOLD {
+        //             spatial_data.transform = puck_location;
+        //         } else {
+        //             spatial_data.transform +=
+        //                 (puck_location - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED;
+        //         }
+        //         spatial_data.yaw +=
+        //             ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
+        //     });
 
         if self.should_animate() {
             let cam_pos = self.camera_controller.position;

@@ -87,7 +87,7 @@ impl GlobalContext {
             // self.canvas.config(),
             data
         );
-        self.collider.update_view_proj(&self.view_projection);
+        // self.collider.update_view_proj(&self.view_projection);
 
         // self.update_style_bind_group();
     }
