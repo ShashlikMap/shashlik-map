@@ -28,7 +28,7 @@ macro_rules! max_f64 {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct ViewProjUniform {
-    view: [[f32; 4]; 4],
+    pub view: [[f32; 4]; 4],
     proj: [[f32; 4]; 4],
     pub view_proj: [[f32; 4]; 4],
     view_proj_inv: [[f32; 4]; 4],

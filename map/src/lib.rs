@@ -34,6 +34,7 @@ use std::time::{Duration, Instant};
 use log::error;
 use tiny_skia::PixmapMut;
 use ttf_parser::Face;
+use wgpu::naga::compact::KeepUnused::No;
 use wgpu::Texture;
 use renderer::mesh_layers::layers::WorldShapeFeatureLayerTag;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
@@ -68,6 +69,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     last_interaction: Instant,
     world_width_on_screen: f64,
     world_height_on_screen: f64,
+    cur_location: Coord,
 }
 
 enum MapEvent {
@@ -165,8 +167,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
             camera_bearing: 0.0,
             current_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
-            cam_follow_mode: false,
-            cam_follow_zoom_lock: Some(Self::ZOOM_LOCK_DIST),
+            cam_follow_mode: true,
+            cam_follow_zoom_lock: None,//Some(Self::ZOOM_LOCK_DIST),
             screen_params: ScreenParam {
                 width: screen_size.0 as u32,
                 height: screen_size.1 as u32,
@@ -175,6 +177,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             last_interaction: Instant::now(),
             world_width_on_screen: 0.0,
             world_height_on_screen: 0.0,
+            cur_location: initial_coord
         };
         map.set_lon_lat_bearing(initial_coord.x, initial_coord.y, Some(0f32));
 
@@ -250,9 +253,14 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     fn internal_update(&mut self) {
         self.consume_map_events();
+        self.cur_location.y += 0.0001;
+        self.cur_location.x += 0.0001;
+        self.set_lon_lat_bearing(self.cur_location.x, self.cur_location.y, Some(0f32));
+
         self.camera_controller.update_camera(&mut self.camera);
 
         self.update_entities();
+
 
         let cam_zoom = self.camera.scale();
         let scale_2d_3d = self.transition_2d_3d_helper.update(cam_zoom, Self::TEMP_ANIMATION_SPEED as f32);
