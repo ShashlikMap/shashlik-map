@@ -39,8 +39,9 @@ fn main() {
     let mut screen_size = ui.window().size();
     println!("screen size: {:?}", screen_size);
     if screen_size.width == 0 || screen_size.height == 0 {
-        screen_size = PhysicalSize::new(2000, 1200);
+        // screen_size = PhysicalSize::new(1024, 600);
     }
+    screen_size = PhysicalSize::new(1024, 600);
     ui.set_screen_width(screen_size.width as i32);
     ui.set_screen_height(screen_size.height as i32);
 
