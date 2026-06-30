@@ -1,0 +1,115 @@
+name: Build and Release Apps
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build-mac:
+    name: Build macOS Rust App
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+
+      - name: Build production release
+        run: |
+          cargo build --release --target aarch64-apple-darwin --package winit-run --bin winit-run
+          # Prepare the file for release
+          mkdir -p dist
+          cp target/aarch64-apple-darwin/release/winit-run dist/shashlik-map-mac
+          
+          # Compress it into a zip file
+          cd dist && zip shashlik-map-mac.zip shashlik-map-mac
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifact
+          path: dist/shashlik-map-mac.zip
+
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./kmp
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease
+        # working-directory: ./android
+
+      - name: Rename APK file
+        run: |
+          mv demo/composeApp/build/outputs/apk/release/app-release.apk demo/composeApp/build/outputs/apk/release/shashlik-map-release.apk
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-artifact
+          path: kmp/demo/composeApp/build/outputs/apk/release/shashlik-map-release.apk
+
+  publish-release:
+    name: Create GitHub Release
+    needs: [ build-mac, build-android ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-artifact
+          path: ./downloads
+          merge-multiple: true
+
+      - name: Download Android artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-artifact
+          path: ./downloads
+          merge-multiple: true
+
+      - name: Generate Version Tag
+        id: tag
+        run: echo "release_tag=v$(date +'%Y.%m.%d-%H%M%S')" >> $GITHUB_OUTPUT
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          name: Release ${{ steps.tag.outputs.release_tag }}
+          body: |
+            Automated production build.
+            - **macOS App**: Compiled for Apple Silicon.
+            - **Android App**: Release APK (Signed with Debug Certificate).
+          draft: false
+          prerelease: false
+          files: |
+            ./downloads/shashlik-map-mac.zip
+            ./downloads/shashlik-map-release.apk
