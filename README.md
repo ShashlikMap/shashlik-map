@@ -41,13 +41,15 @@ with Android/iOS mobile apps(Android is priority for now)
 
 ### Now
 - [ ] _In progress_ General Renderer refactoring
+- [ ] _In progress_ Support Mapbox(or similar) [tilesets](https://docs.mapbox.com/data/tilesets/guides/vector-tiles-standards/)
 ### Next
-- [ ] Implement an initial geometric Map-matching POC
-- [ ] CI for KMP mobile SDK + Screenshot rendering
+- [ ] Initial CPU renderer
 - [ ] Integrate a simple search
 ### Later
-- [ ] Support Mapbox [tilesets](https://docs.mapbox.com/data/tilesets/guides/vector-tiles-standards/)
+- [ ] Move the custom tile generator to the cloud
+- [ ] Implement an initial geometric Map-matching POC
 - [ ] Software Dead-reckoning
+- [ ] CI for KMP mobile SDK + Screenshot rendering
 - [ ] Move TextRenderer to the separate repo
 - [ ] Explore Mesh Shader
 - [ ] Post-processing AA(SMAA)
