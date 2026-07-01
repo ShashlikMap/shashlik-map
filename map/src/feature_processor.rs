@@ -265,7 +265,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     let double_style = match &kind {
                         MapGeomObjectKind::Nature(_) |
                         MapGeomObjectKind::Building(_) => { false },
-                        _ => { zoom_level < 1 }
+                        _ => { zoom_level == 14 }
                     };
                     let tag = match &kind {
                         MapGeomObjectKind::Building(_) => { "skip" },

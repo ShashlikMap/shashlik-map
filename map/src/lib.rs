@@ -547,7 +547,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.world_height_on_screen = (world_on_ground_rotated_left_top.y - world_on_ground_rotated_bottom_right.y).abs();
 
         let zoom_level = self.camera.scale();
-        let zoom_level = 14 - ((zoom_level.log2() + 0.0) as i32).max(0);
+        let zoom_level = 14 - ((zoom_level.log2() + 1.0) as i32).max(0);
 
         // let initial_coord: Coord<f64> = (0.0, 0.0).into();
         // let camera_offset = T::lon_lat_to_world2(&initial_coord, 14);
