@@ -9,7 +9,7 @@ use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use futures::executor::block_on;
 use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
-use geo_types::{coord, Coord, Point, Rect};
+use geo_types::{coord, line_string, Coord, Point, Rect};
 use geo_types::{LineString, Polygon};
 use glam::{DMat2, DVec2, DVec3, Vec2};
 use num::{abs, clamp};
@@ -24,14 +24,18 @@ use renderer::{Renderer, RendererUpdateData, ShashlikRenderer};
 use route::route_controller::RouteController;
 #[cfg(feature = "sgnss")]
 use sgnss::start_sgnss;
-use std::mem;
+use std::{fs, mem};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
+use fast_mvt::{MvtReaderRef, MvtResult, MvtValue, MvtValueRef};
+use fast_mvt::proto::GeomType;
+use geo::{Convert, CoordsIter};
 use log::error;
+use osm::map::{HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, WayInfo};
 use ttf_parser::Face;
 use wgpu::Texture;
 use renderer::mesh_layers::layers::WorldShapeFeatureLayerTag;
@@ -96,6 +100,93 @@ impl RenderGroup for TileData {
 static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> =
     LazyLock::new(|| Face::parse(include_bytes!("../font.ttf"), 0).unwrap());
 
+fn read_mvt_tile(bytes: &[u8]) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>)>> {
+    let mut res = vec![];
+    let reader = MvtReaderRef::new(bytes)?;
+
+    for layer in reader.layers() {
+        // println!("layer: {:?}",layer.name());
+        // println!("extend: {:?}",layer.extent());
+        if layer.name() == "transportation" {
+            for feature in layer.features() {
+                // let geometry = feature.geometry()?;
+                // println!("geo: {geometry:?}");
+                // let id = feature.id();
+                // println!("id: {id:?}");
+                //
+                if let Some(geom_type) = feature.geom_type() && geom_type == GeomType::LINESTRING {
+                    let mut layer: i64 = 0;
+                    let mut highway_kind: Option<HighwayKind> = None;;
+                    for property in feature.properties() {
+                        let (key, value) = property?;
+                        if key == "layer" {
+                            layer = LocalMvtValue(value).into();
+                        } else if key == "class" {
+                            let road_class: String = LocalMvtValue(value).into();
+                            highway_kind = match road_class.as_str() {
+                                "motorway" => Some(HighwayKind::Motorway),
+                                "primary" => Some(HighwayKind::Primary),
+                                "secondary" => Some(HighwayKind::Secondary),
+                                "tertiary" => Some(HighwayKind::Tertiary),
+                                "unclassified" => Some(HighwayKind::Unclassified),
+                                "residential" => Some(HighwayKind::Residential),
+                                "motorwaylink" => Some(HighwayKind::MotorwayLink),
+                                "trunklink" => Some(HighwayKind::TrunkLink),
+                                "primarylink" => Some(HighwayKind::PrimaryLink),
+                                "secondarylink" => Some(HighwayKind::SecondaryLink),
+                                "tertiarylink" => Some(HighwayKind::TertiaryLink),
+                                "service" => Some(HighwayKind::Service),
+                                "trunk" => Some(HighwayKind::Trunk),
+                                _ => None
+                            };
+                        }
+                        // println!("{key} = {value:?}");
+                    }
+
+                    if let Some(highway_kind) = highway_kind {
+                        let ls: LineString<f32> = feature.geometry()?.coords_iter().map(|coord| {
+                            coord! { x: coord.x as f32 * 512.0f32 / 4096.0, y: coord.y as f32 * 512.0f32 / 4096.0}
+                        }).collect();
+                        let mut geom_object = MapGeomObject {
+                            id: -1,
+                            kind: MapGeomObjectKind::Way(WayInfo {
+                                line_kind: LineKind::Highway {
+                                    kind: highway_kind,
+                                },
+                                layer: layer as i32,
+                                layer_kind: LayerKind::None,
+                                name_en: None,
+                            }),
+                        };
+                        res.push((geom_object, MapGeometry::Line(ls)));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(res)
+}
+
+struct LocalMvtValue<'a>(MvtValueRef<'a>);
+impl From<LocalMvtValue<'_>> for i64 {
+    fn from(value: LocalMvtValue<'_>) -> Self {
+        match value.0 {
+            MvtValueRef::SInt(value) => value,
+            _ => panic!("Unexpected MvtValueRef"),
+        }
+    }
+}
+
+impl From<LocalMvtValue<'_>> for String {
+    fn from(value: LocalMvtValue<'_>) -> Self {
+        match value.0 {
+            MvtValueRef::String(value) => value.to_string(),
+            _ => panic!("Unexpected MvtValueRef"),
+        }
+    }
+}
+
 impl<T: TilesProvider> ShashlikMap<T> {
     const TEMP_ANIMATION_SPEED: f64 = 0.03;
 
@@ -124,6 +215,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
                 ..Default::default()
             },
         ];
+
         let renderer = ShashlikRenderer::new(feature_layer_tags, canvas, &DEFAULT_FONT).await?;
         let tiles_stream = tiles_provider.tiles();
 
@@ -165,7 +257,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             current_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
             cam_follow_mode: true,
-            cam_follow_zoom_lock: Some(Self::ZOOM_LOCK_DIST),
+            cam_follow_zoom_lock: None,
             screen_params: ScreenParam {
                 width: screen_size.0 as u32,
                 height: screen_size.1 as u32,

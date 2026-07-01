@@ -16,10 +16,12 @@ use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use renderer::geometry_data::{GeometryData};
 use std::collections::{HashMap, HashSet};
+use std::fs;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 use std::time::SystemTime;
+use crate::{read_mvt_tile};
 
 pub trait FeatureProcessor: Send + Sync {
     fn process_poi(
@@ -84,9 +86,10 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
         let tile_rect_original = tile_key.calc_tile_boundary(1.00);
         let tile_rect_original_min = Self::lon_lat_to_world(&tile_rect_original.min());
         let tile_rect_original_max = Self::lon_lat_to_world(&tile_rect_original.max());
-        let bbox = Rect::new(tile_rect_original_min, tile_rect_original_max).scale(Self::BBOX_OVERLAP_OFFSET_SCALE);
+        let bbox = Rect::new( tile_rect_original_min,
+                              tile_rect_original_min + coord! { x: 512., y: 512. }).scale(Self::BBOX_OVERLAP_OFFSET_SCALE);
 
-        let geom = tile_store.load_geometries(&tile_key);
+        let geom = read_mvt_tile(tile_store.load_map_tiler(&tile_key).as_slice()).unwrap_or_default();
 
         let mut geometry_data: Vec<GeometryData> = vec![];
         let mut line_text_map = HashMap::new();

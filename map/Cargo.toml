@@ -23,6 +23,7 @@ seahash = "4.1.0"
 rayon = "1.11.0"
 kml = { git = "https://github.com/ShashlikMap/kml" }
 rand = { workspace = true }
+fast-mvt = "0.4.1"
 
 ttf-parser = "0.25.1"
 glam = { workspace = true }
