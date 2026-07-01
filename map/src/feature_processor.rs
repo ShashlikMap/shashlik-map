@@ -42,13 +42,15 @@ impl ShashlikFeatureProcessor {
     }
 
     fn highway_width(kind: &HighwayKind, zoom: f32) -> f32 {
+        let zoom = 14.0 - zoom;
         // Relative width for zoom 19, OSM:
         // https://github.com/gravitystorm/openstreetmap-carto/blob/23b1cfa7284ac91bb78390fa4cb7f1c2c6350b92/style/roads.mss#L204
         // TODO Figure out the better way to bound line width to zoom
-        let motorway_width = 0.85;
+        let motorway_width = 1.00;
 
         // shows big road better with high zooms
-        let zoom = if zoom >= 6.0 { zoom * zoom } else { zoom * zoom * 0.7 };
+        let zoom = if zoom >= 6.0 { 1.2 * zoom * zoom } else { zoom * zoom * 0.7 };
+        // let zoom = if zoom >= 9.0 { 1.2 * zoom * zoom } else { zoom * zoom * 0.7 };
         match kind {
             HighwayKind::Motorway | HighwayKind::Primary => motorway_width * (zoom / 2.0).max(1.0),
             HighwayKind::Trunk => motorway_width * (zoom / 3.0).max(1.0),
@@ -160,10 +162,10 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         let line = line.0;
         if line.len() >= 2 {
             let mut path_builder = Path::builder();
-            path_builder.begin(point(line[0].x as f32, line[0].y as f32));
+            path_builder.begin(point(line[0].x as f32 * (1 << (14 - zoom_level)) as f32, line[0].y as f32 * (1 << (14 - zoom_level)) as f32));
 
             for &p in line[1..].iter() {
-                path_builder.line_to(point(p.x as f32, p.y as f32));
+                path_builder.line_to(point(p.x as f32 * (1 << (14 - zoom_level)) as f32, p.y as f32 * (1 << (14 - zoom_level)) as f32));
             }
 
             // fyi, we need to close the building path to properly build a closed stroke
@@ -195,15 +197,16 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     LineKind::Railway { .. } => {
                         // TODO Ignore rails tunnels for a while
                         if info.layer_kind != LayerKind::Tunnel {
-                            Some((
-                                StyleId::new("rails"),
-                                info.layer,
-                                GeometryType::Polyline(PolylineOptions {
-                                    width: 0.3 * zoom_level.max(1) as f32,
-                                    ..Default::default()
-                                }),
-                                None,
-                            ))
+                            // Some((
+                            //     StyleId::new("rails"),
+                            //     info.layer,
+                            //     GeometryType::Polyline(PolylineOptions {
+                            //         width: 0.3 * zoom_level.max(1) as f32,
+                            //         ..Default::default()
+                            //     }),
+                            //     None,
+                            // ))
+                            None
                         } else {
                             None
                         }

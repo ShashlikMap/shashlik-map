@@ -202,12 +202,12 @@ fn vs_main_screen(
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // ignore if both are zero
     if in.bbox.z > 0.0 || in.bbox.w > 0.0 {
-        if in.vertex_pos_xy.x < in.bbox.x || in.vertex_pos_xy.x > in.bbox.x + in.bbox.z {
-            discard;
-        }
-        if in.vertex_pos_xy.y < in.bbox.y || in.vertex_pos_xy.y > in.bbox.y + in.bbox.w {
-            discard;
-        }
+//        if in.vertex_pos_xy.x < in.bbox.x || in.vertex_pos_xy.x > in.bbox.x + in.bbox.z {
+//            discard;
+//        }
+//        if in.vertex_pos_xy.y < in.bbox.y || in.vertex_pos_xy.y > in.bbox.y + in.bbox.w {
+//            discard;
+//        }
     }
     let style = mat4x3<f32>(
             in.style1,

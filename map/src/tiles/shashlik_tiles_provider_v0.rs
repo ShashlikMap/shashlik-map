@@ -2,16 +2,16 @@ use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use futures::Stream;
 use futures::channel::mpsc::{UnboundedSender, unbounded};
-use geo::{Area, Convert, Intersects, Scale};
+use geo::{Area, Convert, CoordsIter, Intersects, Scale};
 use geo::Winding;
-use geo_types::{coord, LineString, Rect};
+use geo_types::{coord, Coord, LineString, Rect};
 use googleprojection::Mercator;
 use log::error;
 use osm::map::{
     MapGeomObjectKind, MapGeometry, MapPointInfo,
 };
 use osm::source::TileSource;
-use osm::tiles::{TILES_COUNT, TileKey, TileStore, calc_tile_ranges, TILE_OVERLAP_PERCENT};
+use osm::tiles::{TILES_COUNT, TileKey, TileStore, calc_tile_ranges, TILE_OVERLAP_PERCENT, TileRanges};
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use renderer::geometry_data::{GeometryData};
@@ -21,6 +21,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 use std::time::SystemTime;
+use glam::DVec3;
 use crate::{read_mvt_tile};
 
 pub trait FeatureProcessor: Send + Sync {
@@ -41,6 +42,40 @@ pub trait FeatureProcessor: Send + Sync {
         zoom_level: i32,
         dpi_scale: f32,
     );
+}
+
+pub struct TileMetersBounds {
+    pub min_x: f64, // Left edge
+    pub min_y: f64, // Bottom edge
+    pub max_x: f64, // Right edge
+    pub max_y: f64, // Top edge
+}
+
+/// Calculates the ground bounding box in Web Mercator Meters for a 512x512 tile.
+pub fn tile_id_to_mercator_meters(tx: u32, ty: u32, zoom: u32) -> TileMetersBounds {
+    const EXTENT: f64 = 4194304.342789244;
+    const MAP_SIZE: f64 = EXTENT * 2.0;
+
+    // Account for 512x512 tile grid scale (zoom - 1)
+    // let effective_zoom = if zoom > 0 { zoom - 1 } else { 0 };
+    let num_tiles = (1 << zoom) as f64;
+
+    // 1. Find the percentage coordinates (0.0 to 1.0) for the tile edges
+    let norm_left = tx as f64 / num_tiles;
+    let norm_right = (tx + 1) as f64 / num_tiles;
+
+    let norm_top = ty as f64 / num_tiles;
+    let norm_bottom = (ty + 1) as f64 / num_tiles;
+
+    // 2. Convert percentages back to Web Mercator Meters
+    let min_x = (norm_left * MAP_SIZE);
+    let max_x = (norm_right * MAP_SIZE);
+
+    // Invert Y because Tile Y=0 is the TOP of the world, but Meter Y=positive is NORTH
+    let max_y = (norm_bottom * MAP_SIZE);
+    let min_y = (norm_top * MAP_SIZE);
+
+    TileMetersBounds { min_x, min_y, max_x, max_y }
 }
 
 pub struct ShashlikTilesProviderV0<S: TileSource, FP: FeatureProcessor> {
@@ -78,17 +113,24 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
         dpi_scale: f32,
     ) -> TileData {
         let zoom_level = tile_key.zoom_level;
-        let tile_rect = tile_key.calc_tile_boundary(TILE_OVERLAP_PERCENT);
+        // let tile_rect = tile_key.calc_tile_boundary(TILE_OVERLAP_PERCENT);
 
-        let tile_rect_origin = Self::lon_lat_to_world(&tile_rect.min());
-        let tile_position = [tile_rect_origin.x, tile_rect_origin.y, 0.0].into();
+        // let tile_rect_origin = Self::lon_lat_to_world(&tile_rect.min());
+        let bounds = tile_id_to_mercator_meters(tile_key.tile_x as u32, tile_key.tile_y as u32, tile_key.zoom_level as u32);
+        let tile_position: DVec3 = DVec3::new(bounds.min_x, bounds.min_y, 0.0);
 
-        let tile_rect_original = tile_key.calc_tile_boundary(1.00);
-        let tile_rect_original_min = Self::lon_lat_to_world(&tile_rect_original.min());
-        let tile_rect_original_max = Self::lon_lat_to_world(&tile_rect_original.max());
-        let bbox = Rect::new( tile_rect_original_min,
-                              tile_rect_original_min + coord! { x: 512., y: 512. }).scale(Self::BBOX_OVERLAP_OFFSET_SCALE);
+        // let tile_rect_original = tile_key.calc_tile_boundary(1.00);
+        // let tile_rect_original_min = Self::lon_lat_to_world(&tile_rect_original.min());
+        // let tile_rect_original_max = Self::lon_lat_to_world(&tile_rect_original.max());
 
+        let bbox = Rect::new(coord! {x: bounds.min_x, y: bounds.min_y},
+                             coord! {x: bounds.max_x, y: bounds.max_y}).scale(Self::BBOX_OVERLAP_OFFSET_SCALE);
+
+        // let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
+        // let mut map_tile_key = tile_key.clone();
+        // let cc = Self::lon_lat_to_world2(&initial_coord, map_tile_key.tilel_zl());
+        // map_tile_key.tile_x = (cc.x / 512.0) as i32;
+        // map_tile_key.tile_y = (cc.y / 512.0) as i32;
         let geom = read_mvt_tile(tile_store.load_map_tiler(&tile_key).as_slice()).unwrap_or_default();
 
         let mut geometry_data: Vec<GeometryData> = vec![];
@@ -162,11 +204,57 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
     }
 }
 
+fn mercator_meters_to_512_tile(mx: f64, my: f64, zoom: u32) -> (u32, u32) {
+    const EXTENT: f64 = 4194304.342789244;
+    const MAP_SIZE: f64 = EXTENT * 2.0;
+
+    // Convert meters to a normalized 0.0 to 1.0 range
+    let norm_x = (mx) / MAP_SIZE;
+    let norm_y = (my) / MAP_SIZE; // Flipped because Tile Y increases downwards
+
+    // At 512x512 scale, the map divides by half as many tiles at the same visual density.
+    // We adjust by shifting the effective zoom by -1 for the grid division.
+    let effective_zoom = if zoom > 0 { zoom - 1 } else { 0 };
+    let num_tiles = (1 << zoom) as f64;
+
+    let tx = (norm_x * num_tiles).floor() as u32;
+    let ty = (norm_y * num_tiles).floor() as u32;
+
+    let max_tile = (1 << zoom) - 1;
+    (tx.min(max_tile), ty.min(max_tile))
+}
+
+pub fn calc_tile_ranges2(zoom_level: i32, area_poly: geo_types::Polygon<f64>) -> TileRanges {
+    let mut min_x = u32::MAX;
+    let mut max_x = u32::MIN;
+    let mut min_y = u32::MAX;
+    let mut max_y = u32::MIN;
+
+    for coord in area_poly.coords_iter() {
+        let (tx, ty) = mercator_meters_to_512_tile(coord.x, coord.y, zoom_level as u32);
+
+        if tx < min_x { min_x = tx; }
+        if tx > max_x { max_x = tx; }
+        if ty < min_y { min_y = ty; }
+        if ty > max_y { max_y = ty; }
+    }
+
+    // Returns (min_tile_x, max_tile_x, min_tile_y, max_tile_y)
+    TileRanges {
+        min_x: min_x as u32,
+        max_x: max_x as u32,
+        min_y: min_y as u32,
+        max_y: max_y as u32,
+    }
+}
+
 impl<S: TileSource, FP: FeatureProcessor + 'static> TilesProvider
     for ShashlikTilesProviderV0<S, FP>
 {
     fn load(&mut self, area_lonlat: Rect, area_poly: geo_types::Polygon<f64>, zoom_level: i32) {
-        let ranges = calc_tile_ranges(TILES_COUNT, zoom_level, &area_lonlat);
+        let ranges = calc_tile_ranges2(zoom_level, area_poly);
+        // println!("ranges = {:?}", ranges);
+
         let mut current_visible_tiles: HashSet<TileKey> = HashSet::new();
         let mut to_load: HashSet<TileKey> = HashSet::new();
 
@@ -181,12 +269,17 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> TilesProvider
                 };
 
                 // FIXME Maybe move "calc_tile_boundary" to tile generator? since we need to calculate all the time and twice(+ before loading)
-                let tile_rect = tile_key.calc_tile_boundary(1.0);
-                if area_poly.intersects(&tile_rect) {
-                    current_visible_tiles.insert(tile_key);
-                    if self.per_frame_cache.insert(tile_key) {
-                        to_load.insert(tile_key);
-                    }
+                // let tile_rect = tile_key.calc_tile_boundary(1.0);
+                // if area_poly.intersects(&tile_rect) {
+                //     current_visible_tiles.insert(tile_key);
+                //     if self.per_frame_cache.insert(tile_key) {
+                //         to_load.insert(tile_key);
+                //     }
+                // }
+
+                current_visible_tiles.insert(tile_key);
+                if self.per_frame_cache.insert(tile_key) {
+                    to_load.insert(tile_key);
                 }
             }
         }
@@ -297,10 +390,26 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> TilesProvider
             .into()
     }
 
+    fn lon_lat_to_world2(lon_lat: &geo_types::Coord<f64>, zl: i32) -> geo_types::Coord<f64> {
+        let lon_lat: (f64, f64) = (*lon_lat).into();
+        Mercator::with_size(512)
+            .from_ll_to_subpixel(&lon_lat, zl as usize)
+            .unwrap()
+            .into()
+    }
+
     fn world_to_lon_lat(xy: &geo_types::Coord<f64>) -> geo_types::Coord<f64> {
         let xy: (f64, f64) = (*xy).into();
         Mercator::with_size(1)
             .from_pixel_to_ll(&xy, 22)
+            .unwrap()
+            .into()
+    }
+
+    fn world_to_lon_lat2(xy: &Coord<f64>, zl: i32) -> Coord<f64> {
+        let xy: (f64, f64) = (*xy).into();
+        Mercator::with_size(512)
+            .from_pixel_to_ll(&xy, zl as usize)
             .unwrap()
             .into()
     }

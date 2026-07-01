@@ -145,6 +145,7 @@ impl ShashlikRenderer {
                 if let Some(api_msg) = receiver_api_rx.recv().ok() {
                     match api_msg {
                         RendererApiMsg::RenderGroup((key, spatial_data, mut rg)) => {
+                            println!("render key = {}",key);
                             let (spatial_tx, _) = broadcast::channel(1);
                             spatial_data_map
                                 .insert(key.clone(), (spatial_data.clone(), spatial_tx.clone()));

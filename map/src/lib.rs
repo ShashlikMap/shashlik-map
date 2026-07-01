@@ -9,7 +9,7 @@ use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use futures::executor::block_on;
 use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
-use geo_types::{coord, line_string, Coord, Point, Rect};
+use geo_types::{coord, line_string, Coord, Geometry, Line, Point, Rect};
 use geo_types::{LineString, Polygon};
 use glam::{DMat2, DVec2, DVec3, Vec2};
 use num::{abs, clamp};
@@ -31,11 +31,13 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
-use fast_mvt::{MvtReaderRef, MvtResult, MvtValue, MvtValueRef};
+use fast_mvt::{MvtGeometry, MvtReaderRef, MvtResult, MvtValue, MvtValueRef};
 use fast_mvt::proto::GeomType;
-use geo::{Convert, CoordsIter};
+use geo::{Convert, CoordsIter, LinesIter, MapCoords, MapCoordsInPlace};
 use log::error;
-use osm::map::{HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, WayInfo};
+use mvt_reader::feature::Value;
+use mvt_reader::Reader;
+use osm::map::{HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, NatureKind, WayInfo};
 use ttf_parser::Face;
 use wgpu::Texture;
 use renderer::mesh_layers::layers::WorldShapeFeatureLayerTag;
@@ -100,12 +102,109 @@ impl RenderGroup for TileData {
 static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> =
     LazyLock::new(|| Face::parse(include_bytes!("../font.ttf"), 0).unwrap());
 
+fn get_all_lines(geometry: &Geometry<i32>) -> Vec<Line<i32>> {
+    match geometry {
+        Geometry::LineString(line_string) => {
+            // .lines() returns an iterator over individual Line segments
+            line_string.lines().collect()
+        }
+        Geometry::MultiLineString(multi_line_string) => {
+            // MultiLineString contains multiple LineStrings;
+            // iterate over them, get lines for each, and flatten
+            multi_line_string
+                .iter()
+                .flat_map(|line_string| line_string.lines())
+                .collect()
+        }
+        _ => {
+            // Handle or ignore other geometry variants (like Point, Polygon, etc.)
+            Vec::new()
+        }
+    }
+}
+
 fn read_mvt_tile(bytes: &[u8]) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>)>> {
     let mut res = vec![];
+
+    // let reader = Reader::new(bytes.to_vec()).unwrap();
+    //
+    // // Get layer names
+    // let transport_index = reader.get_layer_names().unwrap().iter().position(|item| { item == "transportation" }).unwrap();
+    // match reader.get_features(transport_index) {
+    //     Ok(features) => {
+    //         for feature in features {
+    //             // let geometry = feature.geometry()?;
+    //             // println!("geo: {geometry:?}");
+    //             let id = feature.id;
+    //             println!("id: {id:?}");
+    //             //
+    //             let geom: &Geometry<f32> = feature.get_geometry();
+    //             // println!("{:?}", geom);
+    //             if matches!(geom, Geometry::LineString { .. }) || matches!(geom, Geometry::MultiLineString { .. }) {
+    //                 let mut layer: i64 = 0;
+    //                 let mut highway_kind: Option<HighwayKind> = None;
+    //                 for property in feature.properties.as_ref().unwrap() {
+    //                     let (key, value) = property;
+    //                     if key == "layer" {
+    //                         layer = LocalMvtValue2(value).into();
+    //                     } else if key == "class" {
+    //                         let road_class: String = LocalMvtValue2(value).into();
+    //                         highway_kind = match road_class.as_str() {
+    //                             "motorway" => Some(HighwayKind::Motorway),
+    //                             "primary" => Some(HighwayKind::Primary),
+    //                             "secondary" => Some(HighwayKind::Secondary),
+    //                             "tertiary" => Some(HighwayKind::Tertiary),
+    //                             "unclassified" => Some(HighwayKind::Unclassified),
+    //                             "residential" => Some(HighwayKind::Residential),
+    //                             // "motorwaylink" => Some(HighwayKind::MotorwayLink),
+    //                             // "trunklink" => Some(HighwayKind::TrunkLink),
+    //                             // "primarylink" => Some(HighwayKind::PrimaryLink),
+    //                             // "secondarylink" => Some(HighwayKind::SecondaryLink),
+    //                             // "tertiarylink" => Some(HighwayKind::TertiaryLink),
+    //                             "service" => Some(HighwayKind::Service),
+    //                             "trunk" => Some(HighwayKind::Trunk),
+    //                             _ => None
+    //                         };
+    //                     }
+    //                     // println!("{key} = {value:?}");
+    //                 }
+    //
+    //                 if let Some(highway_kind) = highway_kind {
+    //                     let kk = 512.0f32 / 4096.0;
+    //                     let geom_object = MapGeomObject {
+    //                         id: -1,
+    //                         kind: MapGeomObjectKind::Way(WayInfo {
+    //                             line_kind: LineKind::Highway {
+    //                                 kind: highway_kind,
+    //                             },
+    //                             layer: layer as i32,
+    //                             layer_kind: LayerKind::None,
+    //                             name_en: None,
+    //                         }),
+    //                     };
+    //                     for line in get_all_lines(geom) {
+    //                         let ls: LineString<f32> = line.coords_iter().map(|coord| {
+    //                             coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
+    //                         }).collect();
+    //
+    //                         res.push((geom_object.clone(), MapGeometry::Line(ls)));
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     Err(error) => {
+    //         todo!();
+    //     }
+    // }
+    // for name in layer_names {
+    //     println!("Layer: {}", name);
+    // }
+
     let reader = MvtReaderRef::new(bytes)?;
 
     for layer in reader.layers() {
-        // println!("layer: {:?}",layer.name());
+        println!("layer: {:?}",layer.name());
         // println!("extend: {:?}",layer.extent());
         if layer.name() == "transportation" {
             for feature in layer.features() {
@@ -130,11 +229,11 @@ fn read_mvt_tile(bytes: &[u8]) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>
                                 "tertiary" => Some(HighwayKind::Tertiary),
                                 "unclassified" => Some(HighwayKind::Unclassified),
                                 "residential" => Some(HighwayKind::Residential),
-                                "motorwaylink" => Some(HighwayKind::MotorwayLink),
-                                "trunklink" => Some(HighwayKind::TrunkLink),
-                                "primarylink" => Some(HighwayKind::PrimaryLink),
-                                "secondarylink" => Some(HighwayKind::SecondaryLink),
-                                "tertiarylink" => Some(HighwayKind::TertiaryLink),
+                                // "motorwaylink" => Some(HighwayKind::MotorwayLink),
+                                // "trunklink" => Some(HighwayKind::TrunkLink),
+                                // "primarylink" => Some(HighwayKind::PrimaryLink),
+                                // "secondarylink" => Some(HighwayKind::SecondaryLink),
+                                // "tertiarylink" => Some(HighwayKind::TertiaryLink),
                                 "service" => Some(HighwayKind::Service),
                                 "trunk" => Some(HighwayKind::Trunk),
                                 _ => None
@@ -144,9 +243,10 @@ fn read_mvt_tile(bytes: &[u8]) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>
                     }
 
                     if let Some(highway_kind) = highway_kind {
-                        let ls: LineString<f32> = feature.geometry()?.coords_iter().map(|coord| {
-                            coord! { x: coord.x as f32 * 512.0f32 / 4096.0, y: coord.y as f32 * 512.0f32 / 4096.0}
-                        }).collect();
+                        let kk = 512.0f32 / 4096.0;
+                        // let ls: LineString<f32> = feature.geometry()?.coords_iter().map(|coord| {
+                        //     coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
+                        // }).collect();
                         let mut geom_object = MapGeomObject {
                             id: -1,
                             kind: MapGeomObjectKind::Way(WayInfo {
@@ -158,7 +258,46 @@ fn read_mvt_tile(bytes: &[u8]) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>
                                 name_en: None,
                             }),
                         };
-                        res.push((geom_object, MapGeometry::Line(ls)));
+                        for line in get_all_lines(&feature.geometry()?) {
+                            let ls: LineString<f32> = line.coords_iter().map(|coord| {
+                                coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
+                            }).collect();
+
+                            res.push((geom_object.clone(), MapGeometry::Line(ls)));
+                        }
+                    }
+                }
+            }
+        } else if layer.name() == "water" {
+            for feature in layer.features() {
+                if let Some(geom_type) = feature.geom_type() && geom_type == GeomType::POLYGON {
+                    match feature.geometry()? {
+                        MvtGeometry::Polygon(poly) => {
+                            let kk = 512.0f32 / 4096.0;
+                            let ls: Polygon<f32> = poly.map_coords(|coord| {
+                                coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
+                            });
+                            let geom_object = MapGeomObject {
+                                id: -1,
+                                kind: MapGeomObjectKind::Nature(NatureKind::Water),
+                            };
+                            res.push((geom_object.clone(), MapGeometry::Poly(ls)));
+                        }
+                        MvtGeometry::MultiPolygon(polis) => {
+                            let kk = 512.0f32 / 4096.0;
+                            let geom_object = MapGeomObject {
+                                id: -1,
+                                kind: MapGeomObjectKind::Nature(NatureKind::Water),
+                            };
+                            for poly in polis {
+                                let ls: Polygon<f32> = poly.map_coords(|coord| {
+                                    coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
+                                });
+
+                                res.push((geom_object.clone(), MapGeometry::Poly(ls)));
+                            }
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -167,6 +306,26 @@ fn read_mvt_tile(bytes: &[u8]) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>
 
     Ok(res)
 }
+
+struct LocalMvtValue2<'a>(&'a Value);
+impl <'a> From<LocalMvtValue2<'a>> for i64 {
+    fn from(value: LocalMvtValue2<'a>) -> Self {
+        match value.0 {
+            Value::SInt(value) => value.clone(),
+            _ => panic!("Unexpected MvtValueRef"),
+        }
+    }
+}
+
+impl <'a> From<LocalMvtValue2<'a>> for String {
+    fn from(value: LocalMvtValue2<'a>) -> Self {
+        match value.0 {
+            Value::String(value) => value.to_string(),
+            _ => panic!("Unexpected MvtValueRef"),
+        }
+    }
+}
+
 
 struct LocalMvtValue<'a>(MvtValueRef<'a>);
 impl From<LocalMvtValue<'_>> for i64 {
@@ -220,9 +379,10 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let tiles_stream = tiles_provider.tiles();
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
-        let camera_offset = T::lon_lat_to_world(&initial_coord);
+        let camera_offset = T::lon_lat_to_world2(&initial_coord, 14);
         let camera_offset: DVec3 = (camera_offset.x, camera_offset.y, 0.0).into();
         let cam = Camera::new(camera_offset);
+
 
         let mut puck_spatial_data = SpatialData::transform(DVec3::new(0.0, 0.0, 0.0));
         puck_spatial_data.scale(DVec3::splat(1.0));
@@ -256,7 +416,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             camera_bearing: 0.0,
             current_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
-            cam_follow_mode: true,
+            cam_follow_mode: false,
             cam_follow_zoom_lock: None,
             screen_params: ScreenParam {
                 width: screen_size.0 as u32,
@@ -288,6 +448,12 @@ impl<T: TilesProvider> ShashlikMap<T> {
         )
     }
 
+    fn world_to_lon_lat2(&self, world_on_ground: &DVec2, zl: i32) -> Coord<f64> {
+        T::world_to_lon_lat2(
+            &(world_on_ground.x, world_on_ground.y).into(), zl
+        )
+    }
+
     fn run_tiles(
         renderer_api: Arc<RendererApi>,
         zero_zoom_level_loaded: Arc<AtomicBool>,
@@ -302,8 +468,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
                         None => break,
                         Some(msg) => match msg {
                             TilesMessage::TilesData(data) => {
-                                let has_zero_level = data.iter().any(|item| item.zoom_level == 0);
-                                zero_zoom_level_loaded.store(has_zero_level, Ordering::Relaxed);
+                                // let has_zero_level = data.iter().any(|item| item.zoom_level == 0);
+                                // zero_zoom_level_loaded.store(has_zero_level, Ordering::Relaxed);
                                 data.into_iter().for_each(|item| {
                                     renderer_api.add_render_group(
                                         item.key.to_string(),
@@ -347,7 +513,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             view_light_matrix: view_light,
             proj_matrix: self.camera.perspective_matrix,
             view_proj_matrix: view_proj,
-            cs_offset: self.camera.offset,
+            cs_offset: DVec3::splat(0.0), //self.camera.offset,
             scale: self.camera.scale(),
             eye_direction: self.camera.eye_direction(),
             up: self.camera.up,
@@ -381,15 +547,27 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.world_height_on_screen = (world_on_ground_rotated_left_top.y - world_on_ground_rotated_bottom_right.y).abs();
 
         let zoom_level = self.camera.scale();
-        let zoom_level = ((zoom_level.log2() + 1.0) as i32).max(0);
+        let zoom_level = 14 - ((zoom_level.log2() + 0.0) as i32).max(0);
 
-        let p1 = self.world_to_lon_lat(&world_on_ground_left_top);
-        let p2 = self.world_to_lon_lat(&world_on_ground_right_top);
-        let p3 = self.world_to_lon_lat(&world_on_ground_right_bottom);
-        let p4 = self.world_to_lon_lat(&world_on_ground_left_bottom);
+        // let initial_coord: Coord<f64> = (0.0, 0.0).into();
+        // let camera_offset = T::lon_lat_to_world2(&initial_coord, 14);
+        // println!("camera offset: {:?}", camera_offset);
+        // let zoom_level = ((14.0 / 18.0) * (18.0 - zoom_level as f32)).round() as i32;
+
+        // let p1 = self.world_to_lon_lat2(&world_on_ground_left_top, zoom_level);
+        // let p2 = self.world_to_lon_lat2(&world_on_ground_right_top, zoom_level);
+        // let p3 = self.world_to_lon_lat2(&world_on_ground_right_bottom, zoom_level);
+        // let p4 = self.world_to_lon_lat2(&world_on_ground_left_bottom, zoom_level);
 
         // this will be compared for intersection later, it should have a correct winding
-        let poly: Polygon<f64> = Polygon::new(LineString(vec![p1, p2, p3, p4]), Vec::new());
+        // println!("world_on_ground_left_top = {:?}",world_on_ground_left_top);
+        let jkl = vec![world_on_ground_left_top,
+                       world_on_ground_right_top,
+                       world_on_ground_right_bottom,
+                       world_on_ground_left_bottom].into_iter().map(|cc| {
+            coord! {x: cc.x, y: cc.y}
+        }).collect();
+        let poly: Polygon<f64> = Polygon::new(LineString(jkl), Vec::new());
         let area_lon_lat = get_bounding_rect(poly.exterior()).unwrap();
 
         // if area_lon_lat != self.last_area_lon_lat {
