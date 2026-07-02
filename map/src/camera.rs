@@ -34,7 +34,7 @@ impl Camera {
             znear: Self::Z_NEAR,
             zfar: Self::Z_FAR,
             perspective_matrix: DMat4::IDENTITY,
-            offset: DVec3::new(0.0, 0.0, 0.0),
+            offset: DVec3::new(initial_world.x, initial_world.y, 0.0),
         }
     }
 
@@ -142,11 +142,11 @@ impl CameraController {
         camera.eye -= pan_vec;
         camera.target -= pan_vec;
 
-        // let distance_from_origin = camera.offset.xy().distance(camera.target.xy());
-        // if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {
-        //     println!("Origin rebase!");
-        //     camera.offset = camera.target.xy().extend(0.0);
-        // }
+        let distance_from_origin = camera.offset.xy().distance(camera.target.xy());
+        if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {
+            // println!("Origin rebase!");
+            camera.offset = camera.target.xy().extend(0.0);
+        }
 
         let rotation_matrix = DMat3::from_rotation_z(self.yaw.to_radians());
         camera.up = rotation_matrix * DVec3::Y;

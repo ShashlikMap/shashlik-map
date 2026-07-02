@@ -125,94 +125,13 @@ fn get_all_lines(geometry: &Geometry<i32>) -> Vec<Line<i32>> {
 
 fn read_mvt_tile(bytes: &[u8]) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>)>> {
     let mut res = vec![];
-
-    // let reader = Reader::new(bytes.to_vec()).unwrap();
-    //
-    // // Get layer names
-    // let transport_index = reader.get_layer_names().unwrap().iter().position(|item| { item == "transportation" }).unwrap();
-    // match reader.get_features(transport_index) {
-    //     Ok(features) => {
-    //         for feature in features {
-    //             // let geometry = feature.geometry()?;
-    //             // println!("geo: {geometry:?}");
-    //             let id = feature.id;
-    //             println!("id: {id:?}");
-    //             //
-    //             let geom: &Geometry<f32> = feature.get_geometry();
-    //             // println!("{:?}", geom);
-    //             if matches!(geom, Geometry::LineString { .. }) || matches!(geom, Geometry::MultiLineString { .. }) {
-    //                 let mut layer: i64 = 0;
-    //                 let mut highway_kind: Option<HighwayKind> = None;
-    //                 for property in feature.properties.as_ref().unwrap() {
-    //                     let (key, value) = property;
-    //                     if key == "layer" {
-    //                         layer = LocalMvtValue2(value).into();
-    //                     } else if key == "class" {
-    //                         let road_class: String = LocalMvtValue2(value).into();
-    //                         highway_kind = match road_class.as_str() {
-    //                             "motorway" => Some(HighwayKind::Motorway),
-    //                             "primary" => Some(HighwayKind::Primary),
-    //                             "secondary" => Some(HighwayKind::Secondary),
-    //                             "tertiary" => Some(HighwayKind::Tertiary),
-    //                             "unclassified" => Some(HighwayKind::Unclassified),
-    //                             "residential" => Some(HighwayKind::Residential),
-    //                             // "motorwaylink" => Some(HighwayKind::MotorwayLink),
-    //                             // "trunklink" => Some(HighwayKind::TrunkLink),
-    //                             // "primarylink" => Some(HighwayKind::PrimaryLink),
-    //                             // "secondarylink" => Some(HighwayKind::SecondaryLink),
-    //                             // "tertiarylink" => Some(HighwayKind::TertiaryLink),
-    //                             "service" => Some(HighwayKind::Service),
-    //                             "trunk" => Some(HighwayKind::Trunk),
-    //                             _ => None
-    //                         };
-    //                     }
-    //                     // println!("{key} = {value:?}");
-    //                 }
-    //
-    //                 if let Some(highway_kind) = highway_kind {
-    //                     let kk = 512.0f32 / 4096.0;
-    //                     let geom_object = MapGeomObject {
-    //                         id: -1,
-    //                         kind: MapGeomObjectKind::Way(WayInfo {
-    //                             line_kind: LineKind::Highway {
-    //                                 kind: highway_kind,
-    //                             },
-    //                             layer: layer as i32,
-    //                             layer_kind: LayerKind::None,
-    //                             name_en: None,
-    //                         }),
-    //                     };
-    //                     for line in get_all_lines(geom) {
-    //                         let ls: LineString<f32> = line.coords_iter().map(|coord| {
-    //                             coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
-    //                         }).collect();
-    //
-    //                         res.push((geom_object.clone(), MapGeometry::Line(ls)));
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     Err(error) => {
-    //         todo!();
-    //     }
-    // }
-    // for name in layer_names {
-    //     println!("Layer: {}", name);
-    // }
-
     let reader = MvtReaderRef::new(bytes)?;
 
     for layer in reader.layers() {
-        println!("layer: {:?}",layer.name());
+
         // println!("extend: {:?}",layer.extent());
         if layer.name() == "transportation" {
             for feature in layer.features() {
-                // let geometry = feature.geometry()?;
-                // println!("geo: {geometry:?}");
-                // let id = feature.id();
-                // println!("id: {id:?}");
-                //
                 if let Some(geom_type) = feature.geom_type() && geom_type == GeomType::LINESTRING {
                     let mut layer: i64 = 0;
                     let mut highway_kind: Option<HighwayKind> = None;;
@@ -244,10 +163,7 @@ fn read_mvt_tile(bytes: &[u8]) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>
 
                     if let Some(highway_kind) = highway_kind {
                         let kk = 512.0f32 / 4096.0;
-                        // let ls: LineString<f32> = feature.geometry()?.coords_iter().map(|coord| {
-                        //     coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
-                        // }).collect();
-                        let mut geom_object = MapGeomObject {
+                        let geom_object = MapGeomObject {
                             id: -1,
                             kind: MapGeomObjectKind::Way(WayInfo {
                                 line_kind: LineKind::Highway {
@@ -269,26 +185,21 @@ fn read_mvt_tile(bytes: &[u8]) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>
                 }
             }
         } else if layer.name() == "water" {
+            let kk = 512.0f32 / 4096.0;
+            let geom_object = MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::Nature(NatureKind::Water),
+            };
             for feature in layer.features() {
                 if let Some(geom_type) = feature.geom_type() && geom_type == GeomType::POLYGON {
                     match feature.geometry()? {
                         MvtGeometry::Polygon(poly) => {
-                            let kk = 512.0f32 / 4096.0;
                             let ls: Polygon<f32> = poly.map_coords(|coord| {
                                 coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
                             });
-                            let geom_object = MapGeomObject {
-                                id: -1,
-                                kind: MapGeomObjectKind::Nature(NatureKind::Water),
-                            };
                             res.push((geom_object.clone(), MapGeometry::Poly(ls)));
                         }
                         MvtGeometry::MultiPolygon(polis) => {
-                            let kk = 512.0f32 / 4096.0;
-                            let geom_object = MapGeomObject {
-                                id: -1,
-                                kind: MapGeomObjectKind::Nature(NatureKind::Water),
-                            };
                             for poly in polis {
                                 let ls: Polygon<f32> = poly.map_coords(|coord| {
                                     coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
@@ -299,6 +210,45 @@ fn read_mvt_tile(bytes: &[u8]) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>
                         }
                         _ => {}
                     }
+                }
+            }
+        } else if layer.name() == "landuse" || layer.name() == "landcover" || layer.name() == "park" {
+            // println!("layer: {:?}",layer.name());
+            for feature in layer.features() {
+                for property in feature.properties() {
+                    let (key, value) = property?;
+                    if key == "class" {
+                        let class_type: String = LocalMvtValue(value).into();
+                        // println!("ClassType: {}", class_type);
+                        if layer.name() == "park" || class_type == "wood" || class_type == "grass" || class_type == "nature_reserve" || class_type == "geopark" || class_type == "farmland" || class_type == "national_park" {
+                            let kk = 512.0f32 / 4096.0;
+                            let geom_object = MapGeomObject {
+                                id: -1,
+                                kind: MapGeomObjectKind::Nature(NatureKind::Forest),
+                            };
+                            if let Some(geom_type) = feature.geom_type() && geom_type == GeomType::POLYGON {
+                                match feature.geometry()? {
+                                    MvtGeometry::Polygon(poly) => {
+                                        let ls: Polygon<f32> = poly.map_coords(|coord| {
+                                            coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
+                                        });
+                                        res.push((geom_object.clone(), MapGeometry::Poly(ls)));
+                                    }
+                                    MvtGeometry::MultiPolygon(polis) => {
+                                        for poly in polis {
+                                            let ls: Polygon<f32> = poly.map_coords(|coord| {
+                                                coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
+                                            });
+
+                                            res.push((geom_object.clone(), MapGeometry::Poly(ls)));
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                    // println!("key: {:?}, value: {:?}",key, value);
                 }
             }
         }
@@ -513,7 +463,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
             view_light_matrix: view_light,
             proj_matrix: self.camera.perspective_matrix,
             view_proj_matrix: view_proj,
-            cs_offset: DVec3::splat(0.0), //self.camera.offset,
+            cs_offset: self.camera.offset,
             scale: self.camera.scale(),
             eye_direction: self.camera.eye_direction(),
             up: self.camera.up,
@@ -547,7 +497,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         self.world_height_on_screen = (world_on_ground_rotated_left_top.y - world_on_ground_rotated_bottom_right.y).abs();
 
         let zoom_level = self.camera.scale();
-        let zoom_level = 14 - ((zoom_level.log2() + 1.0) as i32).max(0);
+        let zoom_level = 14 - ((zoom_level.log2() - 2.0) as i32).max(0);
 
         // let initial_coord: Coord<f64> = (0.0, 0.0).into();
         // let camera_offset = T::lon_lat_to_world2(&initial_coord, 14);
