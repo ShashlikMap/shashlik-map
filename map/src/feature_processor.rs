@@ -46,10 +46,10 @@ impl ShashlikFeatureProcessor {
         // Relative width for zoom 19, OSM:
         // https://github.com/gravitystorm/openstreetmap-carto/blob/23b1cfa7284ac91bb78390fa4cb7f1c2c6350b92/style/roads.mss#L204
         // TODO Figure out the better way to bound line width to zoom
-        let motorway_width = 1.00;
+        let motorway_width = 0.85;
 
         // shows big road better with high zooms
-        let zoom = if zoom >= 6.0 { 1.2 * zoom * zoom } else { zoom * zoom * 0.7 };
+        let zoom = if zoom >= 6.0 { zoom * zoom } else { zoom * zoom * 0.7 };
         // let zoom = if zoom >= 9.0 { 1.2 * zoom * zoom } else { zoom * zoom * 0.7 };
         match kind {
             HighwayKind::Motorway | HighwayKind::Primary => motorway_width * (zoom / 2.0).max(1.0),
@@ -197,16 +197,15 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     LineKind::Railway { .. } => {
                         // TODO Ignore rails tunnels for a while
                         if info.layer_kind != LayerKind::Tunnel {
-                            // Some((
-                            //     StyleId::new("rails"),
-                            //     info.layer,
-                            //     GeometryType::Polyline(PolylineOptions {
-                            //         width: 0.3 * zoom_level.max(1) as f32,
-                            //         ..Default::default()
-                            //     }),
-                            //     None,
-                            // ))
-                            None
+                            Some((
+                                StyleId::new("rails"),
+                                info.layer,
+                                GeometryType::Polyline(PolylineOptions {
+                                    width: 0.3 * zoom_level.max(1) as f32,
+                                    ..Default::default()
+                                }),
+                                None,
+                            ))
                         } else {
                             None
                         }

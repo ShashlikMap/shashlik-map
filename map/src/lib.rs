@@ -418,8 +418,8 @@ impl<T: TilesProvider> ShashlikMap<T> {
                         None => break,
                         Some(msg) => match msg {
                             TilesMessage::TilesData(data) => {
-                                // let has_zero_level = data.iter().any(|item| item.zoom_level == 0);
-                                // zero_zoom_level_loaded.store(has_zero_level, Ordering::Relaxed);
+                                let has_zero_level = data.iter().any(|item| item.zoom_level == 14);
+                                zero_zoom_level_loaded.store(has_zero_level, Ordering::Relaxed);
                                 data.into_iter().for_each(|item| {
                                     renderer_api.add_render_group(
                                         item.key.to_string(),
@@ -498,12 +498,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         let zoom_level = self.camera.scale();
         let zoom_level = 14 - ((zoom_level.log2() - 2.0) as i32).max(0);
-
-        // let initial_coord: Coord<f64> = (0.0, 0.0).into();
-        // let camera_offset = T::lon_lat_to_world2(&initial_coord, 14);
-        // println!("camera offset: {:?}", camera_offset);
-        // let zoom_level = ((14.0 / 18.0) * (18.0 - zoom_level as f32)).round() as i32;
-
+        
         // let p1 = self.world_to_lon_lat2(&world_on_ground_left_top, zoom_level);
         // let p2 = self.world_to_lon_lat2(&world_on_ground_right_top, zoom_level);
         // let p3 = self.world_to_lon_lat2(&world_on_ground_right_bottom, zoom_level);
