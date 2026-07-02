@@ -50,7 +50,6 @@ impl ShashlikFeatureProcessor {
 
         // shows big road better with high zooms
         let zoom = if zoom >= 6.0 { zoom * zoom } else { zoom * zoom * 0.7 };
-        // let zoom = if zoom >= 9.0 { 1.2 * zoom * zoom } else { zoom * zoom * 0.7 };
         match kind {
             HighwayKind::Motorway | HighwayKind::Primary => motorway_width * (zoom / 2.0).max(1.0),
             HighwayKind::Trunk => motorway_width * (zoom / 3.0).max(1.0),

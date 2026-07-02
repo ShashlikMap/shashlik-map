@@ -24,7 +24,6 @@ rayon = "1.11.0"
 kml = { git = "https://github.com/ShashlikMap/kml" }
 rand = { workspace = true }
 fast-mvt = "0.4.1"
-mvt-reader = "2.4.0"
 
 ttf-parser = "0.25.1"
 glam = { workspace = true }

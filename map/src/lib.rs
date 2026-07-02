@@ -9,7 +9,7 @@ use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
 use futures::executor::block_on;
 use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
-use geo_types::{coord, line_string, Coord, Geometry, Line, Point, Rect};
+use geo_types::{coord, Coord, Geometry, Line, Point, Rect};
 use geo_types::{LineString, Polygon};
 use glam::{DMat2, DVec2, DVec3, Vec2};
 use num::{abs, clamp};
@@ -24,19 +24,17 @@ use renderer::{Renderer, RendererUpdateData, ShashlikRenderer};
 use route::route_controller::RouteController;
 #[cfg(feature = "sgnss")]
 use sgnss::start_sgnss;
-use std::{fs, mem};
+use std::{mem};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
-use fast_mvt::{MvtGeometry, MvtReaderRef, MvtResult, MvtValue, MvtValueRef};
+use fast_mvt::{MvtGeometry, MvtReaderRef, MvtResult, MvtValueRef};
 use fast_mvt::proto::GeomType;
-use geo::{Convert, CoordsIter, LinesIter, MapCoords, MapCoordsInPlace};
+use geo::{CoordsIter, MapCoords, MapCoordsInPlace};
 use log::error;
-use mvt_reader::feature::Value;
-use mvt_reader::Reader;
 use osm::map::{HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, NatureKind, WayInfo};
 use ttf_parser::Face;
 use wgpu::Texture;
@@ -134,7 +132,7 @@ fn read_mvt_tile(bytes: &[u8]) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>
             for feature in layer.features() {
                 if let Some(geom_type) = feature.geom_type() && geom_type == GeomType::LINESTRING {
                     let mut layer: i64 = 0;
-                    let mut highway_kind: Option<HighwayKind> = None;;
+                    let mut highway_kind: Option<HighwayKind> = None;
                     for property in feature.properties() {
                         let (key, value) = property?;
                         if key == "layer" {
@@ -256,26 +254,6 @@ fn read_mvt_tile(bytes: &[u8]) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>
 
     Ok(res)
 }
-
-struct LocalMvtValue2<'a>(&'a Value);
-impl <'a> From<LocalMvtValue2<'a>> for i64 {
-    fn from(value: LocalMvtValue2<'a>) -> Self {
-        match value.0 {
-            Value::SInt(value) => value.clone(),
-            _ => panic!("Unexpected MvtValueRef"),
-        }
-    }
-}
-
-impl <'a> From<LocalMvtValue2<'a>> for String {
-    fn from(value: LocalMvtValue2<'a>) -> Self {
-        match value.0 {
-            Value::String(value) => value.to_string(),
-            _ => panic!("Unexpected MvtValueRef"),
-        }
-    }
-}
-
 
 struct LocalMvtValue<'a>(MvtValueRef<'a>);
 impl From<LocalMvtValue<'_>> for i64 {
@@ -498,7 +476,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         let zoom_level = self.camera.scale();
         let zoom_level = 14 - ((zoom_level.log2() - 2.0) as i32).max(0);
-        
+
         // let p1 = self.world_to_lon_lat2(&world_on_ground_left_top, zoom_level);
         // let p2 = self.world_to_lon_lat2(&world_on_ground_right_top, zoom_level);
         // let p3 = self.world_to_lon_lat2(&world_on_ground_right_bottom, zoom_level);

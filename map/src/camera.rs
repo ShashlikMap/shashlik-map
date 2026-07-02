@@ -94,7 +94,7 @@ pub struct CameraController {
 }
 
 impl CameraController {
-    pub const MIN_PITCH: f64 = 90.0;
+    pub const MIN_PITCH: f64 = 55.0;
     pub const MAX_PITCH: f64 = 90.0;
 
     const ORIGIN_REBASE_THRESHOLD: f64 = 999.0; // random now, big enough between US/JAPAN
@@ -144,7 +144,7 @@ impl CameraController {
 
         let distance_from_origin = camera.offset.xy().distance(camera.target.xy());
         if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {
-            // println!("Origin rebase!");
+            println!("Origin rebase!");
             camera.offset = camera.target.xy().extend(0.0);
         }
 
