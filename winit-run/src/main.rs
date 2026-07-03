@@ -1,6 +1,6 @@
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
-use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
+use map::tiles::shashlik_tiles_provider_v0::{ShashlikTilesProviderV0, MaptilerFakeTileStore};
 use map::ShashlikMap;
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
@@ -10,11 +10,13 @@ use std::cmp::max;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::mpsc;
+use osm::tiles::TileStore;
 use strum::IntoEnumIterator;
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
+use map::tiles::tiles_provider::TilesProviderStore;
 use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
 use wgpu_canvas::{PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
 
@@ -112,7 +114,7 @@ fn main() {
                             target_texture,
                         );
                         let tiles_provider = ShashlikTilesProviderV0::new(
-                            ReqwestSource::new(),
+                            Box::new(TileStore::new(ReqwestSource::new())),
                             ShashlikFeatureProcessor::new(),
                             dpi,
                         );
@@ -209,6 +211,15 @@ fn main() {
                                     Feature::Shadows => unsafe {
                                         SHADOWS_ENABLED = enabled;
                                     },
+                                    Feature::MapTiler => {
+                                        let new_store:Box<dyn TilesProviderStore> = if enabled {
+                                            Box::new(MaptilerFakeTileStore(TileStore::new(ReqwestSource::new())))
+                                        } else {
+                                            Box::new(TileStore::new(ReqwestSource::new()))
+                                        };
+                                        shashlik_map.tiles_provider
+                                            .set_store(new_store);
+                                    }
                                 },
                             };
                         }

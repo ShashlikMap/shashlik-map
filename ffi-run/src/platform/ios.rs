@@ -8,6 +8,7 @@ use map::ShashlikMap;
 use std::sync::RwLock;
 use std::ffi::c_void;
 use std::mem;
+use osm::tiles::TileStore;
 use objc::runtime::Object;
 use app_surface::SurfaceFrame;
 use map::feature_processor::ShashlikFeatureProcessor;
@@ -25,9 +26,10 @@ pub fn create_shashlik_map_api_for_ios(view: u64, metal_layer: u64, maximum_fram
 	let app_surface = AppSurface::new(ios_view_obj);
 	let wrapper = IOSPlatformAppSurface { app_surface, surface_texture: None };
 	let reqwest_source = ReqwestSource::new();
+	let tile_store = Box::new(TileStore::new(reqwest_source));
 	let feature_processor = ShashlikFeatureProcessor::new();
 	// TODO DPI from iOS
-	let shashlik_map = pollster::block_on(ShashlikMap::new(Box::new(wrapper), ShashlikTilesProviderV0::new(reqwest_source, feature_processor, 1.35))).unwrap();
+	let shashlik_map = pollster::block_on(ShashlikMap::new(Box::new(wrapper), ShashlikTilesProviderV0::new(tile_store, feature_processor, 1.35))).unwrap();
 	ShashlikMapApi { shashlik_map: RwLock::new(shashlik_map) }
 }
 

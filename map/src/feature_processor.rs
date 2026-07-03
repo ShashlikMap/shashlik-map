@@ -16,6 +16,7 @@ use seahash::hash;
 use std::collections::HashMap;
 use capitalize::Capitalize;
 use lyon::lyon_tessellation::{LineCap, LineJoin};
+use crate::MAX_ZOOM_LEVEL;
 
 pub struct ShashlikFeatureProcessor {}
 
@@ -157,6 +158,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         zoom_level: i32,
         dpi_scale: f32,
     ) {
+        let zoom_level = MAX_ZOOM_LEVEL - zoom_level;
         let line = line.0;
         if line.len() >= 2 {
             let mut path_builder = Path::builder();
