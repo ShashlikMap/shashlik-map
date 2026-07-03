@@ -132,7 +132,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
         let tiles_stream = tiles_provider.tiles();
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
-        let camera_offset = T::lon_lat_to_world(&initial_coord, MAX_ZOOM_LEVEL);
+        let camera_offset = tiles_provider.lon_lat_to_world(&initial_coord, MAX_ZOOM_LEVEL);
         let camera_offset: DVec3 = (camera_offset.x, camera_offset.y, 0.0).into();
         let cam = Camera::new(camera_offset);
 
@@ -189,11 +189,11 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
 
     fn clip_to_lon_lat(&self, coord: &Coord<f64>) -> Option<Coord<f64>> {
         let world_on_ground = self.renderer.clip_to_world(coord)?;
-        Some(Self::world_to_lon_lat(&world_on_ground))
+        Some(self.world_to_lon_lat(&world_on_ground))
     }
 
-    fn world_to_lon_lat(world_on_ground: &DVec2) -> Coord<f64> {
-        T::world_to_lon_lat(
+    fn world_to_lon_lat(&self, world_on_ground: &DVec2) -> Coord<f64> {
+        self.tiles_provider.world_to_lon_lat(
             &(world_on_ground.x, world_on_ground.y).into(), MAX_ZOOM_LEVEL
         )
     }
@@ -294,10 +294,10 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
         let zoom_level = ((zoom_level.log2() + 1.0) as i32).max(0);
         let zoom_level = MAX_ZOOM_LEVEL - zoom_level; 
 
-        let p1 = Self::world_to_lon_lat(&world_on_ground_left_top);
-        let p2 = Self::world_to_lon_lat(&world_on_ground_right_top);
-        let p3 = Self::world_to_lon_lat(&world_on_ground_right_bottom);
-        let p4 = Self::world_to_lon_lat(&world_on_ground_left_bottom);
+        let p1 = self.world_to_lon_lat(&world_on_ground_left_top);
+        let p2 = self.world_to_lon_lat(&world_on_ground_right_top);
+        let p3 = self.world_to_lon_lat(&world_on_ground_right_bottom);
+        let p4 = self.world_to_lon_lat(&world_on_ground_left_bottom);
 
         // this will be compared for intersection later, it should have a correct winding
         let poly: Polygon<f64> = Polygon::new(LineString(vec![p1, p2, p3, p4]), Vec::new());
@@ -449,7 +449,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
 
     pub fn set_lon_lat_bearing(&mut self, lon: f64, lat: f64, bearing: Option<f32>) {
         self.route_controller.set_current_lon_lat((lon, lat));
-        let position = T::lon_lat_to_world(&coord! {x: lon, y: lat}, MAX_ZOOM_LEVEL);
+        let position = self.tiles_provider.lon_lat_to_world(&coord! {x: lon, y: lat}, MAX_ZOOM_LEVEL);
         self.current_world_position = DVec3::new(position.x, position.y, 0.0);
 
         if let Some(bearing) = bearing {
@@ -496,9 +496,10 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
     }
 
     fn create_location_coord_converter(&self) -> Box<dyn (Fn(&Point) -> Point) + Send> {
+        let converter = self.tiles_provider.inner_converter();
         Box::new(move |p| {
             let coord: Coord<f64> = (p.x(), p.y()).into();
-            let coord = T::lon_lat_to_world(&coord, MAX_ZOOM_LEVEL);
+            let coord = converter.lon_lat_to_world(&coord, MAX_ZOOM_LEVEL);
             Point::new(coord.x, coord.y)
         })
     }
