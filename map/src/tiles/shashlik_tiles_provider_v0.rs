@@ -62,7 +62,7 @@ impl MercatorConverter for ShashlikMercatorConverter {
     }
 }
 
-pub struct TestTileStore<S: TileSource>(pub TileStore<S>);
+pub struct MaptilerFakeTileStore<S: TileSource>(pub TileStore<S>);
 
 impl <S:TileSource> TilesProviderStore<ShashlikMercatorConverter> for TileStore<S> {
 
@@ -84,7 +84,7 @@ impl <S:TileSource> TilesProviderStore<ShashlikMercatorConverter> for TileStore<
     }
 }
 
-impl <S:TileSource> TilesProviderStore<ShashlikMercatorConverter> for TestTileStore<S> {
+impl <S:TileSource> TilesProviderStore<ShashlikMercatorConverter> for MaptilerFakeTileStore<S> {
     fn tile_position_bbox(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect) {
         let tile_rect = tile_key.calc_tile_boundary(TILE_OVERLAP_PERCENT);
 

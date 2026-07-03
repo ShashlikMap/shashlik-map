@@ -1,6 +1,6 @@
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
-use map::tiles::shashlik_tiles_provider_v0::{ShashlikTilesProviderV0, TestTileStore};
+use map::tiles::shashlik_tiles_provider_v0::{ShashlikTilesProviderV0, MaptilerFakeTileStore};
 use map::ShashlikMap;
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
@@ -213,7 +213,7 @@ fn main() {
                                     },
                                     Feature::MapTiler => {
                                         let new_store:Box<dyn TilesProviderStore<_> + Send + Sync> = if enabled {
-                                            Box::new(TestTileStore(TileStore::new(ReqwestSource::new())))
+                                            Box::new(MaptilerFakeTileStore(TileStore::new(ReqwestSource::new())))
                                         } else {
                                             Box::new(TileStore::new(ReqwestSource::new()))
                                         };

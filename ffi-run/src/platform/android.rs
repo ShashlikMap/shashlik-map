@@ -93,7 +93,7 @@ pub fn createShashlikMapApi(
     // let tiles_db: String = env.get_string(&tiles_db).unwrap().into();
     // let tiles_sqlite_store = TilesSQLiteStore::new(tiles_db);
     let reqwest_source = ReqwestSource::new();
-    let tile_store = TileStore::new(reqwest_source);
+    let tile_store = Box::new(TileStore::new(reqwest_source));
     let feature_processor = ShashlikFeatureProcessor::new();
     let shashlik_map = pollster::block_on(ShashlikMap::new(
         Box::new(surface),
