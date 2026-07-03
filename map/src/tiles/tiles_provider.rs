@@ -17,7 +17,7 @@ pub trait MercatorConverter: Send + Sync {
     fn world_to_lon_lat(&self, xy: &Coord<f64>, zoom_level: i32) -> Coord<f64>;
 }
 
-pub trait TilesProviderStore: MercatorConverter + Send + Sync {
+pub trait TilesProviderStore: MercatorConverter {
     fn tile_position_bbox(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect);
     fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)>;
 }

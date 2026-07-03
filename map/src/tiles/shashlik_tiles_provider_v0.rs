@@ -42,6 +42,7 @@ pub trait FeatureProcessor: Send + Sync {
     );
 }
 
+/// TileStore uses hardcoded zoom 22, so the caller's zoom has to be ignored
 impl <S:TileSource> MercatorConverter for TileStore<S> {
     fn lon_lat_to_world(&self, lon_lat: &Coord<f64>, _zoom_level: i32) -> Coord<f64> {
         let lon_lat: (f64, f64) = (*lon_lat).into();
@@ -61,20 +62,12 @@ impl <S:TileSource> MercatorConverter for TileStore<S> {
 }
 
 impl <S:TileSource> MercatorConverter for MaptilerFakeTileStore<S> {
-    fn lon_lat_to_world(&self, lon_lat: &Coord<f64>, _zoom_level: i32) -> Coord<f64> {
-        let lon_lat: (f64, f64) = (*lon_lat).into();
-        Mercator::with_size(1)
-            .from_ll_to_subpixel(&lon_lat, 22)
-            .unwrap()
-            .into()
+    fn lon_lat_to_world(&self, lon_lat: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
+        self.0.lon_lat_to_world(&lon_lat, zoom_level)
     }
 
-    fn world_to_lon_lat(&self, xy: &Coord<f64>, _zoom_level: i32) -> Coord<f64> {
-        let xy: (f64, f64) = (*xy).into();
-        Mercator::with_size(1)
-            .from_pixel_to_ll(&xy, 22)
-            .unwrap()
-            .into()
+    fn world_to_lon_lat(&self, xy: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
+        self.0.world_to_lon_lat(xy, zoom_level)
     }
 }
 
