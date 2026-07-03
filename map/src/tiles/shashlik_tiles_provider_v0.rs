@@ -7,9 +7,7 @@ use geo::Winding;
 use geo_types::{coord, LineString, Rect};
 use googleprojection::Mercator;
 use log::error;
-use osm::map::{
-    MapGeomObjectKind, MapGeometry, MapPointInfo,
-};
+use osm::map::{MapGeomObject, MapGeomObjectKind, MapGeometry, MapGeometryCollection, MapPointInfo};
 use osm::source::TileSource;
 use osm::tiles::{TILES_COUNT, TileKey, TileStore, calc_tile_ranges, TILE_OVERLAP_PERCENT};
 use rayon::iter::IntoParallelRefIterator;
@@ -20,6 +18,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 use std::time::SystemTime;
+use osm::map::NatureKind::Water;
 
 pub trait FeatureProcessor: Send + Sync {
     fn process_poi(
@@ -86,7 +85,17 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
         let tile_rect_original_max = Self::lon_lat_to_world(&tile_rect_original.max());
         let bbox = Rect::new(tile_rect_original_min, tile_rect_original_max).scale(Self::BBOX_OVERLAP_OFFSET_SCALE);
 
-        let geom = tile_store.load_geometries(&tile_key);
+        let mut geom = tile_store.load_geometries(tile_key);
+
+        // A quick workaround for missing water shape tiles since they are not generated if there is no other data
+        if geom.is_empty() {
+            let fake_water_rectangle = Rect::new(coord! { x: 0.0, y: -bbox.max().y as f32},
+                                                 coord! { x: bbox.max().x as f32, y: 0.0 });
+            geom.push((MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::Nature(Water),
+            }, MapGeometry::Poly(fake_water_rectangle.to_polygon())))
+        }
 
         let mut geometry_data: Vec<GeometryData> = vec![];
         let mut line_text_map = HashMap::new();

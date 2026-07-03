@@ -261,9 +261,9 @@ impl PassNode for MainPassNode {
             resolve_target: Some(output_view),
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(wgpu::Color {
-                    r: 0.647,
-                    g: 0.788,
-                    b: 0.922,
+                    r: 0.957,
+                    g: 0.953,
+                    b: 0.941,
                     a: 1.0,
                 }),
                 // FYI!! Discard output! It improves MSAA drastically on low-end devices
