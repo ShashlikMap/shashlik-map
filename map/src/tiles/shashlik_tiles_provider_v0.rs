@@ -86,16 +86,7 @@ impl <S:TileSource> TilesProviderStore<ShashlikMercatorConverter> for TileStore<
 
 impl <S:TileSource> TilesProviderStore<ShashlikMercatorConverter> for MaptilerFakeTileStore<S> {
     fn tile_position_bbox(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect) {
-        let tile_rect = tile_key.calc_tile_boundary(TILE_OVERLAP_PERCENT);
-
-        let tile_rect_origin = ShashlikMercatorConverter::lon_lat_to_world(&tile_rect.min(), MAX_ZOOM_LEVEL);
-        let tile_position = [tile_rect_origin.x, tile_rect_origin.y, 0.0].into();
-
-        let tile_rect_original = tile_key.calc_tile_boundary(1.00);
-        let tile_rect_original_min = ShashlikMercatorConverter::lon_lat_to_world(&tile_rect_original.min(), MAX_ZOOM_LEVEL);
-        let tile_rect_original_max = ShashlikMercatorConverter::lon_lat_to_world(&tile_rect_original.max(), MAX_ZOOM_LEVEL);
-        let bbox = Rect::new(tile_rect_original_min, tile_rect_original_max).scale(bbox_scale);
-        (tile_position, bbox)
+        self.0.tile_position_bbox(tile_key, bbox_scale)
     }
 
     fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
@@ -105,7 +96,7 @@ impl <S:TileSource> TilesProviderStore<ShashlikMercatorConverter> for MaptilerFa
 
 pub struct ShashlikTilesProviderV0<C: MercatorConverter, FP: FeatureProcessor> {
     sender: Option<UnboundedSender<TilesMessage>>,
-    tile_store: Arc<Box<dyn TilesProviderStore<C> + Send + Sync>>,
+    tile_store: Arc<dyn TilesProviderStore<C>>,
     per_frame_cache: HashSet<TileKey>,
     actual_cache: Arc<RwLock<HashSet<TileKey>>>,
     last_loaded_zoom_level: Arc<AtomicI32>,
@@ -117,10 +108,10 @@ pub struct ShashlikTilesProviderV0<C: MercatorConverter, FP: FeatureProcessor> {
 
 impl<C: MercatorConverter, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<C, FP> {
     const BBOX_OVERLAP_OFFSET_SCALE: f64 = 1.005;
-    pub fn new(tiles_provider_store: Box<dyn TilesProviderStore<C> + Send + Sync>, feature_processor: FP, dpi_scale: f32) -> ShashlikTilesProviderV0<C, FP> {
+    pub fn new(tiles_provider_store: Box<dyn TilesProviderStore<C>>, feature_processor: FP, dpi_scale: f32) -> ShashlikTilesProviderV0<C, FP> {
         Self {
             sender: None,
-            tile_store: Arc::new(tiles_provider_store),
+            tile_store: Arc::from(tiles_provider_store),
             per_frame_cache: HashSet::new(),
             actual_cache: Arc::new(RwLock::new(HashSet::new())),
             last_loaded_zoom_level: Arc::new(AtomicI32::new(1)),
@@ -131,9 +122,10 @@ impl<C: MercatorConverter, FP: FeatureProcessor + 'static> ShashlikTilesProvider
         }
     }
 
-    pub fn set_store(&mut self, store: Box<dyn TilesProviderStore<C> + Send + Sync>) {
-        self.tile_store = Arc::new(store);
+    pub fn set_store(&mut self, store: Box<dyn TilesProviderStore<C>>) {
+        self.tile_store = Arc::from(store);
 
+        // TODO Refactor
         self.per_frame_cache.clear();
         self.loading_map.write().unwrap().clear();
         let to_remove = self.actual_cache.read().unwrap().iter().map(|item| item.as_string_key()).collect();
@@ -143,7 +135,7 @@ impl<C: MercatorConverter, FP: FeatureProcessor + 'static> ShashlikTilesProvider
     }
 
     fn get_tile_key_data(
-        tile_store: Arc<Box<dyn TilesProviderStore<C> + Send + Sync>>,
+        tile_store: Arc<dyn TilesProviderStore<C>>,
         feature_processor: Arc<FP>,
         tile_key: &TileKey,
         dpi_scale: f32,
@@ -235,7 +227,17 @@ impl<C: MercatorConverter, FP: FeatureProcessor + 'static> ShashlikTilesProvider
     }
 }
 
-impl<C:MercatorConverter + 'static, FP: FeatureProcessor + 'static> TilesProvider
+impl<C: MercatorConverter + 'static, FP: FeatureProcessor + 'static> MercatorConverter for ShashlikTilesProviderV0<C, FP> {
+    fn lon_lat_to_world(lon_lat: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
+        C::lon_lat_to_world(lon_lat, zoom_level)
+    }
+
+    fn world_to_lon_lat(xy: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
+        C::world_to_lon_lat(xy, zoom_level)
+    }
+}
+
+impl<C: MercatorConverter + 'static, FP: FeatureProcessor + 'static> TilesProvider
     for ShashlikTilesProviderV0<C, FP>
 {
     fn load(&mut self, area_lonlat: Rect, area_poly: geo_types::Polygon<f64>, zoom_level: i32) {
@@ -361,14 +363,5 @@ impl<C:MercatorConverter + 'static, FP: FeatureProcessor + 'static> TilesProvide
         self.sender = Some(sender);
 
         receiver
-    }
-
-    fn lon_lat_to_world(lon_lat: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
-        C::lon_lat_to_world(lon_lat, zoom_level)
-
-    }
-
-    fn world_to_lon_lat(xy: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
-        C::world_to_lon_lat(xy, zoom_level)
     }
 }
