@@ -99,7 +99,7 @@ static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> =
 // FIXME We should not hardcode it in general. But so far it's just a first step.
 const MAX_ZOOM_LEVEL: i32 = 14;
 
-impl<T: TilesProvider> ShashlikMap<T> {
+impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
     const TEMP_ANIMATION_SPEED: f64 = 0.03;
 
     const FOLLOW_ANIMATION_DELAY_MS: u64 = 2000;
@@ -131,7 +131,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let tiles_stream = tiles_provider.tiles();
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
-        let camera_offset = T::lon_lat_to_world(&initial_coord, MAX_ZOOM_LEVEL);
+        let camera_offset = tiles_provider.lon_lat_to_world(&initial_coord, MAX_ZOOM_LEVEL);
         let camera_offset: DVec3 = (camera_offset.x, camera_offset.y, 0.0).into();
         let cam = Camera::new(camera_offset);
 
@@ -192,7 +192,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     }
 
     fn world_to_lon_lat(&self, world_on_ground: &DVec2) -> Coord<f64> {
-        T::world_to_lon_lat(
+        self.tiles_provider.world_to_lon_lat(
             &(world_on_ground.x, world_on_ground.y).into(), MAX_ZOOM_LEVEL
         )
     }
@@ -452,7 +452,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     pub fn set_lon_lat_bearing(&mut self, lon: f64, lat: f64, bearing: Option<f32>) {
         self.route_controller.set_current_lon_lat((lon, lat));
-        let position = T::lon_lat_to_world(&coord! {x: lon, y: lat}, MAX_ZOOM_LEVEL);
+        let position = self.tiles_provider.lon_lat_to_world(&coord! {x: lon, y: lat}, MAX_ZOOM_LEVEL);
         self.current_world_position = DVec3::new(position.x, position.y, 0.0);
 
         if let Some(bearing) = bearing {
@@ -501,7 +501,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     fn create_location_coord_converter(&self) -> Box<dyn (Fn(&Point) -> Point) + Send> {
         Box::new(move |p| {
             let coord: Coord<f64> = (p.x(), p.y()).into();
-            let coord = T::lon_lat_to_world(&coord, MAX_ZOOM_LEVEL);
+            let coord = self.tiles_provider.lon_lat_to_world(&coord, MAX_ZOOM_LEVEL);
             Point::new(coord.x, coord.y)
         })
     }

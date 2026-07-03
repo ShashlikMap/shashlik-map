@@ -16,6 +16,7 @@ use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
+use map::tiles::tiles_provider::TilesProviderStore;
 use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
 use wgpu_canvas::{PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
 
@@ -113,7 +114,7 @@ fn main() {
                             target_texture,
                         );
                         let tiles_provider = ShashlikTilesProviderV0::new(
-                            TestTileStore(TileStore::new(ReqwestSource::new())),
+                            Box::new(TileStore::new(ReqwestSource::new())),
                             ShashlikFeatureProcessor::new(),
                             dpi,
                         );
@@ -211,9 +212,13 @@ fn main() {
                                         SHADOWS_ENABLED = enabled;
                                     },
                                     Feature::MapTiler => {
-                                        let new_store = TestTileStore(TileStore::new(ReqwestSource::new()));
+                                        let new_store:Box<dyn TilesProviderStore + Send + Sync> = if enabled {
+                                            Box::new(TestTileStore(TileStore::new(ReqwestSource::new())))
+                                        } else {
+                                            Box::new(TileStore::new(ReqwestSource::new()))
+                                        };
                                         shashlik_map.tiles_provider
-                                            .set_store(Box::new(new_store));
+                                            .set_store(new_store);
                                     }
                                 },
                             };

@@ -1,11 +1,10 @@
-use std::collections::HashSet;
 use crate::tiles::tile_data::TileData;
 use futures::Stream;
 use geo_types::{Coord, Polygon, Rect};
 use glam::DVec3;
-use googleprojection::Mercator;
 use osm::map::{MapGeomObject, MapGeometry};
 use osm::tiles::TileKey;
+use std::collections::HashSet;
 
 pub enum TilesMessage {
     TilesData(Vec<TileData>),
@@ -16,8 +15,8 @@ pub trait TilesProviderStore {
     fn tile_position_bbox(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect);
     fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)>;
 
-    fn lon_lat_to_world(lon_lat: &Coord<f64>, _zoom_level: i32) -> Coord<f64> where Self: Sized;
-    fn world_to_lon_lat(xy: &Coord<f64>, _zoom_level: i32) -> Coord<f64> where Self: Sized;
+    fn lon_lat_to_world(&self, lon_lat: &Coord<f64>, _zoom_level: i32) -> Coord<f64>;
+    fn world_to_lon_lat(&self, xy: &Coord<f64>, _zoom_level: i32) -> Coord<f64>;
 }
 
 pub trait TilesProvider {
@@ -26,10 +25,10 @@ pub trait TilesProvider {
     
     fn tiles(&mut self) -> impl Stream<Item = TilesMessage> + Send + 'static;
     
-    fn lon_lat_to_world(_lon_lat: &Coord<f64>, _zoom_level: i32) -> Coord<f64> {
+    fn lon_lat_to_world(&self, _lon_lat: &Coord<f64>, _zoom_level: i32) -> Coord<f64> {
         (0.0, 0.0).into()
     }
-    fn world_to_lon_lat(_xy: &Coord<f64>, _zoom_level: i32) -> Coord<f64> {
+    fn world_to_lon_lat(&self, _xy: &Coord<f64>, _zoom_level: i32) -> Coord<f64> {
         (0.0, 0.0).into()
     }
 }
