@@ -10,6 +10,7 @@ use std::cmp::max;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::mpsc;
+use osm::tiles::TileStore;
 use strum::IntoEnumIterator;
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
@@ -112,7 +113,7 @@ fn main() {
                             target_texture,
                         );
                         let tiles_provider = ShashlikTilesProviderV0::new(
-                            ReqwestSource::new(),
+                            TileStore::new(ReqwestSource::new()),
                             ShashlikFeatureProcessor::new(),
                             dpi,
                         );

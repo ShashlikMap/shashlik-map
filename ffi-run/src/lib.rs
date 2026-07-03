@@ -6,14 +6,14 @@ use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
 use map::ShashlikMap;
 use osm::source::reqwest_source::ReqwestSource;
 use std::sync::RwLock;
-use log::__private_api::enabled;
+use osm::tiles::TileStore;
 use map::feature_processor::ShashlikFeatureProcessor;
 use wgpu_canvas::{PreviewType, PREVIEW_TYPE, SSAO_ENABLED};
 
 #[derive(uniffi::Object)]
 pub struct ShashlikMapApi {
     // TODO ?Can't use generic for FFI ShashlikMapApi?
-    shashlik_map: RwLock<ShashlikMap<ShashlikTilesProviderV0<ReqwestSource, ShashlikFeatureProcessor>>>,
+    shashlik_map: RwLock<ShashlikMap<ShashlikTilesProviderV0<TileStore<ReqwestSource>, ShashlikFeatureProcessor>>>,
 }
 
 unsafe impl Sync for ShashlikMapApi {}

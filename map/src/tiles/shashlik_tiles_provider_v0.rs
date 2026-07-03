@@ -1,5 +1,5 @@
 use crate::tiles::tile_data::TileData;
-use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
+use crate::tiles::tiles_provider::{TilesMessage, TilesProvider, TilesProviderStore};
 use futures::Stream;
 use futures::channel::mpsc::{UnboundedSender, unbounded};
 use geo::{Area, Convert, Intersects, Scale};
@@ -7,7 +7,7 @@ use geo::Winding;
 use geo_types::{coord, LineString, Rect};
 use googleprojection::Mercator;
 use log::error;
-use osm::map::{MapGeomObject, MapGeomObjectKind, MapGeometry, MapGeometryCollection, MapPointInfo};
+use osm::map::{MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo};
 use osm::source::TileSource;
 use osm::tiles::{TILES_COUNT, TileKey, TileStore, calc_tile_ranges, TILE_OVERLAP_PERCENT};
 use rayon::iter::IntoParallelRefIterator;
@@ -18,6 +18,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 use std::time::SystemTime;
+use glam::DVec3;
 use osm::map::NatureKind::Water;
 use crate::MAX_ZOOM_LEVEL;
 
@@ -41,9 +42,28 @@ pub trait FeatureProcessor: Send + Sync {
     );
 }
 
-pub struct ShashlikTilesProviderV0<S: TileSource, FP: FeatureProcessor> {
+impl <S:TileSource> TilesProviderStore for TileStore<S> {
+    fn tile_position_bbox<P: TilesProvider>(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect) {
+        let tile_rect = tile_key.calc_tile_boundary(TILE_OVERLAP_PERCENT);
+
+        let tile_rect_origin = P::lon_lat_to_world(&tile_rect.min(), MAX_ZOOM_LEVEL);
+        let tile_position = [tile_rect_origin.x, tile_rect_origin.y, 0.0].into();
+
+        let tile_rect_original = tile_key.calc_tile_boundary(1.00);
+        let tile_rect_original_min = P::lon_lat_to_world(&tile_rect_original.min(), MAX_ZOOM_LEVEL);
+        let tile_rect_original_max = P::lon_lat_to_world(&tile_rect_original.max(), MAX_ZOOM_LEVEL);
+        let bbox = Rect::new(tile_rect_original_min, tile_rect_original_max).scale(bbox_scale);
+        (tile_position, bbox)
+    }
+
+    fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
+        self.load_geometries(tile_key)
+    }
+}
+
+pub struct ShashlikTilesProviderV0<TPS: TilesProviderStore, FP: FeatureProcessor> {
     sender: Option<UnboundedSender<TilesMessage>>,
-    tile_store: Arc<TileStore<S>>,
+    tile_store: Arc<TPS>,
     per_frame_cache: HashSet<TileKey>,
     actual_cache: Arc<RwLock<HashSet<TileKey>>>,
     last_loaded_zoom_level: Arc<AtomicI32>,
@@ -53,12 +73,12 @@ pub struct ShashlikTilesProviderV0<S: TileSource, FP: FeatureProcessor> {
     feature_processor: Arc<FP>,
 }
 
-impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, FP> {
+impl<TPS: TilesProviderStore + 'static + Send + Sync, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<TPS, FP> {
     const BBOX_OVERLAP_OFFSET_SCALE: f64 = 1.005;
-    pub fn new(source: S, feature_processor: FP, dpi_scale: f32) -> ShashlikTilesProviderV0<S, FP> {
+    pub fn new(tiles_provider_store: TPS, feature_processor: FP, dpi_scale: f32) -> ShashlikTilesProviderV0<TPS, FP> {
         Self {
             sender: None,
-            tile_store: Arc::new(TileStore::new(source)),
+            tile_store: Arc::new(tiles_provider_store),
             per_frame_cache: HashSet::new(),
             actual_cache: Arc::new(RwLock::new(HashSet::new())),
             last_loaded_zoom_level: Arc::new(AtomicI32::new(1)),
@@ -70,23 +90,16 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
     }
 
     fn get_tile_key_data(
-        tile_store: Arc<TileStore<S>>,
+        tile_store: Arc<TPS>,
         feature_processor: Arc<FP>,
         tile_key: &TileKey,
         dpi_scale: f32,
     ) -> TileData {
         let zoom_level = tile_key.zoom_level;
-        let tile_rect = tile_key.calc_tile_boundary(TILE_OVERLAP_PERCENT);
 
-        let tile_rect_origin = Self::lon_lat_to_world(&tile_rect.min(), MAX_ZOOM_LEVEL);
-        let tile_position = [tile_rect_origin.x, tile_rect_origin.y, 0.0].into();
+        let (tile_position, bbox) = tile_store.tile_position_bbox::<Self>(tile_key, Self::BBOX_OVERLAP_OFFSET_SCALE);
 
-        let tile_rect_original = tile_key.calc_tile_boundary(1.00);
-        let tile_rect_original_min = Self::lon_lat_to_world(&tile_rect_original.min(), MAX_ZOOM_LEVEL);
-        let tile_rect_original_max = Self::lon_lat_to_world(&tile_rect_original.max(), MAX_ZOOM_LEVEL);
-        let bbox = Rect::new(tile_rect_original_min, tile_rect_original_max).scale(Self::BBOX_OVERLAP_OFFSET_SCALE);
-
-        let mut geom = tile_store.load_geometries(tile_key);
+        let mut geom = tile_store.load(tile_key);
 
         // A quick workaround for missing water shape tiles since they are not generated if there is no other data
         if geom.is_empty() {
@@ -169,8 +182,8 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
     }
 }
 
-impl<S: TileSource, FP: FeatureProcessor + 'static> TilesProvider
-    for ShashlikTilesProviderV0<S, FP>
+impl<TPS: TilesProviderStore + 'static + std::marker::Send + std::marker::Sync, FP: FeatureProcessor + 'static> TilesProvider
+    for ShashlikTilesProviderV0<TPS, FP>
 {
     fn load(&mut self, area_lonlat: Rect, area_poly: geo_types::Polygon<f64>, zoom_level: i32) {
         let zoom_level = MAX_ZOOM_LEVEL - zoom_level;

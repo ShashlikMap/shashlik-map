@@ -14,6 +14,7 @@ use osm::source::reqwest_source::ReqwestSource;
 use pollster::FutureExt;
 use std::mem;
 use std::sync::{Arc, RwLock};
+use osm::tiles::TileStore;
 use wgpu::naga::compact::KeepUnused::No;
 use wgpu::{
     Device, Queue, CurrentSurfaceTexture, SurfaceConfiguration, SurfaceTexture, Texture, TextureView,
@@ -92,10 +93,11 @@ pub fn createShashlikMapApi(
     // let tiles_db: String = env.get_string(&tiles_db).unwrap().into();
     // let tiles_sqlite_store = TilesSQLiteStore::new(tiles_db);
     let reqwest_source = ReqwestSource::new();
+    let tile_store = TileStore::new(reqwest_source);
     let feature_processor = ShashlikFeatureProcessor::new();
     let shashlik_map = pollster::block_on(ShashlikMap::new(
         Box::new(surface),
-        ShashlikTilesProviderV0::new(reqwest_source, feature_processor, dpi_scale),
+        ShashlikTilesProviderV0::new(tile_store, feature_processor, dpi_scale),
     ))
     .unwrap();
     let map_api = ShashlikMapApi {
