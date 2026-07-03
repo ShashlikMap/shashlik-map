@@ -96,6 +96,9 @@ impl RenderGroup for TileData {
 static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> =
     LazyLock::new(|| Face::parse(include_bytes!("../font.ttf"), 0).unwrap());
 
+// FIXME We should not hardcode it in general. But so far it's just a first step.
+const MAX_ZOOM_LEVEL: i32 = 14;
+
 impl<T: TilesProvider> ShashlikMap<T> {
     const TEMP_ANIMATION_SPEED: f64 = 0.03;
 
@@ -128,7 +131,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
         let tiles_stream = tiles_provider.tiles();
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
-        let camera_offset = T::lon_lat_to_world(&initial_coord);
+        let camera_offset = T::lon_lat_to_world(&initial_coord, MAX_ZOOM_LEVEL);
         let camera_offset: DVec3 = (camera_offset.x, camera_offset.y, 0.0).into();
         let cam = Camera::new(camera_offset);
 
@@ -183,16 +186,14 @@ impl<T: TilesProvider> ShashlikMap<T> {
         Ok(map)
     }
 
-    pub fn clip_to_lon_lat(&self, coord: &Coord<f64>) -> Option<Coord<f64>> {
+    fn clip_to_lon_lat(&self, coord: &Coord<f64>) -> Option<Coord<f64>> {
         let world_on_ground = self.renderer.clip_to_world(coord)?;
-        Some(T::world_to_lon_lat(
-            &(world_on_ground.x, world_on_ground.y).into(),
-        ))
+        Some(self.world_to_lon_lat(&world_on_ground))
     }
 
     fn world_to_lon_lat(&self, world_on_ground: &DVec2) -> Coord<f64> {
         T::world_to_lon_lat(
-            &(world_on_ground.x, world_on_ground.y).into(),
+            &(world_on_ground.x, world_on_ground.y).into(), MAX_ZOOM_LEVEL
         )
     }
 
@@ -290,6 +291,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
         let zoom_level = self.camera.scale();
         let zoom_level = ((zoom_level.log2() + 1.0) as i32).max(0);
+        let zoom_level = MAX_ZOOM_LEVEL - zoom_level; 
 
         let p1 = self.world_to_lon_lat(&world_on_ground_left_top);
         let p2 = self.world_to_lon_lat(&world_on_ground_right_top);
@@ -446,7 +448,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
 
     pub fn set_lon_lat_bearing(&mut self, lon: f64, lat: f64, bearing: Option<f32>) {
         self.route_controller.set_current_lon_lat((lon, lat));
-        let position = T::lon_lat_to_world(&coord! {x: lon, y: lat});
+        let position = T::lon_lat_to_world(&coord! {x: lon, y: lat}, MAX_ZOOM_LEVEL);
         self.current_world_position = DVec3::new(position.x, position.y, 0.0);
 
         if let Some(bearing) = bearing {
@@ -495,7 +497,7 @@ impl<T: TilesProvider> ShashlikMap<T> {
     fn create_location_coord_converter(&self) -> Box<dyn (Fn(&Point) -> Point) + Send> {
         Box::new(move |p| {
             let coord: Coord<f64> = (p.x(), p.y()).into();
-            let coord = T::lon_lat_to_world(&coord);
+            let coord = T::lon_lat_to_world(&coord, MAX_ZOOM_LEVEL);
             Point::new(coord.x, coord.y)
         })
     }

@@ -14,10 +14,10 @@ pub trait TilesProvider {
     
     fn tiles(&mut self) -> impl Stream<Item = TilesMessage> + Send + 'static;
     
-    fn lon_lat_to_world(_lon_lat: &Coord<f64>) -> Coord<f64> {
+    fn lon_lat_to_world(_lon_lat: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
         (0.0, 0.0).into()
     }
-    fn world_to_lon_lat(_xy: &Coord<f64>) -> Coord<f64> {
+    fn world_to_lon_lat(_xy: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
         (0.0, 0.0).into()
     }
 }

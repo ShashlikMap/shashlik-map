@@ -19,6 +19,7 @@ use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 use std::time::SystemTime;
 use osm::map::NatureKind::Water;
+use crate::MAX_ZOOM_LEVEL;
 
 pub trait FeatureProcessor: Send + Sync {
     fn process_poi(
@@ -77,12 +78,12 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
         let zoom_level = tile_key.zoom_level;
         let tile_rect = tile_key.calc_tile_boundary(TILE_OVERLAP_PERCENT);
 
-        let tile_rect_origin = Self::lon_lat_to_world(&tile_rect.min());
+        let tile_rect_origin = Self::lon_lat_to_world(&tile_rect.min(), MAX_ZOOM_LEVEL);
         let tile_position = [tile_rect_origin.x, tile_rect_origin.y, 0.0].into();
 
         let tile_rect_original = tile_key.calc_tile_boundary(1.00);
-        let tile_rect_original_min = Self::lon_lat_to_world(&tile_rect_original.min());
-        let tile_rect_original_max = Self::lon_lat_to_world(&tile_rect_original.max());
+        let tile_rect_original_min = Self::lon_lat_to_world(&tile_rect_original.min(), MAX_ZOOM_LEVEL);
+        let tile_rect_original_max = Self::lon_lat_to_world(&tile_rect_original.max(), MAX_ZOOM_LEVEL);
         let bbox = Rect::new(tile_rect_original_min, tile_rect_original_max).scale(Self::BBOX_OVERLAP_OFFSET_SCALE);
 
         let mut geom = tile_store.load_geometries(tile_key);
@@ -121,7 +122,7 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
                         line.convert(),
                         obj_type.kind,
                         &mut line_text_map,
-                        zoom_level,
+                        MAX_ZOOM_LEVEL - zoom_level,
                         dpi_scale,
                     );
                 }
@@ -149,7 +150,7 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
                             line.convert(),
                             obj_type.kind,
                             &mut line_text_map,
-                            zoom_level,
+                            MAX_ZOOM_LEVEL - zoom_level,
                             dpi_scale,
                         );
                     }
@@ -172,6 +173,7 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> TilesProvider
     for ShashlikTilesProviderV0<S, FP>
 {
     fn load(&mut self, area_lonlat: Rect, area_poly: geo_types::Polygon<f64>, zoom_level: i32) {
+        let zoom_level = MAX_ZOOM_LEVEL - zoom_level;
         let ranges = calc_tile_ranges(TILES_COUNT, zoom_level, &area_lonlat);
         let mut current_visible_tiles: HashSet<TileKey> = HashSet::new();
         let mut to_load: HashSet<TileKey> = HashSet::new();
@@ -295,7 +297,7 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> TilesProvider
         receiver
     }
 
-    fn lon_lat_to_world(lon_lat: &geo_types::Coord<f64>) -> geo_types::Coord<f64> {
+    fn lon_lat_to_world(lon_lat: &geo_types::Coord<f64>, _zoom_level: i32) -> geo_types::Coord<f64> {
         let lon_lat: (f64, f64) = (*lon_lat).into();
         Mercator::with_size(1)
             .from_ll_to_subpixel(&lon_lat, 22)
@@ -303,7 +305,7 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> TilesProvider
             .into()
     }
 
-    fn world_to_lon_lat(xy: &geo_types::Coord<f64>) -> geo_types::Coord<f64> {
+    fn world_to_lon_lat(xy: &geo_types::Coord<f64>, _zoom_level: i32) -> geo_types::Coord<f64> {
         let xy: (f64, f64) = (*xy).into();
         Mercator::with_size(1)
             .from_pixel_to_ll(&xy, 22)
