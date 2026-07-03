@@ -212,7 +212,7 @@ fn main() {
                                         SHADOWS_ENABLED = enabled;
                                     },
                                     Feature::MapTiler => {
-                                        let new_store:Box<dyn TilesProviderStore + Send + Sync> = if enabled {
+                                        let new_store:Box<dyn TilesProviderStore<_> + Send + Sync> = if enabled {
                                             Box::new(TestTileStore(TileStore::new(ReqwestSource::new())))
                                         } else {
                                             Box::new(TileStore::new(ReqwestSource::new()))
