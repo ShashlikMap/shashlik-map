@@ -42,8 +42,8 @@ pub trait FeatureProcessor: Send + Sync {
     );
 }
 
-impl <S:TileSource> TilesProviderStore for TileStore<S> {
-    fn tile_position_bbox<P: TilesProvider>(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect) {
+impl <P: TilesProvider, S:TileSource> TilesProviderStore<P> for TileStore<S> {
+    fn tile_position_bbox(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect) {
         let tile_rect = tile_key.calc_tile_boundary(TILE_OVERLAP_PERCENT);
 
         let tile_rect_origin = P::lon_lat_to_world(&tile_rect.min(), MAX_ZOOM_LEVEL);
@@ -61,9 +61,9 @@ impl <S:TileSource> TilesProviderStore for TileStore<S> {
     }
 }
 
-pub struct ShashlikTilesProviderV0<TPS: TilesProviderStore, FP: FeatureProcessor> {
+pub struct ShashlikTilesProviderV0<FP: FeatureProcessor> {
     sender: Option<UnboundedSender<TilesMessage>>,
-    tile_store: Arc<TPS>,
+    tile_store: Arc<Box<dyn TilesProviderStore<ShashlikTilesProviderV0<FP>> + Send + Sync>>,
     per_frame_cache: HashSet<TileKey>,
     actual_cache: Arc<RwLock<HashSet<TileKey>>>,
     last_loaded_zoom_level: Arc<AtomicI32>,
@@ -73,12 +73,12 @@ pub struct ShashlikTilesProviderV0<TPS: TilesProviderStore, FP: FeatureProcessor
     feature_processor: Arc<FP>,
 }
 
-impl<TPS: TilesProviderStore + 'static + Send + Sync, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<TPS, FP> {
+impl<FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<FP> {
     const BBOX_OVERLAP_OFFSET_SCALE: f64 = 1.005;
-    pub fn new(tiles_provider_store: TPS, feature_processor: FP, dpi_scale: f32) -> ShashlikTilesProviderV0<TPS, FP> {
+    pub fn new(tiles_provider_store: impl TilesProviderStore<ShashlikTilesProviderV0<FP>> + Send + Sync + 'static, feature_processor: FP, dpi_scale: f32) -> ShashlikTilesProviderV0<FP> {
         Self {
             sender: None,
-            tile_store: Arc::new(tiles_provider_store),
+            tile_store: Arc::new(Box::new(tiles_provider_store)),
             per_frame_cache: HashSet::new(),
             actual_cache: Arc::new(RwLock::new(HashSet::new())),
             last_loaded_zoom_level: Arc::new(AtomicI32::new(1)),
@@ -90,14 +90,14 @@ impl<TPS: TilesProviderStore + 'static + Send + Sync, FP: FeatureProcessor + 'st
     }
 
     fn get_tile_key_data(
-        tile_store: Arc<TPS>,
+        tile_store: Arc<Box<dyn TilesProviderStore<ShashlikTilesProviderV0<FP>> + Send + Sync>>,
         feature_processor: Arc<FP>,
         tile_key: &TileKey,
         dpi_scale: f32,
     ) -> TileData {
         let zoom_level = tile_key.zoom_level;
 
-        let (tile_position, bbox) = tile_store.tile_position_bbox::<Self>(tile_key, Self::BBOX_OVERLAP_OFFSET_SCALE);
+        let (tile_position, bbox) = tile_store.tile_position_bbox(tile_key, Self::BBOX_OVERLAP_OFFSET_SCALE);
 
         let mut geom = tile_store.load(tile_key);
 
@@ -182,8 +182,8 @@ impl<TPS: TilesProviderStore + 'static + Send + Sync, FP: FeatureProcessor + 'st
     }
 }
 
-impl<TPS: TilesProviderStore + 'static + std::marker::Send + std::marker::Sync, FP: FeatureProcessor + 'static> TilesProvider
-    for ShashlikTilesProviderV0<TPS, FP>
+impl<FP: FeatureProcessor + 'static> TilesProvider
+    for ShashlikTilesProviderV0<FP>
 {
     fn load(&mut self, area_lonlat: Rect, area_poly: geo_types::Polygon<f64>, zoom_level: i32) {
         let zoom_level = MAX_ZOOM_LEVEL - zoom_level;

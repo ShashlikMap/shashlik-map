@@ -11,8 +11,8 @@ pub enum TilesMessage {
     ToRemove(HashSet<String>),
 }
 
-pub trait TilesProviderStore {
-    fn tile_position_bbox<P: TilesProvider>(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect);
+pub trait TilesProviderStore<P: TilesProvider> {
+    fn tile_position_bbox(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect);
     fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)>;
 }
 
