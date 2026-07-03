@@ -1,6 +1,6 @@
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
-use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
+use map::tiles::shashlik_tiles_provider_v0::{ShashlikTilesProviderV0, TestTileStore};
 use map::ShashlikMap;
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
@@ -113,7 +113,7 @@ fn main() {
                             target_texture,
                         );
                         let tiles_provider = ShashlikTilesProviderV0::new(
-                            TileStore::new(ReqwestSource::new()),
+                            TestTileStore(TileStore::new(ReqwestSource::new())),
                             ShashlikFeatureProcessor::new(),
                             dpi,
                         );
@@ -210,6 +210,11 @@ fn main() {
                                     Feature::Shadows => unsafe {
                                         SHADOWS_ENABLED = enabled;
                                     },
+                                    Feature::MapTiler => {
+                                        let new_store = TestTileStore(TileStore::new(ReqwestSource::new()));
+                                        shashlik_map.tiles_provider
+                                            .set_store(Box::new(new_store));
+                                    }
                                 },
                             };
                         }

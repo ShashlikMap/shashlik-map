@@ -5,7 +5,7 @@ use crate::kml_viewer_group::KmlGroup;
 use crate::puck_group::SimplePuck;
 use crate::route::RouteCosting;
 use crate::tiles::tile_data::TileData;
-use crate::tiles::tiles_provider::{TilesMessage, TilesProvider};
+use crate::tiles::tiles_provider::{TilesMessage, TilesProvider, TilesProviderStore};
 use futures::executor::block_on;
 use futures::{pin_mut, Stream, StreamExt};
 use geo_types::private_utils::get_bounding_rect;
@@ -52,7 +52,7 @@ pub struct ShashlikMap<T: TilesProvider> {
     renderer: Box<ShashlikRenderer>,
     camera: Camera,
     camera_controller: CameraController,
-    tiles_provider: T,
+    pub tiles_provider: T,
     route_controller: RouteController,
     last_area_lon_lat: Rect,
     current_world_position: DVec3,
@@ -195,6 +195,10 @@ impl<T: TilesProvider> ShashlikMap<T> {
         T::world_to_lon_lat(
             &(world_on_ground.x, world_on_ground.y).into(), MAX_ZOOM_LEVEL
         )
+    }
+
+    pub fn set_tiles_provider(&mut self, provider: T) {
+        // self.tiles_provider = provider;
     }
 
     fn run_tiles(
