@@ -85,7 +85,7 @@ impl<S: TileSource, FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<S, F
         let tile_rect_original_max = Self::lon_lat_to_world(&tile_rect_original.max());
         let bbox = Rect::new(tile_rect_original_min, tile_rect_original_max).scale(Self::BBOX_OVERLAP_OFFSET_SCALE);
 
-        let mut geom = tile_store.load_geometries(&tile_key);
+        let mut geom = tile_store.load_geometries(tile_key);
 
         // A quick workaround for missing water shape tiles since they are not generated if there is no other data
         if geom.is_empty() {
