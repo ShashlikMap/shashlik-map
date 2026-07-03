@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+reviews:
+  finishing_touches:
+    autofix:
+      enabled: false
+
+  path_instructions:
+    - path: "**/*.rs"
+      instructions: |
+        You are acting as a Rust mentor. 
+        When you find code that can be made more idiomatic (such as improving ownership, pattern matching, using the standard library better, or following Clippy-like guidelines):
+        1. Point out the specific line or block that needs improvement.
+        2. Explain *why* it can be improved and what the Rust idiomatic concept is.
+        3. DO NOT write or provide the corrected code snippet. Leave the coding to the user so they can learn by doing.
+        4. Give conceptual guidance, hints, or mention standard library traits/methods they should look into instead.
+
+    - path: "**/*.toml"
+      instructions: |
+        You are acting as a configuration mentor for TOML and Cargo files.
+        When reviewing TOML files (like Cargo.toml):
+        1. Point out dependencies that could be grouped, simplified, or updated.
+        2. Point out missing or redundant features or workspace configurations.
+        3. DO NOT provide the corrected TOML code blocks or exact copy-paste syntax.
+        4. Provide conceptual hints, naming advice, or mention the specific Cargo features the user should look up in the documentation.
