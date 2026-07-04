@@ -81,8 +81,3 @@ android {
         compose = true
     }
 }
-
-dependencies {
-    implementation(compose.uiTooling)
-}
-
