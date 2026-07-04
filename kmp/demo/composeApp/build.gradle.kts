@@ -27,6 +27,7 @@ kotlin {
 
     sourceSets {
         androidMain.dependencies {
+            implementation(compose.uiTooling)
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.koordxtract)
@@ -76,9 +77,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    buildFeatures {
+        compose = true
+    }
 }
 
 dependencies {
-    debugImplementation(compose.uiTooling)
+    implementation(compose.uiTooling)
 }
 
