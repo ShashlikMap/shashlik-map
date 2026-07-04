@@ -84,6 +84,13 @@ impl ShashlikMapApi {
         }
     }
 
+    fn set_mvt_tileset(&self, enabled: bool) {
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
+        shashlik_map.update_tile_store(|tile_store| {
+            tile_store.set_mvt_type(enabled);
+        });
+    }
+
     fn calculate_route_to_lat_lon(&self, lat: f64, lon: f64, route_costing: RouteCosting) {
         let shashlik_map = self.shashlik_map.read().unwrap();
         // swap lat/lon to lon/lat

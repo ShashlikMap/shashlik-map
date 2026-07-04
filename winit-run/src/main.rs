@@ -1,8 +1,6 @@
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
-use map::tiles::mvt::mvt_tile_store::MvtTileStore;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
-use map::tiles::tiles_provider::TilesProviderStore;
 use map::ShashlikMap;
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
@@ -213,13 +211,8 @@ fn main() {
                                         SHADOWS_ENABLED = enabled;
                                     },
                                     Feature::MapTiler => {
-                                        shashlik_map.update_tile_store(move |tile_provider| {
-                                            let new_store:Box<dyn TilesProviderStore> = if enabled {
-                                                Box::new(MvtTileStore::new())
-                                            } else {
-                                                Box::new(TileStore::new(ReqwestSource::new()))
-                                            };
-                                            tile_provider.set_store(new_store)
+                                        shashlik_map.update_tile_store(|tile_provider| {
+                                            tile_provider.set_mvt_type(enabled);
                                         });
                                     }
                                 },
