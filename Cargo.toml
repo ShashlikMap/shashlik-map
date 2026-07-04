@@ -25,6 +25,7 @@ thiserror = "2"
 osm = { git = "https://github.com/ShashlikMap/shashlik-tiles-gen-v0.git"}
 rand = "0.10.1"
 strum = { version = "0.28", features = ["derive"] }
+dotenvy = "0.15"
 
 # macOS, iOS
 libc = { version = "0.2", default-features = false }

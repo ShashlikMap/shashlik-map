@@ -38,3 +38,5 @@ dbs/*.db
 .idea/
 
 *.kml
+
+.env

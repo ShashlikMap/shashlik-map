@@ -1,22 +1,23 @@
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
-use map::tiles::shashlik_tiles_provider_v0::{ShashlikTilesProviderV0, MaptilerFakeTileStore};
+use map::tiles::mvt::mvt_tile_store::MvtTileStore;
+use map::tiles::default_tiles_provider::DefaultTilesProvider;
+use map::tiles::tiles_provider::TilesProviderStore;
 use map::ShashlikMap;
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
+use osm::tiles::TileStore;
 use slint::wgpu_29::{WGPUConfiguration, WGPUSettings};
 use slint::{GraphicsAPI, PhysicalSize, RenderingState, VecModel};
 use std::cmp::max;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::mpsc;
-use osm::tiles::TileStore;
 use strum::IntoEnumIterator;
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
-use map::tiles::tiles_provider::TilesProviderStore;
 use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
 use wgpu_canvas::{PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
 
@@ -113,7 +114,7 @@ fn main() {
                             config,
                             target_texture,
                         );
-                        let tiles_provider = ShashlikTilesProviderV0::new(
+                        let tiles_provider = DefaultTilesProvider::new(
                             Box::new(TileStore::new(ReqwestSource::new())),
                             ShashlikFeatureProcessor::new(),
                             dpi,
@@ -212,13 +213,14 @@ fn main() {
                                         SHADOWS_ENABLED = enabled;
                                     },
                                     Feature::MapTiler => {
-                                        let new_store:Box<dyn TilesProviderStore> = if enabled {
-                                            Box::new(MaptilerFakeTileStore(TileStore::new(ReqwestSource::new())))
-                                        } else {
-                                            Box::new(TileStore::new(ReqwestSource::new()))
-                                        };
-                                        shashlik_map.tiles_provider
-                                            .set_store(new_store);
+                                        shashlik_map.update_tile_store(move |tile_provider| {
+                                            let new_store:Box<dyn TilesProviderStore> = if enabled {
+                                                Box::new(MvtTileStore::new())
+                                            } else {
+                                                Box::new(TileStore::new(ReqwestSource::new()))
+                                            };
+                                            tile_provider.set_store(new_store)
+                                        });
                                     }
                                 },
                             };

@@ -2,14 +2,12 @@ use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{MercatorConverter, TilesMessage, TilesProvider, TilesProviderStore};
 use futures::{Stream};
 use futures::channel::mpsc::{UnboundedSender, unbounded};
-use geo::{Area, Convert, Intersects, Scale};
+use geo::{Area, Convert};
 use geo::Winding;
 use geo_types::{coord, Coord, LineString, Rect};
-use googleprojection::Mercator;
 use log::error;
 use osm::map::{MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo};
-use osm::source::TileSource;
-use osm::tiles::{TILES_COUNT, TileKey, TileStore, calc_tile_ranges, TILE_OVERLAP_PERCENT};
+use osm::tiles::{TileKey};
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use renderer::geometry_data::{GeometryData};
@@ -18,9 +16,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 use std::time::SystemTime;
-use glam::DVec3;
 use osm::map::NatureKind::Water;
-use crate::MAX_ZOOM_LEVEL;
 
 pub trait FeatureProcessor: Send + Sync {
     fn process_poi(
@@ -42,68 +38,7 @@ pub trait FeatureProcessor: Send + Sync {
     );
 }
 
-/// TileStore uses hardcoded zoom 22, so the caller's zoom has to be ignored
-impl <S:TileSource> MercatorConverter for TileStore<S> {
-    fn lon_lat_to_world(&self, lon_lat: &Coord<f64>, _zoom_level: i32) -> Coord<f64> {
-        let lon_lat: (f64, f64) = (*lon_lat).into();
-        Mercator::with_size(1)
-            .from_ll_to_subpixel(&lon_lat, 22)
-            .unwrap()
-            .into()
-    }
-
-    fn world_to_lon_lat(&self, xy: &Coord<f64>, _zoom_level: i32) -> Coord<f64> {
-        let xy: (f64, f64) = (*xy).into();
-        Mercator::with_size(1)
-            .from_pixel_to_ll(&xy, 22)
-            .unwrap()
-            .into()
-    }
-}
-
-impl <S:TileSource> MercatorConverter for MaptilerFakeTileStore<S> {
-    fn lon_lat_to_world(&self, lon_lat: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
-        self.0.lon_lat_to_world(&lon_lat, zoom_level)
-    }
-
-    fn world_to_lon_lat(&self, xy: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
-        self.0.world_to_lon_lat(xy, zoom_level)
-    }
-}
-
-pub struct MaptilerFakeTileStore<S: TileSource>(pub TileStore<S>);
-
-impl <S:TileSource> TilesProviderStore for TileStore<S> {
-
-    fn tile_position_bbox(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect) {
-        let tile_rect = tile_key.calc_tile_boundary(TILE_OVERLAP_PERCENT);
-
-        let tile_rect_origin = self.lon_lat_to_world(&tile_rect.min(), MAX_ZOOM_LEVEL);
-        let tile_position = [tile_rect_origin.x, tile_rect_origin.y, 0.0].into();
-
-        let tile_rect_original = tile_key.calc_tile_boundary(1.00);
-        let tile_rect_original_min = self.lon_lat_to_world(&tile_rect_original.min(), MAX_ZOOM_LEVEL);
-        let tile_rect_original_max = self.lon_lat_to_world(&tile_rect_original.max(), MAX_ZOOM_LEVEL);
-        let bbox = Rect::new(tile_rect_original_min, tile_rect_original_max).scale(bbox_scale);
-        (tile_position, bbox)
-    }
-
-    fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
-        self.load_geometries(tile_key)
-    }
-}
-
-impl <S:TileSource> TilesProviderStore for MaptilerFakeTileStore<S> {
-    fn tile_position_bbox(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect) {
-        self.0.tile_position_bbox(tile_key, bbox_scale)
-    }
-
-    fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
-        self.0.load_geometries(tile_key).into_iter().take(10).collect()
-    }
-}
-
-pub struct ShashlikTilesProviderV0<FP: FeatureProcessor> {
+pub struct DefaultTilesProvider<FP: FeatureProcessor> {
     sender: Option<UnboundedSender<TilesMessage>>,
     tile_store: Arc<dyn TilesProviderStore>,
     per_frame_cache: HashSet<TileKey>,
@@ -115,9 +50,9 @@ pub struct ShashlikTilesProviderV0<FP: FeatureProcessor> {
     feature_processor: Arc<FP>,
 }
 
-impl<FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<FP> {
+impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
     const BBOX_OVERLAP_OFFSET_SCALE: f64 = 1.005;
-    pub fn new(tiles_provider_store: Box<dyn TilesProviderStore>, feature_processor: FP, dpi_scale: f32) -> ShashlikTilesProviderV0<FP> {
+    pub fn new(tiles_provider_store: Box<dyn TilesProviderStore>, feature_processor: FP, dpi_scale: f32) -> DefaultTilesProvider<FP> {
         Self {
             sender: None,
             tile_store: Arc::from(tiles_provider_store),
@@ -189,7 +124,7 @@ impl<FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<FP> {
                         line.convert(),
                         obj_type.kind,
                         &mut line_text_map,
-                        MAX_ZOOM_LEVEL - zoom_level,
+                        tile_store.convert_zoom(zoom_level),
                         dpi_scale,
                     );
                 }
@@ -217,7 +152,7 @@ impl<FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<FP> {
                             line.convert(),
                             obj_type.kind,
                             &mut line_text_map,
-                            MAX_ZOOM_LEVEL - zoom_level,
+                            tile_store.convert_zoom(zoom_level),
                             dpi_scale,
                         );
                     }
@@ -236,7 +171,7 @@ impl<FP: FeatureProcessor + 'static> ShashlikTilesProviderV0<FP> {
     }
 }
 
-impl<FP: FeatureProcessor + 'static> MercatorConverter for ShashlikTilesProviderV0<FP> {
+impl<FP: FeatureProcessor + 'static> MercatorConverter for DefaultTilesProvider<FP> {
     fn lon_lat_to_world(&self, lon_lat: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
         self.tile_store.lon_lat_to_world(lon_lat, zoom_level)
     }
@@ -247,39 +182,26 @@ impl<FP: FeatureProcessor + 'static> MercatorConverter for ShashlikTilesProvider
 }
 
 impl<FP: FeatureProcessor + 'static> TilesProvider
-    for ShashlikTilesProviderV0<FP>
+    for DefaultTilesProvider<FP>
 {
     // TODO Can we get rid of that? And what would be the better way pass converter to a thread?
     fn inner_converter(&self) -> Arc<dyn MercatorConverter> {
         self.tile_store.clone()
     }
 
-    fn load(&mut self, area_lonlat: Rect, area_poly: geo_types::Polygon<f64>, zoom_level: i32) {
-        let zoom_level = MAX_ZOOM_LEVEL - zoom_level;
-        let ranges = calc_tile_ranges(TILES_COUNT, zoom_level, &area_lonlat);
+    fn load(&mut self, area_poly: geo_types::Polygon<f64>, zoom_level: i32) {
         let mut current_visible_tiles: HashSet<TileKey> = HashSet::new();
         let mut to_load: HashSet<TileKey> = HashSet::new();
 
-        self.current_zoom_level.store(zoom_level, Ordering::Relaxed);
-
-        for tx in ranges.min_x..=ranges.max_x {
-            for ty in ranges.min_y..=ranges.max_y {
-                let tile_key = TileKey {
-                    tile_x: tx as i32,
-                    tile_y: ty as i32,
-                    zoom_level,
-                };
-
-                // FIXME Maybe move "calc_tile_boundary" to tile generator? since we need to calculate all the time and twice(+ before loading)
-                let tile_rect = tile_key.calc_tile_boundary(1.0);
-                if area_poly.intersects(&tile_rect) {
-                    current_visible_tiles.insert(tile_key);
-                    if self.per_frame_cache.insert(tile_key) {
-                        to_load.insert(tile_key);
-                    }
-                }
+        self.tile_store.tile_ranges(area_poly, zoom_level).into_iter().for_each(|tile_key| {
+            current_visible_tiles.insert(tile_key);
+            if self.per_frame_cache.insert(tile_key) {
+                to_load.insert(tile_key);
             }
-        }
+        });
+
+        let zoom_level = self.tile_store.convert_zoom(zoom_level);
+        self.current_zoom_level.store(zoom_level, Ordering::Relaxed);
 
         if let Ok(mut actual_cache) = self.actual_cache.try_write() {
             let sender = self.sender.clone().unwrap();

@@ -1,3 +1,4 @@
+import gobley.gradle.cargo.tasks.CargoBuildTask
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -15,6 +16,13 @@ plugins {
 cargo {
     // The Cargo package is located in a `rust` subdirectory.
     packageDirectory = layout.projectDirectory.dir("../../ffi-run")
+}
+
+tasks.withType<CargoBuildTask>().configureEach {
+    val maptilerApiKey = System.getenv("MAPTILER_API_KEY")
+    if (!maptilerApiKey.isNullOrEmpty()) {
+        additionalEnvironment.put("MAPTILER_API_KEY", maptilerApiKey)
+    }
 }
 
 uniffi {

@@ -23,6 +23,7 @@ seahash = "4.1.0"
 rayon = "1.11.0"
 kml = { git = "https://github.com/ShashlikMap/kml" }
 rand = { workspace = true }
+fast-mvt = "0.4"
 
 ttf-parser = "0.25.1"
 glam = { workspace = true }
@@ -32,6 +33,7 @@ wgpu = { workspace = true}
 valhalla-client = "0.5.2"
 
 capitalize = "0.3"
+reqwest = { version = "0.12.24", features = ["blocking"] }
 
 [patch.crates-io]
 ### 0.5.2+ doesn't work on android due to internal reqwest 0.13.0+ that uses
@@ -44,4 +46,5 @@ valhalla-client-android = { git = "https://github.com/jelmer/valhalla-client-rs"
 
 [build-dependencies]
 anyhow = "1.0"
+dotenvy = { workspace = true }
 

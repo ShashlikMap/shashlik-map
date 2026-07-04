@@ -16,5 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build
         run: cargo build --verbose --package map
+        env:
+          MAPTILER_API_KEY: ${{ secrets.MAPTILER_API_KEY }}
         # - name: Run tests
         # run: cargo test --verbose

@@ -25,17 +25,24 @@ impl Camera {
     const LIGHT_DISTANCE: f64 = 100.0;
     const DEFAULT_FOV: f64 = 37.87;
 
-    pub fn new(initial_world: DVec3) -> Self {
+    pub fn new(initial_world: DVec2) -> Self {
         Camera {
-            eye: (initial_world.x, initial_world.y, Self::INITIAL_Z).into(),
-            target: (initial_world.x, initial_world.y, 0.0).into(),
+            eye:  initial_world.extend(Self::INITIAL_Z),
+            target: initial_world.extend(0.0),
             up: DVec3::Y,
             fovy: Self::DEFAULT_FOV,
             znear: Self::Z_NEAR,
             zfar: Self::Z_FAR,
             perspective_matrix: DMat4::IDENTITY,
-            offset: DVec3::new(initial_world.x, initial_world.y, 0.0),
+            offset: initial_world.extend(0.0)
         }
+    }
+
+    pub fn global_offset(&mut self, world_offset: DVec2) {
+        let world_offset = world_offset.extend(0.0);
+        self.eye += world_offset;
+        self.target += world_offset;
+        self.offset += world_offset;
     }
 
     /// view + view_proj matrices
