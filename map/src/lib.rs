@@ -96,7 +96,7 @@ static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> =
     LazyLock::new(|| Face::parse(include_bytes!("../font.ttf"), 0).unwrap());
 
 // FIXME We should not hardcode it in general. But so far it's just a first step.
-const MAX_ZOOM_LEVEL: i32 = 14;
+const MAX_ZOOM_LEVEL: i32 = 15;
 
 impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
     const TEMP_ANIMATION_SPEED: f64 = 0.03;
@@ -165,8 +165,8 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
             camera_bearing: 0.0,
             current_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
-            cam_follow_mode: true,
-            cam_follow_zoom_lock: Some(Self::ZOOM_LOCK_DIST),
+            cam_follow_mode: false,
+            cam_follow_zoom_lock: None,
             screen_params: ScreenParam {
                 width: screen_size.0 as u32,
                 height: screen_size.1 as u32,
@@ -289,7 +289,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
         self.world_height_on_screen = (world_on_ground_rotated_left_top.y - world_on_ground_rotated_bottom_right.y).abs();
 
         let zoom_level = self.camera.scale();
-        let zoom_level = ((zoom_level.log2() + 1.0) as i32).max(0);
+        let zoom_level = ((zoom_level.log2() - 1.0) as i32).max(0);
         let zoom_level = MAX_ZOOM_LEVEL - zoom_level;
 
         let poly_coords: Vec<Coord> = vec![world_on_ground_left_top,

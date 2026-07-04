@@ -18,6 +18,7 @@ use std::thread::spawn;
 use std::time::SystemTime;
 use osm::map::NatureKind::Water;
 use osm::source::reqwest_source::ReqwestSource;
+use osm::source::tiles_sqlite_store::TilesSQLiteStore;
 use crate::tiles::mvt::mvt_tile_store::MvtTileStore;
 
 pub trait FeatureProcessor: Send + Sync {
@@ -72,7 +73,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         let new_store: Box<dyn TilesProviderStore> = if enabled {
             Box::new(MvtTileStore::new())
         } else {
-            Box::new(TileStore::new(ReqwestSource::new()))
+            Box::new(TileStore::new(TilesSQLiteStore::new("../shashlik-tiles-gen-v0/dbs/tiles.db")))
         };
         self.set_store(new_store)
     }

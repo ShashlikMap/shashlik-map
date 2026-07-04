@@ -151,7 +151,7 @@ impl CameraController {
 
         let distance_from_origin = camera.offset.xy().distance(camera.target.xy());
         if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {
-            println!("Origin rebase!");
+            // println!("Origin rebase!");
             camera.offset = camera.target.xy().extend(0.0);
         }
 

@@ -41,8 +41,8 @@ impl MvtParser {
         let reader = MvtReaderRef::new(bytes)?;
 
         for layer in reader.layers() {
-            // println!("extend: {:?}",layer.extent());
-            if layer.name() == "transportation" {
+            // println!("layer: {:?}",layer.name());
+            if layer.name() == "road" {
                 for feature in layer.features() {
                     if let Some(geom_type) = feature.geom_type()
                         && geom_type == GeomType::LINESTRING
@@ -132,55 +132,69 @@ impl MvtParser {
             } else if layer.name() == "landuse"
                 || layer.name() == "landcover"
                 || layer.name() == "park"
+                || layer.name() == "grass"
+                || layer.name() == "wood"
+                // || layer.name() == "scrub"
+                // || layer.name() == "forest"
+                // || layer.name() == "vegetation"
             {
                 // println!("layer: {:?}",layer.name());
                 for feature in layer.features() {
-                    for property in feature.properties() {
-                        let (key, value) = property?;
-                        if key == "class" {
-                            let class_type: String = LocalMvtValue(value).into();
-                            // println!("ClassType: {}", class_type);
-                            if layer.name() == "park"
-                                || class_type == "wood"
-                                || class_type == "grass"
-                                || class_type == "nature_reserve"
-                                || class_type == "geopark"
-                                || class_type == "farmland"
-                                || class_type == "national_park"
-                            {
-                                let kk = 512.0f32 / 4096.0;
-                                let geom_object = MapGeomObject {
-                                    id: -1,
-                                    kind: MapGeomObjectKind::Nature(NatureKind::Forest),
-                                };
-                                if let Some(geom_type) = feature.geom_type()
-                                    && geom_type == GeomType::POLYGON
-                                {
-                                    match feature.geometry()? {
-                                        MvtGeometry::Polygon(poly) => {
-                                            let ls: Polygon<f32> = poly.map_coords(|coord| {
-                                                coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
-                                            });
-                                            res.push((geom_object.clone(), MapGeometry::Poly(ls)));
-                                        }
-                                        MvtGeometry::MultiPolygon(polis) => {
-                                            for poly in polis {
-                                                let ls: Polygon<f32> = poly.map_coords(|coord| {
-                                                    coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
-                                                });
+                    // for property in feature.properties() {
+                    //     let (key, value) = property?;
+                    //     // println!("key: {:?}, value: {:?}", key, value);
+                    //     if key == "class" || key != "class"  {
+                    //         let class_type: String = LocalMvtValue(value).into();
+                    //         // println!("ClassType: {}", class_type);
+                    //         if layer.name() == "park"
+                    //         || layer.name() == "grass"
+                    //         || layer.name() == "wood"
+                    //             || class_type == "wood"
+                    //             || class_type == "park"
+                    //             || class_type == "grass"
+                    //             || class_type == "garden"
+                    //             || class_type == "heath"
+                    //             || class_type == "grassland"
+                    //             || class_type == "nature_reserve"
+                    //             || class_type == "geopark"
+                    //             || class_type == "farmland"
+                    //             || class_type == "national_park"
+                    //         {
+                    //
+                    //         }
+                    //     }
+                    //     // println!("key: {:?}, value: {:?}",key, value);
+                    // }
 
-                                                res.push((
-                                                    geom_object.clone(),
-                                                    MapGeometry::Poly(ls),
-                                                ));
-                                            }
-                                        }
-                                        _ => {}
-                                    }
+                    let kk = 512.0f32 / 4096.0;
+                    let geom_object = MapGeomObject {
+                        id: -1,
+                        kind: MapGeomObjectKind::Nature(NatureKind::Forest),
+                    };
+                    if let Some(geom_type) = feature.geom_type()
+                        && geom_type == GeomType::POLYGON
+                    {
+                        match feature.geometry()? {
+                            MvtGeometry::Polygon(poly) => {
+                                let ls: Polygon<f32> = poly.map_coords(|coord| {
+                                    coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
+                                });
+                                res.push((geom_object.clone(), MapGeometry::Poly(ls)));
+                            }
+                            MvtGeometry::MultiPolygon(polis) => {
+                                for poly in polis {
+                                    let ls: Polygon<f32> = poly.map_coords(|coord| {
+                                        coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
+                                    });
+
+                                    res.push((
+                                        geom_object.clone(),
+                                        MapGeometry::Poly(ls),
+                                    ));
                                 }
                             }
+                            _ => {}
                         }
-                        // println!("key: {:?}, value: {:?}",key, value);
                     }
                 }
             }

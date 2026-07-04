@@ -43,10 +43,11 @@ impl ShashlikFeatureProcessor {
     }
 
     fn highway_width(kind: &HighwayKind, zoom: f32) -> f32 {
+        let zoom = zoom;
         // Relative width for zoom 19, OSM:
         // https://github.com/gravitystorm/openstreetmap-carto/blob/23b1cfa7284ac91bb78390fa4cb7f1c2c6350b92/style/roads.mss#L204
         // TODO Figure out the better way to bound line width to zoom
-        let motorway_width = 0.85;
+        let motorway_width = 0.85 * 4.0;
 
         // shows big road better with high zooms
         let zoom = if zoom >= 6.0 { zoom * zoom } else { zoom * zoom * 0.7 };

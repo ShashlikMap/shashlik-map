@@ -11,6 +11,7 @@ use std::cmp::max;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::mpsc;
+use osm::source::tiles_sqlite_store::TilesSQLiteStore;
 use strum::IntoEnumIterator;
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
@@ -113,7 +114,7 @@ fn main() {
                             target_texture,
                         );
                         let tiles_provider = DefaultTilesProvider::new(
-                            Box::new(TileStore::new(ReqwestSource::new())),
+                            Box::new(TileStore::new(TilesSQLiteStore::new("../shashlik-tiles-gen-v0/dbs/tiles.db"))),
                             ShashlikFeatureProcessor::new(),
                             dpi,
                         );

@@ -33,7 +33,7 @@ impl MvtTileStore {
         Self { client }
     }
     fn tile_id_to_mercator_meters(tx: u32, ty: u32, zoom: u32) -> TileMetersBounds {
-        const EXTENT: f64 = 4194304.342789244;
+        const EXTENT: f64 = 8388608.0;
         const MAP_SIZE: f64 = EXTENT * 2.0;
 
         let num_tiles = (1 << zoom) as f64;
@@ -59,7 +59,7 @@ impl MvtTileStore {
     }
 
     fn mercator_meters_to_512_tile(mx: f64, my: f64, zoom: u32) -> (u32, u32) {
-        const EXTENT: f64 = 4194304.342789244;
+        const EXTENT: f64 = 8388608.0;
         const MAP_SIZE: f64 = EXTENT * 2.0;
 
         let norm_x = (mx) / MAP_SIZE;
@@ -80,7 +80,7 @@ impl MvtTileStore {
         let response = self
             .client
             .get(format!(
-                "https://api.maptiler.com/tiles/v3-openmaptiles/{z}/{x}/{y}.pbf?key={api_key}"
+                "https://api.maptiler.com/tiles/v4/{z}/{x}/{y}.pbf?key={api_key}"
             ))
             .send()?.error_for_status();
         let bytes_res = response.and_then(|response| response.bytes())?;

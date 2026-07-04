@@ -53,7 +53,7 @@ struct VertexOutput {
 }
 
 // TODO pass as a parameter
-const inflate_factor: f32 = 0.06;
+const inflate_factor: f32 = 0.24;
 
 fn style_array_to_mat(out: ptr<function,VertexOutput>, params: mat4x3<f32>) {
     (*out).style1 = params[0];
