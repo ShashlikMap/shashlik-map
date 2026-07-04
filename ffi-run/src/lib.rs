@@ -3,7 +3,7 @@ uniffi::setup_scaffolding!();
 mod platform;
 
 use map::feature_processor::ShashlikFeatureProcessor;
-use map::tiles::shashlik_tiles_provider_v0::{ShashlikTilesProviderV0};
+use map::tiles::shashlik_tiles_provider_v0::{DefaultTilesProvider};
 use map::ShashlikMap;
 use std::sync::RwLock;
 use wgpu_canvas::{PreviewType, PREVIEW_TYPE, SSAO_ENABLED};
@@ -11,7 +11,7 @@ use wgpu_canvas::{PreviewType, PREVIEW_TYPE, SSAO_ENABLED};
 #[derive(uniffi::Object)]
 pub struct ShashlikMapApi {
     // TODO ?Can't use generic for FFI ShashlikMapApi?
-    shashlik_map: RwLock<ShashlikMap<ShashlikTilesProviderV0<ShashlikFeatureProcessor>>>,
+    shashlik_map: RwLock<ShashlikMap<DefaultTilesProvider<ShashlikFeatureProcessor>>>,
 }
 
 unsafe impl Sync for ShashlikMapApi {}

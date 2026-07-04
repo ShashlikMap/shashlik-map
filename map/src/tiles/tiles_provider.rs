@@ -18,13 +18,15 @@ pub trait MercatorConverter: Send + Sync {
 }
 
 pub trait TilesProviderStore: MercatorConverter {
+    fn convert_zoom(&self, zoom_level: i32) -> i32;
+    fn tile_ranges(&self, area: geo_types::Polygon<f64>, zoom_level: i32) -> Vec<TileKey>;
     fn tile_position_bbox(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect);
     fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)>;
 }
 
 pub trait TilesProvider: MercatorConverter {
     fn inner_converter(&self) -> Arc<dyn MercatorConverter>;
-    fn load(&mut self, area_lonlat: Rect, area_poly: Polygon<f64>, zoom_level: i32);
+    fn load(&mut self, area_poly: Polygon<f64>, zoom_level: i32);
 
     fn tiles(&mut self) -> impl Stream<Item=TilesMessage> + Send + 'static;
 }

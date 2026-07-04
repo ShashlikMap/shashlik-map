@@ -9,7 +9,7 @@ use jni::sys::{jboolean, jlong, jobject};
 use jni_fn::jni_fn;
 use map::ShashlikMap;
 use map::feature_processor::ShashlikFeatureProcessor;
-use map::tiles::shashlik_tiles_provider_v0::ShashlikTilesProviderV0;
+use map::tiles::shashlik_tiles_provider_v0::DefaultTilesProvider;
 use osm::source::reqwest_source::ReqwestSource;
 use pollster::FutureExt;
 use std::mem;
@@ -97,7 +97,7 @@ pub fn createShashlikMapApi(
     let feature_processor = ShashlikFeatureProcessor::new();
     let shashlik_map = pollster::block_on(ShashlikMap::new(
         Box::new(surface),
-        ShashlikTilesProviderV0::new(tile_store, feature_processor, dpi_scale),
+        DefaultTilesProvider::new(tile_store, feature_processor, dpi_scale),
     ))
     .unwrap();
     let map_api = ShashlikMapApi {

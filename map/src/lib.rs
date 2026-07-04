@@ -5,13 +5,12 @@ use crate::kml_viewer_group::KmlGroup;
 use crate::puck_group::SimplePuck;
 use crate::route::RouteCosting;
 use crate::tiles::tile_data::TileData;
-use crate::tiles::tiles_provider::TilesProvider;
+use crate::tiles::tiles_provider::{TilesProvider};
 use crate::tiles::tiles_provider::TilesMessage;
 use futures::executor::block_on;
 use futures::{pin_mut, Stream, StreamExt};
-use geo_types::private_utils::get_bounding_rect;
-use geo_types::{coord, Coord, Point, Rect};
-use geo_types::{LineString, Polygon};
+use geo_types::{coord, Coord, Point};
+use geo_types::{Polygon};
 use glam::{DMat2, DVec2, DVec3, Vec2};
 use num::{abs, clamp};
 use osm::styles::style_loader::StyleLoader;
@@ -53,9 +52,8 @@ pub struct ShashlikMap<T: TilesProvider> {
     renderer: Box<ShashlikRenderer>,
     camera: Camera,
     camera_controller: CameraController,
-    pub tiles_provider: T,
+    tiles_provider: T,
     route_controller: RouteController,
-    last_area_lon_lat: Rect,
     current_world_position: DVec3,
     current_bearing: f64,
     camera_bearing: f64,
@@ -134,7 +132,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
         let camera_offset = tiles_provider.lon_lat_to_world(&initial_coord, MAX_ZOOM_LEVEL);
         let camera_offset: DVec3 = (camera_offset.x, camera_offset.y, 0.0).into();
-        let cam = Camera::new(camera_offset);
+        let cam = Camera::new(camera_offset.truncate());
 
         let mut puck_spatial_data = SpatialData::transform(DVec3::new(0.0, 0.0, 0.0));
         puck_spatial_data.scale(DVec3::splat(1.0));
@@ -162,7 +160,6 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
             camera_controller,
             tiles_provider,
             route_controller,
-            last_area_lon_lat: Rect::new((0.0, 0.0), (0.0, 0.0)),
             current_world_position: camera_offset,
             current_bearing: 0.0,
             camera_bearing: 0.0,
@@ -212,6 +209,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
                         None => break,
                         Some(msg) => match msg {
                             TilesMessage::TilesData(data) => {
+                                // TODO MAX_ZOOM?
                                 let has_zero_level = data.iter().any(|item| item.zoom_level == 0);
                                 zero_zoom_level_loaded.store(has_zero_level, Ordering::Relaxed);
                                 data.into_iter().for_each(|item| {
@@ -292,22 +290,17 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
 
         let zoom_level = self.camera.scale();
         let zoom_level = ((zoom_level.log2() + 1.0) as i32).max(0);
-        let zoom_level = MAX_ZOOM_LEVEL - zoom_level; 
+        let zoom_level = MAX_ZOOM_LEVEL - zoom_level;
 
-        let p1 = self.world_to_lon_lat(&world_on_ground_left_top);
-        let p2 = self.world_to_lon_lat(&world_on_ground_right_top);
-        let p3 = self.world_to_lon_lat(&world_on_ground_right_bottom);
-        let p4 = self.world_to_lon_lat(&world_on_ground_left_bottom);
+        let poly_coords: Vec<Coord> = vec![world_on_ground_left_top,
+                                           world_on_ground_right_top,
+                                           world_on_ground_right_bottom,
+                                           world_on_ground_left_bottom].into_iter().map(|coord| {
+            coord! {x: coord.x, y: coord.y}
+        }).collect();
+        let poly = Polygon::new(poly_coords.into(), Vec::new());
 
-        // this will be compared for intersection later, it should have a correct winding
-        let poly: Polygon<f64> = Polygon::new(LineString(vec![p1, p2, p3, p4]), Vec::new());
-        let area_lon_lat = get_bounding_rect(poly.exterior()).unwrap();
-
-        // if area_lon_lat != self.last_area_lon_lat {
-        self.tiles_provider.load(area_lon_lat, poly, zoom_level);
-        // }
-
-        self.last_area_lon_lat = area_lon_lat;
+        self.tiles_provider.load(poly, zoom_level);
     }
 
     fn consume_map_events(&mut self) {
@@ -561,5 +554,22 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
         start_sgnss(move |lat, lon| {
             map_sender.send(MapEvent::LatLon(lat, lon)).unwrap();
         });
+    }
+
+    pub fn update_tile_store<F>(&mut self, block: F)
+    where
+        F: FnOnce(&mut T),
+    {
+        let prev_world_coord = self.current_world_position.truncate();
+        let prev_lon_lat = self.tiles_provider.world_to_lon_lat(&coord! { x: prev_world_coord.x, y: prev_world_coord.y}, MAX_ZOOM_LEVEL);
+
+        block(&mut self.tiles_provider);
+
+        let new_world_coord = self.tiles_provider.lon_lat_to_world(&prev_lon_lat, MAX_ZOOM_LEVEL);
+        let new_world_coord = DVec2::new(new_world_coord.x, new_world_coord.y);
+        let world_offset = new_world_coord - prev_world_coord;
+        self.camera.reset_to_offset(world_offset);
+        self.camera_controller.position += world_offset.extend(0.0);
+        self.set_lon_lat_bearing(prev_lon_lat.x, prev_lon_lat.y, Some(self.current_bearing as f32));
     }
 }
