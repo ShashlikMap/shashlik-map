@@ -1,13 +1,12 @@
-use crate::tiles::tiles_provider::{MercatorConverter, TilesProviderStore};
+use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesProviderStore};
 use geo::{CoordsIter, Scale};
 use geo_types::{Coord, Rect, coord, Polygon};
 use glam::DVec3;
-use googleprojection::Mercator;
 use log::error;
 use osm::map::{MapGeomObject, MapGeometry};
 use osm::tiles::{TileKey, TileRanges};
 use reqwest::header::{HeaderMap, HeaderValue, ORIGIN};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 use crate::tiles::mvt::mvt_parser::MvtParser;
 
 struct TileMetersBounds {
@@ -28,6 +27,7 @@ impl MvtTileStore {
         let client = reqwest::blocking::Client::builder()
             .default_headers(headers)
             .tcp_keepalive(std::time::Duration::from_secs(30))
+            .timeout(Duration::from_secs(10))
             .build()
             .unwrap();
         Self { client }
@@ -82,7 +82,7 @@ impl MvtTileStore {
             .get(format!(
                 "https://api.maptiler.com/tiles/v3-openmaptiles/{z}/{x}/{y}.pbf?key={api_key}"
             ))
-            .send();
+            .send()?.error_for_status();
         let bytes_res = response.and_then(|response| response.bytes())?;
         let bytes = bytes_res.to_vec();
         let t2 = SystemTime::now();
@@ -171,10 +171,13 @@ impl TilesProviderStore for MvtTileStore {
     }
 }
 
+impl MercatorProvider<512> for MvtTileStore {}
+
 impl MercatorConverter for MvtTileStore {
     fn lon_lat_to_world(&self, lon_lat: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
         let lon_lat: (f64, f64) = (*lon_lat).into();
-        Mercator::with_size(512)
+
+        Self::mercator()
             .from_ll_to_subpixel(&lon_lat, zoom_level as usize)
             .unwrap()
             .into()
@@ -182,7 +185,7 @@ impl MercatorConverter for MvtTileStore {
 
     fn world_to_lon_lat(&self, xy: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
         let xy: (f64, f64) = (*xy).into();
-        Mercator::with_size(512)
+        Self::mercator()
             .from_pixel_to_ll(&xy, zoom_level as usize)
             .unwrap()
             .into()

@@ -568,7 +568,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
         let new_world_coord = self.tiles_provider.lon_lat_to_world(&prev_lon_lat, MAX_ZOOM_LEVEL);
         let new_world_coord = DVec2::new(new_world_coord.x, new_world_coord.y);
         let world_offset = new_world_coord - prev_world_coord;
-        self.camera.reset_to_offset(world_offset);
+        self.camera.global_offset(world_offset);
         self.camera_controller.position += world_offset.extend(0.0);
         self.set_lon_lat_bearing(prev_lon_lat.x, prev_lon_lat.y, Some(self.current_bearing as f32));
     }

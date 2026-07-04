@@ -1,19 +1,19 @@
-use geo::{Intersects, MapCoordsInPlace, Scale};
+use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesProviderStore};
+use crate::MAX_ZOOM_LEVEL;
+use geo::{BoundingRect, Intersects, MapCoordsInPlace, Scale};
 use geo_types::{Coord, Polygon, Rect};
-use geo_types::private_utils::get_bounding_rect;
 use glam::DVec3;
-use googleprojection::Mercator;
 use osm::map::{MapGeomObject, MapGeometry};
 use osm::source::TileSource;
 use osm::tiles::{calc_tile_ranges, TileKey, TileStore, TILES_COUNT, TILE_OVERLAP_PERCENT};
-use crate::MAX_ZOOM_LEVEL;
-use crate::tiles::tiles_provider::{MercatorConverter, TilesProviderStore};
+
+impl<S: TileSource> MercatorProvider<1> for TileStore<S> {}
 
 /// TileStore uses hardcoded zoom 22, so the caller's zoom has to be ignored
-impl <S:TileSource> MercatorConverter for TileStore<S> {
+impl<S: TileSource> MercatorConverter for TileStore<S> {
     fn lon_lat_to_world(&self, lon_lat: &Coord<f64>, _zoom_level: i32) -> Coord<f64> {
         let lon_lat: (f64, f64) = (*lon_lat).into();
-        Mercator::with_size(1)
+        Self::mercator()
             .from_ll_to_subpixel(&lon_lat, 22)
             .unwrap()
             .into()
@@ -21,7 +21,7 @@ impl <S:TileSource> MercatorConverter for TileStore<S> {
 
     fn world_to_lon_lat(&self, xy: &Coord<f64>, _zoom_level: i32) -> Coord<f64> {
         let xy: (f64, f64) = (*xy).into();
-        Mercator::with_size(1)
+        Self::mercator()
             .from_pixel_to_ll(&xy, 22)
             .unwrap()
             .into()
@@ -40,7 +40,7 @@ impl <S:TileSource> TilesProviderStore for TileStore<S> {
         });
 
         // this will be compared for intersection later, it should have a correct winding
-        let area_lon_lat = get_bounding_rect(area.exterior()).unwrap();
+        let area_lon_lat = area.exterior().bounding_rect().unwrap();
 
         let ranges = calc_tile_ranges(TILES_COUNT, zoom_level, &area_lon_lat);
         let mut res = vec![];

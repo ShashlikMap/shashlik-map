@@ -1,7 +1,7 @@
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::mvt::mvt_tile_store::MvtTileStore;
-use map::tiles::shashlik_tiles_provider_v0::DefaultTilesProvider;
+use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::tiles::tiles_provider::TilesProviderStore;
 use map::ShashlikMap;
 use native_dialog::DialogBuilder;

@@ -2,7 +2,7 @@ use crate::MAX_ZOOM_LEVEL;
 use fast_mvt::proto::GeomType;
 use fast_mvt::{MvtGeometry, MvtReaderRef, MvtResult, MvtValueRef};
 use geo::{CoordsIter, MapCoords};
-use geo_types::{Geometry, Line, LineString, Polygon, coord};
+use geo_types::{coord, Geometry, LineString, Polygon};
 use osm::map::{
     HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, NatureKind,
     WayInfo,
@@ -13,18 +13,17 @@ pub struct MvtParser;
 
 // TODO This is WIP and requires reworking. So far just a temporary PoC implementation
 impl MvtParser {
-    fn get_all_lines(geometry: &Geometry<i32>) -> Vec<Line<i32>> {
+    fn get_all_lines(geometry: Geometry<i32>) -> Vec<LineString<i32>> {
         match geometry {
             Geometry::LineString(line_string) => {
                 // .lines() returns an iterator over individual Line segments
-                line_string.lines().collect()
+                vec![line_string]
             }
             Geometry::MultiLineString(multi_line_string) => {
                 // MultiLineString contains multiple LineStrings;
                 // iterate over them, get lines for each, and flatten
                 multi_line_string
-                    .iter()
-                    .flat_map(|line_string| line_string.lines())
+                    .into_iter()
                     .collect()
             }
             _ => {
@@ -87,7 +86,7 @@ impl MvtParser {
                                     name_en: None,
                                 }),
                             };
-                            for line in Self::get_all_lines(&feature.geometry()?) {
+                            for line in Self::get_all_lines(feature.geometry()?) {
                                 let ls: LineString<f32> = line
                                     .coords_iter()
                                     .map(|coord| {
@@ -203,15 +202,16 @@ impl MvtParser {
         tile_key: &TileKey,
     ) -> MapGeometry<f32> {
         // FIXME Zoom level handling
+        let factor = 2.0f32.powf((MAX_ZOOM_LEVEL - tile_key.zoom_level) as f32);
         match geometry {
             MapGeometry::Line(line) => MapGeometry::Line(line.map_coords(|coord| {
-                coord * 2.0f32.powf((MAX_ZOOM_LEVEL - tile_key.zoom_level) as f32)
+                coord * factor
             })),
             MapGeometry::Poly(poly) => MapGeometry::Poly(poly.map_coords(|coord| {
-                coord * 2.0f32.powf((MAX_ZOOM_LEVEL - tile_key.zoom_level) as f32)
+                coord * factor
             })),
             MapGeometry::Coord(coord) => MapGeometry::Coord(
-                *coord * 2.0f32.powf((MAX_ZOOM_LEVEL - tile_key.zoom_level) as f32),
+                *coord * factor,
             ),
         }
     }

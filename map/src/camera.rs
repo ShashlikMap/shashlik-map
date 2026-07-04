@@ -38,13 +38,11 @@ impl Camera {
         }
     }
 
-    pub fn reset_to_offset(&mut self, world_offset: DVec2) {
-        self.eye.x += world_offset.x;
-        self.eye.y += world_offset.y;
-        self.target.x += world_offset.x;
-        self.target.y += world_offset.y;
-        self.offset.x += world_offset.x;
-        self.offset.y += world_offset.y;
+    pub fn global_offset(&mut self, world_offset: DVec2) {
+        let world_offset = world_offset.extend(0.0);
+        self.eye += world_offset;
+        self.target += world_offset;
+        self.target += world_offset;
     }
 
     /// view + view_proj matrices

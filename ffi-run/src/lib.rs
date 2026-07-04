@@ -3,7 +3,7 @@ uniffi::setup_scaffolding!();
 mod platform;
 
 use map::feature_processor::ShashlikFeatureProcessor;
-use map::tiles::shashlik_tiles_provider_v0::{DefaultTilesProvider};
+use map::tiles::default_tiles_provider::{DefaultTilesProvider};
 use map::ShashlikMap;
 use std::sync::RwLock;
 use wgpu_canvas::{PreviewType, PREVIEW_TYPE, SSAO_ENABLED};

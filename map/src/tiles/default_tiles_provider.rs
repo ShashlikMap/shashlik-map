@@ -38,8 +38,6 @@ pub trait FeatureProcessor: Send + Sync {
     );
 }
 
-
-
 pub struct DefaultTilesProvider<FP: FeatureProcessor> {
     sender: Option<UnboundedSender<TilesMessage>>,
     tile_store: Arc<dyn TilesProviderStore>,

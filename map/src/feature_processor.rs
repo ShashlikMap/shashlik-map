@@ -1,4 +1,4 @@
-use crate::tiles::shashlik_tiles_provider_v0::FeatureProcessor;
+use crate::tiles::default_tiles_provider::FeatureProcessor;
 use geo_types::{Coord, LineString};
 use glam::{DVec3, Vec2};
 use lyon::geom::point;

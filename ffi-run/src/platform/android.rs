@@ -9,7 +9,7 @@ use jni::sys::{jboolean, jlong, jobject};
 use jni_fn::jni_fn;
 use map::ShashlikMap;
 use map::feature_processor::ShashlikFeatureProcessor;
-use map::tiles::shashlik_tiles_provider_v0::DefaultTilesProvider;
+use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use osm::source::reqwest_source::ReqwestSource;
 use pollster::FutureExt;
 use std::mem;

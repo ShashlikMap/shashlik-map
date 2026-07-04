@@ -2,6 +2,7 @@ use crate::tiles::tile_data::TileData;
 use futures::Stream;
 use geo_types::{Coord, Polygon, Rect};
 use glam::DVec3;
+use googleprojection::Mercator;
 use osm::map::{MapGeomObject, MapGeometry};
 use osm::tiles::TileKey;
 use std::collections::HashSet;
@@ -10,6 +11,12 @@ use std::sync::Arc;
 pub enum TilesMessage {
     TilesData(Vec<TileData>),
     ToRemove(HashSet<String>),
+}
+
+pub trait MercatorProvider<const SIZE: usize> {
+    fn mercator() -> Mercator {
+        Mercator::with_size(SIZE)
+    }
 }
 
 pub trait MercatorConverter: Send + Sync {

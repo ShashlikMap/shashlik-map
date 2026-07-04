@@ -2,7 +2,7 @@ use app_surface::{AppSurface, IOSViewObj};
 use wgpu::{CurrentSurfaceTexture, Device, Queue, SurfaceConfiguration, SurfaceTexture, Texture, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use crate::ShashlikMapApi;
-use map::tiles::shashlik_tiles_provider_v0::DefaultTilesProvider;
+use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use osm::source::reqwest_source::ReqwestSource;
 use map::ShashlikMap;
 use std::sync::RwLock;
