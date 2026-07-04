@@ -42,7 +42,7 @@ impl Camera {
         let world_offset = world_offset.extend(0.0);
         self.eye += world_offset;
         self.target += world_offset;
-        self.target += world_offset;
+        self.offset += world_offset;
     }
 
     /// view + view_proj matrices
