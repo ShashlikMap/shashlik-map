@@ -159,6 +159,14 @@ fun App() {
                                 checkedState = it
                             })
                         Text("Camera Mode")
+
+                        var mvtCheckedState by remember { mutableStateOf(false) }
+                        Checkbox(
+                            mvtCheckedState, onCheckedChange = {
+                                ShashlikMapApiHolder.shashlikMapApi?.setMvtTileset(it)
+                                mvtCheckedState = it
+                            })
+                        Text("MVT")
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
