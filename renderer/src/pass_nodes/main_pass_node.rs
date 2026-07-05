@@ -8,7 +8,7 @@ use rand::prelude::ThreadRng;
 use rand::{rng, RngExt};
 use std::borrow::Cow;
 use wesl::include_wesl;
-use wgpu::{BindGroup, Color, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, ImageSubresourceRange, ShaderModuleDescriptor, ShaderSource, StorageTextureAccess, TextureFormat, TextureUsages, TextureView, TextureViewDimension};
+use wgpu::{BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, ImageSubresourceRange, ShaderModuleDescriptor, ShaderSource, StorageTextureAccess, TextureFormat, TextureUsages, TextureView, TextureViewDimension};
 use wgpu_canvas::SSAO_ENABLED;
 
 pub(crate) struct MainPassNode {
