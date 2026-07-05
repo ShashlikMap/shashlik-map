@@ -85,6 +85,7 @@ Prerequisites for the Linux device:
 
 Prerequisites for the building machine:
 - Install [cross-rs](https://github.com/cross-rs/cross)
+  `cargo install cross --git https://github.com/cross-rs/cross --branch main --force`
 - Install Docker
 
 Execute *kms_deploy.sh* script:

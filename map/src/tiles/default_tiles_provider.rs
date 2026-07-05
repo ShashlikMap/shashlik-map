@@ -18,6 +18,7 @@ use std::thread::spawn;
 use std::time::SystemTime;
 use osm::map::NatureKind::Water;
 use osm::source::reqwest_source::ReqwestSource;
+use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::mvt::mvt_tile_store::MvtTileStore;
 
 pub trait FeatureProcessor: Send + Sync {
@@ -141,11 +142,10 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                 }
                 MapGeometry::Poly(poly) => {
                     let is_building = matches!(obj_type.kind, MapGeomObjectKind::Building(_));
-                    println!("ZZZ = {zoom_level}");
                     let is_visible = !cfg!(target_os = "linux")
-                        || zoom_level == 0
+                        || zoom_level == MAX_ZOOM_LEVEL
                         // reduce amount of buildings for linux
-                        || (zoom_level == 1 && is_building && poly.unsigned_area() >= 2.0);
+                        || (zoom_level == (MAX_ZOOM_LEVEL - 1) && is_building && poly.unsigned_area() >= 2.0);
 
                     let is_visible = !is_building || is_visible;
 
