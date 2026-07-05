@@ -53,7 +53,7 @@ pub struct ViewProjection {
 }
 
 impl ViewProjection {
-    const MAX_MESH_HEIGHT: f64 = 20.0;
+    const MAX_MESH_HEIGHT: f64 = 40.0;
 
     const ORTHO_STEP: f64 = 5.0;
 

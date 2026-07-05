@@ -147,7 +147,7 @@ fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
 
 @fragment
 fn fs_main_sm(in: VertexOutput) -> @location(0) vec4<f32> {
-    if(camera.scale >= 1.0) {
+    if(camera.scale >= 2.0) {
         return vec4(0.0, 0.0, 0.0, 0.0);
     }
 

@@ -5,10 +5,17 @@ pub mod shadow_pre_pass;
 
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
-use wgpu::{CommandEncoder, TextureView};
+use wgpu::{Color, CommandEncoder, TextureView};
+
+// TODO Ideally, it should be set from Styles somehow
+const BACKGROUND_ATTACHMENT_COLOR: Color = Color {
+    r: 0.957,
+    g: 0.953,
+    b: 0.941,
+    a: 1.0,
+};
 
 pub trait PassNode {
-
     fn compute(
         &mut self,
         encoder: &mut CommandEncoder,

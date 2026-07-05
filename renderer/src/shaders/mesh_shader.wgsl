@@ -79,7 +79,7 @@ fn vs_main(
     return out;
 }
 
-const light_dir = normalize(vec3(0.42, 0.56, 0.71));
+const light_dir = normalize(vec3(0.84, 1.12, 1.42));
 
 const sun_color = vec3<f32>(1.0, 0.98, 0.94);
 const ambient_color = vec3<f32>(0.86, 0.90, 0.96) * 0.7;

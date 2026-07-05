@@ -21,13 +21,13 @@ pub struct Camera {
 impl Camera {
     const INITIAL_Z: f64 = 200.0;
     pub(crate) const Z_NEAR: f64 = 1.0;
-    pub(crate) const Z_FAR: f64 = 2000000.0;
+    pub(crate) const Z_FAR: f64 = 8000000.0;
     const LIGHT_DISTANCE: f64 = 100.0;
     const DEFAULT_FOV: f64 = 37.87;
 
     pub fn new(initial_world: DVec2) -> Self {
         Camera {
-            eye:  initial_world.extend(Self::INITIAL_Z),
+            eye:  initial_world.extend(Self::INITIAL_Z * 2.0),
             target: initial_world.extend(0.0),
             up: DVec3::Y,
             fovy: Self::DEFAULT_FOV,
@@ -151,7 +151,6 @@ impl CameraController {
 
         let distance_from_origin = camera.offset.xy().distance(camera.target.xy());
         if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {
-            println!("Origin rebase!");
             camera.offset = camera.target.xy().extend(0.0);
         }
 

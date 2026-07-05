@@ -46,7 +46,7 @@ impl ShashlikFeatureProcessor {
         // Relative width for zoom 19, OSM:
         // https://github.com/gravitystorm/openstreetmap-carto/blob/23b1cfa7284ac91bb78390fa4cb7f1c2c6350b92/style/roads.mss#L204
         // TODO Figure out the better way to bound line width to zoom
-        let motorway_width = 0.85;
+        let motorway_width = 0.85 * 4.0;
 
         // shows big road better with high zooms
         let zoom = if zoom >= 6.0 { zoom * zoom } else { zoom * zoom * 0.7 };
@@ -201,7 +201,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                                 StyleId::new("rails"),
                                 info.layer,
                                 GeometryType::Polyline(PolylineOptions {
-                                    width: 0.3 * zoom_level.max(1) as f32,
+                                    width: 1.2 * zoom_level.max(1) as f32,
                                     ..Default::default()
                                 }),
                                 None,
@@ -246,7 +246,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     geometry_data.push(GeometryData::Shape(ShapeData {
                         path: path_builder.clone().build(),
                         geometry_type: GeometryType::Polyline(PolylineOptions {
-                            width: 0.4,
+                            width: 0.8,
                             line_cap: LineCap::Butt,
                             line_join: LineJoin::Round,
                             tolerance: 0.02,
@@ -258,7 +258,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
 
                     geometry_data.push(GeometryData::ExtrudedPolygon(ExtrudedPolygonData {
                         path: path_builder.build(),
-                        height: level as f32 / 2.0,
+                        height: level as f32 * 2.0,
                     }));
                 } else {
                     let double_style = match &kind {

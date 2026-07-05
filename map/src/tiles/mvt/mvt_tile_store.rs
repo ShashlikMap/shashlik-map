@@ -21,6 +21,9 @@ pub(crate) struct MvtTileStore {
 }
 
 impl MvtTileStore {
+    const EXTENT: f64 = 8388608.0;
+    const MAP_SIZE: f64 = Self::EXTENT * 2.0;
+
     pub fn new() -> Self {
         let mut headers = HeaderMap::new();
         headers.insert(ORIGIN, HeaderValue::from_static("shashlikmap.com"));
@@ -33,9 +36,6 @@ impl MvtTileStore {
         Self { client }
     }
     fn tile_id_to_mercator_meters(tx: u32, ty: u32, zoom: u32) -> TileMetersBounds {
-        const EXTENT: f64 = 4194304.342789244;
-        const MAP_SIZE: f64 = EXTENT * 2.0;
-
         let num_tiles = (1 << zoom) as f64;
 
         let norm_left = tx as f64 / num_tiles;
@@ -44,11 +44,11 @@ impl MvtTileStore {
         let norm_top = ty as f64 / num_tiles;
         let norm_bottom = (ty + 1) as f64 / num_tiles;
 
-        let min_x = norm_left * MAP_SIZE;
-        let max_x = norm_right * MAP_SIZE;
+        let min_x = norm_left * Self::MAP_SIZE;
+        let max_x = norm_right * Self::MAP_SIZE;
 
-        let max_y = norm_bottom * MAP_SIZE;
-        let min_y = norm_top * MAP_SIZE;
+        let max_y = norm_bottom * Self::MAP_SIZE;
+        let min_y = norm_top * Self::MAP_SIZE;
 
         TileMetersBounds {
             min_x,
@@ -59,11 +59,8 @@ impl MvtTileStore {
     }
 
     fn mercator_meters_to_512_tile(mx: f64, my: f64, zoom: u32) -> (u32, u32) {
-        const EXTENT: f64 = 4194304.342789244;
-        const MAP_SIZE: f64 = EXTENT * 2.0;
-
-        let norm_x = (mx) / MAP_SIZE;
-        let norm_y = (my) / MAP_SIZE; // Flipped because Tile Y increases downwards
+        let norm_x = (mx) / Self::MAP_SIZE;
+        let norm_y = (my) / Self::MAP_SIZE; // Flipped because Tile Y increases downwards
 
         let num_tiles = (1 << zoom) as f64;
 
@@ -80,7 +77,7 @@ impl MvtTileStore {
         let response = self
             .client
             .get(format!(
-                "https://api.maptiler.com/tiles/v3-openmaptiles/{z}/{x}/{y}.pbf?key={api_key}"
+                "https://api.maptiler.com/tiles/v4/{z}/{x}/{y}.pbf?key={api_key}"
             ))
             .send()?.error_for_status();
         let bytes_res = response.and_then(|response| response.bytes())?;

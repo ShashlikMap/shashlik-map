@@ -1,7 +1,7 @@
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
 use crate::mesh_layers::BaseMeshLayer;
-use crate::pass_nodes::PassNode;
+use crate::pass_nodes::{PassNode, BACKGROUND_ATTACHMENT_COLOR};
 use crate::textures::{create_color_binding_texture, create_common_texture, create_depth_texture, SAMPLE_COUNT};
 use wgpu::{CommandEncoder, TextureFormat, TextureView};
 use wgpu_canvas::PREVIEW_TYPE;
@@ -49,12 +49,7 @@ impl PassNode for RenderToTexturePassNode {
                 view: &self.msaa_texture_view,
                 resolve_target: Some(&self.rt_texture_view),
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.0,
-                        g: 0.741,
-                        b: 0.961,
-                        a: 1.0,
-                    }),
+                    load: wgpu::LoadOp::Clear(BACKGROUND_ATTACHMENT_COLOR),
                     store: wgpu::StoreOp::Store,
                 },
                 depth_slice: None,

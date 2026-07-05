@@ -18,6 +18,7 @@ use std::thread::spawn;
 use std::time::SystemTime;
 use osm::map::NatureKind::Water;
 use osm::source::reqwest_source::ReqwestSource;
+use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::mvt::mvt_tile_store::MvtTileStore;
 
 pub trait FeatureProcessor: Send + Sync {
@@ -95,7 +96,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         tile_key: &TileKey,
         dpi_scale: f32,
     ) -> TileData {
-        let zoom_level = tile_key.zoom_level;
+        let zoom_level = tile_store.convert_zoom(tile_key.zoom_level);
 
         let (tile_position, bbox) = tile_store.tile_position_bbox(tile_key, Self::BBOX_OVERLAP_OFFSET_SCALE);
 
@@ -135,17 +136,16 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                         line.convert(),
                         obj_type.kind,
                         &mut line_text_map,
-                        tile_store.convert_zoom(zoom_level),
+                        zoom_level,
                         dpi_scale,
                     );
                 }
                 MapGeometry::Poly(poly) => {
                     let is_building = matches!(obj_type.kind, MapGeomObjectKind::Building(_));
-
                     let is_visible = !cfg!(target_os = "linux")
-                        || zoom_level == 0
+                        || zoom_level == MAX_ZOOM_LEVEL
                         // reduce amount of buildings for linux
-                        || (zoom_level == 1 && is_building && poly.unsigned_area() >= 2.0);
+                        || (zoom_level == (MAX_ZOOM_LEVEL - 1) && is_building && poly.unsigned_area() >= 2.0);
 
                     let is_visible = !is_building || is_visible;
 
@@ -163,7 +163,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                             line.convert(),
                             obj_type.kind,
                             &mut line_text_map,
-                            tile_store.convert_zoom(zoom_level),
+                            zoom_level,
                             dpi_scale,
                         );
                     }
