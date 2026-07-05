@@ -80,6 +80,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Download macOS artifact
         uses: actions/download-artifact@v4
@@ -110,8 +111,11 @@ jobs:
             CHANGELOG=$(git log $LATEST_TAG..HEAD --pretty=format:"- %s (%h)" --reverse)
           fi
           
-          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
-          echo "commits=$CHANGELOG" >> $GITHUB_OUTPUT
+          {
+            echo "commits<<CHANGELOG_EOF"
+            echo "$CHANGELOG"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
@@ -119,7 +123,7 @@ jobs:
           tag_name: ${{ steps.tag.outputs.release_tag }}
           name: Release ${{ steps.tag.outputs.release_tag }}
           body: |
-            **Release Date:** ${{ steps.tag.outputs.release_tag }}
+            **Release:** ${{ steps.tag.outputs.release_tag }}
             
             ## Release Contents
             - macOS app (Apple Silicon)
