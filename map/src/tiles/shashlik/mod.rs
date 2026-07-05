@@ -5,9 +5,9 @@ use geo_types::{Coord, Polygon, Rect};
 use glam::DVec3;
 use osm::map::{MapGeomObject, MapGeometry};
 use osm::source::TileSource;
-use osm::tiles::{calc_tile_ranges, TileKey, TileStore, TILES_COUNT, TILE_OVERLAP_PERCENT};
+use osm::tiles::{calc_tile_ranges, TileKey, TileStore, TILE_SIZE, TILES_COUNT, TILE_OVERLAP_PERCENT};
 
-impl<S: TileSource> MercatorProvider<4> for TileStore<S> {}
+impl<S: TileSource> MercatorProvider<TILE_SIZE> for TileStore<S> {}
 
 /// TileStore uses hardcoded zoom 22, so the caller's zoom has to be ignored
 impl<S: TileSource> MercatorConverter for TileStore<S> {
