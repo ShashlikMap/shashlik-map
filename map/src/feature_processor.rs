@@ -202,7 +202,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                                 StyleId::new("rails"),
                                 info.layer,
                                 GeometryType::Polyline(PolylineOptions {
-                                    width: 0.3 * zoom_level.max(1) as f32,
+                                    width: 1.2 * zoom_level.max(1) as f32,
                                     ..Default::default()
                                 }),
                                 None,

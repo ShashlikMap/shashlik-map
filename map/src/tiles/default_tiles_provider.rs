@@ -95,7 +95,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         tile_key: &TileKey,
         dpi_scale: f32,
     ) -> TileData {
-        let zoom_level = tile_key.zoom_level;
+        let zoom_level = tile_store.convert_zoom(tile_key.zoom_level);
 
         let (tile_position, bbox) = tile_store.tile_position_bbox(tile_key, Self::BBOX_OVERLAP_OFFSET_SCALE);
 
@@ -135,13 +135,13 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                         line.convert(),
                         obj_type.kind,
                         &mut line_text_map,
-                        tile_store.convert_zoom(zoom_level),
+                        zoom_level,
                         dpi_scale,
                     );
                 }
                 MapGeometry::Poly(poly) => {
                     let is_building = matches!(obj_type.kind, MapGeomObjectKind::Building(_));
-
+                    println!("ZZZ = {zoom_level}");
                     let is_visible = !cfg!(target_os = "linux")
                         || zoom_level == 0
                         // reduce amount of buildings for linux
@@ -163,7 +163,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                             line.convert(),
                             obj_type.kind,
                             &mut line_text_map,
-                            tile_store.convert_zoom(zoom_level),
+                            zoom_level,
                             dpi_scale,
                         );
                     }
@@ -173,7 +173,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         let tile_data = TileData {
             key: tile_key.as_string_key(),
             position: tile_position,
-            zoom_level: tile_store.convert_zoom(zoom_level),
+            zoom_level,
             bbox,
             geometry_data,
         };
