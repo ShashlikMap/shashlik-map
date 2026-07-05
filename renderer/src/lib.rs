@@ -59,7 +59,7 @@ mod utils;
 mod buffer_pool;
 
 /// should be the same as mesh_shader.wgsl
-pub static LIGHT_POS: DVec3 = dvec3(0.42, 0.56, 0.71);
+pub static LIGHT_POS: DVec3 = dvec3(0.84, 1.12, 1.42);
 
 pub struct RendererUpdateData {
     pub view_matrix: DMat4,

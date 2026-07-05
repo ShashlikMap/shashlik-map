@@ -21,7 +21,7 @@ pub struct Camera {
 impl Camera {
     const INITIAL_Z: f64 = 200.0;
     pub(crate) const Z_NEAR: f64 = 1.0;
-    pub(crate) const Z_FAR: f64 = 2000000.0;
+    pub(crate) const Z_FAR: f64 = 8000000.0;
     const LIGHT_DISTANCE: f64 = 100.0;
     const DEFAULT_FOV: f64 = 37.87;
 

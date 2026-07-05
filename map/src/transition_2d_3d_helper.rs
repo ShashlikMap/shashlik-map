@@ -16,9 +16,6 @@ impl Transition2d3dHelper {
     }
 
     pub fn update(&mut self, level: f32, anim_speed: f32) -> f32 {
-        if level >= 1.0 {
-            self.zero_zoom_level_loaded.store(false, Ordering::Relaxed);
-        }
         let scale_2d_3d_mul = if level >= 0.9 {
             -1.0
         } else if self.zero_zoom_level_loaded.load(Ordering::Relaxed) {

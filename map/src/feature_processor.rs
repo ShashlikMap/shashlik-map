@@ -247,7 +247,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     geometry_data.push(GeometryData::Shape(ShapeData {
                         path: path_builder.clone().build(),
                         geometry_type: GeometryType::Polyline(PolylineOptions {
-                            width: 0.4,
+                            width: 0.8,
                             line_cap: LineCap::Butt,
                             line_join: LineJoin::Round,
                             tolerance: 0.02,
@@ -259,7 +259,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
 
                     geometry_data.push(GeometryData::ExtrudedPolygon(ExtrudedPolygonData {
                         path: path_builder.build(),
-                        height: level as f32 / 2.0,
+                        height: level as f32 * 2.0,
                     }));
                 } else {
                     let double_style = match &kind {

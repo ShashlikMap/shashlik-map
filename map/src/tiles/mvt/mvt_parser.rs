@@ -62,6 +62,7 @@ impl MvtParser {
                                     "tertiary" => Some(HighwayKind::Tertiary),
                                     "unclassified" => Some(HighwayKind::Unclassified),
                                     "residential" => Some(HighwayKind::Residential),
+                                    "minor" => Some(HighwayKind::Residential),
                                     // "motorwaylink" => Some(HighwayKind::MotorwayLink),
                                     // "trunklink" => Some(HighwayKind::TrunkLink),
                                     // "primarylink" => Some(HighwayKind::PrimaryLink),
@@ -72,7 +73,6 @@ impl MvtParser {
                                     _ => None,
                                 };
                             }
-                            // println!("{key} = {value:?}");
                         }
 
                         if let Some(highway_kind) = highway_kind {
@@ -191,6 +191,36 @@ impl MvtParser {
                                         geom_object.clone(),
                                         MapGeometry::Poly(ls),
                                     ));
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            } else if layer.name() == "building" && tile_key.zoom_level >= MAX_ZOOM_LEVEL - 1 {
+                let kk = 512.0f32 / 4096.0;
+                let geom_object = MapGeomObject {
+                    id: -1,
+                    kind: MapGeomObjectKind::Building(3),
+                };
+                for feature in layer.features() {
+                    if let Some(geom_type) = feature.geom_type()
+                        && geom_type == GeomType::POLYGON
+                    {
+                        match feature.geometry()? {
+                            MvtGeometry::Polygon(poly) => {
+                                let ls: Polygon<f32> = poly.map_coords(|coord| {
+                                    coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
+                                });
+                                res.push((geom_object.clone(), MapGeometry::Poly(ls)));
+                            }
+                            MvtGeometry::MultiPolygon(polis) => {
+                                for poly in polis {
+                                    let ls: Polygon<f32> = poly.map_coords(|coord| {
+                                        coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
+                                    });
+
+                                    res.push((geom_object.clone(), MapGeometry::Poly(ls)));
                                 }
                             }
                             _ => {}

@@ -209,8 +209,9 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
                         None => break,
                         Some(msg) => match msg {
                             TilesMessage::TilesData(data) => {
-                                // TODO MAX_ZOOM?
-                                let has_zero_level = data.iter().any(|item| item.zoom_level == 0);
+                                let has_zero_level = data.iter().any(|item|
+                                    item.zoom_level == MAX_ZOOM_LEVEL
+                                );
                                 zero_zoom_level_loaded.store(has_zero_level, Ordering::Relaxed);
                                 data.into_iter().for_each(|item| {
                                     renderer_api.add_render_group(
@@ -245,7 +246,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
         self.update_styles();
 
         let cam_zoom = self.camera.scale();
-        let scale_2d_3d = self.transition_2d_3d_helper.update(cam_zoom, Self::TEMP_ANIMATION_SPEED as f32);
+        let scale_2d_3d = self.transition_2d_3d_helper.update(cam_zoom.log2(), Self::TEMP_ANIMATION_SPEED as f32);
 
         let (view, view_proj) = self.camera.build_view_projection_matrix();
         let view_light = self.camera.build_view_light_matrix();
