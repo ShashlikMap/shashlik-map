@@ -1,3 +1,4 @@
+use std::fmt::format;
 use crate::MAX_ZOOM_LEVEL;
 use fast_mvt::proto::GeomType;
 use fast_mvt::{MvtGeometry, MvtReaderRef, MvtResult, MvtValueRef};
@@ -48,40 +49,46 @@ impl MvtParser {
                         && geom_type == GeomType::LINESTRING
                     {
                         let mut layer: i64 = 0;
-                        let mut highway_kind: Option<HighwayKind> = None;
+                        let mut highway_kind_name: Option<&str> = None;
+                        let mut brunnel = false;
+                        let mut ramp = false;
                         for property in feature.properties() {
                             let (key, value) = property?;
                             if key == "layer" {
                                 layer = LocalMvtValue(value).into();
                             } else if key == "class" {
                                 let road_class: String = LocalMvtValue(value).into();
-                                highway_kind = match road_class.as_str() {
-                                    "motorway" => Some(HighwayKind::Motorway),
-                                    "primary" => Some(HighwayKind::Primary),
-                                    "secondary" => Some(HighwayKind::Secondary),
-                                    "tertiary" => Some(HighwayKind::Tertiary),
-                                    "unclassified" => Some(HighwayKind::Unclassified),
-                                    "residential" => Some(HighwayKind::Residential),
-                                    "minor" => Some(HighwayKind::Residential),
-                                    // "motorwaylink" => Some(HighwayKind::MotorwayLink),
-                                    // "trunklink" => Some(HighwayKind::TrunkLink),
-                                    // "primarylink" => Some(HighwayKind::PrimaryLink),
-                                    // "secondarylink" => Some(HighwayKind::SecondaryLink),
-                                    // "tertiarylink" => Some(HighwayKind::TertiaryLink),
-                                    "service" => Some(HighwayKind::Service),
-                                    "trunk" => Some(HighwayKind::Trunk),
+                                highway_kind_name = match road_class.as_str() {
+                                    "motorway" => Some("motorway"),
+                                    "primary" => Some("primary"),
+                                    "secondary" => Some("secondary"),
+                                    "tertiary" => Some("tertiary"),
+                                    "unclassified" => Some("unclassified"),
+                                    "residential" => Some("residential"),
+                                    "minor" => Some("residential"),
+                                    "service" => Some("service"),
+                                    "trunk" => Some("trunk"),
                                     _ => None,
                                 };
+                            } else if key == "brunnel" {
+                                brunnel = true;
+                            } else if key == "ramp" {
+                                ramp = true;
                             }
                         }
 
-                        if let Some(highway_kind) = highway_kind {
+                        if let Some(highway_kind_name) = highway_kind_name {
+                            let mut bb = highway_kind_name.to_string();
+                            if ramp {
+                                bb = format!("{highway_kind_name}_link");
+                            }
+                            let highway_kind = HighwayKind::from_descr(bb.as_str()).unwrap();
                             let kk = 512.0f32 / 4096.0;
                             let geom_object = MapGeomObject {
                                 id: -1,
                                 kind: MapGeomObjectKind::Way(WayInfo {
                                     line_kind: LineKind::Highway { kind: highway_kind },
-                                    layer: layer as i32,
+                                    layer: if brunnel { layer as i32 } else { 0 },
                                     layer_kind: LayerKind::None,
                                     name_en: None,
                                 }),
@@ -229,6 +236,8 @@ impl MvtParser {
                 }
             }
         }
+
+        res.sort_by(|(a, _), (b, _)| a.cmp(b));
 
         let fixed = res
             .into_iter()
