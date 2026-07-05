@@ -130,3 +130,11 @@ jobs:
           files: |
             ./downloads/shashlik-map-mac.zip
             ./downloads/shashlik-map-release.apk
+
+      - name: Cleanup old releases
+        uses: dev-drprasad/delete-older-releases@v0.3.2
+        with:
+          keep_latest: 3
+          delete_tags: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
