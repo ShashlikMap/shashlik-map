@@ -1,13 +1,7 @@
 name: Build and Release Apps
 
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - 'README.md'
-      - '.gitignore'
-      - 'kms_deploy.sh'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -31,11 +25,8 @@ jobs:
       - name: Build production release
         run: |
           cargo build --release --target aarch64-apple-darwin --package winit-run --bin winit-run
-          # Prepare the file for release
           mkdir -p dist
           cp target/aarch64-apple-darwin/release/winit-run dist/shashlik-map-mac
-          
-          # Compress it into a zip file
           cd dist && zip shashlik-map-mac.zip shashlik-map-mac
         env:
           MAPTILER_API_KEY: ${{ secrets.MAPTILER_API_KEY }}
@@ -69,7 +60,6 @@ jobs:
         run: ./gradlew assembleRelease
         env:
           MAPTILER_API_KEY: ${{ secrets.MAPTILER_API_KEY }}
-        # working-directory: ./android
 
       - name: Rename APK file
         run: |
@@ -88,6 +78,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download macOS artifact
         uses: actions/download-artifact@v4
@@ -107,15 +99,34 @@ jobs:
         id: tag
         run: echo "release_tag=v$(date +'%Y.%m.%d-%H%M%S')" >> $GITHUB_OUTPUT
 
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$LATEST_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --reverse)
+          else
+            CHANGELOG=$(git log $LATEST_TAG..HEAD --pretty=format:"- %s (%h)" --reverse)
+          fi
+          
+          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+          echo "commits=$CHANGELOG" >> $GITHUB_OUTPUT
+
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.release_tag }}
           name: Release ${{ steps.tag.outputs.release_tag }}
           body: |
-            Automated production build.
-            - **macOS App**: Compiled for Apple Silicon.
-            - **Android App**: Release APK (Signed with Debug Certificate).
+            **Release Date:** ${{ steps.tag.outputs.release_tag }}
+            
+            ## Release Contents
+            - macOS app (Apple Silicon)
+            - Android APK
+            
+            ## Changes
+            ${{ steps.changelog.outputs.commits }}
           draft: false
           prerelease: false
           files: |
