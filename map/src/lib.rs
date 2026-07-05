@@ -103,7 +103,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
 
     const FOLLOW_ANIMATION_DELAY_MS: u64 = 2000;
     const TELEPORT_THRESHOLD: f64 = 300.0;
-    const ZOOM_LOCK_DIST: f64 = 100.0;
+    const ZOOM_LOCK_DIST: f64 = 200.0;
 
     pub async fn new(
         canvas: Box<dyn WgpuCanvas>,
@@ -165,8 +165,8 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
             camera_bearing: 0.0,
             current_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
-            cam_follow_mode: false,
-            cam_follow_zoom_lock: None,
+            cam_follow_mode: true,
+            cam_follow_zoom_lock: Some(Self::ZOOM_LOCK_DIST),
             screen_params: ScreenParam {
                 width: screen_size.0 as u32,
                 height: screen_size.1 as u32,

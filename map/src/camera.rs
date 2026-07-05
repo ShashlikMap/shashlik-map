@@ -27,7 +27,7 @@ impl Camera {
 
     pub fn new(initial_world: DVec2) -> Self {
         Camera {
-            eye:  initial_world.extend(Self::INITIAL_Z),
+            eye:  initial_world.extend(Self::INITIAL_Z * 2.0),
             target: initial_world.extend(0.0),
             up: DVec3::Y,
             fovy: Self::DEFAULT_FOV,

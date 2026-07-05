@@ -1,14 +1,14 @@
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
 use crate::mesh_layers::BaseMeshLayer;
-use crate::pass_nodes::PassNode;
+use crate::pass_nodes::{PassNode, BACKGROUND_ATTACHMENT_COLOR};
 use crate::textures::{create_common_texture, create_depth_texture, create_simple_texture, create_simple_texture_with_data, TextureData, SAMPLE_COUNT};
 use glam::Vec4;
 use rand::prelude::ThreadRng;
 use rand::{rng, RngExt};
 use std::borrow::Cow;
 use wesl::include_wesl;
-use wgpu::{BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, ImageSubresourceRange, ShaderModuleDescriptor, ShaderSource, StorageTextureAccess, TextureFormat, TextureUsages, TextureView, TextureViewDimension};
+use wgpu::{BindGroup, Color, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, ImageSubresourceRange, ShaderModuleDescriptor, ShaderSource, StorageTextureAccess, TextureFormat, TextureUsages, TextureView, TextureViewDimension};
 use wgpu_canvas::SSAO_ENABLED;
 
 pub(crate) struct MainPassNode {
@@ -23,7 +23,6 @@ pub(crate) struct MainPassNode {
 }
 
 impl MainPassNode {
-
     pub fn new(global_context: &GlobalContext) -> Self {
         let size = (
             global_context.config().width,
@@ -260,12 +259,7 @@ impl PassNode for MainPassNode {
             view: &self.msaa_texture_view,
             resolve_target: Some(output_view),
             ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(wgpu::Color {
-                    r: 0.957,
-                    g: 0.953,
-                    b: 0.941,
-                    a: 1.0,
-                }),
+                load: wgpu::LoadOp::Clear(BACKGROUND_ATTACHMENT_COLOR),
                 // FYI!! Discard output! It improves MSAA drastically on low-end devices
                 store: wgpu::StoreOp::Discard,
             },
