@@ -183,46 +183,46 @@ impl MvtPropHandler {
 
     pub fn get_prop_value<T: Default>(&self, key: &'static str) -> T
     where
-        Option<T>: From<LocalMvtValue>,
+        for<'a> Option<T>: From<LocalMvtValue<'a>>,
     {
         self.map
             .get(key)
             // How to get rid of clone()?
-            .and_then(|value| LocalMvtValue(value.clone()).into())
+            .and_then(|value| LocalMvtValue(value).into())
             .unwrap_or_default()
     }
 }
 
-struct LocalMvtValue(pub MvtValue);
+struct LocalMvtValue<'a>(pub &'a MvtValue);
 
-impl LocalMvtValue {
+impl LocalMvtValue<'_> {
     fn unexpected_type<T>(&self, expected: &str) -> Option<T> {
-        error!("Unexpected {} MvtValueRef: {:?}", expected, self.0);
+        error!("Unexpected {} MvtValue: {:?}", expected, self.0);
         None
     }
 }
-impl From<LocalMvtValue> for Option<i64> {
+impl From<LocalMvtValue<'_>> for Option<i64> {
     fn from(value: LocalMvtValue) -> Self {
         match value.0 {
-            MvtValue::SInt(value) => Some(value),
+            MvtValue::SInt(value) => Some(*value),
             _ => value.unexpected_type("i64"),
         }
     }
 }
 
-impl From<LocalMvtValue> for Option<String> {
+impl From<LocalMvtValue<'_>> for Option<String> {
     fn from(value: LocalMvtValue) -> Self {
         match value.0 {
-            MvtValue::String(value) => Some(value),
+            MvtValue::String(value) => Some(value.clone()),
             _ => value.unexpected_type("String"),
         }
     }
 }
 
-impl From<LocalMvtValue> for Option<bool> {
+impl From<LocalMvtValue<'_>> for Option<bool> {
     fn from(value: LocalMvtValue) -> Self {
         match value.0 {
-            MvtValue::Bool(value) => Some(value),
+            MvtValue::Bool(value) => Some(*value),
             _ => value.unexpected_type("bool"),
         }
     }
