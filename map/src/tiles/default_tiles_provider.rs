@@ -2,11 +2,11 @@ use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{MercatorConverter, TilesMessage, TilesProvider, TilesProviderStore};
 use futures::{Stream};
 use futures::channel::mpsc::{UnboundedSender, unbounded};
-use geo::{Area, Convert, MapCoordsInPlace};
+use geo::{Area, Convert};
 use geo::Winding;
 use geo_types::{coord, Coord, LineString, Rect};
 use log::error;
-use osm::map::{MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo, NatureKind};
+use osm::map::{MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo};
 use osm::tiles::{TileKey, TileStore};
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
@@ -33,8 +33,8 @@ pub trait FeatureProcessor: Send + Sync {
     fn process_line(
         &self,
         geometry_data: &mut Vec<GeometryData>,
-        line: LineString,
-        interiors: Vec<LineString>,
+        line: LineString<f32>,
+        interiors: Vec<LineString<f32>>,
         kind: MapGeomObjectKind,
         line_text_map: &mut HashMap<String, i32>,
         zoom_level: i32,
@@ -156,7 +156,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                         let lines = poly.into_inner();
                         let mut line = lines.0;
                         let interiors = if is_water {
-                            lines.1.iter().map(|line| line.convert()).collect()
+                            lines.1
                         } else {
                             vec![]
                         };
@@ -169,7 +169,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
 
                         feature_processor.process_line(
                             &mut geometry_data,
-                            line.convert(),
+                            line,
                             interiors,
                             obj_type.kind,
                             &mut line_text_map,

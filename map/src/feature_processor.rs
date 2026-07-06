@@ -152,8 +152,8 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
     fn process_line(
         &self,
         geometry_data: &mut Vec<GeometryData>,
-        line: LineString,
-        interiors: Vec<LineString>,
+        line: LineString<f32>,
+        interiors: Vec<LineString<f32>>,
         kind: MapGeomObjectKind,
         line_text_map: &mut HashMap<String, i32>,
         zoom_level: i32,
@@ -163,10 +163,10 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         let line = line.0;
         if line.len() >= 2 {
             let mut path_builder = Path::builder();
-            path_builder.begin(point(line[0].x as f32, line[0].y as f32));
+            path_builder.begin(point(line[0].x, line[0].y));
 
             for &p in line[1..].iter() {
-                path_builder.line_to(point(p.x as f32, p.y as f32));
+                path_builder.line_to(point(p.x, p.y));
             }
 
             // fyi, we need to close the building path to properly build a closed stroke
@@ -176,10 +176,10 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
 
             for interior in interiors {
                 if let Some(first_point) = interior.0.first() {
-                    path_builder.begin(point(first_point.x as f32, first_point.y as f32));
+                    path_builder.begin(point(first_point.x, first_point.y));
 
                     for p in interior.0.iter().skip(1) {
-                        path_builder.line_to(point(p.x as f32, p.y as f32));
+                        path_builder.line_to(point(p.x, p.y));
                     }
 
                     path_builder.end(true);
@@ -315,7 +315,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                                 22.0 * dpi_scale,
                                 LineData::new(line
                                     .iter()
-                                    .map(|item| DVec3::new(item.x, item.y, 0.0))
+                                    .map(|item| DVec3::new(item.x as f64, item.y as f64, 0.0))
                                     .collect())
                             )));
                         }
