@@ -153,6 +153,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         &self,
         geometry_data: &mut Vec<GeometryData>,
         line: LineString,
+        interiors: Vec<LineString>,
         kind: MapGeomObjectKind,
         line_text_map: &mut HashMap<String, i32>,
         zoom_level: i32,
@@ -169,8 +170,21 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             }
 
             // fyi, we need to close the building path to properly build a closed stroke
-            let end_with_closing = matches!(kind, MapGeomObjectKind::Building {..});
+            // also if interiors are not empty!
+            let end_with_closing = matches!(kind, MapGeomObjectKind::Building {..}) || !interiors.is_empty();
             path_builder.end(end_with_closing);
+
+            for interior in interiors {
+                if let Some(first_point) = interior.0.first() {
+                    path_builder.begin(point(first_point.x as f32, first_point.y as f32));
+
+                    for p in interior.0.iter().skip(1) {
+                        path_builder.line_to(point(p.x as f32, p.y as f32));
+                    }
+
+                    path_builder.end(true);
+                }
+            }
 
             if let Some((style_id, layer_level, geometry_type, name)) = match &kind {
                 MapGeomObjectKind::Way(info) => match info.line_kind {

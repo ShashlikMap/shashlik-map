@@ -2,11 +2,11 @@ use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{MercatorConverter, TilesMessage, TilesProvider, TilesProviderStore};
 use futures::{Stream};
 use futures::channel::mpsc::{UnboundedSender, unbounded};
-use geo::{Area, Convert};
+use geo::{Area, Convert, MapCoordsInPlace};
 use geo::Winding;
 use geo_types::{coord, Coord, LineString, Rect};
 use log::error;
-use osm::map::{MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo};
+use osm::map::{MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo, NatureKind};
 use osm::tiles::{TileKey, TileStore};
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
@@ -34,6 +34,7 @@ pub trait FeatureProcessor: Send + Sync {
         &self,
         geometry_data: &mut Vec<GeometryData>,
         line: LineString,
+        interiors: Vec<LineString>,
         kind: MapGeomObjectKind,
         line_text_map: &mut HashMap<String, i32>,
         zoom_level: i32,
@@ -134,6 +135,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                     feature_processor.process_line(
                         &mut geometry_data,
                         line.convert(),
+                        vec![],
                         obj_type.kind,
                         &mut line_text_map,
                         zoom_level,
@@ -142,6 +144,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                 }
                 MapGeometry::Poly(poly) => {
                     let is_building = matches!(obj_type.kind, MapGeomObjectKind::Building(_));
+                    let is_water = matches!(obj_type.kind, MapGeomObjectKind::Nature(Water));
                     let is_visible = !cfg!(target_os = "linux")
                         || zoom_level == MAX_ZOOM_LEVEL
                         // reduce amount of buildings for linux
@@ -150,7 +153,13 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                     let is_visible = !is_building || is_visible;
 
                     if is_visible {
-                        let mut line = poly.into_inner().0;
+                        let lines = poly.into_inner();
+                        let mut line = lines.0;
+                        let interiors = if is_water {
+                            lines.1.iter().map(|line| line.convert()).collect()
+                        } else {
+                            vec![]
+                        };
 
                         if is_building {
                             // the winding might not be the same for building lines,
@@ -161,6 +170,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                         feature_processor.process_line(
                             &mut geometry_data,
                             line.convert(),
+                            interiors,
                             obj_type.kind,
                             &mut line_text_map,
                             zoom_level,
