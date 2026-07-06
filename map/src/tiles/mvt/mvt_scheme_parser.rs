@@ -143,12 +143,13 @@ impl MvtSchemeParser {
         });
 
         let city_country_label_handler = |handler: &MvtPropHandler| {
-            let name: String = handler.get_prop_value("name:en");
+            let name_en: String = handler.get_prop_value("name:en");
+            let name: String = handler.get_prop_value("name");
 
             Some(MapGeomObject {
                 id: -1,
                 kind: MapGeomObjectKind::Poi(MapPointInfo {
-                    text: name,
+                    text: if name_en.is_empty() { name } else { name_en },
                     kind: MapPointObjectKind::PopArea(PopAreaInfo {
                         level: 0,
                         population: 0,
@@ -160,10 +161,13 @@ impl MvtSchemeParser {
         let country_label_handler =
             MvtPropHandler::new("country_label", city_country_label_handler);
 
-        let country_border_handler = MvtPropHandler::new("country_border", |_| {
-            Some(MapGeomObject {
-                id: -1,
-                kind: MapGeomObjectKind::AdminLine,
+        let country_border_handler = MvtPropHandler::new("country_border", |handler| {
+            let maritime: bool = handler.get_prop_value("maritime");
+            (!maritime).then(|| {
+                MapGeomObject {
+                    id: -1,
+                    kind: MapGeomObjectKind::AdminLine,
+                }
             })
         });
 
