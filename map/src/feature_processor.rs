@@ -211,15 +211,21 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         }
                     }
                 },
-                MapGeomObjectKind::AdminLine => Some((
-                    StyleId::new("admin_line"),
-                    0,
-                    GeometryType::Polyline(PolylineOptions {
-                        width: 250.0f32,
-                        ..Default::default()
-                    }),
-                    None,
-                )),
+                MapGeomObjectKind::AdminLine => {
+                    if zoom_level >= 10 {
+                        Some((
+                            StyleId::new("admin_line"),
+                            0,
+                            GeometryType::Polyline(PolylineOptions {
+                                width: 100.0 * zoom_level as f32,
+                                ..Default::default()
+                            }),
+                            None,
+                        ))
+                    } else {
+                        None
+                    }
+                },
                 MapGeomObjectKind::Nature(kind) => {
                     let style_id = match kind {
                         NatureKind::Ground => StyleId::new("ground"),

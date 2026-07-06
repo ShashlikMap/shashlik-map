@@ -176,6 +176,13 @@ impl MvtSchemeParser {
             })
         });
 
+        let country_border_handler = MvtPropHandler::new("country_border", |handler| {
+            Some(MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::AdminLine,
+            })
+        });
+
         Self::new_from_handlers(vec![
             road_handler,
             water_handler,
@@ -188,6 +195,7 @@ impl MvtSchemeParser {
             poi_transport_handler,
             city_label_handler,
             country_label_handler,
+            country_border_handler,
         ])
     }
 
