@@ -187,6 +187,7 @@ impl MvtPropHandler {
     {
         self.map
             .get(key)
+            // How to get rid of clone()?
             .and_then(|value| LocalMvtValue(value.clone()).into())
             .unwrap_or_default()
     }
