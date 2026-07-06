@@ -1,236 +1,76 @@
+use crate::tiles::mvt::mvt_scheme_parser::MvtSchemeParser;
 use crate::MAX_ZOOM_LEVEL;
 use fast_mvt::proto::GeomType;
-use fast_mvt::{MvtGeometry, MvtReaderRef, MvtResult, MvtValueRef};
-use geo::{CoordsIter, MapCoords};
-use geo_types::{coord, Geometry, LineString, Polygon};
-use osm::map::{
-    HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, NatureKind,
-    WayInfo,
-};
+use fast_mvt::{MvtReaderRef, MvtResult};
+use geo::MapCoords;
+use geo_types::{Coord, Geometry, LineString, Polygon};
+use osm::map::{MapGeomObject, MapGeometry};
 use osm::tiles::TileKey;
 
-pub struct MvtParser;
+pub struct MvtParser {
+    schema_parser: MvtSchemeParser,
+}
 
-// TODO This is WIP and requires reworking. So far just a temporary PoC implementation
+impl Default for MvtParser {
+    fn default() -> Self {
+        MvtParser::new()
+    }
+}
+
 impl MvtParser {
+    pub fn new() -> Self {
+        Self {
+            schema_parser: MvtSchemeParser::new_map_tiler_v4(),
+        }
+    }
     fn get_all_lines(geometry: Geometry<i32>) -> Vec<LineString<i32>> {
         match geometry {
             Geometry::LineString(line_string) => {
-                // .lines() returns an iterator over individual Line segments
                 vec![line_string]
             }
-            Geometry::MultiLineString(multi_line_string) => {
-                // MultiLineString contains multiple LineStrings;
-                // iterate over them, get lines for each, and flatten
-                multi_line_string
-                    .into_iter()
-                    .collect()
+            Geometry::MultiLineString(multi_line_string) => multi_line_string.into_iter().collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    fn get_all_polygons(geometry: Geometry<i32>) -> Vec<Polygon<i32>> {
+        match geometry {
+            Geometry::Polygon(polygon) => {
+                vec![polygon]
             }
-            _ => {
-                // Handle or ignore other geometry variants (like Point, Polygon, etc.)
-                Vec::new()
-            }
+            Geometry::MultiPolygon(multi_polygon) => multi_polygon.into_iter().collect(),
+            _ => Vec::new(),
         }
     }
 
     pub fn read_mvt_tile(
+        &self,
         bytes: &[u8],
         tile_key: &TileKey,
     ) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>)>> {
-        let mut res = vec![];
         let reader = MvtReaderRef::new(bytes)?;
+        let mut result = self.schema_parser.parse(reader.layers(), |feature| {
+            let mut res = vec![];
+            let geom_type = feature.geom_type();
+            let geometry = feature.geometry();
 
-        for layer in reader.layers() {
-            // println!("layer: {:?}",layer.name());
-            if layer.name() == "road" {
-                for feature in layer.features() {
-                    if let Some(geom_type) = feature.geom_type()
-                        && geom_type == GeomType::LINESTRING
-                    {
-                        let mut layer: i64 = 0;
-                        let mut highway_kind: Option<HighwayKind> = None;
-                        for property in feature.properties() {
-                            let (key, value) = property?;
-                            if key == "layer" {
-                                layer = LocalMvtValue(value).into();
-                            } else if key == "class" {
-                                let road_class: String = LocalMvtValue(value).into();
-                                highway_kind = match road_class.as_str() {
-                                    "motorway" => Some(HighwayKind::Motorway),
-                                    "primary" => Some(HighwayKind::Primary),
-                                    "secondary" => Some(HighwayKind::Secondary),
-                                    "tertiary" => Some(HighwayKind::Tertiary),
-                                    "unclassified" => Some(HighwayKind::Unclassified),
-                                    "residential" => Some(HighwayKind::Residential),
-                                    "minor" => Some(HighwayKind::Residential),
-                                    // "motorwaylink" => Some(HighwayKind::MotorwayLink),
-                                    // "trunklink" => Some(HighwayKind::TrunkLink),
-                                    // "primarylink" => Some(HighwayKind::PrimaryLink),
-                                    // "secondarylink" => Some(HighwayKind::SecondaryLink),
-                                    // "tertiarylink" => Some(HighwayKind::TertiaryLink),
-                                    "service" => Some(HighwayKind::Service),
-                                    "trunk" => Some(HighwayKind::Trunk),
-                                    _ => None,
-                                };
-                            }
-                        }
-
-                        if let Some(highway_kind) = highway_kind {
-                            let kk = 512.0f32 / 4096.0;
-                            let geom_object = MapGeomObject {
-                                id: -1,
-                                kind: MapGeomObjectKind::Way(WayInfo {
-                                    line_kind: LineKind::Highway { kind: highway_kind },
-                                    layer: layer as i32,
-                                    layer_kind: LayerKind::None,
-                                    name_en: None,
-                                }),
-                            };
-                            for line in Self::get_all_lines(feature.geometry()?) {
-                                let ls: LineString<f32> = line
-                                    .coords_iter()
-                                    .map(|coord| {
-                                        coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
-                                    })
-                                    .collect();
-
-                                res.push((geom_object.clone(), MapGeometry::Line(ls)));
-                            }
-                        }
+            if let (Some(geom_type), Some(geometry)) = (geom_type, geometry.ok()) {
+                // TODO Add points later
+                if geom_type == GeomType::LINESTRING {
+                    for line in Self::get_all_lines(geometry) {
+                        res.push(MapGeometry::Line(line));
                     }
-                }
-            } else if layer.name() == "water" {
-                let kk = 512.0f32 / 4096.0;
-                let geom_object = MapGeomObject {
-                    id: -1,
-                    kind: MapGeomObjectKind::Nature(NatureKind::Water),
-                };
-                for feature in layer.features() {
-                    if let Some(geom_type) = feature.geom_type()
-                        && geom_type == GeomType::POLYGON
-                    {
-                        match feature.geometry()? {
-                            MvtGeometry::Polygon(poly) => {
-                                let ls: Polygon<f32> = poly.map_coords(|coord| {
-                                    coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
-                                });
-                                res.push((geom_object.clone(), MapGeometry::Poly(ls)));
-                            }
-                            MvtGeometry::MultiPolygon(polis) => {
-                                for poly in polis {
-                                    let ls: Polygon<f32> = poly.map_coords(|coord| {
-                                        coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
-                                    });
-
-                                    res.push((geom_object.clone(), MapGeometry::Poly(ls)));
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-            } else if layer.name() == "landuse"
-                || layer.name() == "landcover"
-                || layer.name() == "park"
-                || layer.name() == "grass"
-                || layer.name() == "wood"
-                // || layer.name() == "scrub"
-                // || layer.name() == "forest"
-                // || layer.name() == "vegetation"
-            {
-                // println!("layer: {:?}",layer.name());
-                for feature in layer.features() {
-                    // for property in feature.properties() {
-                    //     let (key, value) = property?;
-                    //     // println!("key: {:?}, value: {:?}", key, value);
-                    //     if key == "class" || key != "class"  {
-                    //         let class_type: String = LocalMvtValue(value).into();
-                    //         // println!("ClassType: {}", class_type);
-                    //         if layer.name() == "park"
-                    //         || layer.name() == "grass"
-                    //         || layer.name() == "wood"
-                    //             || class_type == "wood"
-                    //             || class_type == "park"
-                    //             || class_type == "grass"
-                    //             || class_type == "garden"
-                    //             || class_type == "heath"
-                    //             || class_type == "grassland"
-                    //             || class_type == "nature_reserve"
-                    //             || class_type == "geopark"
-                    //             || class_type == "farmland"
-                    //             || class_type == "national_park"
-                    //         {
-                    //
-                    //         }
-                    //     }
-                    //     // println!("key: {:?}, value: {:?}",key, value);
-                    // }
-
-                    let kk = 512.0f32 / 4096.0;
-                    let geom_object = MapGeomObject {
-                        id: -1,
-                        kind: MapGeomObjectKind::Nature(NatureKind::Forest),
-                    };
-                    if let Some(geom_type) = feature.geom_type()
-                        && geom_type == GeomType::POLYGON
-                    {
-                        match feature.geometry()? {
-                            MvtGeometry::Polygon(poly) => {
-                                let ls: Polygon<f32> = poly.map_coords(|coord| {
-                                    coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
-                                });
-                                res.push((geom_object.clone(), MapGeometry::Poly(ls)));
-                            }
-                            MvtGeometry::MultiPolygon(polis) => {
-                                for poly in polis {
-                                    let ls: Polygon<f32> = poly.map_coords(|coord| {
-                                        coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
-                                    });
-
-                                    res.push((
-                                        geom_object.clone(),
-                                        MapGeometry::Poly(ls),
-                                    ));
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-            } else if layer.name() == "building" && tile_key.zoom_level >= MAX_ZOOM_LEVEL - 1 {
-                let kk = 512.0f32 / 4096.0;
-                let geom_object = MapGeomObject {
-                    id: -1,
-                    kind: MapGeomObjectKind::Building(3),
-                };
-                for feature in layer.features() {
-                    if let Some(geom_type) = feature.geom_type()
-                        && geom_type == GeomType::POLYGON
-                    {
-                        match feature.geometry()? {
-                            MvtGeometry::Polygon(poly) => {
-                                let ls: Polygon<f32> = poly.map_coords(|coord| {
-                                    coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
-                                });
-                                res.push((geom_object.clone(), MapGeometry::Poly(ls)));
-                            }
-                            MvtGeometry::MultiPolygon(polis) => {
-                                for poly in polis {
-                                    let ls: Polygon<f32> = poly.map_coords(|coord| {
-                                        coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
-                                    });
-
-                                    res.push((geom_object.clone(), MapGeometry::Poly(ls)));
-                                }
-                            }
-                            _ => {}
-                        }
+                } else if geom_type == GeomType::POLYGON {
+                    for polygon in Self::get_all_polygons(geometry) {
+                        res.push(MapGeometry::Poly(polygon));
                     }
                 }
             }
-        }
+            res
+        });
 
-        let fixed = res
+        result.sort_by(|(a, _), (b, _)| a.cmp(b));
+        let fixed = result
             .into_iter()
             .map(|(geom, obj)| {
                 let obj_fixed = Self::convert_and_restore_data(&obj, tile_key);
@@ -242,40 +82,23 @@ impl MvtParser {
     }
 
     fn convert_and_restore_data(
-        geometry: &MapGeometry<f32>,
+        geometry: &MapGeometry<i32>,
         tile_key: &TileKey,
     ) -> MapGeometry<f32> {
         // FIXME Zoom level handling
         let factor = 2.0f32.powf((MAX_ZOOM_LEVEL - tile_key.zoom_level) as f32);
+        let koef = 512.0f32 / 4096.0;
+        let total_multiplier = factor * koef;
+        let convert_coord = |c: &Coord<i32>| -> Coord<f32> {
+            Coord {
+                x: (c.x as f32) * total_multiplier,
+                y: (c.y as f32) * total_multiplier,
+            }
+        };
         match geometry {
-            MapGeometry::Line(line) => MapGeometry::Line(line.map_coords(|coord| {
-                coord * factor
-            })),
-            MapGeometry::Poly(poly) => MapGeometry::Poly(poly.map_coords(|coord| {
-                coord * factor
-            })),
-            MapGeometry::Coord(coord) => MapGeometry::Coord(
-                *coord * factor,
-            ),
-        }
-    }
-}
-
-struct LocalMvtValue<'a>(MvtValueRef<'a>);
-impl From<LocalMvtValue<'_>> for i64 {
-    fn from(value: LocalMvtValue<'_>) -> Self {
-        match value.0 {
-            MvtValueRef::SInt(value) => value,
-            _ => panic!("Unexpected MvtValueRef"),
-        }
-    }
-}
-
-impl From<LocalMvtValue<'_>> for String {
-    fn from(value: LocalMvtValue<'_>) -> Self {
-        match value.0 {
-            MvtValueRef::String(value) => value.to_string(),
-            _ => panic!("Unexpected MvtValueRef"),
+            MapGeometry::Line(line) => MapGeometry::Line(line.map_coords(|c| convert_coord(&c))),
+            MapGeometry::Poly(poly) => MapGeometry::Poly(poly.map_coords(|c| convert_coord(&c))),
+            MapGeometry::Coord(coord) => MapGeometry::Coord(convert_coord(coord)),
         }
     }
 }
