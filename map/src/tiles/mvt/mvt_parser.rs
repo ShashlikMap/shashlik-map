@@ -1,7 +1,7 @@
-use std::fmt::format;
+use crate::tiles::mvt::mvt_scheme_parser::MvtSchemeParser;
 use crate::MAX_ZOOM_LEVEL;
 use fast_mvt::proto::GeomType;
-use fast_mvt::{MvtGeometry, MvtReaderRef, MvtResult, MvtValueRef};
+use fast_mvt::{MvtGeometry, MvtReaderRef, MvtResult, MvtValue, MvtValueRef};
 use geo::{CoordsIter, MapCoords};
 use geo_types::{coord, Geometry, LineString, Polygon};
 use osm::map::{
@@ -10,10 +10,17 @@ use osm::map::{
 };
 use osm::tiles::TileKey;
 
-pub struct MvtParser;
+pub struct MvtParser {
+    mvt_s: MvtSchemeParser
+}
 
 // TODO This is WIP and requires reworking. So far just a temporary PoC implementation
 impl MvtParser {
+    pub fn new() -> Self {
+        Self {
+            mvt_s: MvtSchemeParser::new_map_tiler_v4()
+        }
+    }
     fn get_all_lines(geometry: Geometry<i32>) -> Vec<LineString<i32>> {
         match geometry {
             Geometry::LineString(line_string) => {
@@ -32,6 +39,47 @@ impl MvtParser {
                 Vec::new()
             }
         }
+    }
+
+    pub fn read_mvt_tile2(
+        &mut self,
+        bytes: &[u8],
+        tile_key: &TileKey,
+    ) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>)>> {
+        let reader = MvtReaderRef::new(bytes)?;
+        let kk = 512.0f32 / 4096.0;
+        let mut result = self.mvt_s.parse(reader.layers(), |feature| {
+            let mut res = vec![];
+            let geom_type = feature.geom_type();
+            let geometry = feature.geometry();
+
+            if let Some(geom_type) = geom_type && geometry.is_ok() {
+                if geom_type == GeomType::LINESTRING {
+                    for line in Self::get_all_lines(feature.geometry().unwrap()) {
+                        let ls: LineString<f32> = line
+                            .coords_iter()
+                            .map(|coord| {
+                                coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
+                            })
+                            .collect();
+
+                        res.push(MapGeometry::Line(ls));
+                    }
+                } else if geom_type == GeomType::POLYGON {}
+            }
+            res
+        });
+
+        result.sort_by(|(a, _), (b, _)| a.cmp(b));
+        let fixed = result
+            .into_iter()
+            .map(|(geom, obj)| {
+                let obj_fixed = Self::convert_and_restore_data(&obj, tile_key);
+                (geom, obj_fixed)
+            })
+            .collect();
+
+        Ok(fixed)
     }
 
     pub fn read_mvt_tile(
@@ -270,9 +318,46 @@ impl MvtParser {
     }
 }
 
-struct LocalMvtValue<'a>(MvtValueRef<'a>);
+pub(crate) struct LocalMvtValue2(pub MvtValue);
+
+impl From<LocalMvtValue2> for i64 {
+    fn from(value: LocalMvtValue2) -> Self {
+        match value.0 {
+            MvtValue::SInt(value) => value,
+            _ => panic!("Unexpected MvtValueRef"),
+        }
+    }
+}
+
+impl From<LocalMvtValue2> for String {
+    fn from(value: LocalMvtValue2) -> Self {
+        match value.0 {
+            MvtValue::String(value) => value,
+            _ => panic!("Unexpected MvtValueRef"),
+        }
+    }
+}
+
+impl From<LocalMvtValue2> for bool {
+    fn from(value: LocalMvtValue2) -> Self {
+        match value.0 {
+            MvtValue::Bool(value) => value,
+            _ => panic!("Unexpected MvtValueRef"),
+        }
+    }
+}
+
+pub(crate) struct LocalMvtValue<'a>(pub MvtValueRef<'a>);
 impl From<LocalMvtValue<'_>> for i64 {
     fn from(value: LocalMvtValue<'_>) -> Self {
+        match value.0 {
+            MvtValueRef::SInt(value) => value,
+            _ => panic!("Unexpected MvtValueRef"),
+        }
+    }
+}
+impl <'a> From<&'a LocalMvtValue<'a>> for i64 {
+    fn from(value: &LocalMvtValue<'a>) -> Self {
         match value.0 {
             MvtValueRef::SInt(value) => value,
             _ => panic!("Unexpected MvtValueRef"),
