@@ -11,6 +11,12 @@ pub struct MvtParser {
     schema_parser: MvtSchemeParser,
 }
 
+impl Default for MvtParser {
+    fn default() -> Self {
+        MvtParser::new()
+    }
+}
+
 impl MvtParser {
     pub fn new() -> Self {
         Self {
@@ -48,10 +54,7 @@ impl MvtParser {
             let geom_type = feature.geom_type();
             let geometry = feature.geometry();
 
-            if let Some(geom_type) = geom_type
-                && geometry.is_ok()
-            {
-                let geometry = geometry.unwrap();
+            if let (Some(geom_type), Some(geometry)) = (geom_type, geometry.ok()) {
                 // TODO Add points later
                 if geom_type == GeomType::LINESTRING {
                     for line in Self::get_all_lines(geometry) {

@@ -35,7 +35,7 @@ impl MvtTileStore {
             .build()
             .unwrap();
         Self {
-            mvt_parser: MvtParser::new(),
+            mvt_parser: MvtParser::default(),
             client
         }
     }

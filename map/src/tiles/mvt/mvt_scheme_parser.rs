@@ -84,7 +84,7 @@ impl MvtSchemeParser {
             Some(MapGeomObject {
                 id: -1,
                 // fyi, 3 - koef to convert map tiler height to osm levels, 2 - feature processor multiplier
-                kind: MapGeomObjectKind::Building((height / (3 * 2)) as u16),
+                kind: MapGeomObjectKind::Building(((height / (3 * 2)) as u16).clamp(0, 100)),
             })
         });
 
