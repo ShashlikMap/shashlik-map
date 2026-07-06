@@ -34,11 +34,11 @@ impl MvtSchemeParser {
             };
 
             highway_kind_name.and_then(|highway_kind_name| {
-                let mut bb = highway_kind_name.to_string();
+                let mut highway_tag = highway_kind_name.to_string();
                 if ramp {
-                    bb = format!("{highway_kind_name}_link");
+                    highway_tag = format!("{highway_kind_name}_link");
                 }
-                HighwayKind::from_descr(bb.as_str()).map(|kind| MapGeomObject {
+                HighwayKind::from_descr(highway_tag.as_str()).map(|kind| MapGeomObject {
                     id: -1,
                     kind: MapGeomObjectKind::Way(WayInfo {
                         line_kind: LineKind::Highway { kind },
@@ -115,17 +115,20 @@ impl MvtSchemeParser {
     where
         F: Fn(&MvtFeatureRef) -> Vec<MapGeometry<i32>>,
     {
-        let mut res = vec![];
-        for layer in layers {
-            if let Some(mut handler) = self.config.get(layer.name()).cloned() {
-                for feature in layer.features() {
-                    let data = handler.build(&feature, &geom_builder);
-                    res.extend(data);
-                }
-            }
-        }
-
-        res
+        let geom_builder_ref = &geom_builder;
+        layers
+            .filter_map(|layer| {
+                self.config
+                    .get(layer.name())
+                    .cloned()
+                    .map(|handler| (layer, handler))
+            })
+            .flat_map(|(layer, mut handler)| {
+                layer
+                    .features()
+                    .flat_map(move |feature| handler.build(&feature, geom_builder_ref))
+            })
+            .collect()
     }
 }
 
