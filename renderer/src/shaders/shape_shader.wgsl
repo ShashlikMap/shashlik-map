@@ -136,7 +136,7 @@ fn vs_main_route(
 
     var pointPos = modelpos.xyz;
     if(with_normal) {
-        var normal_scale = max(camera_scale, 0.75) - 1.0;
+        var normal_scale = max(camera_scale, 0.75) * 0.5;
         if(model.instance_index % 2 == 0) {
             if(normal_scale < 0.0) {
                 normal_scale /= route_inflate_factor;
