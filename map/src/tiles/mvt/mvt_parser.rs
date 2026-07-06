@@ -9,14 +9,13 @@ use osm::map::{MapGeomObject, MapGeometry};
 use osm::tiles::TileKey;
 
 pub struct MvtParser {
-    mvt_s: MvtSchemeParser,
+    schema_parser: MvtSchemeParser,
 }
 
-// TODO This is WIP and requires reworking. So far just a temporary PoC implementation
 impl MvtParser {
     pub fn new() -> Self {
         Self {
-            mvt_s: MvtSchemeParser::new_map_tiler_v4(),
+            schema_parser: MvtSchemeParser::new_map_tiler_v4(),
         }
     }
     fn get_all_lines(geometry: Geometry<i32>) -> Vec<LineString<i32>> {
@@ -36,7 +35,7 @@ impl MvtParser {
     ) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>)>> {
         let reader = MvtReaderRef::new(bytes)?;
         let koef = 512.0f32 / 4096.0;
-        let mut result = self.mvt_s.parse(reader.layers(), |feature| {
+        let mut result = self.schema_parser.parse(reader.layers(), |feature| {
             let mut res = vec![];
             let geom_type = feature.geom_type();
             let geometry = feature.geometry();
