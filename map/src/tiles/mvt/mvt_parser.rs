@@ -42,7 +42,7 @@ impl MvtParser {
     }
 
     pub fn read_mvt_tile2(
-        &mut self,
+        &self,
         bytes: &[u8],
         tile_key: &TileKey,
     ) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>)>> {

@@ -4,6 +4,7 @@ use osm::map::{
     HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, WayInfo,
 };
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub(crate) struct MvtSchemeParser {
     config: HashMap<&'static str, MvtPropHandler>,
@@ -18,7 +19,7 @@ impl MvtSchemeParser {
             let brunnel: bool = !brunnel.is_empty();
             let ramp: bool = handler.get_prop_value("ramp");
 
-            let mut highway_kind_name: Option<&str> = match road_class.as_str() {
+            let highway_kind_name: Option<&str> = match road_class.as_str() {
                 "motorway" => Some("motorway"),
                 "primary" => Some("primary"),
                 "secondary" => Some("secondary"),
@@ -61,7 +62,7 @@ impl MvtSchemeParser {
     }
 
     pub fn parse<'b, F>(
-        &mut self,
+        &self,
         layers: impl Iterator<Item = MvtLayerRef<'b>>,
         geom_builder: F,
     ) -> Vec<(MapGeomObject, MapGeometry<f32>)>
@@ -70,8 +71,8 @@ impl MvtSchemeParser {
     {
         let mut res = vec![];
         for layer in layers {
-            let handler = self.config.get_mut(layer.name());
-            if let Some(handler) = handler {
+            let mut handler = self.config.get(layer.name()).cloned();
+            if let Some(handler) = handler.as_mut() {
                 for feature in layer.features() {
                     let data = handler.build(&feature, &geom_builder);
                     res.extend(data);
@@ -83,20 +84,21 @@ impl MvtSchemeParser {
     }
 }
 
+#[derive(Clone)]
 struct MvtPropHandler {
     layer: &'static str,
-    builder: Box<dyn Fn(&Self) -> Option<MapGeomObject>>,
+    builder: Arc<dyn Fn(&Self) -> Option<MapGeomObject> + Send + Sync>,
     map: HashMap<String, MvtValue>,
 }
 
 impl MvtPropHandler {
     pub fn new<F>(layer: &'static str, builder: F) -> Self
     where
-        F: Fn(&Self) -> Option<MapGeomObject> + 'static,
+        F: Fn(&Self) -> Option<MapGeomObject> + Send + Sync + 'static,
     {
         Self {
             layer,
-            builder: Box::new(builder),
+            builder: Arc::new(builder),
             map: HashMap::new(),
         }
     }

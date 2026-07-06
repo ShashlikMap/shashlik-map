@@ -17,6 +17,7 @@ struct TileMetersBounds {
 }
 
 pub(crate) struct MvtTileStore {
+    mvt_parser: MvtParser,
     client: reqwest::blocking::Client,
 }
 
@@ -33,7 +34,10 @@ impl MvtTileStore {
             .timeout(Duration::from_secs(10))
             .build()
             .unwrap();
-        Self { client }
+        Self {
+            mvt_parser: MvtParser::new(),
+            client
+        }
     }
     fn tile_id_to_mercator_meters(tx: u32, ty: u32, zoom: u32) -> TileMetersBounds {
         let num_tiles = (1 << zoom) as f64;
@@ -164,8 +168,7 @@ impl TilesProviderStore for MvtTileStore {
 
     fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
         let data = self.fetch_tile(tile_key.tile_x, tile_key.tile_y, tile_key.zoom_level).unwrap_or_default();
-        let mut parser = MvtParser::new();
-        parser.read_mvt_tile2(data.as_slice(), tile_key).unwrap_or_default()
+        self.mvt_parser.read_mvt_tile2(data.as_slice(), tile_key).unwrap_or_default()
         // MvtParser::read_mvt_tile(data.as_slice(), tile_key).unwrap_or_default()
     }
 }
