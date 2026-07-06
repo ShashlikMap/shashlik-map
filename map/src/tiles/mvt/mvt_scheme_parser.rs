@@ -115,8 +115,7 @@ impl MvtSchemeParser {
             let agg_stop: bool = handler.get_prop_value("agg_stop");
             let class: String = handler.get_prop_value("class");
             let subclass: String = handler.get_prop_value("subclass");
-            let name: String = handler.get_prop_value("name");
-            // println!("class {}, subclass {}", class, subclass);
+            let name: String = handler.get_prop_value("name:en");
 
             match (agg_stop, class.as_str(), subclass.as_str()) {
                 (true, "railway", "station") => Some(MapPointObjectKind::TrainStation(true)),
