@@ -1,4 +1,4 @@
-use crate::tiles::mvt::mvt_parser::LocalMvtValue2;
+use crate::tiles::mvt::mvt_parser::LocalMvtValue;
 use fast_mvt::{MvtFeatureRef, MvtLayerRef, MvtValue};
 use osm::map::{
     HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, NatureKind,
@@ -79,6 +79,7 @@ impl MvtSchemeParser {
         });
 
         let building_handler = MvtPropHandler::new("building", |handler| {
+            // TODO skip for certain zoom levels
             let height: i64 = handler.get_prop_value("height");
             Some(MapGeomObject {
                 id: -1,
@@ -178,11 +179,11 @@ impl MvtPropHandler {
 
     pub fn get_prop_value<T: Default>(&self, key: &'static str) -> T
     where
-        Option<T>: From<LocalMvtValue2>,
+        Option<T>: From<LocalMvtValue>,
     {
         self.map
             .get(key)
-            .and_then(|value| LocalMvtValue2(value.clone()).into())
+            .and_then(|value| LocalMvtValue(value.clone()).into())
             .unwrap_or_default()
     }
 }
