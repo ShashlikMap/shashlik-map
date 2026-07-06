@@ -55,8 +55,9 @@ impl MvtParser {
             let geometry = feature.geometry();
 
             if let Some(geom_type) = geom_type && geometry.is_ok() {
+                let geometry = geometry.unwrap();
                 if geom_type == GeomType::LINESTRING {
-                    for line in Self::get_all_lines(feature.geometry().unwrap()) {
+                    for line in Self::get_all_lines(geometry) {
                         let ls: LineString<f32> = line
                             .coords_iter()
                             .map(|coord| {
@@ -66,7 +67,25 @@ impl MvtParser {
 
                         res.push(MapGeometry::Line(ls));
                     }
-                } else if geom_type == GeomType::POLYGON {}
+                } else if geom_type == GeomType::POLYGON {
+                    match geometry {
+                        MvtGeometry::Polygon(poly) => {
+                            let ls: Polygon<f32> = poly.map_coords(|coord| {
+                                coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
+                            });
+                            res.push(MapGeometry::Poly(ls));
+                        }
+                        MvtGeometry::MultiPolygon(polis) => {
+                            for poly in polis {
+                                let ls: Polygon<f32> = poly.map_coords(|coord| {
+                                    coord! { x: coord.x as f32 * kk, y: coord.y as f32 * kk}
+                                });
+                                res.push(MapGeometry::Poly(ls));
+                            }
+                        }
+                        _ => {}
+                    }
+                }
             }
             res
         });

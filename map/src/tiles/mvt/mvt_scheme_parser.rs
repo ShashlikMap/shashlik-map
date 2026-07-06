@@ -1,8 +1,6 @@
 use crate::tiles::mvt::mvt_parser::LocalMvtValue2;
 use fast_mvt::{MvtFeatureRef, MvtLayerRef, MvtValue};
-use osm::map::{
-    HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, WayInfo,
-};
+use osm::map::{HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, NatureKind, WayInfo};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -12,7 +10,7 @@ pub(crate) struct MvtSchemeParser {
 
 impl MvtSchemeParser {
     pub fn new_map_tiler_v4() -> Self {
-        let handlers = vec![MvtPropHandler::new("road", |handler| {
+        let road_handler = MvtPropHandler::new("road", |handler| {
             let road_layer: i64 = handler.get_prop_value("layer");
             let road_class: String = handler.get_prop_value("class");
             let brunnel: String = handler.get_prop_value("brunnel");
@@ -48,8 +46,16 @@ impl MvtSchemeParser {
                     }),
                 }
             })
-        })];
-        Self::new_from_handlers(handlers)
+        });
+
+        let water_handler = MvtPropHandler::new("water", |_| {
+            Some(MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::Nature(NatureKind::Water),
+            })
+        });
+
+        Self::new_from_handlers(vec![road_handler, water_handler])
     }
 
     fn new_from_handlers(handlers: Vec<MvtPropHandler>) -> Self {
