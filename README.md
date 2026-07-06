@@ -38,10 +38,10 @@ with Android/iOS mobile apps(Android is priority for now)
 - [x] Running on pure Linux via KMS with Slint UI
 - [x] Simple shadow mapping
 - [x] Integration with WESL
+- [x] Initial MVT tiles support
 
 ### Now
 - [ ] _In progress_ General Renderer refactoring
-- [ ] _In progress_ Support Mapbox(or similar) [tilesets](https://docs.mapbox.com/data/tilesets/guides/vector-tiles-standards/)
 ### Next
 - [ ] Initial CPU renderer
 - [ ] Integrate a simple search

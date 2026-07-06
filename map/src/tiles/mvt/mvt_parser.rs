@@ -1,9 +1,9 @@
-use crate::tiles::mvt::mvt_scheme_parser::MvtSchemeParser;
 use crate::MAX_ZOOM_LEVEL;
+use crate::tiles::mvt::mvt_scheme_parser::MvtSchemeParser;
 use fast_mvt::proto::GeomType;
 use fast_mvt::{MvtReaderRef, MvtResult};
 use geo::MapCoords;
-use geo_types::{Coord, Geometry, LineString, Polygon};
+use geo_types::{Coord, Geometry, LineString, Point, Polygon, coord};
 use osm::map::{MapGeomObject, MapGeometry};
 use osm::tiles::TileKey;
 
@@ -43,6 +43,16 @@ impl MvtParser {
         }
     }
 
+    fn get_all_points(geometry: Geometry<i32>) -> Vec<Point<i32>> {
+        match geometry {
+            Geometry::Point(point) => {
+                vec![point]
+            }
+            Geometry::MultiPoint(multi_point) => multi_point.into_iter().collect(),
+            _ => Vec::new(),
+        }
+    }
+
     pub fn read_mvt_tile(
         &self,
         bytes: &[u8],
@@ -55,7 +65,6 @@ impl MvtParser {
             let geometry = feature.geometry();
 
             if let (Some(geom_type), Some(geometry)) = (geom_type, geometry.ok()) {
-                // TODO Add points later
                 if geom_type == GeomType::LINESTRING {
                     for line in Self::get_all_lines(geometry) {
                         res.push(MapGeometry::Line(line));
@@ -63,6 +72,10 @@ impl MvtParser {
                 } else if geom_type == GeomType::POLYGON {
                     for polygon in Self::get_all_polygons(geometry) {
                         res.push(MapGeometry::Poly(polygon));
+                    }
+                } else if geom_type == GeomType::POINT {
+                    for point in Self::get_all_points(geometry) {
+                        res.push(MapGeometry::Coord(coord! {x: point.x(), y: point.y()}));
                     }
                 }
             }
