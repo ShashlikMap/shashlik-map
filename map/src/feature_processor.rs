@@ -171,7 +171,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
 
             // fyi, we need to close the building path to properly build a closed stroke
             // also if interiors are not empty!
-            let end_with_closing = matches!(kind, MapGeomObjectKind::Building {..}) || !interiors.is_empty();
+            let end_with_closing = matches!(kind, MapGeomObjectKind::Building(_)) || !interiors.is_empty();
             path_builder.end(end_with_closing);
 
             for interior in interiors {

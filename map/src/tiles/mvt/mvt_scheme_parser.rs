@@ -82,7 +82,7 @@ impl MvtSchemeParser {
             // TODO skip for certain zoom levels
             let height: i64 = handler.get_prop_value("height");
             let underground: bool = handler.get_prop_value("underground");
-            (!underground).then(|| MapGeomObject {
+            (!underground).then_some(MapGeomObject {
                 id: -1,
                 // fyi, 3 - koef to convert map tiler height to osm levels, 2 - feature processor multiplier
                 kind: MapGeomObjectKind::Building(((height / (3 * 2)) as u16).clamp(0, 100)),
@@ -163,17 +163,15 @@ impl MvtSchemeParser {
 
         let country_border_handler = MvtPropHandler::new("country_border", |handler| {
             let maritime: bool = handler.get_prop_value("maritime");
-            (!maritime).then(|| {
-                MapGeomObject {
-                    id: -1,
-                    kind: MapGeomObjectKind::AdminLine,
-                }
+            (!maritime).then_some(MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::AdminLine,
             })
         });
 
         let railway_handler = MvtPropHandler::new("railway", |handler| {
             let class: String = handler.get_prop_value("class");
-            (class == "rail" || class == "monorail").then(|| MapGeomObject {
+            (class == "rail" || class == "monorail").then_some(MapGeomObject {
                 id: -1,
                 kind: MapGeomObjectKind::Way(WayInfo {
                     line_kind: LineKind::Railway {

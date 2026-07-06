@@ -153,10 +153,9 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                     let is_visible = !is_building || is_visible;
 
                     if is_visible {
-                        let lines = poly.into_inner();
-                        let mut line = lines.0;
+                        let (mut line, interiors) = poly.into_inner();
                         let interiors = if is_water {
-                            lines.1
+                            interiors
                         } else {
                             vec![]
                         };
