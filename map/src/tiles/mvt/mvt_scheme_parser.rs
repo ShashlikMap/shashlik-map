@@ -2,7 +2,7 @@ use fast_mvt::{MvtFeatureRef, MvtLayerRef, MvtValue};
 use log::error;
 use osm::map::{
     HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo,
-    MapPointObjectKind, NatureKind, WayInfo,
+    MapPointObjectKind, NatureKind, PopAreaInfo, WayInfo,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -146,6 +146,36 @@ impl MvtSchemeParser {
             })
         });
 
+        let city_label_handler = MvtPropHandler::new("city_label", |handler| {
+            let name: String = handler.get_prop_value("name:en");
+
+            Some(MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::Poi(MapPointInfo {
+                    text: name,
+                    kind: MapPointObjectKind::PopArea(PopAreaInfo {
+                        level: 0,
+                        population: 0,
+                    }),
+                }),
+            })
+        });
+
+        let country_label_handler = MvtPropHandler::new("country_label", |handler| {
+            let name: String = handler.get_prop_value("name:en");
+
+            Some(MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::Poi(MapPointInfo {
+                    text: name,
+                    kind: MapPointObjectKind::PopArea(PopAreaInfo {
+                        level: 1,
+                        population: 0,
+                    }),
+                }),
+            })
+        });
+
         Self::new_from_handlers(vec![
             road_handler,
             water_handler,
@@ -156,6 +186,8 @@ impl MvtSchemeParser {
             street_furniture,
             poi_station,
             poi_transport_handler,
+            city_label_handler,
+            country_label_handler,
         ])
     }
 
