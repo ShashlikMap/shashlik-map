@@ -1,6 +1,9 @@
 use crate::tiles::mvt::mvt_parser::LocalMvtValue2;
 use fast_mvt::{MvtFeatureRef, MvtLayerRef, MvtValue};
-use osm::map::{HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, NatureKind, WayInfo};
+use osm::map::{
+    HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, NatureKind,
+    WayInfo,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -35,16 +38,14 @@ impl MvtSchemeParser {
                 if ramp {
                     bb = format!("{highway_kind_name}_link");
                 }
-                HighwayKind::from_descr(bb.as_str()).map(|kind| {
-                    MapGeomObject {
-                        id: -1,
-                        kind: MapGeomObjectKind::Way(WayInfo {
-                            line_kind: LineKind::Highway { kind },
-                            layer: if brunnel { road_layer as i32 } else { 0 },
-                            layer_kind: LayerKind::None,
-                            name_en: None,
-                        }),
-                    }
+                HighwayKind::from_descr(bb.as_str()).map(|kind| MapGeomObject {
+                    id: -1,
+                    kind: MapGeomObjectKind::Way(WayInfo {
+                        line_kind: LineKind::Highway { kind },
+                        layer: if brunnel { road_layer as i32 } else { 0 },
+                        layer_kind: LayerKind::None,
+                        name_en: None,
+                    }),
                 })
             })
         });
@@ -56,15 +57,43 @@ impl MvtSchemeParser {
             })
         });
 
+        let forest_handler = MvtPropHandler::new("forest", |_| {
+            Some(MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::Nature(NatureKind::Forest),
+            })
+        });
+
+        let wood_handler = MvtPropHandler::new("wood", |_| {
+            Some(MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::Nature(NatureKind::Forest),
+            })
+        });
+
+        let grass_handler = MvtPropHandler::new("grass", |_| {
+            Some(MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::Nature(NatureKind::Park),
+            })
+        });
+
         let building_handler = MvtPropHandler::new("building", |handler| {
             let height: i64 = handler.get_prop_value("height");
             Some(MapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Building((height / 6) as u16)
+                kind: MapGeomObjectKind::Building((height / 6) as u16),
             })
         });
 
-        Self::new_from_handlers(vec![road_handler, water_handler, building_handler])
+        Self::new_from_handlers(vec![
+            road_handler,
+            water_handler,
+            building_handler,
+            forest_handler,
+            wood_handler,
+            grass_handler,
+        ])
     }
 
     fn new_from_handlers(handlers: Vec<MvtPropHandler>) -> Self {
