@@ -164,7 +164,9 @@ impl TilesProviderStore for MvtTileStore {
 
     fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
         let data = self.fetch_tile(tile_key.tile_x, tile_key.tile_y, tile_key.zoom_level).unwrap_or_default();
-        MvtParser::read_mvt_tile(data.as_slice(), tile_key).unwrap_or_default()
+        let mut parser = MvtParser::new();
+        parser.read_mvt_tile2(data.as_slice(), tile_key).unwrap_or_default()
+        // MvtParser::read_mvt_tile(data.as_slice(), tile_key).unwrap_or_default()
     }
 }
 

@@ -324,7 +324,7 @@ impl From<LocalMvtValue2> for i64 {
     fn from(value: LocalMvtValue2) -> Self {
         match value.0 {
             MvtValue::SInt(value) => value,
-            _ => panic!("Unexpected MvtValueRef"),
+            _ => panic!("Unexpected i64 MvtValueRef: {:?}", value.0),
         }
     }
 }
@@ -333,7 +333,7 @@ impl From<LocalMvtValue2> for String {
     fn from(value: LocalMvtValue2) -> Self {
         match value.0 {
             MvtValue::String(value) => value,
-            _ => panic!("Unexpected MvtValueRef"),
+            _ => panic!("Unexpected String MvtValueRef: {:?}", value.0),
         }
     }
 }
@@ -342,7 +342,7 @@ impl From<LocalMvtValue2> for bool {
     fn from(value: LocalMvtValue2) -> Self {
         match value.0 {
             MvtValue::Bool(value) => value,
-            _ => panic!("Unexpected MvtValueRef"),
+            _ => panic!("Unexpected bool MvtValueRef: {:?}", value.0),
         }
     }
 }

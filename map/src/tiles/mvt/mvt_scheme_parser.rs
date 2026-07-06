@@ -1,6 +1,8 @@
 use crate::tiles::mvt::mvt_parser::LocalMvtValue2;
 use fast_mvt::{MvtFeatureRef, MvtLayerRef, MvtValue};
-use osm::map::{MapGeomObject, MapGeometry};
+use osm::map::{
+    HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, WayInfo,
+};
 use std::collections::HashMap;
 
 pub(crate) struct MvtSchemeParser {
@@ -10,15 +12,41 @@ pub(crate) struct MvtSchemeParser {
 impl MvtSchemeParser {
     pub fn new_map_tiler_v4() -> Self {
         let handlers = vec![MvtPropHandler::new("road", |handler| {
-            let layer: Option<i64> = handler.get_prop_value("layer");
-            let road_class: Option<String> = handler.get_prop_value("class");
-            let brunnel: Option<bool> = handler.get_prop_value("brunnel");
-            let ramp: Option<bool> = handler.get_prop_value("ramp");
+            let road_layer: i64 = handler.get_prop_value("layer");
+            let road_class: String = handler.get_prop_value("class");
+            let brunnel: String = handler.get_prop_value("brunnel");
+            let brunnel: bool = !brunnel.is_empty();
+            let ramp: bool = handler.get_prop_value("ramp");
 
-            
+            let mut highway_kind_name: Option<&str> = match road_class.as_str() {
+                "motorway" => Some("motorway"),
+                "primary" => Some("primary"),
+                "secondary" => Some("secondary"),
+                "tertiary" => Some("tertiary"),
+                "unclassified" => Some("unclassified"),
+                "residential" => Some("residential"),
+                "minor" => Some("residential"),
+                "service" => Some("service"),
+                "trunk" => Some("trunk"),
+                _ => None,
+            };
 
-            todo!("MapGeomObject impl");
-            // true
+            highway_kind_name.map(|highway_kind_name| {
+                let mut bb = highway_kind_name.to_string();
+                if ramp {
+                    bb = format!("{highway_kind_name}_link");
+                }
+                let highway_kind = HighwayKind::from_descr(bb.as_str()).unwrap();
+                MapGeomObject {
+                    id: -1,
+                    kind: MapGeomObjectKind::Way(WayInfo {
+                        line_kind: LineKind::Highway { kind: highway_kind },
+                        layer: if brunnel { road_layer as i32 } else { 0 },
+                        layer_kind: LayerKind::None,
+                        name_en: None,
+                    }),
+                }
+            })
         })];
         Self::new_from_handlers(handlers)
     }
@@ -57,14 +85,14 @@ impl MvtSchemeParser {
 
 struct MvtPropHandler<'a> {
     layer: &'static str,
-    builder: Box<dyn Fn(&Self) -> MapGeomObject>,
+    builder: Box<dyn Fn(&Self) -> Option<MapGeomObject>>,
     map: HashMap<String, MvtValue>,
 }
 
 impl<'a> MvtPropHandler<'a> {
     pub fn new<F>(layer: &'static str, builder: F) -> Self
     where
-        F: Fn(&Self) -> MapGeomObject + 'static,
+        F: Fn(&Self) -> Option<MapGeomObject> + 'static,
     {
         Self {
             layer,
@@ -93,18 +121,24 @@ impl<'a> MvtPropHandler<'a> {
         }
 
         let geom_obj = (self.builder)(&self);
-        let geom = geom_builder(feature);
-        geom.into_iter()
-            .map(|geometry| (geom_obj.clone(), geometry))
-            .collect()
+        geom_obj
+            .map(|geom_obj| {
+                let geom = geom_builder(feature);
+                geom.into_iter()
+                    .map(|geometry| (geom_obj.clone(), geometry))
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
-    pub fn get_prop_value<T>(&self, key: &'static str) -> Option<T>
+    pub fn get_prop_value<T: Default>(&self, key: &'static str) -> T
     where
         T: From<LocalMvtValue2>,
     {
         self.map
             .get(key)
-            .map(|value| LocalMvtValue2(value.clone()).into()) // TODO how to remove clone?
+            // FIXME how to remove clone?
+            .map(|value| LocalMvtValue2(value.clone()).into())
+            .unwrap_or_default()
     }
 }
