@@ -6,7 +6,7 @@ use osm::map::{
 use std::collections::HashMap;
 
 pub(crate) struct MvtSchemeParser {
-    config: HashMap<&'static str, MvtPropHandler<'static>>,
+    config: HashMap<&'static str, MvtPropHandler>,
 }
 
 impl MvtSchemeParser {
@@ -51,7 +51,7 @@ impl MvtSchemeParser {
         Self::new_from_handlers(handlers)
     }
 
-    fn new_from_handlers(handlers: Vec<MvtPropHandler<'static>>) -> Self {
+    fn new_from_handlers(handlers: Vec<MvtPropHandler>) -> Self {
         Self {
             config: handlers
                 .into_iter()
@@ -83,13 +83,13 @@ impl MvtSchemeParser {
     }
 }
 
-struct MvtPropHandler<'a> {
+struct MvtPropHandler {
     layer: &'static str,
     builder: Box<dyn Fn(&Self) -> Option<MapGeomObject>>,
     map: HashMap<String, MvtValue>,
 }
 
-impl<'a> MvtPropHandler<'a> {
+impl MvtPropHandler {
     pub fn new<F>(layer: &'static str, builder: F) -> Self
     where
         F: Fn(&Self) -> Option<MapGeomObject> + 'static,
