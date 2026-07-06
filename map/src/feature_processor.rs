@@ -152,7 +152,8 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
     fn process_line(
         &self,
         geometry_data: &mut Vec<GeometryData>,
-        line: LineString,
+        line: LineString<f32>,
+        interiors: Vec<LineString<f32>>,
         kind: MapGeomObjectKind,
         line_text_map: &mut HashMap<String, i32>,
         zoom_level: i32,
@@ -162,15 +163,28 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         let line = line.0;
         if line.len() >= 2 {
             let mut path_builder = Path::builder();
-            path_builder.begin(point(line[0].x as f32, line[0].y as f32));
+            path_builder.begin(point(line[0].x, line[0].y));
 
             for &p in line[1..].iter() {
-                path_builder.line_to(point(p.x as f32, p.y as f32));
+                path_builder.line_to(point(p.x, p.y));
             }
 
             // fyi, we need to close the building path to properly build a closed stroke
-            let end_with_closing = matches!(kind, MapGeomObjectKind::Building {..});
+            // also if interiors are not empty!
+            let end_with_closing = matches!(kind, MapGeomObjectKind::Building(_)) || !interiors.is_empty();
             path_builder.end(end_with_closing);
+
+            for interior in interiors {
+                if let Some(first_point) = interior.0.first() {
+                    path_builder.begin(point(first_point.x, first_point.y));
+
+                    for p in interior.0.iter().skip(1) {
+                        path_builder.line_to(point(p.x, p.y));
+                    }
+
+                    path_builder.end(true);
+                }
+            }
 
             if let Some((style_id, layer_level, geometry_type, name)) = match &kind {
                 MapGeomObjectKind::Way(info) => match info.line_kind {
@@ -301,7 +315,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                                 22.0 * dpi_scale,
                                 LineData::new(line
                                     .iter()
-                                    .map(|item| DVec3::new(item.x, item.y, 0.0))
+                                    .map(|item| DVec3::new(item.x as f64, item.y as f64, 0.0))
                                     .collect())
                             )));
                         }
