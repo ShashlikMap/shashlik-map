@@ -1,5 +1,5 @@
-use crate::tiles::mvt::mvt_parser::LocalMvtValue;
 use fast_mvt::{MvtFeatureRef, MvtLayerRef, MvtValue};
+use log::error;
 use osm::map::{
     HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, NatureKind,
     WayInfo,
@@ -83,7 +83,8 @@ impl MvtSchemeParser {
             let height: i64 = handler.get_prop_value("height");
             Some(MapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Building((height / 6) as u16),
+                // fyi, 3 - koef to convert map tiler height to osm levels, 2 - feature processor multiplier
+                kind: MapGeomObjectKind::Building((height / (3 * 2)) as u16),
             })
         });
 
@@ -110,9 +111,9 @@ impl MvtSchemeParser {
         &self,
         layers: impl Iterator<Item = MvtLayerRef<'b>>,
         geom_builder: F,
-    ) -> Vec<(MapGeomObject, MapGeometry<f32>)>
+    ) -> Vec<(MapGeomObject, MapGeometry<i32>)>
     where
-        F: Fn(&MvtFeatureRef) -> Vec<MapGeometry<f32>>,
+        F: Fn(&MvtFeatureRef) -> Vec<MapGeometry<i32>>,
     {
         let mut res = vec![];
         for layer in layers {
@@ -155,9 +156,9 @@ impl MvtPropHandler {
         &mut self,
         feature: &MvtFeatureRef<'_>,
         geom_builder: &F,
-    ) -> Vec<(MapGeomObject, MapGeometry<f32>)>
+    ) -> Vec<(MapGeomObject, MapGeometry<i32>)>
     where
-        F: Fn(&MvtFeatureRef) -> Vec<MapGeometry<f32>>,
+        F: Fn(&MvtFeatureRef) -> Vec<MapGeometry<i32>>,
     {
         self.map.clear();
         for property in feature.properties() {
@@ -185,5 +186,40 @@ impl MvtPropHandler {
             .get(key)
             .and_then(|value| LocalMvtValue(value.clone()).into())
             .unwrap_or_default()
+    }
+}
+
+struct LocalMvtValue(pub MvtValue);
+
+impl LocalMvtValue {
+    fn unexpected_type<T>(&self, expected: &str) -> Option<T> {
+        error!("Unexpected {} MvtValueRef: {:?}", expected, self.0);
+        None
+    }
+}
+impl From<LocalMvtValue> for Option<i64> {
+    fn from(value: LocalMvtValue) -> Self {
+        match value.0 {
+            MvtValue::SInt(value) => Some(value),
+            _ => value.unexpected_type("i64"),
+        }
+    }
+}
+
+impl From<LocalMvtValue> for Option<String> {
+    fn from(value: LocalMvtValue) -> Self {
+        match value.0 {
+            MvtValue::String(value) => Some(value),
+            _ => value.unexpected_type("String"),
+        }
+    }
+}
+
+impl From<LocalMvtValue> for Option<bool> {
+    fn from(value: LocalMvtValue) -> Self {
+        match value.0 {
+            MvtValue::Bool(value) => Some(value),
+            _ => value.unexpected_type("bool"),
+        }
     }
 }
