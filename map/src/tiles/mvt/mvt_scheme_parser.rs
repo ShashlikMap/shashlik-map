@@ -134,12 +134,11 @@ impl MvtPropHandler {
 
     pub fn get_prop_value<T: Default>(&self, key: &'static str) -> T
     where
-        T: From<LocalMvtValue2>,
+        Option<T>: From<LocalMvtValue2>,
     {
         self.map
             .get(key)
-            // FIXME how to remove clone?
-            .map(|value| LocalMvtValue2(value.clone()).into())
+            .and_then(|value| LocalMvtValue2(value.clone()).into())
             .unwrap_or_default()
     }
 }

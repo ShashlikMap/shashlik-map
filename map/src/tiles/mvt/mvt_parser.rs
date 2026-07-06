@@ -4,6 +4,7 @@ use fast_mvt::proto::GeomType;
 use fast_mvt::{MvtGeometry, MvtReaderRef, MvtResult, MvtValue, MvtValueRef};
 use geo::{CoordsIter, MapCoords};
 use geo_types::{coord, Geometry, LineString, Polygon};
+use log::error;
 use osm::map::{
     HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, NatureKind,
     WayInfo,
@@ -320,29 +321,35 @@ impl MvtParser {
 
 pub(crate) struct LocalMvtValue2(pub MvtValue);
 
-impl From<LocalMvtValue2> for i64 {
+impl LocalMvtValue2 {
+    fn unexpected_type<T>(&self, expected: &str) -> Option<T> {
+        error!("Unexpected {} MvtValueRef: {:?}", expected, self.0);
+        None
+    }
+}
+impl From<LocalMvtValue2> for Option<i64> {
     fn from(value: LocalMvtValue2) -> Self {
         match value.0 {
-            MvtValue::SInt(value) => value,
-            _ => panic!("Unexpected i64 MvtValueRef: {:?}", value.0),
+            MvtValue::SInt(value) => Some(value),
+            _ => value.unexpected_type("i64"),
         }
     }
 }
 
-impl From<LocalMvtValue2> for String {
+impl From<LocalMvtValue2> for Option<String> {
     fn from(value: LocalMvtValue2) -> Self {
         match value.0 {
-            MvtValue::String(value) => value,
-            _ => panic!("Unexpected String MvtValueRef: {:?}", value.0),
+            MvtValue::String(value) => Some(value),
+            _ => value.unexpected_type("String"),
         }
     }
 }
 
-impl From<LocalMvtValue2> for bool {
+impl From<LocalMvtValue2> for Option<bool> {
     fn from(value: LocalMvtValue2) -> Self {
         match value.0 {
-            MvtValue::Bool(value) => value,
-            _ => panic!("Unexpected bool MvtValueRef: {:?}", value.0),
+            MvtValue::Bool(value) => Some(value),
+            _ => value.unexpected_type("bool"),
         }
     }
 }
