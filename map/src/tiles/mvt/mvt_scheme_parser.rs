@@ -1,6 +1,9 @@
 use fast_mvt::{MvtFeatureRef, MvtLayerRef, MvtValue};
 use log::error;
-use osm::map::{HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo, MapPointObjectKind, NatureKind, PopAreaInfo, RailwayKind, WayInfo};
+use osm::map::{
+    HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo,
+    MapPointObjectKind, NatureKind, PopAreaInfo, RailwayKind, WayInfo,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -79,15 +82,11 @@ impl MvtSchemeParser {
             // TODO skip for certain zoom levels
             let height: i64 = handler.get_prop_value("height");
             let underground: bool = handler.get_prop_value("underground");
-            if !underground {
-                Some(MapGeomObject {
-                    id: -1,
-                    // fyi, 3 - koef to convert map tiler height to osm levels, 2 - feature processor multiplier
-                    kind: MapGeomObjectKind::Building(((height / (3 * 2)) as u16).clamp(0, 100)),
-                })
-            } else {
-                None
-            }
+            (!underground).then(|| MapGeomObject {
+                id: -1,
+                // fyi, 3 - koef to convert map tiler height to osm levels, 2 - feature processor multiplier
+                kind: MapGeomObjectKind::Building(((height / (3 * 2)) as u16).clamp(0, 100)),
+            })
         });
 
         let street_furniture = MvtPropHandler::new("street_furniture", |handler| {
@@ -143,7 +142,7 @@ impl MvtSchemeParser {
             })
         });
 
-        let city_label_handler = MvtPropHandler::new("city_label", |handler| {
+        let city_country_label_handler = |handler: &MvtPropHandler| {
             let name: String = handler.get_prop_value("name:en");
 
             Some(MapGeomObject {
@@ -156,22 +155,10 @@ impl MvtSchemeParser {
                     }),
                 }),
             })
-        });
-
-        let country_label_handler = MvtPropHandler::new("country_label", |handler| {
-            let name: String = handler.get_prop_value("name:en");
-
-            Some(MapGeomObject {
-                id: -1,
-                kind: MapGeomObjectKind::Poi(MapPointInfo {
-                    text: name,
-                    kind: MapPointObjectKind::PopArea(PopAreaInfo {
-                        level: 1,
-                        population: 0,
-                    }),
-                }),
-            })
-        });
+        };
+        let city_label_handler = MvtPropHandler::new("city_label", city_country_label_handler);
+        let country_label_handler =
+            MvtPropHandler::new("country_label", city_country_label_handler);
 
         let country_border_handler = MvtPropHandler::new("country_border", |_| {
             Some(MapGeomObject {
@@ -182,19 +169,17 @@ impl MvtSchemeParser {
 
         let railway_handler = MvtPropHandler::new("railway", |handler| {
             let class: String = handler.get_prop_value("class");
-            if class == "rail" || class == "monorail" {
-                Some(MapGeomObject {
-                    id: -1,
-                    kind: MapGeomObjectKind::Way(WayInfo {
-                        line_kind: LineKind::Railway { kind: RailwayKind::Rail },
-                        layer: 0,
-                        layer_kind: LayerKind::None,
-                        name_en: None,
-                    }),
-                })
-            } else {
-                None
-            }
+            (class == "rail" || class == "monorail").then(|| MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::Way(WayInfo {
+                    line_kind: LineKind::Railway {
+                        kind: RailwayKind::Rail,
+                    },
+                    layer: 0,
+                    layer_kind: LayerKind::None,
+                    name_en: None,
+                }),
+            })
         });
 
         Self::new_from_handlers(vec![
