@@ -71,8 +71,7 @@ impl MvtSchemeParser {
     {
         let mut res = vec![];
         for layer in layers {
-            let mut handler = self.config.get(layer.name()).cloned();
-            if let Some(handler) = handler.as_mut() {
+            if let Some(mut handler) = self.config.get(layer.name()).cloned() {
                 for feature in layer.features() {
                     let data = handler.build(&feature, &geom_builder);
                     res.extend(data);
