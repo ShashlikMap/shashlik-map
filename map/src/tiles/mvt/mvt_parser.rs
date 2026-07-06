@@ -3,7 +3,7 @@ use crate::MAX_ZOOM_LEVEL;
 use fast_mvt::proto::GeomType;
 use fast_mvt::{MvtReaderRef, MvtResult};
 use geo::MapCoords;
-use geo_types::{Coord, Geometry, LineString, Polygon};
+use geo_types::{coord, Coord, Geometry, LineString, Point, Polygon};
 use osm::map::{MapGeomObject, MapGeometry};
 use osm::tiles::TileKey;
 
@@ -63,6 +63,11 @@ impl MvtParser {
                 } else if geom_type == GeomType::POLYGON {
                     for polygon in Self::get_all_polygons(geometry) {
                         res.push(MapGeometry::Poly(polygon));
+                    }
+                } else if geom_type == GeomType::POINT {
+                    let point: Option<Point<i32>> = geometry.try_into().ok();
+                    if let Some(point) = point {
+                        res.push(MapGeometry::Coord(coord! {x: point.x(), y: point.y()}));
                     }
                 }
             }

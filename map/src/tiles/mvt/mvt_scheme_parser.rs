@@ -1,8 +1,8 @@
 use fast_mvt::{MvtFeatureRef, MvtLayerRef, MvtValue};
 use log::error;
 use osm::map::{
-    HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, NatureKind,
-    WayInfo,
+    HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo,
+    MapPointObjectKind, NatureKind, WayInfo,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -81,10 +81,69 @@ impl MvtSchemeParser {
         let building_handler = MvtPropHandler::new("building", |handler| {
             // TODO skip for certain zoom levels
             let height: i64 = handler.get_prop_value("height");
-            Some(MapGeomObject {
+            let underground: bool = handler.get_prop_value("underground");
+            if !underground {
+                Some(MapGeomObject {
+                    id: -1,
+                    // fyi, 3 - koef to convert map tiler height to osm levels, 2 - feature processor multiplier
+                    kind: MapGeomObjectKind::Building(((height / (3 * 2)) as u16).clamp(0, 100)),
+                })
+            } else {
+                None
+            }
+        });
+
+        let street_furniture = MvtPropHandler::new("street_furniture", |handler| {
+            let class: String = handler.get_prop_value("class");
+            let subclass: String = handler.get_prop_value("subclass");
+
+            match (class.as_str(), subclass.as_str()) {
+                ("street", "toilets") => Some(MapPointObjectKind::Toilet),
+                ("street", "traffic_signals") => Some(MapPointObjectKind::TrafficLight),
+                _ => None,
+            }
+            .map(|kind| MapGeomObject {
                 id: -1,
-                // fyi, 3 - koef to convert map tiler height to osm levels, 2 - feature processor multiplier
-                kind: MapGeomObjectKind::Building(((height / (3 * 2)) as u16).clamp(0, 100)),
+                kind: MapGeomObjectKind::Poi(MapPointInfo {
+                    text: "".to_string(),
+                    kind,
+                }),
+            })
+        });
+
+        let poi_station = MvtPropHandler::new("poi_station", |handler| {
+            let agg_stop: bool = handler.get_prop_value("agg_stop");
+            let class: String = handler.get_prop_value("class");
+            let subclass: String = handler.get_prop_value("subclass");
+            let name: String = handler.get_prop_value("name");
+            // println!("class {}, subclass {}", class, subclass);
+
+            match (agg_stop, class.as_str(), subclass.as_str()) {
+                (true, "railway", "station") => Some(MapPointObjectKind::TrainStation(true)),
+                (true, "railway", "subway") => Some(MapPointObjectKind::TrainStation(false)),
+                _ => None,
+            }
+            .map(|kind| MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::Poi(MapPointInfo { text: name, kind }),
+            })
+        });
+
+        let poi_transport_handler = MvtPropHandler::new("poi_transport", |handler| {
+            let class: String = handler.get_prop_value("class");
+            let subclass: String = handler.get_prop_value("subclass");
+
+            match (class.as_str(), subclass.as_str()) {
+                ("parking", "parking") => Some(MapPointObjectKind::Parking),
+                ("fuel", "charging_station") => Some(MapPointObjectKind::EVCharging),
+                _ => None,
+            }
+            .map(|kind| MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::Poi(MapPointInfo {
+                    text: "".to_string(),
+                    kind,
+                }),
             })
         });
 
@@ -95,6 +154,9 @@ impl MvtSchemeParser {
             forest_handler,
             wood_handler,
             grass_handler,
+            street_furniture,
+            poi_station,
+            poi_transport_handler,
         ])
     }
 
