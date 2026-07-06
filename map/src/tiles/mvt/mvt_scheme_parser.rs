@@ -30,21 +30,22 @@ impl MvtSchemeParser {
                 _ => None,
             };
 
-            highway_kind_name.map(|highway_kind_name| {
+            highway_kind_name.and_then(|highway_kind_name| {
                 let mut bb = highway_kind_name.to_string();
                 if ramp {
                     bb = format!("{highway_kind_name}_link");
                 }
-                let highway_kind = HighwayKind::from_descr(bb.as_str()).unwrap();
-                MapGeomObject {
-                    id: -1,
-                    kind: MapGeomObjectKind::Way(WayInfo {
-                        line_kind: LineKind::Highway { kind: highway_kind },
-                        layer: if brunnel { road_layer as i32 } else { 0 },
-                        layer_kind: LayerKind::None,
-                        name_en: None,
-                    }),
-                }
+                HighwayKind::from_descr(bb.as_str()).map(|kind| {
+                    MapGeomObject {
+                        id: -1,
+                        kind: MapGeomObjectKind::Way(WayInfo {
+                            line_kind: LineKind::Highway { kind },
+                            layer: if brunnel { road_layer as i32 } else { 0 },
+                            layer_kind: LayerKind::None,
+                            name_en: None,
+                        }),
+                    }
+                })
             })
         });
 
@@ -55,7 +56,15 @@ impl MvtSchemeParser {
             })
         });
 
-        Self::new_from_handlers(vec![road_handler, water_handler])
+        let building_handler = MvtPropHandler::new("building", |handler| {
+            let height: i64 = handler.get_prop_value("height");
+            Some(MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::Building((height / 6) as u16)
+            })
+        });
+
+        Self::new_from_handlers(vec![road_handler, water_handler, building_handler])
     }
 
     fn new_from_handlers(handlers: Vec<MvtPropHandler>) -> Self {
