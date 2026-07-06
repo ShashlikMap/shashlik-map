@@ -1,9 +1,6 @@
 use fast_mvt::{MvtFeatureRef, MvtLayerRef, MvtValue};
 use log::error;
-use osm::map::{
-    HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo,
-    MapPointObjectKind, NatureKind, PopAreaInfo, WayInfo,
-};
+use osm::map::{HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo, MapPointObjectKind, NatureKind, PopAreaInfo, RailwayKind, WayInfo};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -176,15 +173,33 @@ impl MvtSchemeParser {
             })
         });
 
-        let country_border_handler = MvtPropHandler::new("country_border", |handler| {
+        let country_border_handler = MvtPropHandler::new("country_border", |_| {
             Some(MapGeomObject {
                 id: -1,
                 kind: MapGeomObjectKind::AdminLine,
             })
         });
 
+        let railway_handler = MvtPropHandler::new("railway", |handler| {
+            let class: String = handler.get_prop_value("class");
+            if class == "rail" || class == "monorail" {
+                Some(MapGeomObject {
+                    id: -1,
+                    kind: MapGeomObjectKind::Way(WayInfo {
+                        line_kind: LineKind::Railway { kind: RailwayKind::Rail },
+                        layer: 0,
+                        layer_kind: LayerKind::None,
+                        name_en: None,
+                    }),
+                })
+            } else {
+                None
+            }
+        });
+
         Self::new_from_handlers(vec![
             road_handler,
+            railway_handler,
             water_handler,
             building_handler,
             forest_handler,
