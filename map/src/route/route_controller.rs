@@ -1,12 +1,13 @@
 use crate::route::{RouteCosting};
 use crate::route::route_group::RouteGroup;
 use geo_types::{Point, point};
-use log::error;
+use log::{error};
 use renderer::modifier::render_modifier::SpatialData;
 use renderer::renderer_api::RendererApi;
 use std::collections::HashSet;
 use std::sync::Arc;
-use std::thread::{spawn};
+use std::thread::{sleep, spawn};
+use std::time::Duration;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
 use valhalla_client::route::{DirectionsType, Location, Manifest};
@@ -65,36 +66,46 @@ impl RouteController {
                     RouteCosting::Motorbike => Costing::Motorcycle(Default::default()),
                     RouteCosting::Auto => Costing::Auto(Default::default()),
                 };
-                let manifest = Manifest::builder()
-                    .locations([source_loc, destination_loc])
-                    .directions_type(DirectionsType::None)
-                    .costing(costing);
 
                 Self::clear_routes_internal(api.clone());
 
-                match valhalla.route(manifest) {
-                    Ok(trip) => {
-                        // println!("Route calculated: {:?}", trip);
-                        println!("Route calculated!");
-                        if let Some(leg) = trip.legs.first() {
-                            let route: Vec<Point> = leg
-                                .shape
-                                .iter()
-                                .map(|p| {
-                                    point! { x: p.lon, y: p.lat }
-                                })
-                                .collect();
-                            let route: Vec<Point> = route.iter().map(|p| converter(p)).collect();
+                let max_attempts = 2;
+                for attempt in 1..=max_attempts {
+                    let manifest = Manifest::builder()
+                        .locations([source_loc.clone(), destination_loc.clone()])
+                        .directions_type(DirectionsType::None)
+                        .costing(costing.clone());
 
-                            let route = Box::new(RouteGroup::new(route, route_costing));
-                            let spatial_data = SpatialData::transform(route.first_route_point());
-                            api.add_render_group("route".to_string(), spatial_data, route);
-                        } else {
-                            error!("No legs found in route!");
+                    match valhalla.route(manifest) {
+                        Ok(trip) => {
+                            // println!("Route calculated: {:?}", trip);
+                            println!("Route calculated!");
+                            if let Some(leg) = trip.legs.first() {
+                                let route: Vec<Point> = leg
+                                    .shape
+                                    .iter()
+                                    .map(|p| {
+                                        point! { x: p.lon, y: p.lat }
+                                    })
+                                    .collect();
+                                let route: Vec<Point> = route.iter().map(|p| converter(p)).collect();
+
+                                let route = Box::new(RouteGroup::new(route, route_costing));
+                                let spatial_data = SpatialData::transform(route.first_route_point());
+                                api.add_render_group("route".to_string(), spatial_data, route);
+                            } else {
+                                error!("No legs found in route!");
+                            }
+                            break;
                         }
-                    }
-                    Err(err) => {
-                        error!("Error calculating route: {:?}", err);
+                        Err(err) => {
+                            if attempt < max_attempts {
+                                error!("Attempt {} failed: {:?}. Retrying...", attempt, err);
+                                sleep(Duration::from_secs(1));
+                            } else {
+                                error!("Error calculating route after {} attempts: {:?}", max_attempts, err);
+                            }
+                        }
                     }
                 }
             });
