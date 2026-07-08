@@ -55,8 +55,6 @@ mod textures;
 mod utils;
 mod buffer_pool;
 
-
-
 pub struct ShashlikRenderer {
     layers: Layers,
     pass_nodes: Vec<Box<dyn PassNode>>,
@@ -285,6 +283,8 @@ impl ShashlikRenderer {
 }
 
 impl Renderer<RendererApi> for ShashlikRenderer {
+    type OUTPUT = Texture;
+
     fn screen_size(&self) -> (f32, f32) {
         let config = self.global_context.canvas.config();
         (config.width as f32, config.height as f32)

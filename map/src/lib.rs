@@ -31,7 +31,6 @@ use std::time::{Duration, Instant};
 use log::error;
 use tiny_skia::Pixmap;
 use ttf_parser::Face;
-use wgpu::Texture;
 use wgpu_canvas::{MyCanvasApi, MyRendererApi, Renderer, RendererUpdateData, SSAO_ENABLED};
 use crate::cpu_renderer::{NewRenderer, NewTempCpuRenderer};
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
@@ -47,7 +46,7 @@ mod transition_2d_3d_helper;
 pub mod cpu_renderer;
 
 pub struct ShashlikMap<CANVAS: MyCanvasApi,
-    RAPI: MyRendererApi<CANVAS=CANVAS>, R: Renderer<RAPI>, T: TilesProvider> {
+    RAPI: MyRendererApi<CANVAS=CANVAS>, OUTPUT, R: Renderer<RAPI, OUTPUT = OUTPUT>, T: TilesProvider> {
     renderer: R,
     camera: Camera,
     camera_controller: CameraController,
@@ -98,7 +97,7 @@ pub static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> =
 const MAX_ZOOM_LEVEL: i32 = 15;
 
 impl<CANVAS: MyCanvasApi,
-    RAPI: MyRendererApi<CANVAS = CANVAS> + 'static, R: Renderer<RAPI>, T: TilesProvider + std::marker::Sync> ShashlikMap<CANVAS, RAPI, R, T> {
+    RAPI: MyRendererApi<CANVAS = CANVAS> + 'static, OUTPUT, R: Renderer<RAPI, OUTPUT = OUTPUT>, T: TilesProvider + std::marker::Sync> ShashlikMap<CANVAS, RAPI, OUTPUT, R, T> {
     const TEMP_ANIMATION_SPEED: f64 = 0.03;
 
     const FOLLOW_ANIMATION_DELAY_MS: u64 = 2000;
@@ -108,7 +107,7 @@ impl<CANVAS: MyCanvasApi,
     pub async fn new(
         renderer: R,
         mut tiles_provider: T,
-    ) -> anyhow::Result<ShashlikMap<CANVAS, RAPI, R, T>> {
+    ) -> anyhow::Result<ShashlikMap<CANVAS, RAPI, OUTPUT, R, T>> {
         let screen_size = renderer.screen_size();
         let tiles_stream = tiles_provider.tiles();
 
@@ -225,7 +224,7 @@ impl<CANVAS: MyCanvasApi,
         self.screen_params.height = height;
     }
 
-    pub fn update_and_render(&mut self) -> Option<Texture> {
+    pub fn update_and_render(&mut self) -> Option<OUTPUT> {
         self.consume_map_events();
         self.camera_controller.update_camera(&mut self.camera);
 

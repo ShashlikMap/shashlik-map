@@ -59,11 +59,12 @@ pub struct RendererUpdateData {
 }
 
 pub trait Renderer<T: MyRendererApi> {
+    type OUTPUT;
     fn screen_size(&self) -> (f32, f32);
     fn resize(&mut self, width: u32, height: u32);
     fn update(&mut self, data: RendererUpdateData);
     fn clip_to_world(&self, coord: &Coord) -> Option<DVec2>;
-    fn render(&mut self) -> Option<Texture>;
+    fn render(&mut self) -> Option<Self::OUTPUT>;
 
     fn api(&self) -> Arc<T>;
 }
