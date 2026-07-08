@@ -1,22 +1,50 @@
-use std::collections::HashSet;
-use std::sync::Arc;
-use geo_types::Coord;
-use glam::{DMat4, DVec2, DVec3};
-use strum::{Display, EnumIter, EnumString};
-use wgpu::Texture;
 use crate::geometry_data::GeometryData;
 use crate::render_group::RenderGroup;
 use crate::render_modifier::SpatialData;
 use crate::render_style::RenderStyle;
 use crate::style_id::StyleId;
+use geo_types::Coord;
+use glam::{dvec3, DMat4, DVec2, DVec3};
+use std::collections::HashSet;
+use std::sync::Arc;
+use strum::{Display, EnumIter, EnumString};
+use wgpu::Texture;
 
-pub mod wgpu_canvas;
-pub mod style_id;
-pub mod render_style;
 mod consts;
-pub mod render_modifier;
-pub mod render_group;
 pub mod geometry_data;
+pub mod render_group;
+pub mod render_modifier;
+pub mod render_style;
+pub mod style_id;
+pub mod wgpu_canvas;
+
+/// should be the same as mesh_shader.wgsl
+pub static LIGHT_POS: DVec3 = dvec3(0.84, 1.12, 1.42);
+
+pub fn feature_layer_tags() -> Vec<WorldShapeFeatureLayerTag> {
+    vec![
+        WorldShapeFeatureLayerTag {
+            name: "kml_layer",
+            ..Default::default()
+        },
+        WorldShapeFeatureLayerTag {
+            name: "route_layer",
+            vertex_shader: Some("vs_main_route"),
+            indirect: true,
+        },
+        WorldShapeFeatureLayerTag {
+            name: "puck_layer",
+            ..Default::default()
+        },
+    ]
+}
+
+#[derive(Default)]
+pub struct WorldShapeFeatureLayerTag {
+    pub name: &'static str,
+    pub vertex_shader: Option<&'static str>,
+    pub indirect: bool,
+}
 
 pub struct RendererUpdateData {
     pub view_matrix: DMat4,
@@ -27,7 +55,7 @@ pub struct RendererUpdateData {
     pub scale: f32,
     pub eye_direction: DVec3,
     pub up: DVec3,
-    pub scale_2d_3d: f32
+    pub scale_2d_3d: f32,
 }
 
 pub trait Renderer<T: MyRendererApi> {
@@ -74,7 +102,13 @@ pub trait MyRendererApi: Send + Sync {
 
 #[derive(Eq, PartialEq, Copy, Clone, Hash, Display, EnumIter, EnumString)]
 pub enum PreviewType {
-    None, Camera, SSAO, SSAOPositions, SSAONormals, SSAODepth, ShadowMap
+    None,
+    Camera,
+    SSAO,
+    SSAOPositions,
+    SSAONormals,
+    SSAODepth,
+    ShadowMap,
 }
 
 impl PreviewType {
@@ -87,4 +121,3 @@ pub static mut SHADOWS_ENABLED: bool = true;
 pub static mut SHADOWS_TEX_SIZE: (u32, u32) = (2048, 2048);
 pub static mut SSAO_ENABLED: bool = true;
 pub static mut PREVIEW_TYPE: PreviewType = PreviewType::None;
-

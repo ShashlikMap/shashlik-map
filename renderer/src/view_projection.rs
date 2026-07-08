@@ -1,8 +1,8 @@
-use crate::{RendererUpdateData, LIGHT_POS};
+use crate::{RendererUpdateData};
 use geo_types::{coord, Coord};
 use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec4Swizzles};
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
-use wgpu_canvas::{SHADOWS_ENABLED, SHADOWS_TEX_SIZE};
+use wgpu_canvas::{LIGHT_POS, SHADOWS_ENABLED, SHADOWS_TEX_SIZE};
 
 #[rustfmt::skip]
 const FLIP_Y: DMat4 = DMat4::from_cols_array(

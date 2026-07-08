@@ -3,7 +3,7 @@ extern crate core;
 use crate::buffer_pool::BufferPool;
 use crate::fps::FpsCounter;
 use wgpu_canvas::geometry_data::{LineData, TextData};
-use crate::mesh_layers::layers::{WorldShapeFeatureLayerTag, SCREEN_TEXT_LAYER};
+use crate::mesh_layers::layers::{SCREEN_TEXT_LAYER};
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
 use wgpu_canvas::render_modifier::SpatialData;
@@ -30,7 +30,7 @@ use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use wgpu_canvas::{PreviewType, Renderer, RendererUpdateData, PREVIEW_TYPE};
+use wgpu_canvas::{PreviewType, Renderer, RendererUpdateData, WorldShapeFeatureLayerTag, PREVIEW_TYPE};
 
 pub mod canvas_api;
 mod collision_handler;
@@ -55,8 +55,7 @@ mod textures;
 mod utils;
 mod buffer_pool;
 
-/// should be the same as mesh_shader.wgsl
-pub static LIGHT_POS: DVec3 = dvec3(0.84, 1.12, 1.42);
+
 
 pub struct ShashlikRenderer {
     layers: Layers,

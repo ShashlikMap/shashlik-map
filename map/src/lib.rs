@@ -32,7 +32,6 @@ use log::error;
 use tiny_skia::Pixmap;
 use ttf_parser::Face;
 use wgpu::Texture;
-use renderer::mesh_layers::layers::WorldShapeFeatureLayerTag;
 use wgpu_canvas::{MyCanvasApi, MyRendererApi, Renderer, RendererUpdateData, SSAO_ENABLED};
 use crate::cpu_renderer::{NewRenderer, NewTempCpuRenderer};
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
@@ -94,24 +93,6 @@ impl <T: MyCanvasApi> RenderGroup<T> for TileData {
 }
 pub static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> =
     LazyLock::new(|| Face::parse(include_bytes!("../font.ttf"), 0).unwrap());
-
-pub fn feature_layer_tags() -> Vec<WorldShapeFeatureLayerTag> {
-    vec![
-        WorldShapeFeatureLayerTag {
-            name: "kml_layer",
-            ..Default::default()
-        },
-        WorldShapeFeatureLayerTag {
-            name: "route_layer",
-            vertex_shader: Some("vs_main_route"),
-            indirect: true,
-        },
-        WorldShapeFeatureLayerTag {
-            name: "puck_layer",
-            ..Default::default()
-        },
-    ]
-}
 
 // FIXME We should not hardcode it in general. But so far it's just a first step.
 const MAX_ZOOM_LEVEL: i32 = 15;

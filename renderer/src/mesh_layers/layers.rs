@@ -10,17 +10,11 @@ use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use rustybuzz::ttf_parser;
 use wgpu::{CommandEncoder, RenderPass};
-use wgpu_canvas::{PREVIEW_TYPE, SSAO_ENABLED};
+use wgpu_canvas::{WorldShapeFeatureLayerTag, PREVIEW_TYPE, SSAO_ENABLED};
 
 pub(crate) const WORLD_TEXT_LAYER: &'static str = "world_text_layer";
 pub(crate) const SCREEN_TEXT_LAYER: &'static str = "screen_text_layer";
 
-#[derive(Default)]
-pub struct WorldShapeFeatureLayerTag {
-    pub name: &'static str,
-    pub vertex_shader: Option<&'static str>,
-    pub indirect: bool,
-}
 
 impl FeatureLayerTag for WorldShapeFeatureLayerTag {
     fn name(&self) -> &'static str {

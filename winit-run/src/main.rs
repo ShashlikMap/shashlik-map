@@ -1,7 +1,7 @@
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
-use map::{feature_layer_tags, ShashlikMap, DEFAULT_FONT};
+use map::{ShashlikMap, DEFAULT_FONT};
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
 use osm::tiles::TileStore;
@@ -19,7 +19,7 @@ use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
 use renderer::ShashlikRenderer;
 use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
-use wgpu_canvas::{PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
+use wgpu_canvas::{feature_layer_tags, PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
 
 slint::include_modules!();
 
