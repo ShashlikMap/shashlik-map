@@ -3,7 +3,6 @@ use crate::route::route_group::RouteGroup;
 use geo_types::{Point, point};
 use log::{error};
 use wgpu_canvas::render_modifier::SpatialData;
-use renderer::renderer_api::RendererApi;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::thread::{sleep, spawn};
@@ -11,19 +10,21 @@ use std::time::Duration;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
 use valhalla_client::route::{DirectionsType, Location, Manifest};
-use wgpu_canvas::MyRendererApi;
+use wgpu_canvas::{MyCanvasApi, MyRendererApi};
 
 #[cfg(target_os = "android")]
 extern crate valhalla_client_android as valhalla_client;
 
-pub struct RouteController {
-    api: Arc<RendererApi>,
+pub struct RouteController<CANVAS: MyCanvasApi,
+    RAPI: MyRendererApi<CANVAS = CANVAS>> {
+    api: Arc<RAPI>,
     current_lon_lat: Option<(f64, f64)>,
     valhalla: Arc<Valhalla>
 }
 
-impl RouteController {
-    pub fn new(api: Arc<RendererApi>) -> RouteController {
+impl <CANVAS: MyCanvasApi,
+    RAPI: MyRendererApi<CANVAS = CANVAS> + 'static> RouteController<CANVAS, RAPI> {
+    pub fn new(api: Arc<RAPI>) -> RouteController<CANVAS, RAPI> {
         let mut route_controller = RouteController {
             api: api.clone(),
             current_lon_lat: None,
@@ -114,11 +115,11 @@ impl RouteController {
         }
     }
 
-    pub fn clear_routes(&self, api: Arc<RendererApi>) {
+    pub fn clear_routes(&self, api: Arc<RAPI>) {
         Self::clear_routes_internal(api);
     }
 
-    fn clear_routes_internal(api: Arc<RendererApi>) {
+    fn clear_routes_internal(api: Arc<RAPI>) {
         api.clear_render_groups(HashSet::from_iter(vec!["route".to_string()]));
     }
 }

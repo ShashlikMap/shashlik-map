@@ -12,13 +12,10 @@ pub struct RendererApi {
     renderer_api_tx: Sender<RendererApiMsg>,
 }
 
-impl MyRendererApi<CanvasApi> for RendererApi {
-    fn add_render_group(
-        &self,
-        key: String,
-        spatial_data: SpatialData,
-        group: Box<dyn RenderGroup<CanvasApi>>,
-    ) {
+impl MyRendererApi for RendererApi {
+    type CANVAS = CanvasApi;
+
+    fn add_render_group(&self, key: String, spatial_data: SpatialData, group: Box<dyn RenderGroup<CanvasApi>>) {
         self.renderer_api_tx
             .send(RendererApiMsg::RenderGroup((key, spatial_data, group)))
             .expect("RendererApi add_render_group sender failed.");

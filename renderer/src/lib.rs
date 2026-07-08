@@ -286,7 +286,7 @@ impl ShashlikRenderer {
     }
 }
 
-impl Renderer<RendererApi, CanvasApi> for ShashlikRenderer {
+impl Renderer<RendererApi> for ShashlikRenderer {
     fn screen_size(&self) -> (f32, f32) {
         let config = self.global_context.canvas.config();
         (config.width as f32, config.height as f32)

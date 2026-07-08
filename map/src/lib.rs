@@ -15,12 +15,9 @@ use glam::{DMat2, DVec2, DVec3, Vec2};
 use num::{abs, clamp};
 use osm::styles::style_loader::StyleLoader;
 use osm::styles::{DashStyle, RenderStyle};
-use renderer::canvas_api::CanvasApi;
 use wgpu_canvas::render_modifier::SpatialData;
 use wgpu_canvas::render_group::RenderGroup;
-use renderer::renderer_api::RendererApi;
 use wgpu_canvas::style_id::StyleId;
-use renderer::{ShashlikRenderer};
 use route::route_controller::RouteController;
 #[cfg(feature = "sgnss")]
 use sgnss::start_sgnss;
@@ -36,8 +33,7 @@ use tiny_skia::Pixmap;
 use ttf_parser::Face;
 use wgpu::Texture;
 use renderer::mesh_layers::layers::WorldShapeFeatureLayerTag;
-use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use wgpu_canvas::{MyRendererApi, Renderer, RendererUpdateData, SSAO_ENABLED};
+use wgpu_canvas::{MyCanvasApi, MyRendererApi, Renderer, RendererUpdateData, SSAO_ENABLED};
 use crate::cpu_renderer::{NewRenderer, NewTempCpuRenderer};
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
@@ -51,12 +47,13 @@ pub mod tiles;
 mod transition_2d_3d_helper;
 pub mod cpu_renderer;
 
-pub struct ShashlikMap<R: Renderer<RendererApi, CanvasApi>, T: TilesProvider> {
+pub struct ShashlikMap<CANVAS: MyCanvasApi,
+    RAPI: MyRendererApi<CANVAS=CANVAS>, R: Renderer<RAPI>, T: TilesProvider> {
     renderer: R,
     camera: Camera,
     camera_controller: CameraController,
     tiles_provider: T,
-    route_controller: RouteController,
+    route_controller: RouteController<CANVAS, RAPI>,
     current_world_position: DVec3,
     current_bearing: f64,
     camera_bearing: f64,
@@ -86,8 +83,8 @@ impl ScreenParam {
     }
 }
 
-impl RenderGroup<CanvasApi> for TileData {
-    fn content(&mut self, canvas: &mut CanvasApi) {
+impl <T: MyCanvasApi> RenderGroup<T> for TileData {
+    fn content(&mut self, canvas: &mut T) {
         mem::take(&mut self.geometry_data)
             .into_iter()
             .for_each(|data| {
@@ -119,7 +116,8 @@ pub fn feature_layer_tags() -> Vec<WorldShapeFeatureLayerTag> {
 // FIXME We should not hardcode it in general. But so far it's just a first step.
 const MAX_ZOOM_LEVEL: i32 = 15;
 
-impl<R: Renderer<RendererApi, CanvasApi>, T: TilesProvider + std::marker::Sync> ShashlikMap<R, T> {
+impl<CANVAS: MyCanvasApi,
+    RAPI: MyRendererApi<CANVAS = CANVAS> + 'static, R: Renderer<RAPI>, T: TilesProvider + std::marker::Sync> ShashlikMap<CANVAS, RAPI, R, T> {
     const TEMP_ANIMATION_SPEED: f64 = 0.03;
 
     const FOLLOW_ANIMATION_DELAY_MS: u64 = 2000;
@@ -129,7 +127,7 @@ impl<R: Renderer<RendererApi, CanvasApi>, T: TilesProvider + std::marker::Sync> 
     pub async fn new(
         renderer: R,
         mut tiles_provider: T,
-    ) -> anyhow::Result<ShashlikMap<R, T>> {
+    ) -> anyhow::Result<ShashlikMap<CANVAS, RAPI, R, T>> {
         let screen_size = renderer.screen_size();
         let tiles_stream = tiles_provider.tiles();
 
@@ -204,7 +202,7 @@ impl<R: Renderer<RendererApi, CanvasApi>, T: TilesProvider + std::marker::Sync> 
     }
 
     fn run_tiles(
-        renderer_api: Arc<RendererApi>,
+        renderer_api: Arc<RAPI>,
         zero_zoom_level_loaded: Arc<AtomicBool>,
         tiles_stream: impl Stream<Item = TilesMessage> + Send + 'static,
     ) {
@@ -506,7 +504,7 @@ impl<R: Renderer<RendererApi, CanvasApi>, T: TilesProvider + std::marker::Sync> 
         })
     }
 
-    fn load_styles(renderer_api: Arc<RendererApi>) {
+    fn load_styles(renderer_api: Arc<RAPI>) {
         spawn(move || {
             let mut styles = StyleLoader::load();
             if styles.is_empty() {

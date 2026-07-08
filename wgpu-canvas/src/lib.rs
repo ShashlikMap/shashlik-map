@@ -28,7 +28,7 @@ pub struct RendererUpdateData {
     pub scale_2d_3d: f32
 }
 
-pub trait Renderer<T: MyRendererApi<C>, C: MyCanvasApi> {
+pub trait Renderer<T: MyRendererApi> {
     fn screen_size(&self) -> (f32, f32);
     fn resize(&mut self, width: u32, height: u32);
     fn update(&mut self, data: RendererUpdateData);
@@ -42,12 +42,13 @@ pub trait MyCanvasApi {
 
 }
 
-pub trait MyRendererApi<T: MyCanvasApi> {
+pub trait MyRendererApi: Send + Sync {
+    type CANVAS: MyCanvasApi;
     fn add_render_group(
         &self,
         key: String,
         spatial_data: SpatialData,
-        group: Box<dyn RenderGroup<T>>,
+        group: Box<dyn RenderGroup<Self::CANVAS>>,
     );
 
     fn clear_render_groups(&self, keys: HashSet<String>);
