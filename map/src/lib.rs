@@ -32,11 +32,13 @@ use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use log::error;
+use tiny_skia::Pixmap;
 use ttf_parser::Face;
 use wgpu::Texture;
 use renderer::mesh_layers::layers::WorldShapeFeatureLayerTag;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use wgpu_canvas::SSAO_ENABLED;
+use crate::cpu_renderer::{NewRenderer, NewTempCpuRenderer};
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
 mod camera;
@@ -47,6 +49,7 @@ mod puck_group;
 pub mod route;
 pub mod tiles;
 mod transition_2d_3d_helper;
+pub mod cpu_renderer;
 
 pub struct ShashlikMap<T: TilesProvider> {
     renderer: Box<ShashlikRenderer>,
@@ -183,6 +186,10 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
 
         Ok(map)
     }
+
+    pub async fn new_no_wgpu(tiles_provider: T) -> impl NewRenderer<Pixmap> {
+        NewTempCpuRenderer::new(tiles_provider)
+    } 
 
     fn clip_to_lon_lat(&self, coord: &Coord<f64>) -> Option<Coord<f64>> {
         let world_on_ground = self.renderer.clip_to_world(coord)?;

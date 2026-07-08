@@ -1,8 +1,14 @@
 use iced::widget::image::{self, Image};
-use iced::widget::{Column, Container, button, center, column, stack, text};
-use iced::{Element, Length, Subscription, Task, window};
+use iced::widget::{button, center, column, stack, text};
+use iced::{window, Element, Length, Subscription, Task};
+use map::cpu_renderer::NewRenderer;
+use map::feature_processor::ShashlikFeatureProcessor;
+use map::tiles::default_tiles_provider::DefaultTilesProvider;
+use map::ShashlikMap;
+use osm::source::reqwest_source::ReqwestSource;
+use osm::tiles::TileStore;
 use std::time::Instant;
-use tiny_skia::{Paint, Pixmap, Rect, Transform};
+use tiny_skia::Pixmap;
 
 fn main() -> iced::Result {
     iced::application(App::new, App::update, App::view)
@@ -16,8 +22,8 @@ fn main() -> iced::Result {
 }
 
 struct App {
+    new_renderer: Box<dyn NewRenderer<Pixmap>>,
     image_handle: image::Handle,
-    start_time: Instant,
 }
 
 #[derive(Debug, Clone)]
@@ -28,11 +34,19 @@ enum Message {
 
 impl App {
     fn new() -> (Self, Task<Message>) {
+        let tiles_provider = DefaultTilesProvider::new(
+            Box::new(TileStore::new(ReqwestSource::new())),
+            ShashlikFeatureProcessor::new(),
+            1.0,
+        );
+
+        let shashlik_map = pollster::block_on(ShashlikMap::new_no_wgpu(tiles_provider));
+
         let initial_handle = image::Handle::from_rgba(400, 400, vec![0; 400 * 400 * 4]);
         (
             Self {
+                new_renderer: Box::new(shashlik_map),
                 image_handle: initial_handle,
-                start_time: Instant::now(),
             },
             Task::none(),
         )
@@ -43,20 +57,7 @@ impl App {
             Message::HardwareTick(_frame_time) => {
                 const WIDTH: u32 = 400;
                 const HEIGHT: u32 = 400;
-                let mut pixmap = Pixmap::new(WIDTH, HEIGHT).unwrap();
-                pixmap.fill(tiny_skia::Color::from_rgba8(30, 30, 30, 255));
-
-                let time_elapsed = self.start_time.elapsed().as_secs_f32();
-                let x_offset = (time_elapsed.sin() * 100.0) + 150.0;
-
-                let mut paint = Paint::default();
-                paint.set_color(tiny_skia::Color::from_rgba8(46, 204, 113, 255)); // Green
-                paint.anti_alias = true;
-
-                if let Some(rect) = Rect::from_xywh(x_offset, 150.0, 100.0, 100.0) {
-                    pixmap.fill_rect(rect, &paint, Transform::identity(), None);
-                }
-
+                let pixmap = self.new_renderer.new_update_and_render();
                 let raw_rgba_pixels = pixmap.take();
                 self.image_handle = image::Handle::from_rgba(WIDTH, HEIGHT, raw_rgba_pixels);
             }
