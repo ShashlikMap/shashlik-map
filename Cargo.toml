@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["winit-run", "map", "app-surface", "ffi-run", "renderer", "wgpu-canvas", "sgnss"]
+members = ["winit-run", "map", "app-surface", "ffi-run", "renderer", "wgpu-canvas", "sgnss", "cpu-run"]
 
 [workspace.dependencies]
 app-surface = { path = "./app-surface", default-features = false }
@@ -26,6 +26,7 @@ osm = { git = "https://github.com/ShashlikMap/shashlik-tiles-gen-v0.git" }
 rand = "0.10.1"
 strum = { version = "0.28", features = ["derive"] }
 dotenvy = "0.15"
+tiny-skia = "0.12.0"
 
 # macOS, iOS
 libc = { version = "0.2", default-features = false }

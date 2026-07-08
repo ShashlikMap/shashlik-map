@@ -42,8 +42,8 @@ with Android/iOS mobile apps(Android is priority for now)
 
 ### Now
 - [ ] _In progress_ General Renderer refactoring
+- [ ] _In progress_ Initial CPU renderer
 ### Next
-- [ ] Initial CPU renderer
 - [ ] Integrate a simple search
 ### Later
 - [ ] Move the custom tile generator to the cloud
