@@ -1,12 +1,54 @@
-use crate::draw_commands::{GeometryType, MeshVertex};
-use crate::mesh::mesh::StyledRangeInfo;
-use wgpu_canvas::style_id::StyleId;
-use glam::{DVec3, Vec2};
-use lyon::lyon_tessellation::VertexBuffers;
+use crate::style_id::StyleId;
+use glam::{DVec3, Mat4, Vec2};
+use lyon::lyon_tessellation::{LineCap, LineJoin, VertexBuffers};
 use lyon::path::Path;
 use rustybuzz::GlyphBuffer;
 use std::cell::OnceCell;
-use crate::text::default_face_wrapper::FaceTextParams;
+
+#[derive(Clone)]
+pub struct StyledRangeInfo(pub u8, pub &'static str);
+
+#[derive(Clone)]
+pub struct FaceTextParams {
+    pub scale_matrix: Mat4,
+    pub half_height_translation: Mat4,
+    pub width: f32,
+    pub height: f32,
+    pub scale: f32,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct MeshVertex {
+    pub position: [f32; 3],
+    pub normals: [f32; 3],
+}
+
+#[derive(Clone, Copy)]
+pub enum GeometryType {
+    Polyline(PolylineOptions),
+    Polygon,
+}
+
+#[derive(Clone, Copy)]
+pub struct PolylineOptions {
+    pub width: f32,
+    pub line_cap: LineCap,
+    pub line_join: LineJoin,
+    pub tolerance: f32,
+}
+
+impl Default for PolylineOptions {
+    fn default() -> Self {
+        PolylineOptions {
+            width: 1f32,
+            line_cap: LineCap::Butt,
+            line_join: LineJoin::Miter,
+            tolerance: 1f32,
+        }
+    }
+}
+
 
 pub enum GeometryData {
     Shape(ShapeData),
@@ -89,9 +131,9 @@ pub struct TextData {
     pub text: String,
     pub screen_offset: Vec2,
     pub size: f32,
-    pub(crate) alpha: f32,
+    pub alpha: f32,
     pub line_data: LineData,
-    pub(crate) screen_space: bool,
+    pub screen_space: bool,
     pub glyph_buffer: Option<GlyphBuffer>,
     pub face_text_params: Option<FaceTextParams>,
 }

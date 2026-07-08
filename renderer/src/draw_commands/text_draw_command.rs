@@ -1,5 +1,5 @@
 use crate::draw_commands::DrawCommand;
-use crate::geometry_data::TextData;
+use wgpu_canvas::geometry_data::TextData;
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::{Layers, WORLD_TEXT_LAYER};
 use wgpu_canvas::render_modifier::SpatialData;

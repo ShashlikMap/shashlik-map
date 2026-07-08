@@ -1,4 +1,3 @@
-use crate::draw_commands::MeshVertex;
 use crate::global_context::GlobalContext;
 use crate::pipelines::{IndirectInstancesLayout, OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline};
 use crate::textures::{create_simple_texture, TextureData, SAMPLE_COUNT};
@@ -6,6 +5,7 @@ use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, ComputePass, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, TextureFormat, TextureUsages};
+use wgpu_canvas::geometry_data::MeshVertex;
 
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,

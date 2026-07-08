@@ -1,6 +1,6 @@
 use crate::buffer_pool::BufferPool;
 use crate::global_context::GlobalContext;
-use crate::mesh::mesh::{Mesh, StyledRangeInfo};
+use crate::mesh::mesh::{Mesh};
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::text::glyph_tesselator::GlyphTesselator;
 use lyon::lyon_tessellation::VertexBuffers;
@@ -8,6 +8,7 @@ use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
 use std::sync::Arc;
 use wgpu::Color;
+use wgpu_canvas::geometry_data::StyledRangeInfo;
 
 pub(crate) struct GlyphCache {
     face: Arc<DefaultFaceWrapper>,

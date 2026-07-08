@@ -2,9 +2,9 @@ use lyon::geom::euclid::Point2D;
 use lyon::geom::point;
 use lyon::lyon_tessellation::VertexBuffers;
 use lyon::path::{Path, Winding};
-use renderer::draw_commands::MeshVertex;
 use std::io::BufReader;
 use tobj::LoadError;
+use wgpu_canvas::geometry_data::MeshVertex;
 
 pub struct MeshLoader {}
 

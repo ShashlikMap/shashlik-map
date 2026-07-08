@@ -1,9 +1,9 @@
 use crate::draw_commands::mesh2d_draw_command::{Mesh2dCommandBatch, Mesh2dDrawCommand};
 use crate::draw_commands::mesh3d_draw_command::Mesh3dDrawCommand;
 use crate::draw_commands::text_draw_command::TextDrawCommand;
-use crate::draw_commands::{DrawCommand, DrawCommands, GeometryType, MeshVertex, PolylineOptions};
-use crate::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData, TextData};
-use crate::mesh::mesh::{StyledRange, StyledRangeInfo};
+use crate::draw_commands::{DrawCommand, DrawCommands};
+use wgpu_canvas::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, MeshVertex, PolylineOptions, ShapeData, StyledRangeInfo, SvgData, TextData};
+use crate::mesh::mesh::{StyledRange};
 use wgpu_canvas::render_modifier::SpatialData;
 use wgpu_canvas::render_style::RenderStyle;
 use wgpu_canvas::style_id::StyleId;

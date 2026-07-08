@@ -2,7 +2,7 @@ extern crate core;
 
 use crate::buffer_pool::BufferPool;
 use crate::fps::FpsCounter;
-use crate::geometry_data::{LineData, TextData};
+use wgpu_canvas::geometry_data::{LineData, TextData};
 use crate::mesh_layers::layers::{WorldShapeFeatureLayerTag, SCREEN_TEXT_LAYER};
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
@@ -36,7 +36,6 @@ pub mod canvas_api;
 mod collision_handler;
 pub mod draw_commands;
 mod fps;
-pub mod geometry_data;
 pub mod mesh;
 pub mod messages;
 pub mod modifier;

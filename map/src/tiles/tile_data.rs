@@ -1,6 +1,6 @@
 use geo_types::Rect;
 use glam::DVec3;
-use renderer::geometry_data::GeometryData;
+use wgpu_canvas::geometry_data::GeometryData;
 
 pub struct TileData {
     pub key: String,

@@ -1,15 +1,7 @@
 use glam::{Mat4, Vec3};
 use rustybuzz::ttf_parser::{GlyphId, OutlineBuilder};
 use rustybuzz::{Face, GlyphBuffer, UnicodeBuffer};
-
-#[derive(Clone)]
-pub struct FaceTextParams {
-    pub scale_matrix: Mat4,
-    pub half_height_translation: Mat4,
-    pub width: f32,
-    pub height: f32,
-    pub scale: f32,
-}
+use wgpu_canvas::geometry_data::FaceTextParams;
 
 pub struct DefaultFaceWrapper {
     face: Face<'static>,

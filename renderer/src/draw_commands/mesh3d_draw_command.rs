@@ -1,8 +1,9 @@
-use crate::draw_commands::{DrawCommand, MeshVertex};
-use crate::mesh::mesh::{Mesh, StyledRangeInfo};
+use crate::draw_commands::{DrawCommand};
+use crate::mesh::mesh::{Mesh};
 use crate::mesh_layers::layers::Layers;
 use wgpu_canvas::render_modifier::SpatialData;
 use lyon::lyon_tessellation::VertexBuffers;
+use wgpu_canvas::geometry_data::{MeshVertex, StyledRangeInfo};
 use crate::buffer_pool::BufferPool;
 use crate::global_context::GlobalContext;
 

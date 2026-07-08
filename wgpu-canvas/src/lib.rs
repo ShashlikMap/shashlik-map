@@ -15,6 +15,7 @@ pub mod render_style;
 mod consts;
 pub mod render_modifier;
 pub mod render_group;
+pub mod geometry_data;
 
 pub struct RendererUpdateData {
     pub view_matrix: DMat4,

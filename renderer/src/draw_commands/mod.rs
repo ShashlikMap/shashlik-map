@@ -9,38 +9,6 @@ use lyon::path::LineCap;
 use crate::buffer_pool::BufferPool;
 use crate::global_context::GlobalContext;
 
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct MeshVertex {
-    pub position: [f32; 3],
-    pub normals: [f32; 3],
-}
-
-#[derive(Clone, Copy)]
-pub enum GeometryType {
-    Polyline(PolylineOptions),
-    Polygon,
-}
-
-#[derive(Clone, Copy)]
-pub struct PolylineOptions {
-    pub width: f32,
-    pub line_cap: LineCap,
-    pub line_join: LineJoin,
-    pub tolerance: f32,
-}
-
-impl Default for PolylineOptions {
-    fn default() -> Self {
-        PolylineOptions {
-            width: 1f32,
-            line_cap: LineCap::Butt,
-            line_join: LineJoin::Miter,
-            tolerance: 1f32,
-        }
-    }
-}
-
 pub(crate) struct DrawCommands {
     key: String,
     spatial_data: SpatialData,

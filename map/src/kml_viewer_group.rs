@@ -1,8 +1,7 @@
 use geo_types::{Geometry, GeometryCollection, Point};
 use kml::KmlReader;
 use log::error;
-use renderer::canvas_api::CanvasApi;
-use renderer::geometry_data::{GeometryData, SvgData};
+use wgpu_canvas::geometry_data::{GeometryData, SvgData};
 use wgpu_canvas::render_group::RenderGroup;
 use wgpu_canvas::style_id::StyleId;
 use std::path::PathBuf;

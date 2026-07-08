@@ -8,9 +8,7 @@ use osm::map::{
     NatureKind,
 };
 use rand::RngExt;
-use renderer::draw_commands::{GeometryType, PolylineOptions};
-use renderer::geometry_data::{ExtrudedPolygonData, GeometryData, LineData, ShapeData, SvgBackground, SvgData, TextData};
-use renderer::mesh::mesh::StyledRangeInfo;
+use wgpu_canvas::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, LineData, PolylineOptions, ShapeData, StyledRangeInfo, SvgBackground, SvgData, TextData};
 use wgpu_canvas::style_id::StyleId;
 use seahash::hash;
 use std::collections::HashMap;

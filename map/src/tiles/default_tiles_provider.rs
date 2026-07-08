@@ -10,7 +10,7 @@ use osm::map::{MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo};
 use osm::tiles::{TileKey, TileStore};
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
-use renderer::geometry_data::{GeometryData};
+use wgpu_canvas::geometry_data::{GeometryData};
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};

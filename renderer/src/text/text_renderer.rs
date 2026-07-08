@@ -1,6 +1,6 @@
 use crate::collider::{ColliderTask, CollisionTaskController, CollisionTaskWrapper};
 use crate::collision_handler::CollisionHandler;
-use crate::geometry_data::TextData;
+use wgpu_canvas::geometry_data::TextData;
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
