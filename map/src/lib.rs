@@ -20,7 +20,7 @@ use renderer::modifier::render_modifier::SpatialData;
 use renderer::render_group::RenderGroup;
 use renderer::renderer_api::RendererApi;
 use renderer::styles::style_id::StyleId;
-use renderer::{Renderer, RendererUpdateData, ShashlikRenderer};
+use renderer::{ShashlikRenderer};
 use route::route_controller::RouteController;
 #[cfg(feature = "sgnss")]
 use sgnss::start_sgnss;
@@ -37,7 +37,7 @@ use ttf_parser::Face;
 use wgpu::Texture;
 use renderer::mesh_layers::layers::WorldShapeFeatureLayerTag;
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use wgpu_canvas::SSAO_ENABLED;
+use wgpu_canvas::{RendererUpdateData, SSAO_ENABLED};
 use crate::cpu_renderer::{NewRenderer, NewTempCpuRenderer};
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
@@ -189,7 +189,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
 
     pub async fn new_no_wgpu(tiles_provider: T) -> impl NewRenderer<Pixmap> {
         NewTempCpuRenderer::new(tiles_provider)
-    } 
+    }
 
     fn clip_to_lon_lat(&self, coord: &Coord<f64>) -> Option<Coord<f64>> {
         let world_on_ground = self.renderer.clip_to_world(coord)?;

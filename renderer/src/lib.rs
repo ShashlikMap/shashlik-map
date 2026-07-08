@@ -1,7 +1,9 @@
 extern crate core;
 
+use crate::buffer_pool::BufferPool;
 use crate::fps::FpsCounter;
 use crate::geometry_data::{LineData, TextData};
+use crate::mesh_layers::layers::{WorldShapeFeatureLayerTag, SCREEN_TEXT_LAYER};
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
 use crate::modifier::render_modifier::SpatialData;
@@ -13,7 +15,7 @@ use crate::pass_nodes::PassNode;
 use crate::styles::style_store::StyleStore;
 use canvas_api::CanvasApi;
 use geo_types::Coord;
-use glam::{dvec3, vec2, DMat4, DVec2, DVec3};
+use glam::{dvec3, vec2, DVec2, DVec3};
 use global_context::GlobalContext;
 use mesh_layers::layers::Layers;
 use messages::RendererApiMsg;
@@ -28,9 +30,7 @@ use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use wgpu_canvas::{PreviewType, PREVIEW_TYPE};
-use crate::buffer_pool::BufferPool;
-use crate::mesh_layers::layers::{WorldShapeFeatureLayerTag, SCREEN_TEXT_LAYER};
+use wgpu_canvas::{PreviewType, Renderer, RendererUpdateData, PREVIEW_TYPE};
 
 pub mod canvas_api;
 mod collision_handler;
@@ -60,24 +60,6 @@ mod buffer_pool;
 
 /// should be the same as mesh_shader.wgsl
 pub static LIGHT_POS: DVec3 = dvec3(0.84, 1.12, 1.42);
-
-pub struct RendererUpdateData {
-    pub view_matrix: DMat4,
-    pub view_light_matrix: DMat4,
-    pub proj_matrix: DMat4,
-    pub view_proj_matrix: DMat4,
-    pub cs_offset: DVec3,
-    pub scale: f32,
-    pub eye_direction: DVec3,
-    pub up: DVec3,
-    pub scale_2d_3d: f32
-}
-
-pub trait Renderer {
-    fn resize(&mut self, width: u32, height: u32);
-    fn update(&mut self, data: RendererUpdateData);
-    fn render(&mut self) -> Option<Texture>;
-}
 
 pub struct ShashlikRenderer {
     layers: Layers,
@@ -231,7 +213,7 @@ impl ShashlikRenderer {
         self.pass_nodes.push(Box::new(main_node));
     }
 
-    fn update(&mut self, data: RendererUpdateData) {
+    pub fn update(&mut self, data: RendererUpdateData) {
         unsafe {
             if self.current_preview_type != PREVIEW_TYPE {
                 self.current_preview_type = PREVIEW_TYPE;
@@ -263,7 +245,7 @@ impl ShashlikRenderer {
         self.layers.update(&mut self.global_context);
     }
 
-    fn render(&mut self) -> Option<Texture> {
+    pub fn render(&mut self) -> Option<Texture> {
         // // We can't render unless the surface is configured
         // if !self.is_surface_configured {
         //     return Ok(());
