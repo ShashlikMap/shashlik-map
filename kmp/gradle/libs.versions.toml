@@ -11,7 +11,7 @@ kotlin = "2.2.21"
 gobley = "0.3.7"
 composeBom = "2025.11.01"
 accompanist = "0.37.3"
-koordxtract = "0.4.3"
+koordxtract = "0.4.4"
 vanniktechMavenPublish = "0.34.0"
 playServicesLocation = "21.3.0"
 
