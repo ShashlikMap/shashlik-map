@@ -3,8 +3,8 @@ use kml::KmlReader;
 use log::error;
 use renderer::canvas_api::CanvasApi;
 use renderer::geometry_data::{GeometryData, SvgData};
-use renderer::render_group::RenderGroup;
-use renderer::styles::style_id::StyleId;
+use wgpu_canvas::render_group::RenderGroup;
+use wgpu_canvas::style_id::StyleId;
 use std::path::PathBuf;
 use glam::DVec3;
 
@@ -66,7 +66,7 @@ impl KmlGroup {
     }
 }
 
-impl RenderGroup for KmlGroup {
+impl RenderGroup<CanvasApi> for KmlGroup {
     fn content(&mut self, canvas: &mut CanvasApi) {
         canvas.set_feature_layer_tag(Some("kml_layer".to_string()));
         let mut geometry_data = vec![];

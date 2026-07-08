@@ -2,7 +2,7 @@ use crate::route::{RouteCosting};
 use crate::route::route_group::RouteGroup;
 use geo_types::{Point, point};
 use log::{error};
-use renderer::modifier::render_modifier::SpatialData;
+use wgpu_canvas::render_modifier::SpatialData;
 use renderer::renderer_api::RendererApi;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -11,6 +11,8 @@ use std::time::Duration;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
 use valhalla_client::route::{DirectionsType, Location, Manifest};
+use wgpu_canvas::MyRendererApi;
+
 #[cfg(target_os = "android")]
 extern crate valhalla_client_android as valhalla_client;
 

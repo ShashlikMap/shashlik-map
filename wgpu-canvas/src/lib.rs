@@ -1,8 +1,20 @@
-use glam::{DMat4, DVec3};
+use std::collections::HashSet;
+use std::sync::Arc;
+use geo_types::Coord;
+use glam::{DMat4, DVec2, DVec3};
 use strum::{Display, EnumIter, EnumString};
 use wgpu::Texture;
+use crate::render_group::RenderGroup;
+use crate::render_modifier::SpatialData;
+use crate::render_style::RenderStyle;
+use crate::style_id::StyleId;
 
 pub mod wgpu_canvas;
+pub mod style_id;
+pub mod render_style;
+mod consts;
+pub mod render_modifier;
+pub mod render_group;
 
 pub struct RendererUpdateData {
     pub view_matrix: DMat4,
@@ -16,10 +28,41 @@ pub struct RendererUpdateData {
     pub scale_2d_3d: f32
 }
 
-pub trait Renderer {
+pub trait Renderer<T: MyRendererApi<C>, C: MyCanvasApi> {
+    fn screen_size(&self) -> (f32, f32);
     fn resize(&mut self, width: u32, height: u32);
     fn update(&mut self, data: RendererUpdateData);
+    fn clip_to_world(&self, coord: &Coord) -> Option<DVec2>;
     fn render(&mut self) -> Option<Texture>;
+
+    fn api(&self) -> Arc<T>;
+}
+
+pub trait MyCanvasApi {
+
+}
+
+pub trait MyRendererApi<T: MyCanvasApi> {
+    fn add_render_group(
+        &self,
+        key: String,
+        spatial_data: SpatialData,
+        group: Box<dyn RenderGroup<T>>,
+    );
+
+    fn clear_render_groups(&self, keys: HashSet<String>);
+
+    fn update_style<F: FnOnce(&mut RenderStyle) + Send + 'static>(
+        &self,
+        style_id: StyleId,
+        updater: F,
+    );
+
+    fn update_spatial_data<F: FnOnce(&mut SpatialData) + Send + 'static>(
+        &self,
+        key: String,
+        updater: F,
+    );
 }
 
 // TODO Proper config manager

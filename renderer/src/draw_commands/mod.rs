@@ -3,7 +3,7 @@ pub mod mesh3d_draw_command;
 pub mod text_draw_command;
 
 use crate::mesh_layers::layers::Layers;
-use crate::modifier::render_modifier::SpatialData;
+use wgpu_canvas::render_modifier::SpatialData;
 use lyon::lyon_tessellation::LineJoin;
 use lyon::path::LineCap;
 use crate::buffer_pool::BufferPool;

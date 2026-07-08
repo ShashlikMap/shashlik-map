@@ -6,7 +6,7 @@ use crate::geometry_data::{LineData, TextData};
 use crate::mesh_layers::layers::{WorldShapeFeatureLayerTag, SCREEN_TEXT_LAYER};
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
-use crate::modifier::render_modifier::SpatialData;
+use wgpu_canvas::render_modifier::SpatialData;
 use crate::pass_nodes::main_pass_node::MainPassNode;
 use crate::pass_nodes::prepass_node::PrepassNode;
 use crate::pass_nodes::render_to_texture_pass_node::RenderToTexturePassNode;
@@ -34,14 +34,12 @@ use wgpu_canvas::{PreviewType, Renderer, RendererUpdateData, PREVIEW_TYPE};
 
 pub mod canvas_api;
 mod collision_handler;
-mod consts;
 pub mod draw_commands;
 mod fps;
 pub mod geometry_data;
 pub mod mesh;
 pub mod messages;
 pub mod modifier;
-pub mod render_group;
 pub mod renderer_api;
 pub mod styles;
 mod svg;
@@ -288,7 +286,12 @@ impl ShashlikRenderer {
     }
 }
 
-impl Renderer for ShashlikRenderer {
+impl Renderer<RendererApi, CanvasApi> for ShashlikRenderer {
+    fn screen_size(&self) -> (f32, f32) {
+        let config = self.global_context.canvas.config();
+        (config.width as f32, config.height as f32)
+    }
+
     fn resize(&mut self, width: u32, height: u32) {
         self.resize(width, height);
     }
@@ -297,7 +300,15 @@ impl Renderer for ShashlikRenderer {
         self.update(data);
     }
 
+    fn clip_to_world(&self, coord: &Coord) -> Option<DVec2> {
+        self.clip_to_world(coord)
+    }
+
     fn render(&mut self) -> Option<Texture> {
         self.render()
+    }
+
+    fn api(&self) -> Arc<RendererApi> {
+        Arc::clone(&self.api)
     }
 }

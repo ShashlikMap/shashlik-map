@@ -1,4 +1,4 @@
-use crate::modifier::render_modifier::SpatialData;
+use wgpu_canvas::render_modifier::SpatialData;
 use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput};
 use bytemuck::Pod;
 use glam::DVec3;

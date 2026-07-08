@@ -4,9 +4,9 @@ use crate::draw_commands::text_draw_command::TextDrawCommand;
 use crate::draw_commands::{DrawCommand, DrawCommands, GeometryType, MeshVertex, PolylineOptions};
 use crate::geometry_data::{ExtrudedPolygonData, GeometryData, ShapeData, SvgData, TextData};
 use crate::mesh::mesh::{StyledRange, StyledRangeInfo};
-use crate::modifier::render_modifier::SpatialData;
-use crate::styles::render_style::RenderStyle;
-use crate::styles::style_id::StyleId;
+use wgpu_canvas::render_modifier::SpatialData;
+use wgpu_canvas::render_style::RenderStyle;
+use wgpu_canvas::style_id::StyleId;
 use crate::styles::style_store::StyleStore;
 use crate::svg::svg_parser::svg_parse;
 use crate::vertex_attrs::ShapeVertex;
@@ -17,6 +17,7 @@ use lyon::path::builder::BorderRadii;
 use lyon::path::{Path, Winding};
 use std::collections::{BTreeMap, HashMap};
 use std::mem;
+use wgpu_canvas::MyCanvasApi;
 
 #[derive(Clone)]
 pub struct MeshInfo {
@@ -37,6 +38,10 @@ pub struct CanvasApi {
     text_vec: Vec<TextData>,
     mesh_info_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, MeshInfo)>,
     feature_layer_tag: Option<String>,
+}
+
+impl MyCanvasApi for CanvasApi {
+
 }
 
 impl CanvasApi {

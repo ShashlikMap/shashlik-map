@@ -1,7 +1,7 @@
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
-use map::ShashlikMap;
+use map::{feature_layer_tags, ShashlikMap, DEFAULT_FONT};
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
 use osm::tiles::TileStore;
@@ -11,11 +11,13 @@ use std::cmp::max;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::mpsc;
+use pollster::FutureExt;
 use strum::IntoEnumIterator;
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
+use renderer::ShashlikRenderer;
 use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
 use wgpu_canvas::{PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
 
@@ -154,8 +156,11 @@ fn main() {
                         }
 
                         let mut map =
-                            pollster::block_on(ShashlikMap::new(Box::new(canvas), tiles_provider))
-                                .unwrap();
+                            pollster::block_on({
+                                let renderer = ShashlikRenderer::new(feature_layer_tags(),
+                                                                     Box::new(canvas), &DEFAULT_FONT).block_on().unwrap();
+                                ShashlikMap::new(renderer, tiles_provider)
+                            }).unwrap();
                         map.resize(texture_width as u32, texture_height as u32);
                         shashlik_map = Some(map);
                     }

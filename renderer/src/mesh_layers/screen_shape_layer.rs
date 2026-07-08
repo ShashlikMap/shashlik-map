@@ -6,7 +6,7 @@ use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::mesh::InstanceBuffer;
 use crate::mesh_layers::BaseMeshLayer;
-use crate::modifier::render_modifier::SpatialData;
+use wgpu_canvas::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use crate::view_projection::ViewProjection;
 use geo_types::point;

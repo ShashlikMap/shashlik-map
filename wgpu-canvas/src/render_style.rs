@@ -46,7 +46,7 @@ impl RenderStyle {
         style
     }
 
-    pub(crate) fn params(&self) -> [[f32; 4]; 4] {
+    pub fn params(&self) -> [[f32; 4]; 4] {
         Self::convert_to_wgsl_mat4x3(self.container)
     }
 

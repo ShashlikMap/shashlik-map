@@ -1,7 +1,7 @@
 use crate::draw_commands::{DrawCommand, MeshVertex};
 use crate::mesh::mesh::{Mesh, StyledRangeInfo};
 use crate::mesh_layers::layers::Layers;
-use crate::modifier::render_modifier::SpatialData;
+use wgpu_canvas::render_modifier::SpatialData;
 use lyon::lyon_tessellation::VertexBuffers;
 use crate::buffer_pool::BufferPool;
 use crate::global_context::GlobalContext;

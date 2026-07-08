@@ -9,8 +9,8 @@ use renderer::canvas_api::CanvasApi;
 use renderer::draw_commands::{GeometryType, PolylineOptions};
 use renderer::geometry_data::{GeometryData, ShapeData, SvgData};
 use renderer::mesh::mesh::StyledRangeInfo;
-use renderer::render_group::RenderGroup;
-use renderer::styles::style_id::StyleId;
+use wgpu_canvas::render_group::RenderGroup;
+use wgpu_canvas::style_id::StyleId;
 
 pub struct RouteGroup {
     route: Vec<Point>,
@@ -34,7 +34,7 @@ impl RouteGroup {
     }
 }
 
-impl RenderGroup for RouteGroup {
+impl RenderGroup<CanvasApi> for RouteGroup {
     fn content(&mut self, canvas: &mut CanvasApi) {
         canvas.set_feature_layer_tag(Some("route_layer".to_string()));
         let first_route_point = self.route[0];

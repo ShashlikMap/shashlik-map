@@ -1,6 +1,6 @@
 use std::borrow::Cow;
-use crate::styles::render_style::RenderStyle;
-use crate::styles::style_id::StyleId;
+use wgpu_canvas::render_style::RenderStyle;
+use wgpu_canvas::style_id::StyleId;
 use indexmap::IndexMap;
 use log::error;
 use tokio::sync::broadcast::{Receiver, Sender};

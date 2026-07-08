@@ -4,7 +4,7 @@ use crate::mesh::mesh::Mesh;
 use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::mesh_layers::BaseMeshLayer;
-use crate::modifier::render_modifier::SpatialData;
+use wgpu_canvas::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use std::mem;
 use wgpu::TextureFormat::Rgba16Float;

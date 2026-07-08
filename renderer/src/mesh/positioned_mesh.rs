@@ -2,7 +2,7 @@ use crate::global_context::GlobalContext;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::mesh::InstanceBuffer;
-use crate::modifier::render_modifier::SpatialData;
+use wgpu_canvas::render_modifier::SpatialData;
 use crate::pipelines::IndirectInstancesLayout;
 use crate::utils::ReceiverExt;
 use glam::DVec3;

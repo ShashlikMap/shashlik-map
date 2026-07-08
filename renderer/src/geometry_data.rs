@@ -1,6 +1,6 @@
 use crate::draw_commands::{GeometryType, MeshVertex};
 use crate::mesh::mesh::StyledRangeInfo;
-use crate::styles::style_id::StyleId;
+use wgpu_canvas::style_id::StyleId;
 use glam::{DVec3, Vec2};
 use lyon::lyon_tessellation::VertexBuffers;
 use lyon::path::Path;
