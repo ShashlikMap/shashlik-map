@@ -41,7 +41,13 @@ pub struct CanvasApi {
 }
 
 impl MyCanvasApi for CanvasApi {
+    fn set_feature_layer_tag(&mut self, tag: Option<String>) {
+        self.set_feature_layer_tag(tag);
+    }
 
+    fn geometry_data(&mut self, geometry_data: GeometryData) {
+        self.geometry_data(geometry_data);
+    }
 }
 
 impl CanvasApi {
@@ -77,7 +83,7 @@ impl CanvasApi {
             })
     }
 
-    pub fn set_feature_layer_tag(&mut self, tag: Option<String>) {
+    fn set_feature_layer_tag(&mut self, tag: Option<String>) {
         self.feature_layer_tag = tag;
     }
 
@@ -85,7 +91,7 @@ impl CanvasApi {
         self.style_store.update_style(style_id, updater);
     }
 
-    pub fn geometry_data(&mut self, geometry_data: GeometryData) {
+    fn geometry_data(&mut self, geometry_data: GeometryData) {
         match geometry_data {
             GeometryData::Shape(data) => {
                 self.path(data);

@@ -4,6 +4,7 @@ use geo_types::Coord;
 use glam::{DMat4, DVec2, DVec3};
 use strum::{Display, EnumIter, EnumString};
 use wgpu::Texture;
+use crate::geometry_data::GeometryData;
 use crate::render_group::RenderGroup;
 use crate::render_modifier::SpatialData;
 use crate::render_style::RenderStyle;
@@ -40,7 +41,9 @@ pub trait Renderer<T: MyRendererApi> {
 }
 
 pub trait MyCanvasApi {
+    fn set_feature_layer_tag(&mut self, tag: Option<String>);
 
+    fn geometry_data(&mut self, geometry_data: GeometryData);
 }
 
 pub trait MyRendererApi: Send + Sync {
