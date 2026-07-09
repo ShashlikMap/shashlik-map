@@ -11,7 +11,6 @@ use std::cmp::max;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::mpsc;
-use pollster::FutureExt;
 use strum::IntoEnumIterator;
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
@@ -156,10 +155,10 @@ fn main() {
                         }
 
                         let mut map =
-                            pollster::block_on({
+                            pollster::block_on(async {
                                 let renderer = GpuRenderer::new(feature_layer_tags(),
-                                                                Box::new(canvas), &DEFAULT_FONT).block_on().unwrap();
-                                ShashlikMap::new(renderer, tiles_provider)
+                                                                Box::new(canvas), &DEFAULT_FONT).await?;
+                                ShashlikMap::new(renderer, tiles_provider).await
                             }).unwrap();
                         map.resize(texture_width as u32, texture_height as u32);
                         shashlik_map = Some(map);

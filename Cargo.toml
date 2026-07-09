@@ -27,6 +27,7 @@ rand = "0.10.1"
 strum = { version = "0.28", features = ["derive"] }
 dotenvy = "0.15"
 tiny-skia = "0.12.0"
+rustybuzz = "0.20.1"
 
 # macOS, iOS
 libc = { version = "0.2", default-features = false }

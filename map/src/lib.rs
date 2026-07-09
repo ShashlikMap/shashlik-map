@@ -93,7 +93,7 @@ pub static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> =
 const MAX_ZOOM_LEVEL: i32 = 15;
 
 impl<CANVAS: CanvasApi,
-    RAPI: RendererApi<CANVAS = CANVAS> + 'static, OUTPUT, R: Renderer<RAPI, OUTPUT = OUTPUT>, T: TilesProvider + std::marker::Sync> ShashlikMap<CANVAS, RAPI, OUTPUT, R, T> {
+    RAPI: RendererApi<CANVAS = CANVAS> + 'static, OUTPUT, R: Renderer<RAPI, OUTPUT = OUTPUT>, T: TilesProvider + Sync> ShashlikMap<CANVAS, RAPI, OUTPUT, R, T> {
     const TEMP_ANIMATION_SPEED: f64 = 0.03;
 
     const FOLLOW_ANIMATION_DELAY_MS: u64 = 2000;
@@ -318,7 +318,7 @@ impl<CANVAS: CanvasApi,
         }
 
         self.renderer
-            .api() // TODO Is it fast to clone ARC every frame?!
+            .api() //  fyi, it seems to be fast enough(need to learn more here)
             .update_spatial_data("puck".to_string(), move |spatial_data| {
                 spatial_data.scale = DVec3::splat(cam_zoom);
                 let puck_location_offset = puck_location - spatial_data.transform;

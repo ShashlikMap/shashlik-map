@@ -27,8 +27,6 @@ use std::thread::spawn;
 use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
-use wgpu::hal::DynDevice;
-use wgpu::hal::DynQueue;
 use ::renderer_common::{PreviewType, Renderer, RendererUpdateData, WorldShapeFeatureLayerTag, PREVIEW_TYPE};
 use ::renderer_common::geometry_data::{LineData, TextData};
 use ::renderer_common::render_modifier::SpatialData;

@@ -95,14 +95,13 @@ pub fn createShashlikMapApi(
     let reqwest_source = ReqwestSource::new();
     let tile_store = Box::new(TileStore::new(reqwest_source));
     let feature_processor = ShashlikFeatureProcessor::new();
-    let shashlik_map = pollster::block_on({
+    let shashlik_map = pollster::block_on(async {
         let renderer = GpuRenderer::new(feature_layer_tags(),
-                                        Box::new(surface), &DEFAULT_FONT).block_on().unwrap();
+                                        Box::new(surface), &DEFAULT_FONT).await?;
         ShashlikMap::new(renderer,
                          DefaultTilesProvider::new(tile_store, feature_processor, dpi_scale),
-        )
-    })
-        .unwrap();
+        ).await
+    }).unwrap();
     let map_api = ShashlikMapApi {
         shashlik_map: RwLock::new(shashlik_map),
     };

@@ -26,7 +26,7 @@ impl <CANVAS: CanvasApi,
     RAPI: RendererApi<CANVAS = CANVAS> + 'static> RouteController<CANVAS, RAPI> {
     pub fn new(api: Arc<RAPI>) -> RouteController<CANVAS, RAPI> {
         let mut route_controller = RouteController {
-            api: api.clone(),
+            api,
             current_lon_lat: None,
             valhalla: Arc::new(Valhalla::default())
         };

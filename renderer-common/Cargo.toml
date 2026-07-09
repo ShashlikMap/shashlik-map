@@ -8,5 +8,5 @@ strum = { workspace = true }
 glam = { workspace = true }
 geo-types = { workspace = true }
 lyon = { workspace = true}
-rustybuzz = "0.20.1"
+rustybuzz = { workspace = true}
 bytemuck = { workspace = true}
