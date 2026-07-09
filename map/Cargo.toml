@@ -10,7 +10,6 @@ sgnss = ["dep:sgnss"]
 osm = { workspace = true }
 sgnss = { path = "../sgnss", optional = true }
 anyhow = { workspace = true }
-wgpu-canvas = { workspace = true}
 renderer-common = { workspace = true }
 lyon = { workspace = true}
 tobj = "4.0.3"

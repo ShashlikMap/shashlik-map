@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["winit-run", "map", "app-surface", "ffi-run", "renderer", "wgpu-canvas", "sgnss", "cpu-run", "renderer-cpu", "renderer-common"]
+members = ["winit-run", "map", "app-surface", "ffi-run", "renderer", "sgnss", "cpu-run", "renderer-cpu", "renderer-common"]
 
 [workspace.dependencies]
 app-surface = { path = "./app-surface", default-features = false }
@@ -15,7 +15,6 @@ glam = { version = "0.30.10", features = ["bytemuck"] }
 num = "0.4.3"
 futures-lite = "2"
 raw-window-handle = "0.6"
-wgpu-canvas = { path = "wgpu-canvas" }
 renderer-common = { path = "renderer-common" }
 lyon = "1.0.19"
 bytemuck = { version = "1.16", features = [ "derive" ] }

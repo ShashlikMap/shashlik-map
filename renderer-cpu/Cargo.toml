@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 geo-types = { workspace = true }
-wgpu-canvas = { workspace = true}
 renderer-common = { workspace = true }
 tiny-skia = { workspace = true }
 glam = { workspace = true }
