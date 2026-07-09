@@ -7,5 +7,6 @@ edition = "2024"
 iced = { version = "0.14.0", default-features = false, features = ["tiny-skia", "wayland", "image", "thread-pool"] }
 tiny-skia = { workspace = true }
 osm = { workspace = true }
+renderer-cpu = { path = "../renderer-cpu" }
 map = { path = "../map" }
 pollster = { workspace = true }

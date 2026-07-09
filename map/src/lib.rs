@@ -29,10 +29,8 @@ use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use log::error;
-use tiny_skia::Pixmap;
 use ttf_parser::Face;
 use wgpu_canvas::{MyCanvasApi, MyRendererApi, Renderer, RendererUpdateData, SSAO_ENABLED};
-use crate::cpu_renderer::{NewRenderer, NewTempCpuRenderer};
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
 mod camera;
@@ -43,8 +41,6 @@ mod puck_group;
 pub mod route;
 pub mod tiles;
 mod transition_2d_3d_helper;
-pub mod cpu_renderer;
-
 pub struct ShashlikMap<CANVAS: MyCanvasApi,
     RAPI: MyRendererApi<CANVAS=CANVAS>, OUTPUT, R: Renderer<RAPI, OUTPUT = OUTPUT>, T: TilesProvider> {
     renderer: R,
@@ -164,10 +160,6 @@ impl<CANVAS: MyCanvasApi,
         Self::start_sgnss_if_available(map_event_sender);
 
         Ok(map)
-    }
-
-    pub async fn new_no_wgpu(tiles_provider: T) -> impl NewRenderer<Pixmap> {
-        NewTempCpuRenderer::new(tiles_provider)
     }
 
     fn clip_to_lon_lat(&self, coord: &Coord<f64>) -> Option<Coord<f64>> {

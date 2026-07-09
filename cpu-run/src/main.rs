@@ -1,7 +1,6 @@
 use iced::widget::image::{self, Image};
 use iced::widget::{button, center, column, stack, text};
 use iced::{window, Element, Length, Subscription, Task};
-use map::cpu_renderer::NewRenderer;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::ShashlikMap;
@@ -9,6 +8,7 @@ use osm::source::reqwest_source::ReqwestSource;
 use osm::tiles::TileStore;
 use std::time::Instant;
 use tiny_skia::Pixmap;
+use renderer_cpu::{CpuCanvasApi, CpuRenderer, CpuRendererApi};
 
 fn main() -> iced::Result {
     iced::application(App::new, App::update, App::view)
@@ -22,7 +22,7 @@ fn main() -> iced::Result {
 }
 
 struct App {
-    new_renderer: Box<dyn NewRenderer<Pixmap>>,
+    shashlik_map: ShashlikMap<CpuCanvasApi, CpuRendererApi, Pixmap, CpuRenderer, DefaultTilesProvider<ShashlikFeatureProcessor>>,
     image_handle: image::Handle,
 }
 
@@ -40,12 +40,15 @@ impl App {
             1.0,
         );
 
-        let shashlik_map = pollster::block_on(ShashlikMap::new_no_wgpu(tiles_provider));
+        let shashlik_map = pollster::block_on({
+            let renderer = CpuRenderer::new();
+            ShashlikMap::new(renderer, tiles_provider)
+        }).unwrap();
 
         let initial_handle = image::Handle::from_rgba(400, 400, vec![0; 400 * 400 * 4]);
         (
             Self {
-                new_renderer: Box::new(shashlik_map),
+                shashlik_map,
                 image_handle: initial_handle,
             },
             Task::none(),
@@ -57,7 +60,7 @@ impl App {
             Message::HardwareTick(_frame_time) => {
                 const WIDTH: u32 = 400;
                 const HEIGHT: u32 = 400;
-                let pixmap = self.new_renderer.new_update_and_render();
+                let pixmap = self.shashlik_map.update_and_render().unwrap();
                 let raw_rgba_pixels = pixmap.take();
                 self.image_handle = image::Handle::from_rgba(WIDTH, HEIGHT, raw_rgba_pixels);
             }

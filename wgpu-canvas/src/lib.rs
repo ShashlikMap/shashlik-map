@@ -8,7 +8,6 @@ use glam::{dvec3, DMat4, DVec2, DVec3};
 use std::collections::HashSet;
 use std::sync::Arc;
 use strum::{Display, EnumIter, EnumString};
-use wgpu::Texture;
 
 mod consts;
 pub mod geometry_data;
