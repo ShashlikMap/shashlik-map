@@ -415,7 +415,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         self.cam_follow_zoom_lock = cam_follow_zoom_lock;
     }
 
-    pub fn set_lon_lat_bearing(&mut self, lon: f64, lat: f64, bearing: Option<f32>) where <R as Renderer>::RAPI: 'static {
+    pub fn set_lon_lat_bearing(&mut self, lon: f64, lat: f64, bearing: Option<f32>) {
         self.route_controller.set_current_lon_lat((lon, lat));
         let position = self.tiles_provider.lon_lat_to_world(&coord! {x: lon, y: lat}, MAX_ZOOM_LEVEL);
         self.current_world_position = DVec3::new(position.x, position.y, 0.0);
