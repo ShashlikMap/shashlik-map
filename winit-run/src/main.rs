@@ -17,7 +17,7 @@ use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
-use renderer::ShashlikRenderer;
+use renderer::GpuRenderer;
 use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
 use wgpu_canvas::{feature_layer_tags, PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
 
@@ -157,8 +157,8 @@ fn main() {
 
                         let mut map =
                             pollster::block_on({
-                                let renderer = ShashlikRenderer::new(feature_layer_tags(),
-                                                                     Box::new(canvas), &DEFAULT_FONT).block_on().unwrap();
+                                let renderer = GpuRenderer::new(feature_layer_tags(),
+                                                                Box::new(canvas), &DEFAULT_FONT).block_on().unwrap();
                                 ShashlikMap::new(renderer, tiles_provider)
                             }).unwrap();
                         map.resize(texture_width as u32, texture_height as u32);

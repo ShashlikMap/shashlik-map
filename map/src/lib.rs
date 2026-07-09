@@ -30,7 +30,7 @@ use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use log::error;
 use ttf_parser::Face;
-use wgpu_canvas::{MyCanvasApi, MyRendererApi, Renderer, RendererUpdateData, SSAO_ENABLED};
+use wgpu_canvas::{CanvasApi, RendererApi, Renderer, RendererUpdateData, SSAO_ENABLED};
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
 mod camera;
@@ -41,8 +41,8 @@ mod puck_group;
 pub mod route;
 pub mod tiles;
 mod transition_2d_3d_helper;
-pub struct ShashlikMap<CANVAS: MyCanvasApi,
-    RAPI: MyRendererApi<CANVAS=CANVAS>, OUTPUT, R: Renderer<RAPI, OUTPUT = OUTPUT>, T: TilesProvider> {
+pub struct ShashlikMap<CANVAS: CanvasApi,
+    RAPI: RendererApi<CANVAS=CANVAS>, OUTPUT, R: Renderer<RAPI, OUTPUT = OUTPUT>, T: TilesProvider> {
     renderer: R,
     camera: Camera,
     camera_controller: CameraController,
@@ -77,7 +77,7 @@ impl ScreenParam {
     }
 }
 
-impl <T: MyCanvasApi> RenderGroup<T> for TileData {
+impl <T: CanvasApi> RenderGroup<T> for TileData {
     fn content(&mut self, canvas: &mut T) {
         mem::take(&mut self.geometry_data)
             .into_iter()
@@ -92,8 +92,8 @@ pub static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> =
 // FIXME We should not hardcode it in general. But so far it's just a first step.
 const MAX_ZOOM_LEVEL: i32 = 15;
 
-impl<CANVAS: MyCanvasApi,
-    RAPI: MyRendererApi<CANVAS = CANVAS> + 'static, OUTPUT, R: Renderer<RAPI, OUTPUT = OUTPUT>, T: TilesProvider + std::marker::Sync> ShashlikMap<CANVAS, RAPI, OUTPUT, R, T> {
+impl<CANVAS: CanvasApi,
+    RAPI: RendererApi<CANVAS = CANVAS> + 'static, OUTPUT, R: Renderer<RAPI, OUTPUT = OUTPUT>, T: TilesProvider + std::marker::Sync> ShashlikMap<CANVAS, RAPI, OUTPUT, R, T> {
     const TEMP_ANIMATION_SPEED: f64 = 0.03;
 
     const FOLLOW_ANIMATION_DELAY_MS: u64 = 2000;

@@ -1,4 +1,4 @@
-use crate::canvas_api::CanvasApi;
+use crate::canvas_api::GpuCanvasApi;
 use crate::messages::RendererApiMsg;
 use std::collections::HashSet;
 use std::sync::mpsc::Sender;
@@ -6,16 +6,16 @@ use wgpu_canvas::render_group::RenderGroup;
 use wgpu_canvas::render_modifier::SpatialData;
 use wgpu_canvas::render_style::RenderStyle;
 use wgpu_canvas::style_id::StyleId;
-use wgpu_canvas::MyRendererApi;
+use wgpu_canvas::RendererApi;
 
-pub struct RendererApi {
+pub struct GpuRendererApi {
     renderer_api_tx: Sender<RendererApiMsg>,
 }
 
-impl MyRendererApi for RendererApi {
-    type CANVAS = CanvasApi;
+impl RendererApi for GpuRendererApi {
+    type CANVAS = GpuCanvasApi;
 
-    fn add_render_group(&self, key: String, spatial_data: SpatialData, group: Box<dyn RenderGroup<CanvasApi>>) {
+    fn add_render_group(&self, key: String, spatial_data: SpatialData, group: Box<dyn RenderGroup<GpuCanvasApi>>) {
         self.renderer_api_tx
             .send(RendererApiMsg::RenderGroup((key, spatial_data, group)))
             .expect("RendererApi add_render_group sender failed.");
@@ -48,7 +48,7 @@ impl MyRendererApi for RendererApi {
     }
 }
 
-impl RendererApi {
+impl GpuRendererApi {
     pub fn new(renderer_api_tx: Sender<RendererApiMsg>) -> Self {
         Self { renderer_api_tx }
     }

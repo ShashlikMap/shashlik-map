@@ -13,13 +13,13 @@ use crate::pass_nodes::render_to_texture_pass_node::RenderToTexturePassNode;
 use crate::pass_nodes::shadow_pre_pass::ShadowPrepass;
 use crate::pass_nodes::PassNode;
 use crate::styles::style_store::StyleStore;
-use canvas_api::CanvasApi;
+use canvas_api::GpuCanvasApi;
 use geo_types::Coord;
 use glam::{dvec3, vec2, DVec2, DVec3};
 use global_context::GlobalContext;
 use mesh_layers::layers::Layers;
 use messages::RendererApiMsg;
-use renderer_api::RendererApi;
+use renderer_api::GpuRendererApi;
 use rustybuzz::ttf_parser;
 use std::collections::HashMap;
 use std::iter;
@@ -55,11 +55,11 @@ mod textures;
 mod utils;
 mod buffer_pool;
 
-pub struct ShashlikRenderer {
+pub struct GpuRenderer {
     layers: Layers,
     pass_nodes: Vec<Box<dyn PassNode>>,
     renderer_rx: Receiver<RendererMessage>,
-    pub api: Arc<RendererApi>,
+    pub api: Arc<GpuRendererApi>,
     fps_counter: FpsCounter<100>,
     global_context: GlobalContext,
     buffer_pool: BufferPool,
@@ -67,12 +67,12 @@ pub struct ShashlikRenderer {
     current_preview_type: PreviewType
 }
 
-impl ShashlikRenderer {
+impl GpuRenderer {
     pub async fn new(
         feature_tags: Vec<WorldShapeFeatureLayerTag>,
         canvas: Box<dyn WgpuCanvas>,
         font: &'static ttf_parser::Face<'static>,
-    ) -> anyhow::Result<ShashlikRenderer> {
+    ) -> anyhow::Result<GpuRenderer> {
         let style_store = StyleStore::new();
 
         let mut global_context = GlobalContext::new(canvas, &style_store);
@@ -92,7 +92,7 @@ impl ShashlikRenderer {
         let (renderer_tx, renderer_rx) = channel();
         Self::run_background(style_store, renderer_tx.clone(), renderer_api_rx);
 
-        let api = Arc::new(RendererApi::new(renderer_api_tx));
+        let api = Arc::new(GpuRendererApi::new(renderer_api_tx));
 
         layers.prepare(&mut global_context);
 
@@ -115,7 +115,7 @@ impl ShashlikRenderer {
         receiver_api_rx: Receiver<RendererApiMsg>,
     ) {
         spawn(move || {
-            let mut canvas_api = CanvasApi::new(style_store);
+            let mut canvas_api = GpuCanvasApi::new(style_store);
             let mut spatial_data_map = HashMap::new();
             loop {
                 if let Some(api_msg) = receiver_api_rx.recv().ok() {
@@ -282,7 +282,7 @@ impl ShashlikRenderer {
     }
 }
 
-impl Renderer<RendererApi> for ShashlikRenderer {
+impl Renderer<GpuRendererApi> for GpuRenderer {
     type OUTPUT = Texture;
 
     fn screen_size(&self) -> (f32, f32) {
@@ -306,7 +306,7 @@ impl Renderer<RendererApi> for ShashlikRenderer {
         self.render()
     }
 
-    fn api(&self) -> Arc<RendererApi> {
+    fn api(&self) -> Arc<GpuRendererApi> {
         Arc::clone(&self.api)
     }
 }

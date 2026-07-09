@@ -57,7 +57,7 @@ pub struct RendererUpdateData {
     pub scale_2d_3d: f32,
 }
 
-pub trait Renderer<T: MyRendererApi> {
+pub trait Renderer<T: RendererApi> {
     type OUTPUT;
     fn screen_size(&self) -> (f32, f32);
     fn resize(&mut self, width: u32, height: u32);
@@ -68,14 +68,14 @@ pub trait Renderer<T: MyRendererApi> {
     fn api(&self) -> Arc<T>;
 }
 
-pub trait MyCanvasApi {
+pub trait CanvasApi {
     fn set_feature_layer_tag(&mut self, tag: Option<String>);
 
     fn geometry_data(&mut self, geometry_data: GeometryData);
 }
 
-pub trait MyRendererApi: Send + Sync {
-    type CANVAS: MyCanvasApi;
+pub trait RendererApi: Send + Sync {
+    type CANVAS: CanvasApi;
     fn add_render_group(
         &self,
         key: String,

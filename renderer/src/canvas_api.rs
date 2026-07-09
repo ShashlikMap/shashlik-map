@@ -17,7 +17,7 @@ use lyon::path::builder::BorderRadii;
 use lyon::path::{Path, Winding};
 use std::collections::{BTreeMap, HashMap};
 use std::mem;
-use wgpu_canvas::MyCanvasApi;
+use wgpu_canvas::CanvasApi;
 
 #[derive(Clone)]
 pub struct MeshInfo {
@@ -28,7 +28,7 @@ pub struct MeshInfo {
     pub double_style: bool,
 }
 
-pub struct CanvasApi {
+pub struct GpuCanvasApi {
     style_store: StyleStore,
     flushed: bool,
     draw_commands: Vec<Box<dyn DrawCommand>>,
@@ -40,7 +40,7 @@ pub struct CanvasApi {
     feature_layer_tag: Option<String>,
 }
 
-impl MyCanvasApi for CanvasApi {
+impl CanvasApi for GpuCanvasApi {
     fn set_feature_layer_tag(&mut self, tag: Option<String>) {
         self.set_feature_layer_tag(tag);
     }
@@ -50,10 +50,10 @@ impl MyCanvasApi for CanvasApi {
     }
 }
 
-impl CanvasApi {
+impl GpuCanvasApi {
 
-    pub fn new(style_store: StyleStore) -> CanvasApi {
-        CanvasApi {
+    pub fn new(style_store: StyleStore) -> GpuCanvasApi {
+        GpuCanvasApi {
             style_store,
             flushed: false,
             draw_commands: Vec::new(),

@@ -1,4 +1,4 @@
-use crate::canvas_api::CanvasApi;
+use crate::canvas_api::GpuCanvasApi;
 use crate::draw_commands::DrawCommands;
 use std::collections::HashSet;
 use wgpu_canvas::render_group::RenderGroup;
@@ -12,7 +12,7 @@ pub(crate) enum RendererMessage {
 }
 
 pub enum RendererApiMsg {
-    RenderGroup((String, SpatialData, Box<dyn RenderGroup<CanvasApi>>)),
+    RenderGroup((String, SpatialData, Box<dyn RenderGroup<GpuCanvasApi>>)),
     UpdateStyle((StyleId, Box<dyn FnOnce(&mut RenderStyle) + Send>)),
     UpdateSpatialData((String, Box<dyn FnOnce(&mut SpatialData) + Send>)),
     ClearGroups(HashSet<String>)

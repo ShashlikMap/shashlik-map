@@ -8,7 +8,7 @@ use lyon::path::Path;
 use wgpu_canvas::geometry_data::{GeometryData, GeometryType, PolylineOptions, ShapeData, StyledRangeInfo, SvgData};
 use wgpu_canvas::render_group::RenderGroup;
 use wgpu_canvas::style_id::StyleId;
-use wgpu_canvas::MyCanvasApi;
+use wgpu_canvas::CanvasApi;
 
 pub struct RouteGroup {
     route: Vec<Point>,
@@ -32,7 +32,7 @@ impl RouteGroup {
     }
 }
 
-impl <T: MyCanvasApi> RenderGroup<T> for RouteGroup {
+impl <T: CanvasApi> RenderGroup<T> for RouteGroup {
     fn content(&mut self, canvas: &mut T) {
         canvas.set_feature_layer_tag(Some("route_layer".to_string()));
         let first_route_point = self.route[0];

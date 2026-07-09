@@ -9,7 +9,7 @@ use wgpu_canvas::render_group::RenderGroup;
 use wgpu_canvas::render_modifier::SpatialData;
 use wgpu_canvas::render_style::RenderStyle;
 use wgpu_canvas::style_id::StyleId;
-use wgpu_canvas::{MyCanvasApi, MyRendererApi, Renderer, RendererUpdateData};
+use wgpu_canvas::{CanvasApi, RendererApi, Renderer, RendererUpdateData};
 
 pub struct CpuRenderer {
     start_time: Instant,
@@ -18,7 +18,7 @@ pub struct CpuRenderer {
 pub struct CpuRendererApi {}
 pub struct CpuCanvasApi {}
 
-impl MyCanvasApi for CpuCanvasApi {
+impl CanvasApi for CpuCanvasApi {
     fn set_feature_layer_tag(&mut self, tag: Option<String>) {
     }
 
@@ -26,7 +26,7 @@ impl MyCanvasApi for CpuCanvasApi {
     }
 }
 
-impl MyRendererApi for CpuRendererApi {
+impl RendererApi for CpuRendererApi {
     type CANVAS = CpuCanvasApi;
 
     fn add_render_group(

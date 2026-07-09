@@ -19,7 +19,7 @@ use wgpu::naga::compact::KeepUnused::No;
 use wgpu::{
     Device, Queue, CurrentSurfaceTexture, SurfaceConfiguration, SurfaceTexture, Texture, TextureView,
 };
-use renderer::ShashlikRenderer;
+use renderer::GpuRenderer;
 use wgpu_canvas::{feature_layer_tags, PreviewType, PREVIEW_TYPE};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
@@ -97,8 +97,8 @@ pub fn createShashlikMapApi(
     let tile_store = Box::new(TileStore::new(reqwest_source));
     let feature_processor = ShashlikFeatureProcessor::new();
     let shashlik_map = pollster::block_on({
-        let renderer = ShashlikRenderer::new(feature_layer_tags(),
-                                             Box::new(surface), &DEFAULT_FONT).block_on().unwrap();
+        let renderer = GpuRenderer::new(feature_layer_tags(),
+                                        Box::new(surface), &DEFAULT_FONT).block_on().unwrap();
         ShashlikMap::new(renderer,
                          DefaultTilesProvider::new(tile_store, feature_processor, dpi_scale),
         )

@@ -1,5 +1,5 @@
-use crate::MyCanvasApi;
+use crate::CanvasApi;
 
-pub trait RenderGroup<T: MyCanvasApi>: Send {
+pub trait RenderGroup<T: CanvasApi>: Send {
     fn content(&mut self, canvas: &mut T);
 }

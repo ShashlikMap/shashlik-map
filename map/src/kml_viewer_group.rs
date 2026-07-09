@@ -6,7 +6,7 @@ use wgpu_canvas::render_group::RenderGroup;
 use wgpu_canvas::style_id::StyleId;
 use std::path::PathBuf;
 use glam::DVec3;
-use wgpu_canvas::MyCanvasApi;
+use wgpu_canvas::CanvasApi;
 
 pub struct KmlGroup {
     pub collection: GeometryCollection<f64>,
@@ -66,7 +66,7 @@ impl KmlGroup {
     }
 }
 
-impl <T: MyCanvasApi> RenderGroup<T> for KmlGroup {
+impl <T: CanvasApi> RenderGroup<T> for KmlGroup {
     fn content(&mut self, canvas: &mut T) {
         canvas.set_feature_layer_tag(Some("kml_layer".to_string()));
         let mut geometry_data = vec![];
