@@ -6,7 +6,7 @@ use crate::view_projection::ViewProjection;
 use crate::RendererUpdateData;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Device, TextureFormat, TextureUsages, TextureView};
-use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use crate::wgpu_canvas::WgpuCanvas;
 use wgpu_canvas::SHADOWS_TEX_SIZE;
 
 pub struct GlobalContext {

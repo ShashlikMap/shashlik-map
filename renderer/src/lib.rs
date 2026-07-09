@@ -2,11 +2,9 @@ extern crate core;
 
 use crate::buffer_pool::BufferPool;
 use crate::fps::FpsCounter;
-use wgpu_canvas::geometry_data::{LineData, TextData};
-use crate::mesh_layers::layers::{SCREEN_TEXT_LAYER};
+use crate::mesh_layers::layers::SCREEN_TEXT_LAYER;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
-use wgpu_canvas::render_modifier::SpatialData;
 use crate::pass_nodes::main_pass_node::MainPassNode;
 use crate::pass_nodes::prepass_node::PrepassNode;
 use crate::pass_nodes::render_to_texture_pass_node::RenderToTexturePassNode;
@@ -15,7 +13,7 @@ use crate::pass_nodes::PassNode;
 use crate::styles::style_store::StyleStore;
 use canvas_api::GpuCanvasApi;
 use geo_types::Coord;
-use glam::{dvec3, vec2, DVec2, DVec3};
+use glam::{dvec3, vec2, DVec2};
 use global_context::GlobalContext;
 use mesh_layers::layers::Layers;
 use messages::RendererApiMsg;
@@ -29,8 +27,10 @@ use std::thread::spawn;
 use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
-use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use wgpu_canvas::{PreviewType, Renderer, RendererUpdateData, WorldShapeFeatureLayerTag, PREVIEW_TYPE};
+use ::wgpu_canvas::{PreviewType, Renderer, RendererUpdateData, WorldShapeFeatureLayerTag, PREVIEW_TYPE};
+use ::wgpu_canvas::geometry_data::{LineData, TextData};
+use ::wgpu_canvas::render_modifier::SpatialData;
+use wgpu_canvas::WgpuCanvas;
 
 pub mod canvas_api;
 mod collision_handler;
@@ -54,6 +54,7 @@ pub mod pipelines;
 mod textures;
 mod utils;
 mod buffer_pool;
+pub mod wgpu_canvas;
 
 pub struct GpuRenderer {
     layers: Layers,

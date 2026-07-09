@@ -18,7 +18,7 @@ use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
 use renderer::GpuRenderer;
-use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
+use renderer::wgpu_canvas::DefaultWgpuCanvas;
 use wgpu_canvas::{feature_layer_tags, PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
 
 slint::include_modules!();

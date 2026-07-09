@@ -21,7 +21,7 @@ use wgpu::{
 };
 use renderer::GpuRenderer;
 use wgpu_canvas::{feature_layer_tags, PreviewType, PREVIEW_TYPE};
-use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use renderer::wgpu_canvas::WgpuCanvas;
 
 //FIXME https://github.com/gobley/gobley/issues/20
 #[uniffi::export]
