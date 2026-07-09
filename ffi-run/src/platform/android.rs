@@ -7,7 +7,7 @@ use jni::objects::JString;
 use jni::sys::jfloat;
 use jni::sys::{jboolean, jlong, jobject};
 use jni_fn::jni_fn;
-use map::{feature_layer_tags, ShashlikMap, DEFAULT_FONT};
+use map::{ShashlikMap, DEFAULT_FONT};
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use osm::source::reqwest_source::ReqwestSource;
@@ -20,7 +20,7 @@ use wgpu::{
     Device, Queue, CurrentSurfaceTexture, SurfaceConfiguration, SurfaceTexture, Texture, TextureView,
 };
 use renderer::ShashlikRenderer;
-use wgpu_canvas::{PreviewType, PREVIEW_TYPE};
+use wgpu_canvas::{feature_layer_tags, PreviewType, PREVIEW_TYPE};
 use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 
 //FIXME https://github.com/gobley/gobley/issues/20
