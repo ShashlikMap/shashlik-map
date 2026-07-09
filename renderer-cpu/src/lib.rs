@@ -65,7 +65,8 @@ impl CpuRenderer {
     }
 }
 
-impl Renderer<CpuRendererApi> for CpuRenderer {
+impl Renderer for CpuRenderer {
+    type RAPI = CpuRendererApi;
     type OUTPUT = Pixmap;
 
     fn screen_size(&self) -> (f32, f32) {

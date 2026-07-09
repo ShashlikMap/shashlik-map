@@ -284,7 +284,8 @@ impl GpuRenderer {
     }
 }
 
-impl Renderer<GpuRendererApi> for GpuRenderer {
+impl Renderer for GpuRenderer {
+    type RAPI = GpuRendererApi;
     type OUTPUT = Texture;
 
     fn screen_size(&self) -> (f32, f32) {

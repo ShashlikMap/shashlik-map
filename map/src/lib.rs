@@ -41,13 +41,13 @@ mod puck_group;
 pub mod route;
 pub mod tiles;
 mod transition_2d_3d_helper;
-pub struct ShashlikMap<CANVAS: CanvasApi,
-    RAPI: RendererApi<CANVAS=CANVAS>, OUTPUT, R: Renderer<RAPI, OUTPUT = OUTPUT>, T: TilesProvider> {
+
+pub struct ShashlikMap<R: Renderer, T: TilesProvider> {
     renderer: R,
     camera: Camera,
     camera_controller: CameraController,
     tiles_provider: T,
-    route_controller: RouteController<CANVAS, RAPI>,
+    route_controller: RouteController<R::RAPI>,
     current_world_position: DVec3,
     current_bearing: f64,
     camera_bearing: f64,
@@ -92,18 +92,14 @@ pub static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> =
 // FIXME We should not hardcode it in general. But so far it's just a first step.
 const MAX_ZOOM_LEVEL: i32 = 15;
 
-impl<CANVAS: CanvasApi,
-    RAPI: RendererApi<CANVAS = CANVAS> + 'static, OUTPUT, R: Renderer<RAPI, OUTPUT = OUTPUT>, T: TilesProvider + Sync> ShashlikMap<CANVAS, RAPI, OUTPUT, R, T> {
+impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
     const TEMP_ANIMATION_SPEED: f64 = 0.03;
 
     const FOLLOW_ANIMATION_DELAY_MS: u64 = 2000;
     const TELEPORT_THRESHOLD: f64 = 300.0;
     const ZOOM_LOCK_DIST: f64 = 200.0;
 
-    pub async fn new(
-        renderer: R,
-        mut tiles_provider: T,
-    ) -> anyhow::Result<ShashlikMap<CANVAS, RAPI, OUTPUT, R, T>> {
+    pub async fn new(renderer: R, mut tiles_provider: T) -> anyhow::Result<ShashlikMap<R, T>> {
         let screen_size = renderer.screen_size();
         let tiles_stream = tiles_provider.tiles();
 
@@ -174,7 +170,7 @@ impl<CANVAS: CanvasApi,
     }
 
     fn run_tiles(
-        renderer_api: Arc<RAPI>,
+        renderer_api: Arc<R::RAPI>,
         zero_zoom_level_loaded: Arc<AtomicBool>,
         tiles_stream: impl Stream<Item = TilesMessage> + Send + 'static,
     ) {
@@ -216,7 +212,7 @@ impl<CANVAS: CanvasApi,
         self.screen_params.height = height;
     }
 
-    pub fn update_and_render(&mut self) -> Option<OUTPUT> {
+    pub fn update_and_render(&mut self) -> Option<R::OUTPUT> {
         self.consume_map_events();
         self.camera_controller.update_camera(&mut self.camera);
 
@@ -419,7 +415,7 @@ impl<CANVAS: CanvasApi,
         self.cam_follow_zoom_lock = cam_follow_zoom_lock;
     }
 
-    pub fn set_lon_lat_bearing(&mut self, lon: f64, lat: f64, bearing: Option<f32>) {
+    pub fn set_lon_lat_bearing(&mut self, lon: f64, lat: f64, bearing: Option<f32>) where <R as Renderer>::RAPI: 'static {
         self.route_controller.set_current_lon_lat((lon, lat));
         let position = self.tiles_provider.lon_lat_to_world(&coord! {x: lon, y: lat}, MAX_ZOOM_LEVEL);
         self.current_world_position = DVec3::new(position.x, position.y, 0.0);
@@ -476,7 +472,7 @@ impl<CANVAS: CanvasApi,
         })
     }
 
-    fn load_styles(renderer_api: Arc<RAPI>) {
+    fn load_styles(renderer_api: Arc<R::RAPI>) {
         spawn(move || {
             let mut styles = StyleLoader::load();
             if styles.is_empty() {

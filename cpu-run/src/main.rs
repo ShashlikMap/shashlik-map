@@ -6,9 +6,8 @@ use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::ShashlikMap;
 use osm::source::reqwest_source::ReqwestSource;
 use osm::tiles::TileStore;
+use renderer_cpu::CpuRenderer;
 use std::time::Instant;
-use tiny_skia::Pixmap;
-use renderer_cpu::{CpuCanvasApi, CpuRenderer, CpuRendererApi};
 
 fn main() -> iced::Result {
     iced::application(App::new, App::update, App::view)
@@ -22,7 +21,7 @@ fn main() -> iced::Result {
 }
 
 struct App {
-    shashlik_map: ShashlikMap<CpuCanvasApi, CpuRendererApi, Pixmap, CpuRenderer, DefaultTilesProvider<ShashlikFeatureProcessor>>,
+    shashlik_map: ShashlikMap<CpuRenderer, DefaultTilesProvider<ShashlikFeatureProcessor>>,
     image_handle: image::Handle,
 }
 

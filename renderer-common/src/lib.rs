@@ -56,7 +56,8 @@ pub struct RendererUpdateData {
     pub scale_2d_3d: f32,
 }
 
-pub trait Renderer<T: RendererApi> {
+pub trait Renderer {
+    type RAPI: RendererApi + 'static; 
     type OUTPUT;
     fn screen_size(&self) -> (f32, f32);
     fn resize(&mut self, width: u32, height: u32);
@@ -64,7 +65,7 @@ pub trait Renderer<T: RendererApi> {
     fn clip_to_world(&self, coord: &Coord) -> Option<DVec2>;
     fn render(&mut self) -> Option<Self::OUTPUT>;
 
-    fn api(&self) -> Arc<T>;
+    fn api(&self) -> Arc<Self::RAPI>;
 }
 
 pub trait CanvasApi {

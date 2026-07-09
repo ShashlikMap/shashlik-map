@@ -10,21 +10,19 @@ use std::time::Duration;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
 use valhalla_client::route::{DirectionsType, Location, Manifest};
-use renderer_common::{CanvasApi, RendererApi};
+use renderer_common::{RendererApi};
 
 #[cfg(target_os = "android")]
 extern crate valhalla_client_android as valhalla_client;
 
-pub struct RouteController<CANVAS: CanvasApi,
-    RAPI: RendererApi<CANVAS = CANVAS>> {
+pub struct RouteController<RAPI: RendererApi + 'static> {
     api: Arc<RAPI>,
     current_lon_lat: Option<(f64, f64)>,
     valhalla: Arc<Valhalla>
 }
 
-impl <CANVAS: CanvasApi,
-    RAPI: RendererApi<CANVAS = CANVAS> + 'static> RouteController<CANVAS, RAPI> {
-    pub fn new(api: Arc<RAPI>) -> RouteController<CANVAS, RAPI> {
+impl <RAPI: RendererApi + 'static> RouteController<RAPI> {
+    pub fn new(api: Arc<RAPI>) -> RouteController<RAPI> {
         let mut route_controller = RouteController {
             api,
             current_lon_lat: None,
