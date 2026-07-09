@@ -1,12 +1,12 @@
 use geo_types::{Geometry, GeometryCollection, Point};
 use kml::KmlReader;
 use log::error;
-use renderer::canvas_api::CanvasApi;
-use renderer::geometry_data::{GeometryData, SvgData};
-use renderer::render_group::RenderGroup;
-use renderer::styles::style_id::StyleId;
+use renderer_common::geometry_data::{GeometryData, SvgData};
+use renderer_common::render_group::RenderGroup;
+use renderer_common::style_id::StyleId;
 use std::path::PathBuf;
 use glam::DVec3;
+use renderer_common::CanvasApi;
 
 pub struct KmlGroup {
     pub collection: GeometryCollection<f64>,
@@ -66,8 +66,8 @@ impl KmlGroup {
     }
 }
 
-impl RenderGroup for KmlGroup {
-    fn content(&mut self, canvas: &mut CanvasApi) {
+impl <T: CanvasApi> RenderGroup<T> for KmlGroup {
+    fn content(&mut self, canvas: &mut T) {
         canvas.set_feature_layer_tag(Some("kml_layer".to_string()));
         let mut geometry_data = vec![];
         Self::populate_geometry(&self.collection, &mut geometry_data);

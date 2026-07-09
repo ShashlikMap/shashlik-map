@@ -7,7 +7,7 @@ use jni::objects::JString;
 use jni::sys::jfloat;
 use jni::sys::{jboolean, jlong, jobject};
 use jni_fn::jni_fn;
-use map::ShashlikMap;
+use map::{ShashlikMap, DEFAULT_FONT};
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use osm::source::reqwest_source::ReqwestSource;
@@ -15,12 +15,12 @@ use pollster::FutureExt;
 use std::mem;
 use std::sync::{Arc, RwLock};
 use osm::tiles::TileStore;
-use wgpu::naga::compact::KeepUnused::No;
 use wgpu::{
     Device, Queue, CurrentSurfaceTexture, SurfaceConfiguration, SurfaceTexture, Texture, TextureView,
 };
-use wgpu_canvas::{PreviewType, PREVIEW_TYPE};
-use wgpu_canvas::wgpu_canvas::WgpuCanvas;
+use renderer_gpu::GpuRenderer;
+use renderer_gpu::wgpu_canvas::WgpuCanvas;
+use renderer_common::{feature_layer_tags, PreviewType, PREVIEW_TYPE};
 
 //FIXME https://github.com/gobley/gobley/issues/20
 #[uniffi::export]
@@ -95,11 +95,13 @@ pub fn createShashlikMapApi(
     let reqwest_source = ReqwestSource::new();
     let tile_store = Box::new(TileStore::new(reqwest_source));
     let feature_processor = ShashlikFeatureProcessor::new();
-    let shashlik_map = pollster::block_on(ShashlikMap::new(
-        Box::new(surface),
-        DefaultTilesProvider::new(tile_store, feature_processor, dpi_scale),
-    ))
-    .unwrap();
+    let shashlik_map = pollster::block_on(async {
+        let renderer = GpuRenderer::new(feature_layer_tags(),
+                                        Box::new(surface), &DEFAULT_FONT).await?;
+        ShashlikMap::new(renderer,
+                         DefaultTilesProvider::new(tile_store, feature_processor, dpi_scale),
+        ).await
+    }).unwrap();
     let map_api = ShashlikMapApi {
         shashlik_map: RwLock::new(shashlik_map),
     };

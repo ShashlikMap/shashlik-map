@@ -1,0 +1,10 @@
+[package]
+name = "renderer-cpu"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+geo-types = { workspace = true }
+renderer-common = { workspace = true }
+tiny-skia = { workspace = true }
+glam = { workspace = true }

@@ -1,10 +1,9 @@
 use app_surface::{AppSurface, IOSViewObj};
 use wgpu::{CurrentSurfaceTexture, Device, Queue, SurfaceConfiguration, SurfaceTexture, Texture, TextureView};
-use wgpu_canvas::wgpu_canvas::WgpuCanvas;
 use crate::ShashlikMapApi;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use osm::source::reqwest_source::ReqwestSource;
-use map::ShashlikMap;
+use map::{ShashlikMap, DEFAULT_FONT};
 use std::sync::RwLock;
 use std::ffi::c_void;
 use std::mem;
@@ -12,6 +11,9 @@ use osm::tiles::TileStore;
 use objc::runtime::Object;
 use app_surface::SurfaceFrame;
 use map::feature_processor::ShashlikFeatureProcessor;
+use renderer_gpu::GpuRenderer;
+use renderer_gpu::wgpu_canvas::WgpuCanvas;
+use renderer_common::feature_layer_tags;
 
 extern "C" fn ios_callback_stub(_arg: i32) {}
 
@@ -29,7 +31,13 @@ pub fn create_shashlik_map_api_for_ios(view: u64, metal_layer: u64, maximum_fram
 	let tile_store = Box::new(TileStore::new(reqwest_source));
 	let feature_processor = ShashlikFeatureProcessor::new();
 	// TODO DPI from iOS
-	let shashlik_map = pollster::block_on(ShashlikMap::new(Box::new(wrapper), DefaultTilesProvider::new(tile_store, feature_processor, 1.35))).unwrap();
+	let shashlik_map = pollster::block_on(async {
+		let renderer = GpuRenderer::new(feature_layer_tags(),
+		                                Box::new(wrapper), &DEFAULT_FONT).await?;
+		ShashlikMap::new(renderer,
+		                 DefaultTilesProvider::new(tile_store, feature_processor, 1.35),
+		).await
+	}).unwrap();
 	ShashlikMapApi { shashlik_map: RwLock::new(shashlik_map) }
 }
 

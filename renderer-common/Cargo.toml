@@ -1,0 +1,12 @@
+[package]
+name = "renderer-common"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+strum = { workspace = true }
+glam = { workspace = true }
+geo-types = { workspace = true }
+lyon = { workspace = true}
+rustybuzz = { workspace = true}
+bytemuck = { workspace = true}

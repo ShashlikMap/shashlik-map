@@ -4,8 +4,8 @@ use glam::DMat4;
 use glam::DVec2;
 use glam::DVec3;
 use glam::Vec3Swizzles;
-use renderer::LIGHT_POS;
 use std::f64::consts::PI;
+use renderer_common::LIGHT_POS;
 
 pub struct Camera {
     pub eye: DVec3,

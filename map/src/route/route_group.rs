@@ -5,12 +5,10 @@ use glam::{DVec3, Vec2, Vec3};
 use lyon::geom::point;
 use lyon::lyon_tessellation::{LineCap, LineJoin};
 use lyon::path::Path;
-use renderer::canvas_api::CanvasApi;
-use renderer::draw_commands::{GeometryType, PolylineOptions};
-use renderer::geometry_data::{GeometryData, ShapeData, SvgData};
-use renderer::mesh::mesh::StyledRangeInfo;
-use renderer::render_group::RenderGroup;
-use renderer::styles::style_id::StyleId;
+use renderer_common::geometry_data::{GeometryData, GeometryType, PolylineOptions, ShapeData, StyledRangeInfo, SvgData};
+use renderer_common::render_group::RenderGroup;
+use renderer_common::style_id::StyleId;
+use renderer_common::CanvasApi;
 
 pub struct RouteGroup {
     route: Vec<Point>,
@@ -34,8 +32,8 @@ impl RouteGroup {
     }
 }
 
-impl RenderGroup for RouteGroup {
-    fn content(&mut self, canvas: &mut CanvasApi) {
+impl <T: CanvasApi> RenderGroup<T> for RouteGroup {
+    fn content(&mut self, canvas: &mut T) {
         canvas.set_feature_layer_tag(Some("route_layer".to_string()));
         let first_route_point = self.route[0];
 

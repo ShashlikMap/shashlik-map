@@ -8,10 +8,9 @@ sgnss = ["dep:sgnss"]
 
 [dependencies]
 osm = { workspace = true }
-renderer = { path = "../renderer" }
 sgnss = { path = "../sgnss", optional = true }
 anyhow = { workspace = true }
-wgpu-canvas = { workspace = true}
+renderer-common = { workspace = true }
 lyon = { workspace = true}
 tobj = "4.0.3"
 futures = "0.3.31"
@@ -24,12 +23,10 @@ rayon = "1.11.0"
 kml = { git = "https://github.com/ShashlikMap/kml" }
 rand = { workspace = true }
 fast-mvt = "0.4"
-tiny-skia = { workspace = true }
 
 ttf-parser = "0.25.1"
 glam = { workspace = true }
 num = { workspace = true}
-wgpu = { workspace = true}
 
 valhalla-client = "0.5.2"
 

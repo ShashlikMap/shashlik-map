@@ -2,8 +2,7 @@ use crate::route::{RouteCosting};
 use crate::route::route_group::RouteGroup;
 use geo_types::{Point, point};
 use log::{error};
-use renderer::modifier::render_modifier::SpatialData;
-use renderer::renderer_api::RendererApi;
+use renderer_common::render_modifier::SpatialData;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::thread::{sleep, spawn};
@@ -11,19 +10,21 @@ use std::time::Duration;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
 use valhalla_client::route::{DirectionsType, Location, Manifest};
+use renderer_common::{RendererApi};
+
 #[cfg(target_os = "android")]
 extern crate valhalla_client_android as valhalla_client;
 
-pub struct RouteController {
-    api: Arc<RendererApi>,
+pub struct RouteController<RAPI: RendererApi + 'static> {
+    api: Arc<RAPI>,
     current_lon_lat: Option<(f64, f64)>,
     valhalla: Arc<Valhalla>
 }
 
-impl RouteController {
-    pub fn new(api: Arc<RendererApi>) -> RouteController {
+impl <RAPI: RendererApi + 'static> RouteController<RAPI> {
+    pub fn new(api: Arc<RAPI>) -> RouteController<RAPI> {
         let mut route_controller = RouteController {
-            api: api.clone(),
+            api,
             current_lon_lat: None,
             valhalla: Arc::new(Valhalla::default())
         };
@@ -112,11 +113,11 @@ impl RouteController {
         }
     }
 
-    pub fn clear_routes(&self, api: Arc<RendererApi>) {
+    pub fn clear_routes(&self, api: Arc<RAPI>) {
         Self::clear_routes_internal(api);
     }
 
-    fn clear_routes_internal(api: Arc<RendererApi>) {
+    fn clear_routes_internal(api: Arc<RAPI>) {
         api.clear_render_groups(HashSet::from_iter(vec!["route".to_string()]));
     }
 }

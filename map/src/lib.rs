@@ -15,12 +15,9 @@ use glam::{DMat2, DVec2, DVec3, Vec2};
 use num::{abs, clamp};
 use osm::styles::style_loader::StyleLoader;
 use osm::styles::{DashStyle, RenderStyle};
-use renderer::canvas_api::CanvasApi;
-use renderer::modifier::render_modifier::SpatialData;
-use renderer::render_group::RenderGroup;
-use renderer::renderer_api::RendererApi;
-use renderer::styles::style_id::StyleId;
-use renderer::{Renderer, RendererUpdateData, ShashlikRenderer};
+use renderer_common::render_modifier::SpatialData;
+use renderer_common::render_group::RenderGroup;
+use renderer_common::style_id::StyleId;
 use route::route_controller::RouteController;
 #[cfg(feature = "sgnss")]
 use sgnss::start_sgnss;
@@ -32,13 +29,8 @@ use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use log::error;
-use tiny_skia::Pixmap;
 use ttf_parser::Face;
-use wgpu::Texture;
-use renderer::mesh_layers::layers::WorldShapeFeatureLayerTag;
-use wgpu_canvas::wgpu_canvas::WgpuCanvas;
-use wgpu_canvas::SSAO_ENABLED;
-use crate::cpu_renderer::{NewRenderer, NewTempCpuRenderer};
+use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData, SSAO_ENABLED};
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
 mod camera;
@@ -49,14 +41,13 @@ mod puck_group;
 pub mod route;
 pub mod tiles;
 mod transition_2d_3d_helper;
-pub mod cpu_renderer;
 
-pub struct ShashlikMap<T: TilesProvider> {
-    renderer: Box<ShashlikRenderer>,
+pub struct ShashlikMap<R: Renderer, T: TilesProvider> {
+    renderer: R,
     camera: Camera,
     camera_controller: CameraController,
     tiles_provider: T,
-    route_controller: RouteController,
+    route_controller: RouteController<R::RAPI>,
     current_world_position: DVec3,
     current_bearing: f64,
     camera_bearing: f64,
@@ -86,8 +77,8 @@ impl ScreenParam {
     }
 }
 
-impl RenderGroup for TileData {
-    fn content(&mut self, canvas: &mut CanvasApi) {
+impl <T: CanvasApi> RenderGroup<T> for TileData {
+    fn content(&mut self, canvas: &mut T) {
         mem::take(&mut self.geometry_data)
             .into_iter()
             .for_each(|data| {
@@ -95,41 +86,21 @@ impl RenderGroup for TileData {
             });
     }
 }
-static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> =
+pub static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> =
     LazyLock::new(|| Face::parse(include_bytes!("../font.ttf"), 0).unwrap());
 
 // FIXME We should not hardcode it in general. But so far it's just a first step.
 const MAX_ZOOM_LEVEL: i32 = 15;
 
-impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
+impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
     const TEMP_ANIMATION_SPEED: f64 = 0.03;
 
     const FOLLOW_ANIMATION_DELAY_MS: u64 = 2000;
     const TELEPORT_THRESHOLD: f64 = 300.0;
     const ZOOM_LOCK_DIST: f64 = 200.0;
 
-    pub async fn new(
-        canvas: Box<dyn WgpuCanvas>,
-        mut tiles_provider: T,
-    ) -> anyhow::Result<ShashlikMap<T>> {
-        let screen_size = (canvas.config().width as f32, canvas.config().height as f32);
-
-        let feature_layer_tags = vec![
-            WorldShapeFeatureLayerTag {
-                name: "kml_layer",
-                ..Default::default()
-            },
-            WorldShapeFeatureLayerTag {
-                name: "route_layer",
-                vertex_shader: Some("vs_main_route"),
-                indirect: true,
-            },
-            WorldShapeFeatureLayerTag {
-                name: "puck_layer",
-                ..Default::default()
-            },
-        ];
-        let renderer = ShashlikRenderer::new(feature_layer_tags, canvas, &DEFAULT_FONT).await?;
+    pub async fn new(renderer: R, mut tiles_provider: T) -> anyhow::Result<ShashlikMap<R, T>> {
+        let screen_size = renderer.screen_size();
         let tiles_stream = tiles_provider.tiles();
 
         let initial_coord: Coord<f64> = (139.757080078125, 35.68798828125).into();
@@ -139,7 +110,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
 
         let mut puck_spatial_data = SpatialData::transform(DVec3::new(0.0, 0.0, 0.0));
         puck_spatial_data.scale(DVec3::splat(1.0));
-        renderer.api.add_render_group(
+        renderer.api().add_render_group(
             "puck".to_string(),
             puck_spatial_data,
             Box::new(SimplePuck {}),
@@ -147,8 +118,8 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
 
         let zero_zoom_level_loaded = Arc::new(AtomicBool::new(false));
         let transition_2d_3d_helper = Transition2d3dHelper::new(zero_zoom_level_loaded.clone());
-        Self::run_tiles(renderer.api.clone(), zero_zoom_level_loaded.clone(), tiles_stream);
-        Self::load_styles(renderer.api.clone());
+        Self::run_tiles(renderer.api(), zero_zoom_level_loaded.clone(), tiles_stream);
+        Self::load_styles(renderer.api());
 
         let mut camera_controller = CameraController::new();
         camera_controller.pitch = CameraController::MIN_PITCH;
@@ -156,9 +127,9 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
 
         let (map_event_sender, map_event_receiver) = mpsc::channel();
 
-        let route_controller = RouteController::new(renderer.api.clone());
+        let route_controller = RouteController::new(renderer.api());
         let mut map = ShashlikMap {
-            renderer: Box::new(renderer),
+            renderer,
             camera: cam,
             camera_controller,
             tiles_provider,
@@ -187,10 +158,6 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
         Ok(map)
     }
 
-    pub async fn new_no_wgpu(tiles_provider: T) -> impl NewRenderer<Pixmap> {
-        NewTempCpuRenderer::new(tiles_provider)
-    } 
-
     fn clip_to_lon_lat(&self, coord: &Coord<f64>) -> Option<Coord<f64>> {
         let world_on_ground = self.renderer.clip_to_world(coord)?;
         Some(self.world_to_lon_lat(&world_on_ground))
@@ -203,7 +170,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
     }
 
     fn run_tiles(
-        renderer_api: Arc<RendererApi>,
+        renderer_api: Arc<R::RAPI>,
         zero_zoom_level_loaded: Arc<AtomicBool>,
         tiles_stream: impl Stream<Item = TilesMessage> + Send + 'static,
     ) {
@@ -245,7 +212,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
         self.screen_params.height = height;
     }
 
-    pub fn update_and_render(&mut self) -> Option<Texture> {
+    pub fn update_and_render(&mut self) -> Option<R::OUTPUT> {
         self.consume_map_events();
         self.camera_controller.update_camera(&mut self.camera);
 
@@ -325,7 +292,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
         let scale_2d_3d = self.transition_2d_3d_helper.scale_2d_3d();
         if scale_2d_3d > 0.0 && scale_2d_3d < 1.0 {
             self.renderer
-                .api.update_style(StyleId::new("building_stand"), move |style| {
+                .api().update_style(StyleId::new("building_stand"), move |style| {
                 // fyi, shift values to ensure a full opaque or transparent value
                 let new_value = ((scale_2d_3d - 0.05) * 1.1).clamp(0.0, 1.0);
                 style.set_alpha(new_value);
@@ -347,7 +314,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
         }
 
         self.renderer
-            .api
+            .api() //  fyi, it seems to be fast enough(need to learn more here)
             .update_spatial_data("puck".to_string(), move |spatial_data| {
                 spatial_data.scale = DVec3::splat(cam_zoom);
                 let puck_location_offset = puck_location - spatial_data.transform;
@@ -505,7 +472,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
         })
     }
 
-    fn load_styles(renderer_api: Arc<RendererApi>) {
+    fn load_styles(renderer_api: Arc<R::RAPI>) {
         spawn(move || {
             let mut styles = StyleLoader::load();
             if styles.is_empty() {
@@ -517,17 +484,17 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
                 let style_id = StyleId::new(style.id);
                 let actual_render_style = match style.render_style {
                     RenderStyle::Fill(color) => {
-                        renderer::styles::render_style::RenderStyle::fill(color.as_array())
+                        renderer_common::render_style::RenderStyle::fill(color.as_array())
                     }
                     RenderStyle::Border(color, percent) => {
-                        renderer::styles::render_style::RenderStyle::border(color.as_array(), percent)
+                        renderer_common::render_style::RenderStyle::border(color.as_array(), percent)
                     }
                     RenderStyle::Dashed(color1, color2, dash_style) => {
                         let dash_style_value = match dash_style {
                             DashStyle::Solid => 0,
                             DashStyle::Circles => 1,
                         };
-                        renderer::styles::render_style::RenderStyle::dashed(
+                        renderer_common::render_style::RenderStyle::dashed(
                             color1.as_array(),
                             color2.as_array(),
                             dash_style_value,
@@ -544,7 +511,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
         println!("Loading KML from {:?}", path_buf);
         let kml_group = KmlGroup::new(path_buf, self.create_location_coord_converter());
 
-        self.renderer.api.add_render_group(
+        self.renderer.api().add_render_group(
             "kml_data".to_string(),
             SpatialData::transform(DVec3::new(0.0, 0.0, 0.0)),
             Box::new(kml_group),
@@ -553,7 +520,7 @@ impl<T: TilesProvider + std::marker::Sync> ShashlikMap<T> {
 
     pub fn clear_routes(&self) {
         self.route_controller
-            .clear_routes(self.renderer.api.clone());
+            .clear_routes(self.renderer.api());
     }
 
     #[allow(unused_variables)]

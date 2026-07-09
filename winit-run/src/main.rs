@@ -1,7 +1,7 @@
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
-use map::ShashlikMap;
+use map::{ShashlikMap, DEFAULT_FONT};
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
 use osm::tiles::TileStore;
@@ -16,8 +16,9 @@ use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
-use wgpu_canvas::wgpu_canvas::DefaultWgpuCanvas;
-use wgpu_canvas::{PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
+use renderer_gpu::GpuRenderer;
+use renderer_gpu::wgpu_canvas::DefaultWgpuCanvas;
+use renderer_common::{feature_layer_tags, PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
 
 slint::include_modules!();
 
@@ -41,7 +42,7 @@ fn main() {
     slint::BackendSelector::new()
         .require_wgpu_29(WGPUConfiguration::Automatic(wgpu_settings))
         .select()
-        .expect("Unable to create Slint backend with WGPU based renderer");
+        .expect("Unable to create Slint backend with WGPU based renderer-gpu");
 
     let ui = ShashlikUI::new().unwrap();
     let mut screen_size = ui.window().size();
@@ -154,8 +155,11 @@ fn main() {
                         }
 
                         let mut map =
-                            pollster::block_on(ShashlikMap::new(Box::new(canvas), tiles_provider))
-                                .unwrap();
+                            pollster::block_on(async {
+                                let renderer = GpuRenderer::new(feature_layer_tags(),
+                                                                Box::new(canvas), &DEFAULT_FONT).await?;
+                                ShashlikMap::new(renderer, tiles_provider).await
+                            }).unwrap();
                         map.resize(texture_width as u32, texture_height as u32);
                         shashlik_map = Some(map);
                     }
