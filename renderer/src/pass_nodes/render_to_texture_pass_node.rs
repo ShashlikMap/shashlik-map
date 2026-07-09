@@ -4,7 +4,7 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::pass_nodes::{PassNode, BACKGROUND_ATTACHMENT_COLOR};
 use crate::textures::{create_color_binding_texture, create_common_texture, create_depth_texture, SAMPLE_COUNT};
 use wgpu::{CommandEncoder, TextureFormat, TextureView};
-use wgpu_canvas::PREVIEW_TYPE;
+use renderer_common::PREVIEW_TYPE;
 
 pub(crate) struct RenderToTexturePassNode {
     msaa_texture_view: TextureView,

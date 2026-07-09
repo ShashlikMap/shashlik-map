@@ -20,8 +20,8 @@ use wgpu::{
     Device, Queue, CurrentSurfaceTexture, SurfaceConfiguration, SurfaceTexture, Texture, TextureView,
 };
 use renderer::GpuRenderer;
-use wgpu_canvas::{feature_layer_tags, PreviewType, PREVIEW_TYPE};
-use renderer::wgpu_canvas::WgpuCanvas;
+use renderer_common::{feature_layer_tags, PreviewType, PREVIEW_TYPE};
+use renderer::renderer_common::WgpuCanvas;
 
 //FIXME https://github.com/gobley/gobley/issues/20
 #[uniffi::export]

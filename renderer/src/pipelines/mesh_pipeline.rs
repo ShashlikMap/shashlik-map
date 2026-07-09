@@ -5,7 +5,7 @@ use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, ComputePass, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, TextureFormat, TextureUsages};
-use wgpu_canvas::geometry_data::MeshVertex;
+use renderer_common::geometry_data::MeshVertex;
 
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,

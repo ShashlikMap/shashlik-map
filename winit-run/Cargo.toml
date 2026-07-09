@@ -8,6 +8,7 @@ osm = { workspace = true }
 map = { path = "../map" }
 renderer = { path = "../renderer" }
 wgpu-canvas = { workspace = true}
+renderer-common = { workspace = true }
 env_logger = { workspace = true }
 pollster = { workspace = true }
 wgpu = { workspace = true}

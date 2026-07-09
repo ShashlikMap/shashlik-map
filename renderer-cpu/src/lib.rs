@@ -4,12 +4,12 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 use tiny_skia::{Paint, Pixmap, Rect, Transform};
-use wgpu_canvas::geometry_data::GeometryData;
-use wgpu_canvas::render_group::RenderGroup;
-use wgpu_canvas::render_modifier::SpatialData;
-use wgpu_canvas::render_style::RenderStyle;
-use wgpu_canvas::style_id::StyleId;
-use wgpu_canvas::{CanvasApi, RendererApi, Renderer, RendererUpdateData};
+use renderer_common::geometry_data::GeometryData;
+use renderer_common::render_group::RenderGroup;
+use renderer_common::render_modifier::SpatialData;
+use renderer_common::render_style::RenderStyle;
+use renderer_common::style_id::StyleId;
+use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData};
 
 pub struct CpuRenderer {
     start_time: Instant,

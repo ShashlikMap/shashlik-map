@@ -5,7 +5,7 @@ use log::error;
 use lyon::lyon_tessellation::VertexBuffers;
 use std::ops::Range;
 use wgpu::{Buffer, RenderPass};
-use wgpu_canvas::geometry_data::StyledRangeInfo;
+use renderer_common::geometry_data::StyledRangeInfo;
 use crate::buffer_pool::BufferPool;
 use crate::global_context::GlobalContext;
 

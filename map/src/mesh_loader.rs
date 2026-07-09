@@ -4,7 +4,7 @@ use lyon::lyon_tessellation::VertexBuffers;
 use lyon::path::{Path, Winding};
 use std::io::BufReader;
 use tobj::LoadError;
-use wgpu_canvas::geometry_data::MeshVertex;
+use renderer_common::geometry_data::MeshVertex;
 
 pub struct MeshLoader {}
 

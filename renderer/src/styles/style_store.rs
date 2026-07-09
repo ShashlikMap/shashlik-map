@@ -1,6 +1,6 @@
 use std::borrow::Cow;
-use wgpu_canvas::render_style::RenderStyle;
-use wgpu_canvas::style_id::StyleId;
+use renderer_common::render_style::RenderStyle;
+use renderer_common::style_id::StyleId;
 use indexmap::IndexMap;
 use log::error;
 use tokio::sync::broadcast::{Receiver, Sender};

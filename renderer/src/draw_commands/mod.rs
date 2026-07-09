@@ -5,7 +5,7 @@ pub mod text_draw_command;
 use crate::buffer_pool::BufferPool;
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
-use wgpu_canvas::render_modifier::SpatialData;
+use renderer_common::render_modifier::SpatialData;
 
 pub(crate) struct DrawCommands {
     key: String,

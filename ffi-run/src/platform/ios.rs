@@ -1,6 +1,6 @@
 use app_surface::{AppSurface, IOSViewObj};
 use wgpu::{CurrentSurfaceTexture, Device, Queue, SurfaceConfiguration, SurfaceTexture, Texture, TextureView};
-use renderer::wgpu_canvas::WgpuCanvas;
+use renderer::renderer_common::WgpuCanvas;
 use crate::ShashlikMapApi;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use osm::source::reqwest_source::ReqwestSource;

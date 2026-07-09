@@ -1,7 +1,7 @@
 use std::mem;
 use glam::{Vec2, Vec4};
 use wgpu::{BufferAddress, VertexAttribute, VertexStepMode};
-use wgpu_canvas::geometry_data::MeshVertex;
+use renderer_common::geometry_data::MeshVertex;
 
 pub trait VertexAttrib: Sized {
     const ATTRIBUTES: &[VertexAttribute];

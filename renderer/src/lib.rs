@@ -27,10 +27,12 @@ use std::thread::spawn;
 use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
-use ::wgpu_canvas::{PreviewType, Renderer, RendererUpdateData, WorldShapeFeatureLayerTag, PREVIEW_TYPE};
-use ::wgpu_canvas::geometry_data::{LineData, TextData};
-use ::wgpu_canvas::render_modifier::SpatialData;
-use wgpu_canvas::WgpuCanvas;
+use wgpu::hal::DynDevice;
+use wgpu::hal::DynQueue;
+use ::renderer_common::{PreviewType, Renderer, RendererUpdateData, WorldShapeFeatureLayerTag, PREVIEW_TYPE};
+use ::renderer_common::geometry_data::{LineData, TextData};
+use ::renderer_common::render_modifier::SpatialData;
+use crate::wgpu_canvas::WgpuCanvas;
 
 pub mod canvas_api;
 mod collision_handler;
@@ -54,6 +56,7 @@ pub mod pipelines;
 mod textures;
 mod utils;
 mod buffer_pool;
+
 pub mod wgpu_canvas;
 
 pub struct GpuRenderer {

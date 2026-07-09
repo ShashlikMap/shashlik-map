@@ -2,11 +2,11 @@ use crate::draw_commands::mesh2d_draw_command::{Mesh2dCommandBatch, Mesh2dDrawCo
 use crate::draw_commands::mesh3d_draw_command::Mesh3dDrawCommand;
 use crate::draw_commands::text_draw_command::TextDrawCommand;
 use crate::draw_commands::{DrawCommand, DrawCommands};
-use wgpu_canvas::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, MeshVertex, PolylineOptions, ShapeData, StyledRangeInfo, SvgData, TextData};
+use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, MeshVertex, PolylineOptions, ShapeData, StyledRangeInfo, SvgData, TextData};
 use crate::mesh::mesh::{StyledRange};
-use wgpu_canvas::render_modifier::SpatialData;
-use wgpu_canvas::render_style::RenderStyle;
-use wgpu_canvas::style_id::StyleId;
+use renderer_common::render_modifier::SpatialData;
+use renderer_common::render_style::RenderStyle;
+use renderer_common::style_id::StyleId;
 use crate::styles::style_store::StyleStore;
 use crate::svg::svg_parser::svg_parse;
 use crate::vertex_attrs::ShapeVertex;
@@ -17,7 +17,7 @@ use lyon::path::builder::BorderRadii;
 use lyon::path::{Path, Winding};
 use std::collections::{BTreeMap, HashMap};
 use std::mem;
-use wgpu_canvas::CanvasApi;
+use renderer_common::CanvasApi;
 
 #[derive(Clone)]
 pub struct MeshInfo {

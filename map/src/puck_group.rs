@@ -1,8 +1,8 @@
 use crate::mesh_loader::MeshLoader;
-use wgpu_canvas::geometry_data::{GeometryData, GeometryType, ShapeData, StyledRangeInfo};
-use wgpu_canvas::render_group::RenderGroup;
-use wgpu_canvas::style_id::StyleId;
-use wgpu_canvas::CanvasApi;
+use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData, StyledRangeInfo};
+use renderer_common::render_group::RenderGroup;
+use renderer_common::style_id::StyleId;
+use renderer_common::CanvasApi;
 
 pub struct SimplePuck {}
 

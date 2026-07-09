@@ -8,8 +8,8 @@ use osm::map::{
     NatureKind,
 };
 use rand::RngExt;
-use wgpu_canvas::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, LineData, PolylineOptions, ShapeData, StyledRangeInfo, SvgBackground, SvgData, TextData};
-use wgpu_canvas::style_id::StyleId;
+use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, LineData, PolylineOptions, ShapeData, StyledRangeInfo, SvgBackground, SvgData, TextData};
+use renderer_common::style_id::StyleId;
 use seahash::hash;
 use std::collections::HashMap;
 use capitalize::Capitalize;

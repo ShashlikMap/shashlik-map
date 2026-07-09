@@ -10,7 +10,7 @@ use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use rustybuzz::ttf_parser;
 use wgpu::{CommandEncoder, RenderPass};
-use wgpu_canvas::{WorldShapeFeatureLayerTag, PREVIEW_TYPE, SSAO_ENABLED};
+use renderer_common::{WorldShapeFeatureLayerTag, PREVIEW_TYPE, SSAO_ENABLED};
 
 pub(crate) const WORLD_TEXT_LAYER: &'static str = "world_text_layer";
 pub(crate) const SCREEN_TEXT_LAYER: &'static str = "screen_text_layer";

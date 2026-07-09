@@ -9,7 +9,7 @@ use rand::{rng, RngExt};
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, ImageSubresourceRange, ShaderModuleDescriptor, ShaderSource, StorageTextureAccess, TextureFormat, TextureUsages, TextureView, TextureViewDimension};
-use wgpu_canvas::SSAO_ENABLED;
+use renderer_common::SSAO_ENABLED;
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,

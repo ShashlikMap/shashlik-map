@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
 use std::sync::Arc;
 use wgpu::Color;
-use wgpu_canvas::geometry_data::StyledRangeInfo;
+use renderer_common::geometry_data::StyledRangeInfo;
 
 pub(crate) struct GlyphCache {
     face: Arc<DefaultFaceWrapper>,

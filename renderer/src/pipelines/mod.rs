@@ -3,7 +3,7 @@ use crate::global_context::GlobalContext;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::mesh::positioned_mesh::PositionedMesh;
-use wgpu_canvas::render_modifier::SpatialData;
+use renderer_common::render_modifier::SpatialData;
 use wgpu::{BindGroup, BindGroupLayout, ColorTargetState, ComputePass, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, TextureView, VertexBufferLayout};
 
 pub mod mesh_pipeline;

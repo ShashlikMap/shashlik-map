@@ -1,8 +1,8 @@
 use crate::draw_commands::DrawCommand;
-use wgpu_canvas::geometry_data::TextData;
+use renderer_common::geometry_data::TextData;
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::{Layers, WORLD_TEXT_LAYER};
-use wgpu_canvas::render_modifier::SpatialData;
+use renderer_common::render_modifier::SpatialData;
 use std::mem;
 use crate::buffer_pool::BufferPool;
 

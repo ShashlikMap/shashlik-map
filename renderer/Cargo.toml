@@ -12,6 +12,7 @@ wgpu = { workspace = true }
 log = { workspace = true }
 lyon = { workspace = true}
 wgpu-canvas = { workspace = true}
+renderer-common = { workspace = true }
 indexmap = "2.12.0"
 usvg = "0.41.0"
 geo-types = { workspace = true, features = ["rstar_0_12"] }

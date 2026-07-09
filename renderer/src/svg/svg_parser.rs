@@ -7,7 +7,7 @@ use lyon::math::{Point, Vector};
 use lyon::path::PathEvent;
 use lyon::tessellation;
 use usvg::{tiny_skia_path, Color, Group, Size, Transform};
-use wgpu_canvas::style_id::StyleId;
+use renderer_common::style_id::StyleId;
 use crate::styles::style_store::StyleStore;
 // Taken from here https://github.com/nical/lyon/blob/main/examples/wgpu_svg/src/main.rs
 // with some minor changes
@@ -162,7 +162,7 @@ fn create_style_index(style_store: &mut StyleStore, style_index: Option<u32>, co
         // TODO We may cache it by color value
         let style_id = StyleId::new(format!("{:?}_dyn_color", color_array));
         style_store.update_style(&style_id, move |style| *style =
-            wgpu_canvas::render_style::RenderStyle::fill(color_array));
+            renderer_common::render_style::RenderStyle::fill(color_array));
         style_store.get_index(&style_id) as u32
     })
 }

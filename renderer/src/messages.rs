@@ -1,10 +1,10 @@
 use crate::canvas_api::GpuCanvasApi;
 use crate::draw_commands::DrawCommands;
 use std::collections::HashSet;
-use wgpu_canvas::render_group::RenderGroup;
-use wgpu_canvas::render_modifier::SpatialData;
-use wgpu_canvas::render_style::RenderStyle;
-use wgpu_canvas::style_id::StyleId;
+use renderer_common::render_group::RenderGroup;
+use renderer_common::render_modifier::SpatialData;
+use renderer_common::render_style::RenderStyle;
+use renderer_common::style_id::StyleId;
 
 pub(crate) enum RendererMessage {
     Draw(DrawCommands),

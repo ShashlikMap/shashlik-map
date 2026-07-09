@@ -1,7 +1,7 @@
 use glam::{Mat4, Vec3};
 use rustybuzz::ttf_parser::{GlyphId, OutlineBuilder};
 use rustybuzz::{Face, GlyphBuffer, UnicodeBuffer};
-use wgpu_canvas::geometry_data::FaceTextParams;
+use renderer_common::geometry_data::FaceTextParams;
 
 pub struct DefaultFaceWrapper {
     face: Face<'static>,

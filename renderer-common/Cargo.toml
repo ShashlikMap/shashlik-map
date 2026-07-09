@@ -4,3 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+strum = { workspace = true }
+glam = { workspace = true }
+geo-types = { workspace = true }
+lyon = { workspace = true}
+rustybuzz = "0.20.1"
+bytemuck = { workspace = true}

@@ -5,10 +5,10 @@ use glam::{DVec3, Vec2, Vec3};
 use lyon::geom::point;
 use lyon::lyon_tessellation::{LineCap, LineJoin};
 use lyon::path::Path;
-use wgpu_canvas::geometry_data::{GeometryData, GeometryType, PolylineOptions, ShapeData, StyledRangeInfo, SvgData};
-use wgpu_canvas::render_group::RenderGroup;
-use wgpu_canvas::style_id::StyleId;
-use wgpu_canvas::CanvasApi;
+use renderer_common::geometry_data::{GeometryData, GeometryType, PolylineOptions, ShapeData, StyledRangeInfo, SvgData};
+use renderer_common::render_group::RenderGroup;
+use renderer_common::style_id::StyleId;
+use renderer_common::CanvasApi;
 
 pub struct RouteGroup {
     route: Vec<Point>,

@@ -1,12 +1,12 @@
 use geo_types::{Geometry, GeometryCollection, Point};
 use kml::KmlReader;
 use log::error;
-use wgpu_canvas::geometry_data::{GeometryData, SvgData};
-use wgpu_canvas::render_group::RenderGroup;
-use wgpu_canvas::style_id::StyleId;
+use renderer_common::geometry_data::{GeometryData, SvgData};
+use renderer_common::render_group::RenderGroup;
+use renderer_common::style_id::StyleId;
 use std::path::PathBuf;
 use glam::DVec3;
-use wgpu_canvas::CanvasApi;
+use renderer_common::CanvasApi;
 
 pub struct KmlGroup {
     pub collection: GeometryCollection<f64>,

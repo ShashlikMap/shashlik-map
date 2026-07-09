@@ -15,9 +15,9 @@ use glam::{DMat2, DVec2, DVec3, Vec2};
 use num::{abs, clamp};
 use osm::styles::style_loader::StyleLoader;
 use osm::styles::{DashStyle, RenderStyle};
-use wgpu_canvas::render_modifier::SpatialData;
-use wgpu_canvas::render_group::RenderGroup;
-use wgpu_canvas::style_id::StyleId;
+use renderer_common::render_modifier::SpatialData;
+use renderer_common::render_group::RenderGroup;
+use renderer_common::style_id::StyleId;
 use route::route_controller::RouteController;
 #[cfg(feature = "sgnss")]
 use sgnss::start_sgnss;
@@ -30,7 +30,7 @@ use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use log::error;
 use ttf_parser::Face;
-use wgpu_canvas::{CanvasApi, RendererApi, Renderer, RendererUpdateData, SSAO_ENABLED, render_group};
+use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData, SSAO_ENABLED};
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
 mod camera;
@@ -488,17 +488,17 @@ impl<CANVAS: CanvasApi,
                 let style_id = StyleId::new(style.id);
                 let actual_render_style = match style.render_style {
                     RenderStyle::Fill(color) => {
-                        wgpu_canvas::render_style::RenderStyle::fill(color.as_array())
+                        renderer_common::render_style::RenderStyle::fill(color.as_array())
                     }
                     RenderStyle::Border(color, percent) => {
-                        wgpu_canvas::render_style::RenderStyle::border(color.as_array(), percent)
+                        renderer_common::render_style::RenderStyle::border(color.as_array(), percent)
                     }
                     RenderStyle::Dashed(color1, color2, dash_style) => {
                         let dash_style_value = match dash_style {
                             DashStyle::Solid => 0,
                             DashStyle::Circles => 1,
                         };
-                        wgpu_canvas::render_style::RenderStyle::dashed(
+                        renderer_common::render_style::RenderStyle::dashed(
                             color1.as_array(),
                             color2.as_array(),
                             dash_style_value,

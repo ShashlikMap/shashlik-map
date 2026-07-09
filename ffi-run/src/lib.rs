@@ -10,7 +10,7 @@ use wgpu::Texture;
 use renderer::canvas_api::GpuCanvasApi;
 use renderer::renderer_api::GpuRendererApi;
 use renderer::GpuRenderer;
-use wgpu_canvas::{PreviewType, PREVIEW_TYPE, SSAO_ENABLED};
+use renderer_common::{PreviewType, PREVIEW_TYPE, SSAO_ENABLED};
 
 #[derive(uniffi::Object)]
 pub struct ShashlikMapApi {
