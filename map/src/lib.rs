@@ -30,7 +30,7 @@ use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use log::error;
 use ttf_parser::Face;
-use wgpu_canvas::{CanvasApi, RendererApi, Renderer, RendererUpdateData, SSAO_ENABLED};
+use wgpu_canvas::{CanvasApi, RendererApi, Renderer, RendererUpdateData, SSAO_ENABLED, render_group};
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
 mod camera;
