@@ -11,8 +11,8 @@ use osm::tiles::TileStore;
 use objc::runtime::Object;
 use app_surface::SurfaceFrame;
 use map::feature_processor::ShashlikFeatureProcessor;
-use renderer::GpuRenderer;
-use renderer::wgpu_canvas::WgpuCanvas;
+use renderer_gpu::GpuRenderer;
+use renderer_gpu::wgpu_canvas::WgpuCanvas;
 use renderer_common::feature_layer_tags;
 
 extern "C" fn ios_callback_stub(_arg: i32) {}

@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 osm = { workspace = true }
 map = { path = "../map" }
-renderer = { path = "../renderer" }
+renderer-gpu = { path = "../renderer-gpu" }
 renderer-common = { workspace = true }
 env_logger = { workspace = true }
 pollster = { workspace = true }

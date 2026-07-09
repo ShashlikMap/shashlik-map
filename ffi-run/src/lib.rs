@@ -5,7 +5,7 @@ mod platform;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::ShashlikMap;
-use renderer::GpuRenderer;
+use renderer_gpu::GpuRenderer;
 use renderer_common::{PreviewType, PREVIEW_TYPE, SSAO_ENABLED};
 use std::sync::RwLock;
 

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["winit-run", "map", "app-surface", "ffi-run", "renderer", "sgnss", "cpu-run", "renderer-cpu", "renderer-common"]
+members = ["winit-run", "map", "app-surface", "ffi-run", "renderer-gpu", "sgnss", "cpu-run", "renderer-cpu", "renderer-common"]
 
 [workspace.dependencies]
 app-surface = { path = "./app-surface", default-features = false }

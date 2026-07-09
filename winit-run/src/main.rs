@@ -16,8 +16,8 @@ use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
-use renderer::GpuRenderer;
-use renderer::wgpu_canvas::DefaultWgpuCanvas;
+use renderer_gpu::GpuRenderer;
+use renderer_gpu::wgpu_canvas::DefaultWgpuCanvas;
 use renderer_common::{feature_layer_tags, PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
 
 slint::include_modules!();
@@ -42,7 +42,7 @@ fn main() {
     slint::BackendSelector::new()
         .require_wgpu_29(WGPUConfiguration::Automatic(wgpu_settings))
         .select()
-        .expect("Unable to create Slint backend with WGPU based renderer");
+        .expect("Unable to create Slint backend with WGPU based renderer-gpu");
 
     let ui = ShashlikUI::new().unwrap();
     let mut screen_size = ui.window().size();

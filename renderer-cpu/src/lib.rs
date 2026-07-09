@@ -11,7 +11,7 @@ use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
 use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData};
 
-/// This is the very beginning of CPU renderer. So far, just a stub animation
+/// This is the very beginning of CPU renderer-gpu. So far, just a stub animation
 
 pub struct CpuRenderer {
     start_time: Instant,

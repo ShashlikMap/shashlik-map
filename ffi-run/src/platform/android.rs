@@ -18,8 +18,8 @@ use osm::tiles::TileStore;
 use wgpu::{
     Device, Queue, CurrentSurfaceTexture, SurfaceConfiguration, SurfaceTexture, Texture, TextureView,
 };
-use renderer::GpuRenderer;
-use renderer::wgpu_canvas::WgpuCanvas;
+use renderer_gpu::GpuRenderer;
+use renderer_gpu::wgpu_canvas::WgpuCanvas;
 use renderer_common::{feature_layer_tags, PreviewType, PREVIEW_TYPE};
 
 //FIXME https://github.com/gobley/gobley/issues/20

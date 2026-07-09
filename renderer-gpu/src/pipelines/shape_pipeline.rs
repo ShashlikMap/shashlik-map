@@ -198,7 +198,7 @@ impl RenderPipeline for ShapePipeline {
     }
 
     fn set_instance_bind_group_render(&mut self, render_pass: &mut RenderPass, instance_bind_group: &BindGroup) {
-        // index 2 in shape pipeline for renderer!
+        // index 2 in shape pipeline for renderer-gpu!
         render_pass.set_bind_group(2, instance_bind_group, &[]);
     }
 
