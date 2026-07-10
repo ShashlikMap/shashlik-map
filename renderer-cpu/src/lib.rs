@@ -1,6 +1,6 @@
 use geo_types::Coord;
 use glam::{DMat4, DVec2, DVec3};
-use lyon::path::PathEvent;
+use lyon_path::PathEvent;
 use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData};
 use renderer_common::render_group::RenderGroup;
 use renderer_common::render_modifier::SpatialData;
@@ -10,13 +10,13 @@ use renderer_common::{CanvasApi, Renderer, RendererApi, RendererUpdateData};
 use std::collections::HashSet;
 use std::mem;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 use tiny_skia::{Color, Paint, PathBuilder, Pixmap, Stroke, Transform};
 
 /// This is the very beginning of CPU renderer-gpu.
 
 pub enum RendererApiMsg {
-    RenderGroup((String, SpatialData, Box<dyn RenderGroup<CpuCanvasApi>>)),
+    RenderGroup(String, SpatialData, Box<dyn RenderGroup<CpuCanvasApi>>),
     ClearGroups(HashSet<String>),
 }
 
@@ -68,7 +68,7 @@ impl RendererApi for CpuRendererApi {
         group: Box<dyn RenderGroup<Self::CANVAS>>,
     ) {
         self.sender
-            .send(RendererApiMsg::RenderGroup((key, spatial_data, group)))
+            .send(RendererApiMsg::RenderGroup(key, spatial_data, group))
             .unwrap();
     }
 
@@ -131,10 +131,10 @@ impl Renderer for CpuRenderer {
     fn render(&mut self) -> Option<Self::OUTPUT> {
         while let Ok(msg) = self.receiver.try_recv() {
             match msg {
-                RendererApiMsg::RenderGroup(mut group) => {
-                    group.2.content(&mut self.canvas_api);
+                RendererApiMsg::RenderGroup(key, spat_data, mut group) => {
+                    group.content(&mut self.canvas_api);
                     self.temp_shapes
-                        .push((group.0, group.1, self.canvas_api.take_shapes()));
+                        .push((key, spat_data, self.canvas_api.take_shapes()));
                 }
                 RendererApiMsg::ClearGroups(keys) => {
                     self.temp_shapes.retain(|s| !keys.contains(&s.0));
@@ -142,16 +142,11 @@ impl Renderer for CpuRenderer {
             }
         }
 
+        // TODO Explore optimization: allocation and screen dividing
         let mut pixmap = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
 
         pixmap.fill(Color::from_rgba8(244, 243, 240, 255));
 
-        let transform = Transform::from_scale(0.5, 0.5)
-            .post_translate((Self::WIDTH as f32) * 0.5, (Self::HEIGHT as f32) * 0.5);
-        let unclip = DVec2::new(Self::WIDTH as f64, Self::HEIGHT as f64);
-
-        let hw = (Self::WIDTH / 1) as f64;
-        let hh = (Self::HEIGHT / 1) as f64;
         self.temp_shapes
             .iter()
             .for_each(|(_, spat_data, shapes_data)| {
@@ -164,26 +159,46 @@ impl Renderer for CpuRenderer {
                     let mut not_culled = false;
                     shape_data.path.iter().for_each(|path| match path {
                         PathEvent::Begin { at } => {
-                            let projected = self.view_proj_matrix.project_point3(DVec3::new(
-                                at.x as f64 + spatial_offset.x,
-                                at.y as f64 + spatial_offset.y,
-                                0.0,
-                            )).truncate() * unclip;
-                            if projected.x >= -hw && projected.y >= -hh && projected.x <= hw && projected.y <= hh {
+                            let projected = self
+                                .view_proj_matrix
+                                .project_point3(DVec3::new(
+                                    at.x as f64 + spatial_offset.x,
+                                    at.y as f64 + spatial_offset.y,
+                                    0.0,
+                                ))
+                                .truncate();
+                            if projected.x >= -1.0
+                                && projected.y >= -1.0
+                                && projected.x <= 1.0
+                                && projected.y <= 1.0
+                            {
                                 not_culled = true;
                             }
-                            pb.move_to(projected.x as f32, projected.y as f32);
+                            pb.move_to(
+                                0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
+                                0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
+                            );
                         }
                         PathEvent::Line { from: _, to } => {
-                            let projected = self.view_proj_matrix.project_point3(DVec3::new(
-                                to.x as f64 + spatial_offset.x,
-                                to.y as f64 + spatial_offset.y,
-                                0.0,
-                            )).truncate() * unclip;
-                            if projected.x >= -hw && projected.y >= -hh && projected.x <= hw && projected.y <= hh {
+                            let projected = self
+                                .view_proj_matrix
+                                .project_point3(DVec3::new(
+                                    to.x as f64 + spatial_offset.x,
+                                    to.y as f64 + spatial_offset.y,
+                                    0.0,
+                                ))
+                                .truncate();
+                            if projected.x >= -1.0
+                                && projected.y >= -1.0
+                                && projected.x <= 1.0
+                                && projected.y <= 1.0
+                            {
                                 not_culled = true;
                             }
-                            pb.line_to(projected.x as f32, projected.y as f32);
+                            pb.line_to(
+                                0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
+                                0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
+                            );
                         }
                         PathEvent::Quadratic { .. } => {}
                         PathEvent::Cubic { .. } => {}
@@ -213,13 +228,19 @@ impl Renderer for CpuRenderer {
                         paint.anti_alias = true;
 
                         if is_line {
-                            pixmap.stroke_path(&path, &paint, &Stroke::default(), transform, None)
+                            pixmap.stroke_path(
+                                &path,
+                                &paint,
+                                &Stroke::default(),
+                                Transform::default(),
+                                None,
+                            )
                         } else {
                             pixmap.fill_path(
                                 &path,
                                 &paint,
                                 tiny_skia::FillRule::Winding,
-                                transform,
+                                Transform::default(),
                                 None,
                             );
                         }
