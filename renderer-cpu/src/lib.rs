@@ -1,5 +1,5 @@
 use geo_types::Coord;
-use glam::{DMat4, DVec2, DVec3};
+use glam::{DMat4, DVec2, DVec3, Vec2};
 use lyon::path::PathEvent;
 use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData};
 use renderer_common::render_group::RenderGroup;
@@ -151,12 +151,12 @@ impl Renderer for CpuRenderer {
 
         let transform = Transform::from_scale(0.5, 0.5)
             .post_translate((Self::WIDTH as f32) * 0.5, (Self::HEIGHT as f32) * 0.5);
+        let unclip = DVec2::new(Self::WIDTH as f64, Self::HEIGHT as f64);
 
         self.temp_shapes
             .iter()
             .for_each(|(_, spat_data, shapes_data)| {
-                let qx = (spat_data.transform.x - self.cs_offset.x) as f32;
-                let qy = (spat_data.transform.y - self.cs_offset.y) as f32;
+                let spatial_offset = (spat_data.transform - self.cs_offset).truncate();
 
                 for shape_data in shapes_data {
                     let mut pb = PathBuilder::new();
@@ -164,27 +164,20 @@ impl Renderer for CpuRenderer {
                         matches!(shape_data.geometry_type, GeometryType::Polyline { .. });
                     shape_data.path.iter().for_each(|path| match path {
                         PathEvent::Begin { at } => {
-                            let qq = self.view_proj_matrix.project_point3(DVec3::new(
-                                (at.x + qx) as f64,
-                                (at.y + qy) as f64,
+                            let projected = self.view_proj_matrix.project_point3(DVec3::new(
+                                at.x as f64 + spatial_offset.x,
+                                at.y as f64 + spatial_offset.y,
                                 0.0,
-                            ));
-                            pb.move_to(
-                                qq.x as f32 * Self::WIDTH as f32,
-                                qq.y as f32 * Self::HEIGHT as f32,
-                            );
+                            )).truncate() * unclip;
+                            pb.move_to(projected.x as f32, projected.y as f32);
                         }
                         PathEvent::Line { from, to } => {
                             let qq = self.view_proj_matrix.project_point3(DVec3::new(
-                                (to.x + qx) as f64,
-                                (to.y + qy) as f64,
+                                to.x as f64 + spatial_offset.x,
+                                to.y as f64 + spatial_offset.y,
                                 0.0,
-                            ));
-
-                            pb.line_to(
-                                qq.x as f32 * Self::WIDTH as f32,
-                                qq.y as f32 * Self::HEIGHT as f32,
-                            );
+                            )).truncate() * unclip;
+                            pb.line_to(qq.x as f32, qq.y as f32);
                         }
                         PathEvent::Quadratic { .. } => {}
                         PathEvent::Cubic { .. } => {}
