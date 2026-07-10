@@ -26,7 +26,7 @@ osm = { git = "https://github.com/ShashlikMap/shashlik-tiles-gen-v0.git" }
 rand = "0.10.1"
 strum = { version = "0.28", features = ["derive"] }
 dotenvy = "0.15"
-tiny-skia = "0.12.0"
+tiny-skia = { version = "0.12.0", default-features = false, features = ["std", "simd"] }
 rustybuzz = "0.20.1"
 
 # macOS, iOS

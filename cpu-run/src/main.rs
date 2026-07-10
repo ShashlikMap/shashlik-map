@@ -1,10 +1,12 @@
+use iced::keyboard::Key;
+use iced::keyboard::key::Named;
 use iced::widget::image::{self, Image};
-use iced::widget::{button, center, column, stack, text};
-use iced::{window, Element, Length, Size, Subscription, Task};
+use iced::widget::{center, stack};
+use iced::{Element, Event, Length, Size, Subscription, Task, event, keyboard, window};
+use map::ShashlikMap;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::tiles::mvt::mvt_tile_store::MvtTileStore;
-use map::ShashlikMap;
 use renderer_cpu::CpuRenderer;
 use std::time::Instant;
 
@@ -25,12 +27,23 @@ fn main() -> iced::Result {
 struct App {
     shashlik_map: ShashlikMap<CpuRenderer, DefaultTilesProvider<ShashlikFeatureProcessor>>,
     image_handle: image::Handle,
+    interaction: Interaction,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
     HardwareTick(Instant),
-    Nothing,
+    KeyboardInput(keyboard::Event),
+}
+
+enum Interaction {
+    ZoomIn,
+    ZoomOut,
+    Left,
+    Right,
+    Up,
+    Down,
+    None,
 }
 
 impl App {
@@ -44,16 +57,22 @@ impl App {
         let mut shashlik_map = pollster::block_on({
             let renderer = CpuRenderer::new();
             ShashlikMap::new(renderer, tiles_provider)
-        }).unwrap();
+        })
+        .unwrap();
         shashlik_map.set_camera_follow_mode(false);
         shashlik_map.set_current_pitch(90.0);
         shashlik_map.resize(CpuRenderer::WIDTH, CpuRenderer::HEIGHT);
 
-        let initial_handle = image::Handle::from_rgba(CpuRenderer::WIDTH, CpuRenderer::HEIGHT, vec![0; (CpuRenderer::WIDTH * CpuRenderer::HEIGHT * 4) as usize]);
+        let initial_handle = image::Handle::from_rgba(
+            CpuRenderer::WIDTH,
+            CpuRenderer::HEIGHT,
+            vec![0; (CpuRenderer::WIDTH * CpuRenderer::HEIGHT * 4) as usize],
+        );
         (
             Self {
                 shashlik_map,
                 image_handle: initial_handle,
+                interaction: Interaction::None,
             },
             Task::none(),
         )
@@ -62,7 +81,39 @@ impl App {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::HardwareTick(_frame_time) => {
-                self.shashlik_map.zoom_delta(0.99, ((CpuRenderer::WIDTH as f32) * 0.5, (CpuRenderer::HEIGHT as f32) * 0.5));
+                match self.interaction {
+                    Interaction::ZoomIn => {
+                        self.shashlik_map.zoom_delta(
+                            1.02,
+                            (
+                                (CpuRenderer::WIDTH as f32) * 0.5,
+                                (CpuRenderer::HEIGHT as f32) * 0.5,
+                            ),
+                        );
+                    }
+                    Interaction::ZoomOut => {
+                        self.shashlik_map.zoom_delta(
+                            0.98,
+                            (
+                                (CpuRenderer::WIDTH as f32) * 0.5,
+                                (CpuRenderer::HEIGHT as f32) * 0.5,
+                            ),
+                        );
+                    }
+                    Interaction::Left => {
+                        self.shashlik_map.pan_delta(-10.0, 0.0);
+                    }
+                    Interaction::Right => {
+                        self.shashlik_map.pan_delta(10.0, 0.0);
+                    }
+                    Interaction::Up => {
+                        self.shashlik_map.pan_delta(0.0, -10.0);
+                    }
+                    Interaction::Down => {
+                        self.shashlik_map.pan_delta(0.0, 10.0);
+                    }
+                    Interaction::None => {}
+                }
 
                 let pixmap = self.shashlik_map.update_and_render().unwrap();
                 let width = pixmap.width();
@@ -70,29 +121,53 @@ impl App {
                 let raw_rgba_pixels = pixmap.take();
                 self.image_handle = image::Handle::from_rgba(width, height, raw_rgba_pixels);
             }
-            Message::Nothing => {
-                self.shashlik_map.zoom_delta(0.9, ((CpuRenderer::WIDTH as f32) * 0.5, (CpuRenderer::HEIGHT as f32) * 0.5));
-            }
+            Message::KeyboardInput(event) => match event {
+                keyboard::Event::KeyPressed { key, .. } => match key {
+                    Key::Named(Named::ArrowLeft) => {
+                        self.interaction = Interaction::Left;
+                    }
+                    Key::Named(Named::ArrowRight) => {
+                        self.interaction = Interaction::Right;
+                    }
+                    Key::Named(Named::ArrowUp) => {
+                        self.interaction = Interaction::Up;
+                    }
+                    Key::Named(Named::ArrowDown) => {
+                        self.interaction = Interaction::Down;
+                    }
+                    Key::Character(c) if c == "z" || c == "Z" => {
+                        self.interaction = Interaction::ZoomIn;
+                    }
+                    Key::Character(c) if c == "x" || c == "X" => {
+                        self.interaction = Interaction::ZoomOut;
+                    }
+                    _ => {}
+                },
+                keyboard::Event::KeyReleased { .. } => {
+                    self.interaction = Interaction::None;
+                }
+                _ => {}
+            },
         }
         Task::none()
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        iced::window::frames().map(Message::HardwareTick)
+        Subscription::batch(vec![
+            iced::window::frames().map(Message::HardwareTick),
+            event::listen_with(|event, _status, _window_id| match event {
+                Event::Keyboard(kbd_event) => Some(Message::KeyboardInput(kbd_event)),
+                _ => None,
+            }),
+        ])
     }
 
     fn view(&self) -> Element<'_, Message> {
-        stack![
-            center(
-                Image::new(self.image_handle.clone())
-                    .width(Length::Shrink)
-                    .height(Length::Shrink)
-            ),
-            // center(column![
-            //     text("Test"),
-            //     button("+").on_press(Message::Nothing),
-            // ])
-        ]
+        stack![center(
+            Image::new(self.image_handle.clone())
+                .width(Length::Shrink)
+                .height(Length::Shrink)
+        ),]
         .into()
     }
 }
