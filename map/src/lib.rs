@@ -139,8 +139,8 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             camera_bearing: 0.0,
             current_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
-            cam_follow_mode: false,
-            cam_follow_zoom_lock: None, //Some(Self::ZOOM_LOCK_DIST),
+            cam_follow_mode: true,
+            cam_follow_zoom_lock: Some(Self::ZOOM_LOCK_DIST),
             screen_params: ScreenParam {
                 width: screen_size.0 as u32,
                 height: screen_size.1 as u32,
@@ -409,6 +409,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
     pub fn set_current_pitch(&mut self, current_pitch: f64) {
         self.current_pitch = current_pitch;
+        self.camera_controller.pitch = current_pitch;
     }
 
     pub fn set_cam_follow_zoom_lock(&mut self, cam_follow_zoom_lock: Option<f64>) {

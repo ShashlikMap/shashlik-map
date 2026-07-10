@@ -45,6 +45,8 @@ impl App {
             let renderer = CpuRenderer::new();
             ShashlikMap::new(renderer, tiles_provider)
         }).unwrap();
+        shashlik_map.set_camera_follow_mode(false);
+        shashlik_map.set_current_pitch(90.0);
         shashlik_map.resize(CpuRenderer::WIDTH, CpuRenderer::HEIGHT);
 
         let initial_handle = image::Handle::from_rgba(CpuRenderer::WIDTH, CpuRenderer::HEIGHT, vec![0; (CpuRenderer::WIDTH * CpuRenderer::HEIGHT * 4) as usize]);
@@ -61,7 +63,6 @@ impl App {
         match message {
             Message::HardwareTick(_frame_time) => {
                 self.shashlik_map.zoom_delta(0.99, ((CpuRenderer::WIDTH as f32) * 0.5, (CpuRenderer::HEIGHT as f32) * 0.5));
-
 
                 let pixmap = self.shashlik_map.update_and_render().unwrap();
                 let width = pixmap.width();
@@ -87,10 +88,10 @@ impl App {
                     .width(Length::Shrink)
                     .height(Length::Shrink)
             ),
-            center(column![
-                text("Test"),
-                button("+").on_press(Message::Nothing),
-            ])
+            // center(column![
+            //     text("Test"),
+            //     button("+").on_press(Message::Nothing),
+            // ])
         ]
         .into()
     }
