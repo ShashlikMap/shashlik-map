@@ -1,8 +1,9 @@
-use crate::{RendererUpdateData};
+use crate::{GpuRenderer, RendererUpdateData};
+use crate::Renderer;
 use geo_types::{coord, Coord};
 use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec4Swizzles};
-use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 use renderer_common::{LIGHT_POS, SHADOWS_ENABLED, SHADOWS_TEX_SIZE};
+use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 
 #[rustfmt::skip]
 const FLIP_Y: DMat4 = DMat4::from_cols_array(
@@ -217,59 +218,12 @@ impl ViewProjection {
     }
 
     pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<DVec2> {
-        Self::clip_to_world_at_ground(
+        <GpuRenderer as Renderer>::clip_to_world_at_ground(
             &DVec2::new(coord.x, coord.y),
             &self.inv_view_proj_matrix,
         ).map(|coord| {
             coord + self.cs_offset.truncate()
         })
-    }
-
-    fn clip_to_world_at_ground(
-        clip_coords: &DVec2,
-        inverted_view_proj: &DMat4,
-    ) -> Option<DVec2> {
-        let near_world = Self::clip_to_world_internal(
-            &DVec3::new(clip_coords.x, clip_coords.y, 0.0),
-            inverted_view_proj,
-        );
-
-        let far_world = Self::clip_to_world_internal(
-            &DVec3::new(clip_coords.x, clip_coords.y, 1.0),
-            inverted_view_proj,
-        );
-
-        let mut u = -near_world.z / (far_world.z - near_world.z);
-
-        // let's use infinity now but in real world we have to limit it somehow
-        // if u < 0.0 { return None };
-        if u < 0.0 {
-            u = 1.0 - u;
-        }
-        let result = near_world + u * (far_world - near_world);
-        Some(DVec2::new(result.x, result.y))
-    }
-
-    fn clip_to_world_internal(
-        window: &DVec3,
-        inverted_view_proj: &DMat4,
-    ) -> DVec3 {
-        #[rustfmt::skip]
-            let fixed_window = DVec4::new(
-            window.x,
-            window.y,
-            window.z,
-            1.0
-        );
-
-        let ndc = fixed_window;
-        let unprojected = inverted_view_proj * ndc;
-
-        DVec3::new(
-            unprojected.x / unprojected.w,
-            unprojected.y / unprojected.w,
-            unprojected.z / unprojected.w,
-        )
     }
 
     pub fn is_shadow_mapping_enabled(&self) -> bool {

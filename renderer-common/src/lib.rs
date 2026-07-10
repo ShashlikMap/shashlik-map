@@ -66,6 +66,40 @@ pub trait Renderer {
     fn render(&mut self) -> Option<Self::OUTPUT>;
 
     fn api(&self) -> Arc<Self::RAPI>;
+
+    fn clip_to_world_at_ground(
+        clip_coords: &DVec2,
+        inverted_view_proj: &DMat4,
+    ) -> Option<DVec2> {
+        let near_world = Self::clip_to_world_internal(
+            &clip_coords.extend(0.0),
+            inverted_view_proj,
+        );
+
+        let far_world = Self::clip_to_world_internal(
+            &clip_coords.extend(1.0),
+            inverted_view_proj,
+        );
+
+        let mut u = -near_world.z / (far_world.z - near_world.z);
+
+        // let's use infinity now but in real world we have to limit it somehow
+        // if u < 0.0 { return None };
+        if u < 0.0 {
+            u = 1.0 - u;
+        }
+        let result = near_world + u * (far_world - near_world);
+        Some(result.truncate())
+    }
+
+    fn clip_to_world_internal(
+        window: &DVec3,
+        inverted_view_proj: &DMat4,
+    ) -> DVec3 {
+        let ndc = window.extend(1.0);
+        let unprojected = inverted_view_proj * ndc;
+        unprojected.truncate() / unprojected.w
+    }
 }
 
 pub trait CanvasApi {

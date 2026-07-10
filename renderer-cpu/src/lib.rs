@@ -1,30 +1,60 @@
 use geo_types::Coord;
-use glam::DVec2;
-use std::collections::HashSet;
-use std::sync::Arc;
-use std::time::Instant;
-use tiny_skia::{Paint, Pixmap, Rect, Transform};
-use renderer_common::geometry_data::GeometryData;
+use glam::{DMat4, DVec2, DVec3};
+use lyon_path::PathEvent;
+use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData};
 use renderer_common::render_group::RenderGroup;
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
-use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData};
+use renderer_common::{CanvasApi, Renderer, RendererApi, RendererUpdateData};
+use std::collections::HashSet;
+use std::mem;
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{Arc, mpsc};
+use tiny_skia::{Color, Paint, PathBuilder, Pixmap, Stroke, Transform};
 
-/// This is the very beginning of CPU renderer-gpu. So far, just a stub animation
+/// This is the very beginning of CPU renderer-gpu.
+
+pub enum RendererApiMsg {
+    RenderGroup(String, SpatialData, Box<dyn RenderGroup<CpuCanvasApi>>),
+    ClearGroups(HashSet<String>),
+}
 
 pub struct CpuRenderer {
-    start_time: Instant,
+    canvas_api: CpuCanvasApi,
+    temp_shapes: Vec<(String, SpatialData, Vec<ShapeData>)>,
+    receiver: Receiver<RendererApiMsg>,
     cpu_renderer_api: Arc<CpuRendererApi>,
+    cs_offset: DVec3,
+    inv_view_proj_matrix: DMat4,
+    view_proj_matrix: DMat4,
 }
-pub struct CpuRendererApi {}
-pub struct CpuCanvasApi {}
+
+pub struct CpuRendererApi {
+    pub sender: Sender<RendererApiMsg>,
+}
+
+#[derive(Default)]
+pub struct CpuCanvasApi {
+    pub shapes: Vec<ShapeData>,
+}
+
+impl CpuCanvasApi {
+    pub fn take_shapes(&mut self) -> Vec<ShapeData> {
+        mem::take(&mut self.shapes)
+    }
+}
 
 impl CanvasApi for CpuCanvasApi {
-    fn set_feature_layer_tag(&mut self, tag: Option<String>) {
-    }
+    fn set_feature_layer_tag(&mut self, _tag: Option<String>) {}
 
     fn geometry_data(&mut self, geometry_data: GeometryData) {
+        match geometry_data {
+            GeometryData::Shape(data) => {
+                self.shapes.push(data);
+            }
+            _ => {}
+        }
     }
 }
 
@@ -37,66 +67,186 @@ impl RendererApi for CpuRendererApi {
         spatial_data: SpatialData,
         group: Box<dyn RenderGroup<Self::CANVAS>>,
     ) {
+        self.sender
+            .send(RendererApiMsg::RenderGroup(key, spatial_data, group))
+            .unwrap();
     }
 
-    fn clear_render_groups(&self, keys: HashSet<String>) {}
+    fn clear_render_groups(&self, keys: HashSet<String>) {
+        self.sender.send(RendererApiMsg::ClearGroups(keys)).unwrap();
+    }
 
     fn update_style<F: FnOnce(&mut RenderStyle) + Send + 'static>(
         &self,
-        style_id: StyleId,
-        updater: F,
+        _style_id: StyleId,
+        _updater: F,
     ) {
     }
 
     fn update_spatial_data<F: FnOnce(&mut SpatialData) + Send + 'static>(
         &self,
-        key: String,
-        updater: F,
+        _key: String,
+        _updater: F,
     ) {
     }
 }
 
 impl CpuRenderer {
+    pub const WIDTH: u32 = 1024;
+    pub const HEIGHT: u32 = 600;
     pub fn new() -> Self {
+        let (sender, receiver) = mpsc::channel();
         Self {
-            start_time: Instant::now(),
-            cpu_renderer_api: Arc::new(CpuRendererApi {}),
+            canvas_api: Default::default(),
+            temp_shapes: vec![],
+            receiver,
+            cpu_renderer_api: Arc::new(CpuRendererApi { sender }),
+            cs_offset: Default::default(),
+            inv_view_proj_matrix: Default::default(),
+            view_proj_matrix: Default::default(),
         }
     }
 }
-
 impl Renderer for CpuRenderer {
     type RAPI = CpuRendererApi;
     type OUTPUT = Pixmap;
 
     fn screen_size(&self) -> (f32, f32) {
-        (400.0, 400.0)
+        (Self::WIDTH as f32, Self::HEIGHT as f32)
     }
 
-    fn resize(&mut self, width: u32, height: u32) {}
+    fn resize(&mut self, _width: u32, _height: u32) {}
 
-    fn update(&mut self, data: RendererUpdateData) {}
+    fn update(&mut self, data: RendererUpdateData) {
+        self.cs_offset = data.cs_offset;
+        self.view_proj_matrix = data.view_proj_matrix;
+        self.inv_view_proj_matrix = data.view_proj_matrix.inverse();
+    }
 
     fn clip_to_world(&self, coord: &Coord) -> Option<DVec2> {
-        Some(DVec2::splat(0.0))
+        Self::clip_to_world_at_ground(&DVec2::new(coord.x, coord.y), &self.inv_view_proj_matrix)
+            .map(|coord| coord + self.cs_offset.truncate())
     }
 
     fn render(&mut self) -> Option<Self::OUTPUT> {
-        const WIDTH: u32 = 400;
-        const HEIGHT: u32 = 400;
-        let mut pixmap = Pixmap::new(WIDTH, HEIGHT).unwrap();
-        pixmap.fill(tiny_skia::Color::from_rgba8(30, 30, 30, 255));
-
-        let time_elapsed = self.start_time.elapsed().as_secs_f32();
-        let x_offset = (time_elapsed.sin() * 100.0) + 150.0;
-
-        let mut paint = Paint::default();
-        paint.set_color(tiny_skia::Color::from_rgba8(46, 204, 113, 255)); // Green
-        paint.anti_alias = true;
-
-        if let Some(rect) = Rect::from_xywh(x_offset, 150.0, 100.0, 100.0) {
-            pixmap.fill_rect(rect, &paint, Transform::identity(), None);
+        while let Ok(msg) = self.receiver.try_recv() {
+            match msg {
+                RendererApiMsg::RenderGroup(key, spat_data, mut group) => {
+                    group.content(&mut self.canvas_api);
+                    self.temp_shapes
+                        .push((key, spat_data, self.canvas_api.take_shapes()));
+                }
+                RendererApiMsg::ClearGroups(keys) => {
+                    self.temp_shapes.retain(|s| !keys.contains(&s.0));
+                }
+            }
         }
+
+        // TODO Explore optimization: allocation and screen dividing
+        let mut pixmap = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
+
+        pixmap.fill(Color::from_rgba8(244, 243, 240, 255));
+
+        self.temp_shapes
+            .iter()
+            .for_each(|(_, spat_data, shapes_data)| {
+                let spatial_offset = (spat_data.transform - self.cs_offset).truncate();
+
+                for shape_data in shapes_data {
+                    let mut pb = PathBuilder::new();
+                    let mut is_line =
+                        matches!(shape_data.geometry_type, GeometryType::Polyline { .. });
+                    let mut not_culled = false;
+                    shape_data.path.iter().for_each(|path| match path {
+                        PathEvent::Begin { at } => {
+                            let projected = self
+                                .view_proj_matrix
+                                .project_point3(DVec3::new(
+                                    at.x as f64 + spatial_offset.x,
+                                    at.y as f64 + spatial_offset.y,
+                                    0.0,
+                                ))
+                                .truncate();
+                            if projected.x >= -1.0
+                                && projected.y >= -1.0
+                                && projected.x <= 1.0
+                                && projected.y <= 1.0
+                            {
+                                not_culled = true;
+                            }
+                            pb.move_to(
+                                0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
+                                0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
+                            );
+                        }
+                        PathEvent::Line { from: _, to } => {
+                            let projected = self
+                                .view_proj_matrix
+                                .project_point3(DVec3::new(
+                                    to.x as f64 + spatial_offset.x,
+                                    to.y as f64 + spatial_offset.y,
+                                    0.0,
+                                ))
+                                .truncate();
+                            if projected.x >= -1.0
+                                && projected.y >= -1.0
+                                && projected.x <= 1.0
+                                && projected.y <= 1.0
+                            {
+                                not_culled = true;
+                            }
+                            pb.line_to(
+                                0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
+                                0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
+                            );
+                        }
+                        PathEvent::Quadratic { .. } => {}
+                        PathEvent::Cubic { .. } => {}
+                        PathEvent::End { .. } => {
+                            if !is_line {
+                                pb.close();
+                            }
+                        }
+                    });
+                    if not_culled && let Some(path) = pb.finish() {
+                        let mut paint = Paint::default();
+                        if shape_data.style_id.0 == "building_stand" {
+                            is_line = false;
+                            paint.set_color_rgba8(206, 208, 209, 255);
+                        } else if shape_data.style_id.0 == "water" {
+                            paint.set_color_rgba8(165, 201, 235, 255);
+                        } else if shape_data.style_id.0 == "forest" {
+                            paint.set_color_rgba8(193, 232, 200, 255);
+                        } else if shape_data.style_id.0 == "park" {
+                            paint.set_color_rgba8(209, 241, 215, 255);
+                        } else if shape_data.style_id.0 == "ground" {
+                            paint.set_color_rgba8(244, 243, 240, 255);
+                        } else {
+                            paint.set_color_rgba8(159, 158, 156, 255);
+                        }
+
+                        paint.anti_alias = true;
+
+                        if is_line {
+                            pixmap.stroke_path(
+                                &path,
+                                &paint,
+                                &Stroke::default(),
+                                Transform::default(),
+                                None,
+                            )
+                        } else {
+                            pixmap.fill_path(
+                                &path,
+                                &paint,
+                                tiny_skia::FillRule::Winding,
+                                Transform::default(),
+                                None,
+                            );
+                        }
+                    }
+                }
+            });
 
         Some(pixmap)
     }

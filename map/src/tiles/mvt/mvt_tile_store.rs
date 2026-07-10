@@ -16,7 +16,7 @@ struct TileMetersBounds {
     pub max_y: f64,
 }
 
-pub(crate) struct MvtTileStore {
+pub struct MvtTileStore {
     mvt_parser: MvtParser,
     client: reqwest::blocking::Client,
 }

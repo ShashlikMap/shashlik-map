@@ -409,6 +409,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
     pub fn set_current_pitch(&mut self, current_pitch: f64) {
         self.current_pitch = current_pitch;
+        self.camera_controller.pitch = current_pitch;
     }
 
     pub fn set_cam_follow_zoom_lock(&mut self, cam_follow_zoom_lock: Option<f64>) {
