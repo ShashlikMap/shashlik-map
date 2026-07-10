@@ -75,9 +75,7 @@ impl RendererApi for CpuRendererApi {
     }
 
     fn clear_render_groups(&self, keys: HashSet<String>) {
-        self.sender
-            .send(RendererApiMsg::ClearGroups(keys))
-            .unwrap();
+        self.sender.send(RendererApiMsg::ClearGroups(keys)).unwrap();
     }
 
     fn update_style<F: FnOnce(&mut RenderStyle) + Send + 'static>(
@@ -151,6 +149,9 @@ impl Renderer for CpuRenderer {
 
         pixmap.fill(Color::from_rgba8(244, 243, 240, 255));
 
+        let transform = Transform::from_scale(0.5, 0.5)
+            .post_translate((Self::WIDTH as f32) * 0.5, (Self::HEIGHT as f32) * 0.5);
+
         self.temp_shapes
             .iter()
             .for_each(|(_, spat_data, shapes_data)| {
@@ -211,10 +212,7 @@ impl Renderer for CpuRenderer {
                         }
 
                         paint.anti_alias = true;
-                        let transform = Transform::from_scale(0.5, 0.5).post_translate(
-                            (Self::WIDTH as f32) * 0.5,
-                            (Self::HEIGHT as f32) * 0.5,
-                        );
+
                         if is_line {
                             pixmap.stroke_path(&path, &paint, &Stroke::default(), transform, None)
                         } else {

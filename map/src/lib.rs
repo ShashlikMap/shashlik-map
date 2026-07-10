@@ -511,11 +511,11 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         println!("Loading KML from {:?}", path_buf);
         let kml_group = KmlGroup::new(path_buf, self.create_location_coord_converter());
 
-        // self.renderer.api().add_render_group(
-        //     "kml_data".to_string(),
-        //     SpatialData::transform(DVec3::new(0.0, 0.0, 0.0)),
-        //     Box::new(kml_group),
-        // );
+        self.renderer.api().add_render_group(
+            "kml_data".to_string(),
+            SpatialData::transform(DVec3::new(0.0, 0.0, 0.0)),
+            Box::new(kml_group),
+        );
     }
 
     pub fn clear_routes(&self) {

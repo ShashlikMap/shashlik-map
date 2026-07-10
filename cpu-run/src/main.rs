@@ -3,12 +3,10 @@ use iced::widget::{button, center, column, stack, text};
 use iced::{window, Element, Length, Size, Subscription, Task};
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
+use map::tiles::mvt::mvt_tile_store::MvtTileStore;
 use map::ShashlikMap;
-use osm::source::reqwest_source::ReqwestSource;
-use osm::tiles::TileStore;
 use renderer_cpu::CpuRenderer;
 use std::time::Instant;
-use map::tiles::mvt::mvt_tile_store::MvtTileStore;
 
 fn main() -> iced::Result {
     env_logger::init();

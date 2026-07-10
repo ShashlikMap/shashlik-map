@@ -93,7 +93,7 @@ impl <RAPI: RendererApi + 'static> RouteController<RAPI> {
 
                                 let route = Box::new(RouteGroup::new(route, route_costing));
                                 let spatial_data = SpatialData::transform(route.first_route_point());
-                                // api.add_render_group("route".to_string(), spatial_data, route);
+                                api.add_render_group("route".to_string(), spatial_data, route);
                             } else {
                                 error!("No legs found in route!");
                             }
