@@ -1,5 +1,5 @@
 use geo_types::Coord;
-use glam::{DMat4, DVec2, DVec3, Vec2};
+use glam::{DMat4, DVec2, DVec3};
 use lyon::path::PathEvent;
 use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData};
 use renderer_common::render_group::RenderGroup;
@@ -10,11 +10,10 @@ use renderer_common::{CanvasApi, Renderer, RendererApi, RendererUpdateData};
 use std::collections::HashSet;
 use std::mem;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{Arc, mpsc};
-use std::time::Instant;
+use std::sync::{mpsc, Arc};
 use tiny_skia::{Color, Paint, PathBuilder, Pixmap, Stroke, Transform};
 
-/// This is the very beginning of CPU renderer-gpu. So far, just a stub animation
+/// This is the very beginning of CPU renderer-gpu.
 
 pub enum RendererApiMsg {
     RenderGroup((String, SpatialData, Box<dyn RenderGroup<CpuCanvasApi>>)),
@@ -22,7 +21,6 @@ pub enum RendererApiMsg {
 }
 
 pub struct CpuRenderer {
-    start_time: Instant,
     canvas_api: CpuCanvasApi,
     temp_shapes: Vec<(String, SpatialData, Vec<ShapeData>)>,
     receiver: Receiver<RendererApiMsg>,
@@ -48,7 +46,7 @@ impl CpuCanvasApi {
 }
 
 impl CanvasApi for CpuCanvasApi {
-    fn set_feature_layer_tag(&mut self, tag: Option<String>) {}
+    fn set_feature_layer_tag(&mut self, _tag: Option<String>) {}
 
     fn geometry_data(&mut self, geometry_data: GeometryData) {
         match geometry_data {
@@ -80,15 +78,15 @@ impl RendererApi for CpuRendererApi {
 
     fn update_style<F: FnOnce(&mut RenderStyle) + Send + 'static>(
         &self,
-        style_id: StyleId,
-        updater: F,
+        _style_id: StyleId,
+        _updater: F,
     ) {
     }
 
     fn update_spatial_data<F: FnOnce(&mut SpatialData) + Send + 'static>(
         &self,
-        key: String,
-        updater: F,
+        _key: String,
+        _updater: F,
     ) {
     }
 }
@@ -99,7 +97,6 @@ impl CpuRenderer {
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel();
         Self {
-            start_time: Instant::now(),
             canvas_api: Default::default(),
             temp_shapes: vec![],
             receiver,
@@ -118,7 +115,7 @@ impl Renderer for CpuRenderer {
         (Self::WIDTH as f32, Self::HEIGHT as f32)
     }
 
-    fn resize(&mut self, width: u32, height: u32) {}
+    fn resize(&mut self, _width: u32, _height: u32) {}
 
     fn update(&mut self, data: RendererUpdateData) {
         self.cs_offset = data.cs_offset;
@@ -153,6 +150,8 @@ impl Renderer for CpuRenderer {
             .post_translate((Self::WIDTH as f32) * 0.5, (Self::HEIGHT as f32) * 0.5);
         let unclip = DVec2::new(Self::WIDTH as f64, Self::HEIGHT as f64);
 
+        let hw = (Self::WIDTH / 1) as f64;
+        let hh = (Self::HEIGHT / 1) as f64;
         self.temp_shapes
             .iter()
             .for_each(|(_, spat_data, shapes_data)| {
@@ -162,6 +161,7 @@ impl Renderer for CpuRenderer {
                     let mut pb = PathBuilder::new();
                     let mut is_line =
                         matches!(shape_data.geometry_type, GeometryType::Polyline { .. });
+                    let mut not_culled = false;
                     shape_data.path.iter().for_each(|path| match path {
                         PathEvent::Begin { at } => {
                             let projected = self.view_proj_matrix.project_point3(DVec3::new(
@@ -169,15 +169,21 @@ impl Renderer for CpuRenderer {
                                 at.y as f64 + spatial_offset.y,
                                 0.0,
                             )).truncate() * unclip;
+                            if projected.x >= -hw && projected.y >= -hh && projected.x <= hw && projected.y <= hh {
+                                not_culled = true;
+                            }
                             pb.move_to(projected.x as f32, projected.y as f32);
                         }
-                        PathEvent::Line { from, to } => {
-                            let qq = self.view_proj_matrix.project_point3(DVec3::new(
+                        PathEvent::Line { from: _, to } => {
+                            let projected = self.view_proj_matrix.project_point3(DVec3::new(
                                 to.x as f64 + spatial_offset.x,
                                 to.y as f64 + spatial_offset.y,
                                 0.0,
                             )).truncate() * unclip;
-                            pb.line_to(qq.x as f32, qq.y as f32);
+                            if projected.x >= -hw && projected.y >= -hh && projected.x <= hw && projected.y <= hh {
+                                not_culled = true;
+                            }
+                            pb.line_to(projected.x as f32, projected.y as f32);
                         }
                         PathEvent::Quadratic { .. } => {}
                         PathEvent::Cubic { .. } => {}
@@ -187,7 +193,7 @@ impl Renderer for CpuRenderer {
                             }
                         }
                     });
-                    if let Some(path) = pb.finish() {
+                    if not_culled && let Some(path) = pb.finish() {
                         let mut paint = Paint::default();
                         if shape_data.style_id.0 == "building_stand" {
                             is_line = false;
