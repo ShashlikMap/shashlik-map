@@ -1,6 +1,6 @@
 use iced::widget::image::{self, Image};
 use iced::widget::{button, center, column, stack, text};
-use iced::{window, Element, Length, Subscription, Task};
+use iced::{window, Element, Length, Size, Subscription, Task};
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::ShashlikMap;
@@ -10,10 +10,13 @@ use renderer_cpu::CpuRenderer;
 use std::time::Instant;
 
 fn main() -> iced::Result {
+    env_logger::init();
     iced::application(App::new, App::update, App::view)
         .window(window::Settings {
-            fullscreen: true,
+            size: Size::new(CpuRenderer::WIDTH as f32, CpuRenderer::HEIGHT as f32),
+            fullscreen: false,
             decorations: false,
+            exit_on_close_request: true,
             ..Default::default()
         })
         .subscription(App::subscription)
@@ -44,7 +47,7 @@ impl App {
             ShashlikMap::new(renderer, tiles_provider)
         }).unwrap();
 
-        let initial_handle = image::Handle::from_rgba(400, 400, vec![0; 400 * 400 * 4]);
+        let initial_handle = image::Handle::from_rgba(CpuRenderer::WIDTH, CpuRenderer::HEIGHT, vec![0; (CpuRenderer::WIDTH * CpuRenderer::HEIGHT * 4) as usize]);
         (
             Self {
                 shashlik_map,
@@ -57,11 +60,11 @@ impl App {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::HardwareTick(_frame_time) => {
-                const WIDTH: u32 = 400;
-                const HEIGHT: u32 = 400;
                 let pixmap = self.shashlik_map.update_and_render().unwrap();
+                let width = pixmap.width();
+                let height = pixmap.height();
                 let raw_rgba_pixels = pixmap.take();
-                self.image_handle = image::Handle::from_rgba(WIDTH, HEIGHT, raw_rgba_pixels);
+                self.image_handle = image::Handle::from_rgba(width, height, raw_rgba_pixels);
             }
             Message::Nothing => {}
         }

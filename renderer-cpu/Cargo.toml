@@ -8,3 +8,4 @@ geo-types = { workspace = true }
 renderer-common = { workspace = true }
 tiny-skia = { workspace = true }
 glam = { workspace = true }
+lyon = { workspace = true}

@@ -110,11 +110,11 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
         let mut puck_spatial_data = SpatialData::transform(DVec3::new(0.0, 0.0, 0.0));
         puck_spatial_data.scale(DVec3::splat(1.0));
-        renderer.api().add_render_group(
-            "puck".to_string(),
-            puck_spatial_data,
-            Box::new(SimplePuck {}),
-        );
+        // renderer.api().add_render_group(
+        //     "puck".to_string(),
+        //     puck_spatial_data,
+        //     Box::new(SimplePuck {}),
+        // );
 
         let zero_zoom_level_loaded = Arc::new(AtomicBool::new(false));
         let transition_2d_3d_helper = Transition2d3dHelper::new(zero_zoom_level_loaded.clone());
@@ -139,8 +139,8 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             camera_bearing: 0.0,
             current_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
-            cam_follow_mode: true,
-            cam_follow_zoom_lock: Some(Self::ZOOM_LOCK_DIST),
+            cam_follow_mode: false,
+            cam_follow_zoom_lock: None,//Some(Self::ZOOM_LOCK_DIST),
             screen_params: ScreenParam {
                 width: screen_size.0 as u32,
                 height: screen_size.1 as u32,
@@ -511,11 +511,11 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         println!("Loading KML from {:?}", path_buf);
         let kml_group = KmlGroup::new(path_buf, self.create_location_coord_converter());
 
-        self.renderer.api().add_render_group(
-            "kml_data".to_string(),
-            SpatialData::transform(DVec3::new(0.0, 0.0, 0.0)),
-            Box::new(kml_group),
-        );
+        // self.renderer.api().add_render_group(
+        //     "kml_data".to_string(),
+        //     SpatialData::transform(DVec3::new(0.0, 0.0, 0.0)),
+        //     Box::new(kml_group),
+        // );
     }
 
     pub fn clear_routes(&self) {
