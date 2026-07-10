@@ -4,7 +4,7 @@ use crate::render_modifier::SpatialData;
 use crate::render_style::RenderStyle;
 use crate::style_id::StyleId;
 use geo_types::Coord;
-use glam::{dvec3, DMat4, DVec2, DVec3, DVec4};
+use glam::{dvec3, DMat4, DVec2, DVec3};
 use std::collections::HashSet;
 use std::sync::Arc;
 use strum::{Display, EnumIter, EnumString};
@@ -72,12 +72,12 @@ pub trait Renderer {
         inverted_view_proj: &DMat4,
     ) -> Option<DVec2> {
         let near_world = Self::clip_to_world_internal(
-            &DVec3::new(clip_coords.x, clip_coords.y, 0.0),
+            &clip_coords.extend(0.0),
             inverted_view_proj,
         );
 
         let far_world = Self::clip_to_world_internal(
-            &DVec3::new(clip_coords.x, clip_coords.y, 1.0),
+            &clip_coords.extend(1.0),
             inverted_view_proj,
         );
 
@@ -89,29 +89,16 @@ pub trait Renderer {
             u = 1.0 - u;
         }
         let result = near_world + u * (far_world - near_world);
-        Some(DVec2::new(result.x, result.y))
+        Some(result.truncate())
     }
 
     fn clip_to_world_internal(
         window: &DVec3,
         inverted_view_proj: &DMat4,
     ) -> DVec3 {
-        #[rustfmt::skip]
-            let fixed_window = DVec4::new(
-            window.x,
-            window.y,
-            window.z,
-            1.0
-        );
-
-        let ndc = fixed_window;
+        let ndc = window.extend(1.0);
         let unprojected = inverted_view_proj * ndc;
-
-        DVec3::new(
-            unprojected.x / unprojected.w,
-            unprojected.y / unprojected.w,
-            unprojected.z / unprojected.w,
-        )
+        unprojected.truncate() / unprojected.w
     }
 }
 
