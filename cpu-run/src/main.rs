@@ -8,6 +8,7 @@ use osm::source::reqwest_source::ReqwestSource;
 use osm::tiles::TileStore;
 use renderer_cpu::CpuRenderer;
 use std::time::Instant;
+use map::tiles::mvt::mvt_tile_store::MvtTileStore;
 
 fn main() -> iced::Result {
     env_logger::init();
@@ -37,15 +38,16 @@ enum Message {
 impl App {
     fn new() -> (Self, Task<Message>) {
         let tiles_provider = DefaultTilesProvider::new(
-            Box::new(TileStore::new(ReqwestSource::new())),
+            Box::new(MvtTileStore::new()),
             ShashlikFeatureProcessor::new(),
             1.0,
         );
 
-        let shashlik_map = pollster::block_on({
+        let mut shashlik_map = pollster::block_on({
             let renderer = CpuRenderer::new();
             ShashlikMap::new(renderer, tiles_provider)
         }).unwrap();
+        shashlik_map.resize(CpuRenderer::WIDTH, CpuRenderer::HEIGHT);
 
         let initial_handle = image::Handle::from_rgba(CpuRenderer::WIDTH, CpuRenderer::HEIGHT, vec![0; (CpuRenderer::WIDTH * CpuRenderer::HEIGHT * 4) as usize]);
         (
@@ -60,13 +62,18 @@ impl App {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::HardwareTick(_frame_time) => {
+                self.shashlik_map.zoom_delta(0.99, ((CpuRenderer::WIDTH as f32) * 0.5, (CpuRenderer::HEIGHT as f32) * 0.5));
+
+
                 let pixmap = self.shashlik_map.update_and_render().unwrap();
                 let width = pixmap.width();
                 let height = pixmap.height();
                 let raw_rgba_pixels = pixmap.take();
                 self.image_handle = image::Handle::from_rgba(width, height, raw_rgba_pixels);
             }
-            Message::Nothing => {}
+            Message::Nothing => {
+                self.shashlik_map.zoom_delta(0.9, ((CpuRenderer::WIDTH as f32) * 0.5, (CpuRenderer::HEIGHT as f32) * 0.5));
+            }
         }
         Task::none()
     }

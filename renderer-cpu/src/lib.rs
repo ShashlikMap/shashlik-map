@@ -1,5 +1,5 @@
 use geo_types::Coord;
-use glam::{DMat4, DVec2, DVec3, Mat4, Vec3, Vec4Swizzles};
+use glam::{DMat4, DVec2, DVec3};
 use lyon::path::PathEvent;
 use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData};
 use renderer_common::render_group::RenderGroup;
@@ -12,15 +12,20 @@ use std::mem;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, mpsc};
 use std::time::Instant;
-use tiny_skia::{Color, Paint, PathBuilder, Pixmap, Rect, Stroke, Transform};
+use tiny_skia::{Color, Paint, PathBuilder, Pixmap, Stroke, Transform};
 
 /// This is the very beginning of CPU renderer-gpu. So far, just a stub animation
+
+pub enum RendererApiMsg {
+    RenderGroup((String, SpatialData, Box<dyn RenderGroup<CpuCanvasApi>>)),
+    ClearGroups(HashSet<String>),
+}
 
 pub struct CpuRenderer {
     start_time: Instant,
     canvas_api: CpuCanvasApi,
-    temp_shapes: Vec<(SpatialData, Vec<ShapeData>)>,
-    receiver: Receiver<(SpatialData, Box<dyn RenderGroup<CpuCanvasApi>>)>,
+    temp_shapes: Vec<(String, SpatialData, Vec<ShapeData>)>,
+    receiver: Receiver<RendererApiMsg>,
     cpu_renderer_api: Arc<CpuRendererApi>,
     cs_offset: DVec3,
     inv_view_proj_matrix: DMat4,
@@ -28,7 +33,7 @@ pub struct CpuRenderer {
 }
 
 pub struct CpuRendererApi {
-    pub sender: Sender<(SpatialData, Box<dyn RenderGroup<CpuCanvasApi>>)>,
+    pub sender: Sender<RendererApiMsg>,
 }
 
 #[derive(Default)]
@@ -64,14 +69,16 @@ impl RendererApi for CpuRendererApi {
         spatial_data: SpatialData,
         group: Box<dyn RenderGroup<Self::CANVAS>>,
     ) {
-        println!(
-            "add_render_group = {:?}, with spat ={:?}",
-            key, spatial_data
-        );
-        self.sender.send((spatial_data, group)).unwrap();
+        self.sender
+            .send(RendererApiMsg::RenderGroup((key, spatial_data, group)))
+            .unwrap();
     }
 
-    fn clear_render_groups(&self, keys: HashSet<String>) {}
+    fn clear_render_groups(&self, keys: HashSet<String>) {
+        self.sender
+            .send(RendererApiMsg::ClearGroups(keys))
+            .unwrap();
+    }
 
     fn update_style<F: FnOnce(&mut RenderStyle) + Send + 'static>(
         &self,
@@ -89,7 +96,7 @@ impl RendererApi for CpuRendererApi {
 }
 
 impl CpuRenderer {
-    pub const WIDTH: u32 = 600;
+    pub const WIDTH: u32 = 1024;
     pub const HEIGHT: u32 = 600;
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel();
@@ -105,7 +112,6 @@ impl CpuRenderer {
         }
     }
 }
-
 impl Renderer for CpuRenderer {
     type RAPI = CpuRendererApi;
     type OUTPUT = Pixmap;
@@ -129,38 +135,55 @@ impl Renderer for CpuRenderer {
 
     fn render(&mut self) -> Option<Self::OUTPUT> {
         while let Ok(msg) = self.receiver.try_recv() {
-            let (spatial_data, mut group) = msg;
-            group.content(&mut self.canvas_api);
-
-            self.temp_shapes
-                .push((spatial_data, self.canvas_api.take_shapes()));
+            match msg {
+                RendererApiMsg::RenderGroup(mut group) => {
+                    group.2.content(&mut self.canvas_api);
+                    self.temp_shapes
+                        .push((group.0, group.1, self.canvas_api.take_shapes()));
+                }
+                RendererApiMsg::ClearGroups(keys) => {
+                    self.temp_shapes.retain(|s| !keys.contains(&s.0));
+                }
+            }
         }
 
         let mut pixmap = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
 
         pixmap.fill(Color::from_rgba8(244, 243, 240, 255));
 
-        let translation: DVec3 = self.view_proj_matrix.w_axis.xyz();
-
-        let tile_width = 256.0;
-        let tile_height = 144.29587 - 0.7179349;
         self.temp_shapes
             .iter()
-            .for_each(|(spat_data, shapes_data)| {
+            .for_each(|(_, spat_data, shapes_data)| {
                 let qx = (spat_data.transform.x - self.cs_offset.x) as f32;
                 let qy = (spat_data.transform.y - self.cs_offset.y) as f32;
-                let xx = -tile_width - qx;
-                let yy = -tile_height - qy;
 
                 for shape_data in shapes_data {
                     let mut pb = PathBuilder::new();
-                    let mut is_line = matches!(shape_data.geometry_type, GeometryType::Polyline { .. });
+                    let mut is_line =
+                        matches!(shape_data.geometry_type, GeometryType::Polyline { .. });
                     shape_data.path.iter().for_each(|path| match path {
                         PathEvent::Begin { at } => {
-                            pb.move_to(at.x - xx, (-at.y + yy));
+                            let qq = self.view_proj_matrix.project_point3(DVec3::new(
+                                (at.x + qx) as f64,
+                                (at.y + qy) as f64,
+                                0.0,
+                            ));
+                            pb.move_to(
+                                qq.x as f32 * Self::WIDTH as f32,
+                                qq.y as f32 * Self::HEIGHT as f32,
+                            );
                         }
                         PathEvent::Line { from, to } => {
-                            pb.line_to(to.x - xx, (-to.y + yy));
+                            let qq = self.view_proj_matrix.project_point3(DVec3::new(
+                                (to.x + qx) as f64,
+                                (to.y + qy) as f64,
+                                0.0,
+                            ));
+
+                            pb.line_to(
+                                qq.x as f32 * Self::WIDTH as f32,
+                                qq.y as f32 * Self::HEIGHT as f32,
+                            );
                         }
                         PathEvent::Quadratic { .. } => {}
                         PathEvent::Cubic { .. } => {}
@@ -185,12 +208,13 @@ impl Renderer for CpuRenderer {
                             paint.set_color_rgba8(244, 243, 240, 255);
                         } else {
                             paint.set_color_rgba8(159, 158, 156, 255);
-                            // println!("type = {:?}", shape_data.style_id);
                         }
 
                         paint.anti_alias = true;
-                        let transform = Transform::from_scale(1.5, -1.5)
-                            .post_translate(translation.x as f32, translation.y as f32);
+                        let transform = Transform::from_scale(0.5, 0.5).post_translate(
+                            (Self::WIDTH as f32) * 0.5,
+                            (Self::HEIGHT as f32) * 0.5,
+                        );
                         if is_line {
                             pixmap.stroke_path(&path, &paint, &Stroke::default(), transform, None)
                         } else {
