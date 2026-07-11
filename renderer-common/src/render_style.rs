@@ -28,7 +28,7 @@ impl RenderStyle {
     }
 
     pub fn get_fill_color(&self) -> [f32; 4] {
-        self.container[1..5].try_into().unwrap()
+        *self.container[1..].first_chunk().expect("Color components should be present")
     }
 
     pub fn border(fill_color: [f32; 4], darken_percent: f32) -> RenderStyle {

@@ -187,7 +187,7 @@ impl Renderer for CpuRenderer {
             .styles_map
             .get(&self.ground_style)
             .unwrap_or(&Color::BLACK);
-        pixmap.fill(ground_color.clone());
+        pixmap.fill(*ground_color);
 
         let norm_length = self.calc_normalized_vector_proj_length();
 

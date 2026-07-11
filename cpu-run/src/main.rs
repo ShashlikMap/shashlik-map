@@ -47,6 +47,8 @@ enum Interaction {
 }
 
 impl App {
+    const ZOOM_SPEED: f32 = 0.02;
+    const PAN_SPEED: f32 = 10.0;
     fn new() -> (Self, Task<Message>) {
         let tiles_provider = DefaultTilesProvider::new(
             Box::new(MvtTileStore::new()),
@@ -81,10 +83,10 @@ impl App {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::HardwareTick(_frame_time) => {
-                match self.interaction {
+                match &self.interaction {
                     Interaction::ZoomIn => {
                         self.shashlik_map.zoom_delta(
-                            1.02,
+                            1.0 + Self::ZOOM_SPEED,
                             (
                                 (CpuRenderer::WIDTH as f32) * 0.5,
                                 (CpuRenderer::HEIGHT as f32) * 0.5,
@@ -93,7 +95,7 @@ impl App {
                     }
                     Interaction::ZoomOut => {
                         self.shashlik_map.zoom_delta(
-                            0.98,
+                            1.0 - Self::ZOOM_SPEED,
                             (
                                 (CpuRenderer::WIDTH as f32) * 0.5,
                                 (CpuRenderer::HEIGHT as f32) * 0.5,
@@ -101,16 +103,16 @@ impl App {
                         );
                     }
                     Interaction::Left => {
-                        self.shashlik_map.pan_delta(-10.0, 0.0);
+                        self.shashlik_map.pan_delta(-Self::PAN_SPEED, 0.0);
                     }
                     Interaction::Right => {
-                        self.shashlik_map.pan_delta(10.0, 0.0);
+                        self.shashlik_map.pan_delta(Self::PAN_SPEED, 0.0);
                     }
                     Interaction::Up => {
-                        self.shashlik_map.pan_delta(0.0, -10.0);
+                        self.shashlik_map.pan_delta(0.0, -Self::PAN_SPEED);
                     }
                     Interaction::Down => {
-                        self.shashlik_map.pan_delta(0.0, 10.0);
+                        self.shashlik_map.pan_delta(0.0, Self::PAN_SPEED);
                     }
                     Interaction::None => {}
                 }
