@@ -31,7 +31,8 @@ pub struct CpuRenderer {
     cs_offset: DVec3,
     inv_view_proj_matrix: DMat4,
     view_proj_matrix: DMat4,
-    styles_map: FxHashMap<StyleId, tiny_skia::Color>,
+    ground_style: StyleId,
+    styles_map: FxHashMap<StyleId, Color>,
 }
 
 pub struct CpuRendererApi {
@@ -111,6 +112,7 @@ impl CpuRenderer {
             cs_offset: Default::default(),
             inv_view_proj_matrix: Default::default(),
             view_proj_matrix: Default::default(),
+            ground_style: StyleId::new("ground"),
             styles_map: Default::default(),
         }
     }
@@ -160,7 +162,7 @@ impl Renderer for CpuRenderer {
         // TODO Explore optimization: allocation and screen dividing
         let mut pixmap = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
 
-        let ground_color = self.styles_map.get(&StyleId(Cow::from("ground"))).unwrap_or(&Color::BLACK);
+        let ground_color = self.styles_map.get(&self.ground_style).unwrap_or(&Color::BLACK);
         pixmap.fill(ground_color.clone());
 
         self.temp_shapes
