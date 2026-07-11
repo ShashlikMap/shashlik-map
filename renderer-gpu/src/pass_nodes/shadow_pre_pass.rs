@@ -22,7 +22,7 @@ impl PassNode for ShadowPrepass {
     }
 
     fn render(
-        &mut self,
+        &self,
         encoder: &mut CommandEncoder,
         _output_view: &TextureView,
         layers: &mut Layers,

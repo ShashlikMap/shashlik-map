@@ -54,7 +54,7 @@ impl WgpuCanvas for IOSPlatformAppSurface {
 	fn queue(&self) -> &Queue { &self.app_surface.queue }
 	fn config(&self) -> &SurfaceConfiguration { &self.app_surface.config }
 	fn device(&self) -> &Device { &self.app_surface.device }
-	fn create_texture_view(&mut self) -> TextureView {
+	fn create_texture_view(&self) -> TextureView {
 		let surface_texture = match self.app_surface.surface.get_current_texture() {
 			CurrentSurfaceTexture::Success(surface_texture) => surface_texture,
 			_ => panic!("Failed to acquire next swap chain texture!"),
@@ -67,7 +67,7 @@ impl WgpuCanvas for IOSPlatformAppSurface {
 		texture_view
 	}
 
-	fn present(&mut self) -> Option<Texture> {
+	fn present(&self) -> Option<Texture> {
 		if let Some(surface_texture) = mem::take(&mut self.surface_texture) {
 			surface_texture.present();
 		}
