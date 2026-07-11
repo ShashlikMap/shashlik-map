@@ -7,16 +7,19 @@ use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
 use renderer_common::{CanvasApi, Renderer, RendererApi, RendererUpdateData};
+use rustc_hash::FxHashMap;
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::mem;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{Arc, mpsc};
+use std::sync::{mpsc, Arc};
 use tiny_skia::{Color, Paint, PathBuilder, Pixmap, Stroke, Transform};
 
 /// This is the very beginning of CPU renderer-gpu.
 
 pub enum RendererApiMsg {
     RenderGroup(String, SpatialData, Box<dyn RenderGroup<CpuCanvasApi>>),
+    UpdateStyle(StyleId, Box<dyn FnOnce(&mut RenderStyle) + Send>),
     ClearGroups(HashSet<String>),
 }
 
@@ -28,6 +31,7 @@ pub struct CpuRenderer {
     cs_offset: DVec3,
     inv_view_proj_matrix: DMat4,
     view_proj_matrix: DMat4,
+    styles_map: FxHashMap<StyleId, tiny_skia::Color>,
 }
 
 pub struct CpuRendererApi {
@@ -78,9 +82,12 @@ impl RendererApi for CpuRendererApi {
 
     fn update_style<F: FnOnce(&mut RenderStyle) + Send + 'static>(
         &self,
-        _style_id: StyleId,
-        _updater: F,
+        style_id: StyleId,
+        updater: F,
     ) {
+        self.sender
+            .send(RendererApiMsg::UpdateStyle(style_id, Box::new(updater)))
+            .unwrap();
     }
 
     fn update_spatial_data<F: FnOnce(&mut SpatialData) + Send + 'static>(
@@ -104,6 +111,7 @@ impl CpuRenderer {
             cs_offset: Default::default(),
             inv_view_proj_matrix: Default::default(),
             view_proj_matrix: Default::default(),
+            styles_map: Default::default(),
         }
     }
 }
@@ -139,13 +147,21 @@ impl Renderer for CpuRenderer {
                 RendererApiMsg::ClearGroups(keys) => {
                     self.temp_shapes.retain(|s| !keys.contains(&s.0));
                 }
+                RendererApiMsg::UpdateStyle(style_id, updater) => {
+                    let mut style = RenderStyle::default();
+                    updater(&mut style);
+                    let fill_color = style.get_fill_color();
+                    let fill_color = Color::from_rgba(fill_color[0], fill_color[1], fill_color[2], fill_color[3]).unwrap();
+                    self.styles_map.insert(style_id, fill_color);
+                }
             }
         }
 
         // TODO Explore optimization: allocation and screen dividing
         let mut pixmap = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
 
-        pixmap.fill(Color::from_rgba8(244, 243, 240, 255));
+        let ground_color = self.styles_map.get(&StyleId(Cow::from("ground"))).unwrap_or(&Color::BLACK);
+        pixmap.fill(ground_color.clone());
 
         self.temp_shapes
             .iter()
@@ -154,8 +170,13 @@ impl Renderer for CpuRenderer {
 
                 for shape_data in shapes_data {
                     let mut pb = PathBuilder::new();
-                    let mut is_line =
-                        matches!(shape_data.geometry_type, GeometryType::Polyline { .. });
+                    let mut is_line = false;
+                    match shape_data.geometry_type {
+                        GeometryType::Polyline(_) => {
+                            is_line = true;
+                        }
+                        GeometryType::Polygon => {}
+                    }
                     let mut not_culled = false;
                     shape_data.path.iter().for_each(|path| match path {
                         PathEvent::Begin { at } => {
@@ -210,21 +231,13 @@ impl Renderer for CpuRenderer {
                     });
                     if not_culled && let Some(path) = pb.finish() {
                         let mut paint = Paint::default();
+                        let color = self.styles_map.get(&shape_data.style_id).unwrap_or(&Color::BLACK).clone();
+
                         if shape_data.style_id.0 == "building_stand" {
                             is_line = false;
-                            paint.set_color_rgba8(206, 208, 209, 255);
-                        } else if shape_data.style_id.0 == "water" {
-                            paint.set_color_rgba8(165, 201, 235, 255);
-                        } else if shape_data.style_id.0 == "forest" {
-                            paint.set_color_rgba8(193, 232, 200, 255);
-                        } else if shape_data.style_id.0 == "park" {
-                            paint.set_color_rgba8(209, 241, 215, 255);
-                        } else if shape_data.style_id.0 == "ground" {
-                            paint.set_color_rgba8(244, 243, 240, 255);
-                        } else {
-                            paint.set_color_rgba8(159, 158, 156, 255);
                         }
 
+                        paint.set_color(color);
                         paint.anti_alias = true;
 
                         if is_line {
@@ -239,7 +252,7 @@ impl Renderer for CpuRenderer {
                             pixmap.fill_path(
                                 &path,
                                 &paint,
-                                tiny_skia::FillRule::Winding,
+                                tiny_skia::FillRule::EvenOdd,
                                 Transform::default(),
                                 None,
                             );
