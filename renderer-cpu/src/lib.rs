@@ -1,4 +1,4 @@
-use geo_types::Coord;
+use geo_types::{Coord, coord};
 use glam::{DMat4, DVec2, DVec3};
 use lyon_path::PathEvent;
 use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData};
@@ -12,7 +12,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use std::mem;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 use tiny_skia::{Color, Paint, PathBuilder, Pixmap, Stroke, Transform};
 
 /// This is the very beginning of CPU renderer-gpu.
@@ -117,6 +117,22 @@ impl CpuRenderer {
         }
     }
 }
+
+impl CpuRenderer {
+    const HAIRLINE_THRESHOLD: f32 = 0.2;
+    #[inline]
+    fn calc_normalized_vector_proj_length(&self) -> f64 {
+        let center = self.clip_to_world(&coord! { x: 0.0, y: 0.0}).unwrap();
+        let center_with_offset = center + 1.0;
+        let projected_center = self.view_proj_matrix.project_point3(center.extend(0.0));
+        let projected_center_offset = self
+            .view_proj_matrix
+            .project_point3(center_with_offset.extend(0.0));
+        // TODO how to pass 200.0 koef from map?
+        (projected_center_offset - projected_center).length() * 200.0
+    }
+}
+
 impl Renderer for CpuRenderer {
     type RAPI = CpuRendererApi;
     type OUTPUT = Pixmap;
@@ -153,7 +169,13 @@ impl Renderer for CpuRenderer {
                     let mut style = RenderStyle::default();
                     updater(&mut style);
                     let fill_color = style.get_fill_color();
-                    let fill_color = Color::from_rgba(fill_color[0], fill_color[1], fill_color[2], fill_color[3]).unwrap();
+                    let fill_color = Color::from_rgba(
+                        fill_color[0],
+                        fill_color[1],
+                        fill_color[2],
+                        fill_color[3],
+                    )
+                    .unwrap();
                     self.styles_map.insert(style_id, fill_color);
                 }
             }
@@ -162,8 +184,13 @@ impl Renderer for CpuRenderer {
         // TODO Explore optimization: allocation and screen dividing
         let mut pixmap = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
 
-        let ground_color = self.styles_map.get(&self.ground_style).unwrap_or(&Color::BLACK);
+        let ground_color = self
+            .styles_map
+            .get(&self.ground_style)
+            .unwrap_or(&Color::BLACK);
         pixmap.fill(ground_color.clone());
+
+        let norm_length = self.calc_normalized_vector_proj_length();
 
         self.temp_shapes
             .iter()
@@ -173,9 +200,14 @@ impl Renderer for CpuRenderer {
                 for shape_data in shapes_data {
                     let mut pb = PathBuilder::new();
                     let mut is_line = false;
+                    let mut l_width = 0.0;
                     match shape_data.geometry_type {
-                        GeometryType::Polyline(_) => {
+                        GeometryType::Polyline(options) => {
+                            l_width = (options.width as f64 * norm_length) as f32;
                             is_line = true;
+                            if l_width < Self::HAIRLINE_THRESHOLD {
+                                continue;
+                            }
                         }
                         GeometryType::Polygon => {}
                     }
@@ -233,7 +265,11 @@ impl Renderer for CpuRenderer {
                     });
                     if not_culled && let Some(path) = pb.finish() {
                         let mut paint = Paint::default();
-                        let color = self.styles_map.get(&shape_data.style_id).unwrap_or(&Color::BLACK).clone();
+                        let color = self
+                            .styles_map
+                            .get(&shape_data.style_id)
+                            .unwrap_or(&Color::BLACK)
+                            .clone();
                         paint.set_color(color);
                         paint.anti_alias = true;
 
@@ -241,7 +277,13 @@ impl Renderer for CpuRenderer {
                             pixmap.stroke_path(
                                 &path,
                                 &paint,
-                                &Stroke::default(),
+                                &Stroke {
+                                    width: l_width,
+                                    miter_limit: 4.0,
+                                    line_cap: Default::default(),
+                                    line_join: Default::default(),
+                                    dash: None,
+                                },
                                 Transform::default(),
                                 None,
                             )
