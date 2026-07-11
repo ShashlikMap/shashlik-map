@@ -1,4 +1,4 @@
-use geo_types::{Coord, coord};
+use geo_types::{coord, Coord};
 use glam::{DMat4, DVec2, DVec3};
 use lyon_path::PathEvent;
 use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData};
@@ -8,11 +8,10 @@ use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
 use renderer_common::{CanvasApi, Renderer, RendererApi, RendererUpdateData};
 use rustc_hash::FxHashMap;
-use std::borrow::Cow;
 use std::collections::HashSet;
 use std::mem;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{Arc, mpsc};
+use std::sync::{mpsc, Arc};
 use tiny_skia::{Color, Paint, PathBuilder, Pixmap, Stroke, Transform};
 
 /// This is the very beginning of CPU renderer-gpu.
@@ -291,7 +290,7 @@ impl Renderer for CpuRenderer {
                             pixmap.fill_path(
                                 &path,
                                 &paint,
-                                tiny_skia::FillRule::EvenOdd,
+                                tiny_skia::FillRule::Winding,
                                 Transform::default(),
                                 None,
                             );
