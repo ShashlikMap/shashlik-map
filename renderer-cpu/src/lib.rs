@@ -232,11 +232,6 @@ impl Renderer for CpuRenderer {
                     if not_culled && let Some(path) = pb.finish() {
                         let mut paint = Paint::default();
                         let color = self.styles_map.get(&shape_data.style_id).unwrap_or(&Color::BLACK).clone();
-
-                        if shape_data.style_id.0 == "building_stand" {
-                            is_line = false;
-                        }
-
                         paint.set_color(color);
                         paint.anti_alias = true;
 

@@ -115,7 +115,7 @@ fn main() {
                         );
                         let tiles_provider = DefaultTilesProvider::new(
                             Box::new(TileStore::new(ReqwestSource::new())),
-                            ShashlikFeatureProcessor::new(),
+                            ShashlikFeatureProcessor::default(),
                             dpi,
                         );
 

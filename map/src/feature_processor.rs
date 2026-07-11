@@ -16,7 +16,15 @@ use capitalize::Capitalize;
 use lyon::lyon_tessellation::{LineCap, LineJoin};
 use crate::MAX_ZOOM_LEVEL;
 
-pub struct ShashlikFeatureProcessor {}
+pub struct ShashlikFeatureProcessor {
+    include_extruded: bool,
+}
+
+impl Default for ShashlikFeatureProcessor {
+    fn default() -> Self {
+        ShashlikFeatureProcessor::new(true)
+    }
+}
 
 impl ShashlikFeatureProcessor {
     const TRAFFIC_LIGHT_SVG: &'static [u8] = include_bytes!("../svg/traffic_light.svg");
@@ -24,8 +32,10 @@ impl ShashlikFeatureProcessor {
     const TOILETS_SVG: &'static [u8] = include_bytes!("../svg/toilet.svg");
     const TRAIN_STATION_SVG: &'static [u8] = include_bytes!("../svg/train_station.svg");
     const EV_STATION_SVG: &'static [u8] = include_bytes!("../svg/ev_station.svg");
-    pub fn new() -> Self {
-        ShashlikFeatureProcessor {}
+    pub fn new(include_extruded: bool) -> Self {
+        ShashlikFeatureProcessor {
+            include_extruded
+        }
     }
 
     fn highway_style_id(kind: &HighwayKind) -> StyleId {
@@ -251,7 +261,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 _ => None,
             } {
                 if let MapGeomObjectKind::Building(level) = kind
-                    && zoom_level == 0
+                    && zoom_level == 0 && self.include_extruded
                 {
                     let level = if level == 0 {
                         rand::rng().random_range(2..=3)

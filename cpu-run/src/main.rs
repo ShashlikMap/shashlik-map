@@ -50,7 +50,7 @@ impl App {
     fn new() -> (Self, Task<Message>) {
         let tiles_provider = DefaultTilesProvider::new(
             Box::new(MvtTileStore::new()),
-            ShashlikFeatureProcessor::new(),
+            ShashlikFeatureProcessor::new(false),
             1.0,
         );
 
