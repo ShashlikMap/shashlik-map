@@ -1,13 +1,13 @@
 use iced::keyboard::Key;
 use iced::keyboard::key::Named;
 use iced::widget::image::{self, Image};
-use iced::widget::{center, stack};
-use iced::{Element, Event, Length, Size, Subscription, Task, event, keyboard, window};
+use iced::widget::{center, container, stack, text};
+use iced::{Color, Element, Event, Length, Size, Subscription, Task, event, keyboard, window};
 use map::ShashlikMap;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::tiles::mvt::mvt_tile_store::MvtTileStore;
-use renderer_cpu::CpuRenderer;
+use renderer_cpu::{CpuRenderer, FpsCounter};
 use std::time::Instant;
 
 fn main() -> iced::Result {
@@ -28,6 +28,8 @@ struct App {
     shashlik_map: ShashlikMap<CpuRenderer, DefaultTilesProvider<ShashlikFeatureProcessor>>,
     image_handle: image::Handle,
     interaction: Interaction,
+    fps_counter: FpsCounter<100>,
+    last_fps: u16,
 }
 
 #[derive(Debug, Clone)]
@@ -75,6 +77,8 @@ impl App {
                 shashlik_map,
                 image_handle: initial_handle,
                 interaction: Interaction::None,
+                fps_counter: FpsCounter::new(),
+                last_fps: 0u16,
             },
             Task::none(),
         )
@@ -122,6 +126,7 @@ impl App {
                 let height = pixmap.height();
                 let raw_rgba_pixels = pixmap.take();
                 self.image_handle = image::Handle::from_rgba(width, height, raw_rgba_pixels);
+                self.last_fps = self.fps_counter.update() as u16;
             }
             Message::KeyboardInput(event) => match event {
                 keyboard::Event::KeyPressed { key, .. } => match key {
@@ -165,11 +170,21 @@ impl App {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        stack![center(
-            Image::new(self.image_handle.clone())
-                .width(Length::Shrink)
-                .height(Length::Shrink)
-        ),]
+        stack![
+            center(
+                Image::new(self.image_handle.clone())
+                    .width(Length::Shrink)
+                    .height(Length::Shrink)
+            ),
+            container(
+                text(format!("FPS {}", self.last_fps))
+                    .size(20)
+                    .color(Color::BLACK)
+            )
+            .align_x(iced::alignment::Horizontal::Left)
+            .align_y(iced::alignment::Vertical::Top)
+            .padding(10)
+        ]
         .into()
     }
 }

@@ -1,5 +1,8 @@
 use geo_types::{coord, Coord};
 use glam::{DMat4, DVec2, DVec3};
+use lyon_algorithms::aabb::bounding_box;
+use lyon_path::geom::point;
+use lyon_path::math::Box2D;
 use lyon_path::PathEvent;
 use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData};
 use renderer_common::render_group::RenderGroup;
@@ -9,10 +12,12 @@ use renderer_common::style_id::StyleId;
 use renderer_common::{CanvasApi, Renderer, RendererApi, RendererUpdateData};
 use rustc_hash::FxHashMap;
 use std::collections::HashSet;
-use std::mem;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc};
-use tiny_skia::{Color, Paint, PathBuilder, Pixmap, Stroke, Transform};
+use std::time::Instant;
+use std::{mem, thread};
+use tiny_skia::{Color, Paint, PathBuilder, Pixmap, PremultipliedColorU8, Stroke, Transform};
+pub use renderer_common::fps::FpsCounter;
 
 /// This is the very beginning of CPU renderer-gpu.
 
@@ -24,7 +29,8 @@ pub enum RendererApiMsg {
 
 pub struct CpuRenderer {
     canvas_api: CpuCanvasApi,
-    temp_shapes: Vec<(String, SpatialData, Vec<ShapeData>)>,
+    temp_shapes: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
+    temp_shapes_foreground: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
     receiver: Receiver<RendererApiMsg>,
     cpu_renderer_api: Arc<CpuRendererApi>,
     cs_offset: DVec3,
@@ -106,6 +112,7 @@ impl CpuRenderer {
         Self {
             canvas_api: Default::default(),
             temp_shapes: vec![],
+            temp_shapes_foreground: vec![],
             receiver,
             cpu_renderer_api: Arc::new(CpuRendererApi { sender }),
             cs_offset: Default::default(),
@@ -118,7 +125,7 @@ impl CpuRenderer {
 }
 
 impl CpuRenderer {
-    const HAIRLINE_THRESHOLD: f32 = 0.2;
+    const HAIRLINE_THRESHOLD: f32 = 1.0;
     #[inline]
     fn calc_normalized_vector_proj_length(&self) -> f64 {
         let center = self.clip_to_world(&coord! { x: 0.0, y: 0.0}).unwrap();
@@ -128,7 +135,7 @@ impl CpuRenderer {
             .view_proj_matrix
             .project_point3(center_with_offset.extend(0.0));
         // TODO how to pass 200.0 koef from map?
-        (projected_center_offset - projected_center).length() * 200.0
+        (projected_center_offset - projected_center).length() * 250.0
     }
 }
 
@@ -158,11 +165,29 @@ impl Renderer for CpuRenderer {
             match msg {
                 RendererApiMsg::RenderGroup(key, spat_data, mut group) => {
                     group.content(&mut self.canvas_api);
+                    let mut shapes: Vec<_> = self
+                        .canvas_api
+                        .take_shapes()
+                        .into_iter()
+                        .map(|shape_data| {
+                            let path_aabb = bounding_box(shape_data.path.iter());
+                            (path_aabb, shape_data)
+                        })
+                        .collect();
+                    let background_shapes = shapes
+                        .extract_if(.., |(aabb, shape_data)| {
+                            matches!(shape_data.geometry_type, GeometryType::Polygon)
+                        })
+                        .collect();
+                    let foreground_shapes = shapes;
                     self.temp_shapes
-                        .push((key, spat_data, self.canvas_api.take_shapes()));
+                        .push((key.clone(), spat_data.clone(), background_shapes));
+                    self.temp_shapes_foreground
+                        .push((key, spat_data, foreground_shapes));
                 }
                 RendererApiMsg::ClearGroups(keys) => {
                     self.temp_shapes.retain(|s| !keys.contains(&s.0));
+                    self.temp_shapes_foreground.retain(|s| !keys.contains(&s.0));
                 }
                 RendererApiMsg::UpdateStyle(style_id, updater) => {
                     let mut style = RenderStyle::default();
@@ -180,129 +205,319 @@ impl Renderer for CpuRenderer {
             }
         }
 
+        let t1 = Instant::now();
         // TODO Explore optimization: allocation and screen dividing
-        let mut pixmap = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
-
-        let ground_color = self
-            .styles_map
-            .get(&self.ground_style)
-            .unwrap_or(&Color::BLACK);
-        pixmap.fill(*ground_color);
+        let mut tbh = 0;
+        let mut tfh = 0;
 
         let norm_length = self.calc_normalized_vector_proj_length();
+        let jj = Box2D::new(point(-1.0, -1.0), point(1.0, 1.0));
+        let (mut pb, mut pa) = thread::scope(|s| {
+            let ha = s.spawn(|| {
+                let mut pixmap_background = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
+                let bt1 = Instant::now();
+                let ground_color = self
+                    .styles_map
+                    .get(&self.ground_style)
+                    .unwrap_or(&Color::BLACK);
+                pixmap_background.fill(*ground_color);
 
-        self.temp_shapes
-            .iter()
-            .for_each(|(_, spat_data, shapes_data)| {
-                let spatial_offset = (spat_data.transform - self.cs_offset).truncate();
+                self.temp_shapes
+                    .iter()
+                    .for_each(|(_, spat_data, shapes_data)| {
+                        let spatial_offset = (spat_data.transform - self.cs_offset).truncate();
 
-                for shape_data in shapes_data {
-                    let mut pb = PathBuilder::new();
-                    let mut is_line = false;
-                    let mut l_width = 0.0;
-                    match shape_data.geometry_type {
-                        GeometryType::Polyline(options) => {
-                            l_width = (options.width as f64 * norm_length) as f32;
-                            is_line = true;
-                            if l_width < Self::HAIRLINE_THRESHOLD {
+                        for (aabb, shape_data) in shapes_data {
+                            let mut pb = PathBuilder::new();
+                            let mut is_line = false;
+                            let mut l_width = 0.0;
+                            match shape_data.geometry_type {
+                                GeometryType::Polyline(options) => {
+                                    l_width = (options.width as f64 * norm_length) as f32;
+                                    is_line = true;
+                                    if l_width < Self::HAIRLINE_THRESHOLD {
+                                        continue;
+                                    }
+                                }
+                                GeometryType::Polygon => {}
+                            }
+                            let projected_min = self
+                                .view_proj_matrix
+                                .project_point3(DVec3::new(
+                                    aabb.min.x as f64 + spatial_offset.x,
+                                    aabb.min.y as f64 + spatial_offset.y,
+                                    0.0,
+                                ))
+                                .truncate();
+                            let projected_max = self
+                                .view_proj_matrix
+                                .project_point3(DVec3::new(
+                                    aabb.max.x as f64 + spatial_offset.x,
+                                    aabb.max.y as f64 + spatial_offset.y,
+                                    0.0,
+                                ))
+                                .truncate();
+
+                            let cond = Box2D::new(
+                                point(projected_min.x as f32, projected_min.y as f32),
+                                point(projected_max.x as f32, projected_max.y as f32),
+                            )
+                            .intersects(&jj);
+                            if cond {
+                            } else {
                                 continue;
                             }
-                        }
-                        GeometryType::Polygon => {}
-                    }
-                    let mut not_culled = false;
-                    shape_data.path.iter().for_each(|path| match path {
-                        PathEvent::Begin { at } => {
-                            let projected = self
-                                .view_proj_matrix
-                                .project_point3(DVec3::new(
-                                    at.x as f64 + spatial_offset.x,
-                                    at.y as f64 + spatial_offset.y,
-                                    0.0,
-                                ))
-                                .truncate();
-                            if projected.x >= -1.0
-                                && projected.y >= -1.0
-                                && projected.x <= 1.0
-                                && projected.y <= 1.0
-                            {
-                                not_culled = true;
-                            }
-                            pb.move_to(
-                                0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
-                                0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
-                            );
-                        }
-                        PathEvent::Line { from: _, to } => {
-                            let projected = self
-                                .view_proj_matrix
-                                .project_point3(DVec3::new(
-                                    to.x as f64 + spatial_offset.x,
-                                    to.y as f64 + spatial_offset.y,
-                                    0.0,
-                                ))
-                                .truncate();
-                            if projected.x >= -1.0
-                                && projected.y >= -1.0
-                                && projected.x <= 1.0
-                                && projected.y <= 1.0
-                            {
-                                not_culled = true;
-                            }
-                            pb.line_to(
-                                0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
-                                0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
-                            );
-                        }
-                        PathEvent::Quadratic { .. } => {}
-                        PathEvent::Cubic { .. } => {}
-                        PathEvent::End { .. } => {
-                            if !is_line {
-                                pb.close();
+                            shape_data.path.iter().for_each(|path| match path {
+                                PathEvent::Begin { at } => {
+                                    tbh += 1;
+                                    let projected = self
+                                        .view_proj_matrix
+                                        .project_point3(DVec3::new(
+                                            at.x as f64 + spatial_offset.x,
+                                            at.y as f64 + spatial_offset.y,
+                                            0.0,
+                                        ))
+                                        .truncate();
+                                    pb.move_to(
+                                        0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
+                                        0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
+                                    );
+                                }
+                                PathEvent::Line { from: _, to } => {
+                                    tbh += 1;
+                                    let projected = self
+                                        .view_proj_matrix
+                                        .project_point3(DVec3::new(
+                                            to.x as f64 + spatial_offset.x,
+                                            to.y as f64 + spatial_offset.y,
+                                            0.0,
+                                        ))
+                                        .truncate();
+                                    pb.line_to(
+                                        0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
+                                        0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
+                                    );
+                                }
+                                PathEvent::Quadratic { .. } => {}
+                                PathEvent::Cubic { .. } => {}
+                                PathEvent::End { .. } => {
+                                    if !is_line {
+                                        pb.close();
+                                    }
+                                }
+                            });
+                            if let Some(path) = pb.finish() {
+                                let mut paint = Paint::default();
+                                let color = self
+                                    .styles_map
+                                    .get(&shape_data.style_id)
+                                    .unwrap_or(&Color::BLACK)
+                                    .clone();
+                                paint.set_color(color);
+                                paint.anti_alias = true;
+
+                                if is_line {
+                                    pixmap_background.stroke_path(
+                                        &path,
+                                        &paint,
+                                        &Stroke {
+                                            width: l_width,
+                                            miter_limit: 4.0,
+                                            line_cap: Default::default(),
+                                            line_join: Default::default(),
+                                            dash: None,
+                                        },
+                                        Transform::default(),
+                                        None,
+                                    )
+                                } else {
+                                    pixmap_background.fill_path(
+                                        &path,
+                                        &paint,
+                                        tiny_skia::FillRule::Winding,
+                                        Transform::default(),
+                                        None,
+                                    );
+                                }
                             }
                         }
                     });
-                    if not_culled && let Some(path) = pb.finish() {
-                        let mut paint = Paint::default();
-                        let color = self
-                            .styles_map
-                            .get(&shape_data.style_id)
-                            .unwrap_or(&Color::BLACK)
-                            .clone();
-                        paint.set_color(color);
-                        paint.anti_alias = true;
-
-                        if is_line {
-                            pixmap.stroke_path(
-                                &path,
-                                &paint,
-                                &Stroke {
-                                    width: l_width,
-                                    miter_limit: 4.0,
-                                    line_cap: Default::default(),
-                                    line_join: Default::default(),
-                                    dash: None,
-                                },
-                                Transform::default(),
-                                None,
-                            )
-                        } else {
-                            pixmap.fill_path(
-                                &path,
-                                &paint,
-                                tiny_skia::FillRule::Winding,
-                                Transform::default(),
-                                None,
-                            );
-                        }
-                    }
-                }
+                let bt2 = Instant::now();
+                // println!("bt = {:?}, c = {}", bt2 - bt1, tbh);
+                pixmap_background
             });
 
-        Some(pixmap)
+            let hh = s.spawn(|| {
+                let mut pixmap_foreground = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
+
+                self.temp_shapes_foreground
+                    .iter()
+                    .for_each(|(_, spat_data, shapes_data)| {
+                        let spatial_offset = (spat_data.transform - self.cs_offset).truncate();
+
+                        for (aabb, shape_data) in shapes_data {
+                            let mut pb = PathBuilder::new();
+                            let mut is_line = false;
+                            let mut l_width = 0.0;
+                            match shape_data.geometry_type {
+                                GeometryType::Polyline(options) => {
+                                    l_width = (options.width as f64 * norm_length) as f32;
+                                    is_line = true;
+                                    if l_width < Self::HAIRLINE_THRESHOLD {
+                                        continue;
+                                    }
+                                }
+                                GeometryType::Polygon => {}
+                            }
+                            let projected_min = self
+                                .view_proj_matrix
+                                .project_point3(DVec3::new(
+                                    aabb.min.x as f64 + spatial_offset.x,
+                                    aabb.min.y as f64 + spatial_offset.y,
+                                    0.0,
+                                ))
+                                .truncate();
+                            let projected_max = self
+                                .view_proj_matrix
+                                .project_point3(DVec3::new(
+                                    aabb.max.x as f64 + spatial_offset.x,
+                                    aabb.max.y as f64 + spatial_offset.y,
+                                    0.0,
+                                ))
+                                .truncate();
+
+                            let cond = Box2D::new(
+                                point(projected_min.x as f32, projected_min.y as f32),
+                                point(projected_max.x as f32, projected_max.y as f32),
+                            )
+                            .intersects(&jj);
+                            if cond {
+                            } else {
+                                continue;
+                            }
+                            shape_data.path.iter().for_each(|path| match path {
+                                PathEvent::Begin { at } => {
+                                    let projected = self
+                                        .view_proj_matrix
+                                        .project_point3(DVec3::new(
+                                            at.x as f64 + spatial_offset.x,
+                                            at.y as f64 + spatial_offset.y,
+                                            0.0,
+                                        ))
+                                        .truncate();
+                                    pb.move_to(
+                                        0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
+                                        0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
+                                    );
+                                }
+                                PathEvent::Line { from: _, to } => {
+                                    let projected = self
+                                        .view_proj_matrix
+                                        .project_point3(DVec3::new(
+                                            to.x as f64 + spatial_offset.x,
+                                            to.y as f64 + spatial_offset.y,
+                                            0.0,
+                                        ))
+                                        .truncate();
+                                    pb.line_to(
+                                        0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
+                                        0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
+                                    );
+                                }
+                                PathEvent::Quadratic { .. } => {}
+                                PathEvent::Cubic { .. } => {}
+                                PathEvent::End { .. } => {
+                                    if !is_line {
+                                        pb.close();
+                                    }
+                                }
+                            });
+                            if let Some(path) = pb.finish() {
+                                tfh += 1;
+                                let mut paint = Paint::default();
+                                let color = self
+                                    .styles_map
+                                    .get(&shape_data.style_id)
+                                    .unwrap_or(&Color::BLACK)
+                                    .clone();
+                                paint.set_color(color);
+                                paint.anti_alias = true;
+
+                                if is_line {
+                                    pixmap_foreground.stroke_path(
+                                        &path,
+                                        &paint,
+                                        &Stroke {
+                                            width: l_width,
+                                            miter_limit: 1.0,
+                                            line_cap: Default::default(),
+                                            line_join: Default::default(),
+                                            dash: None,
+                                        },
+                                        Transform::default(),
+                                        None,
+                                    )
+                                } else {
+                                    pixmap_foreground.fill_path(
+                                        &path,
+                                        &paint,
+                                        tiny_skia::FillRule::Winding,
+                                        Transform::default(),
+                                        None,
+                                    );
+                                }
+                            }
+                        }
+                    });
+                pixmap_foreground
+            });
+            (ha.join().unwrap(), hh.join().unwrap())
+        });
+
+        fast_blend(&mut pb, &mut pa);
+
+        let t2 = Instant::now();
+        println!("tt = {:?}, nn = {}", t2 - t1, tfh);
+
+        Some(pb)
     }
 
     fn api(&self) -> Arc<CpuRendererApi> {
         self.cpu_renderer_api.clone()
+    }
+}
+
+fn fast_blend(background: &mut Pixmap, foreground: &Pixmap) {
+    // Safety check to avoid index out of bounds
+    assert_eq!(background.width(), foreground.width());
+    assert_eq!(background.height(), foreground.height());
+
+    // Iterate directly over raw pixel structures
+    let bg_pixels = background.pixels_mut(); //
+    let fg_pixels = foreground.pixels();
+
+    for (bg, fg) in bg_pixels.iter_mut().zip(fg_pixels.iter()) {
+        // If the foreground pixel is completely transparent, skip it
+        if fg.alpha() == 0 {
+            continue;
+        }
+
+        // If the foreground pixel is completely opaque, overwrite the background
+        if fg.alpha() == 255 {
+            *bg = *fg;
+            continue;
+        }
+
+        // Standard integer math for pre-multiplied alpha blend (SourceOver)
+        let alpha_inv = 255 - fg.alpha() as u32;
+
+        // Fast division by 255 approximation: ((val * alpha_inv) + 128) / 255
+        let r = fg.red() as u32 + ((bg.red() as u32 * alpha_inv + 128) / 255);
+        let g = fg.green() as u32 + ((bg.green() as u32 * alpha_inv + 128) / 255);
+        let b = fg.blue() as u32 + ((bg.blue() as u32 * alpha_inv + 128) / 255);
+        let a = fg.alpha() as u32 + ((bg.alpha() as u32 * alpha_inv + 128) / 255);
+
+        // Package back safely into a valid pre-multiplied pixel
+        *bg = PremultipliedColorU8::from_rgba(r as u8, g as u8, b as u8, a as u8).unwrap();
     }
 }

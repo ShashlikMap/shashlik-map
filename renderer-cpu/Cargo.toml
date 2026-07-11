@@ -10,3 +10,4 @@ tiny-skia = { workspace = true }
 glam = { workspace = true }
 rustc-hash = { workspace = true }
 lyon_path = "1.0.19"
+lyon_algorithms = "1.0.19"
