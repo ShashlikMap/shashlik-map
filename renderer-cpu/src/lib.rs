@@ -1,4 +1,4 @@
-use geo_types::Coord;
+use geo_types::{coord, Coord};
 use glam::{DMat4, DVec2, DVec3};
 use lyon_path::PathEvent;
 use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData};
@@ -7,16 +7,18 @@ use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
 use renderer_common::{CanvasApi, Renderer, RendererApi, RendererUpdateData};
+use rustc_hash::FxHashMap;
 use std::collections::HashSet;
 use std::mem;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{Arc, mpsc};
+use std::sync::{mpsc, Arc};
 use tiny_skia::{Color, Paint, PathBuilder, Pixmap, Stroke, Transform};
 
 /// This is the very beginning of CPU renderer-gpu.
 
 pub enum RendererApiMsg {
     RenderGroup(String, SpatialData, Box<dyn RenderGroup<CpuCanvasApi>>),
+    UpdateStyle(StyleId, Box<dyn FnOnce(&mut RenderStyle) + Send>),
     ClearGroups(HashSet<String>),
 }
 
@@ -28,6 +30,8 @@ pub struct CpuRenderer {
     cs_offset: DVec3,
     inv_view_proj_matrix: DMat4,
     view_proj_matrix: DMat4,
+    ground_style: StyleId,
+    styles_map: FxHashMap<StyleId, Color>,
 }
 
 pub struct CpuRendererApi {
@@ -78,9 +82,12 @@ impl RendererApi for CpuRendererApi {
 
     fn update_style<F: FnOnce(&mut RenderStyle) + Send + 'static>(
         &self,
-        _style_id: StyleId,
-        _updater: F,
+        style_id: StyleId,
+        updater: F,
     ) {
+        self.sender
+            .send(RendererApiMsg::UpdateStyle(style_id, Box::new(updater)))
+            .unwrap();
     }
 
     fn update_spatial_data<F: FnOnce(&mut SpatialData) + Send + 'static>(
@@ -104,9 +111,27 @@ impl CpuRenderer {
             cs_offset: Default::default(),
             inv_view_proj_matrix: Default::default(),
             view_proj_matrix: Default::default(),
+            ground_style: StyleId::new("ground"),
+            styles_map: Default::default(),
         }
     }
 }
+
+impl CpuRenderer {
+    const HAIRLINE_THRESHOLD: f32 = 0.2;
+    #[inline]
+    fn calc_normalized_vector_proj_length(&self) -> f64 {
+        let center = self.clip_to_world(&coord! { x: 0.0, y: 0.0}).unwrap();
+        let center_with_offset = center + 1.0;
+        let projected_center = self.view_proj_matrix.project_point3(center.extend(0.0));
+        let projected_center_offset = self
+            .view_proj_matrix
+            .project_point3(center_with_offset.extend(0.0));
+        // TODO how to pass 200.0 koef from map?
+        (projected_center_offset - projected_center).length() * 200.0
+    }
+}
+
 impl Renderer for CpuRenderer {
     type RAPI = CpuRendererApi;
     type OUTPUT = Pixmap;
@@ -139,13 +164,32 @@ impl Renderer for CpuRenderer {
                 RendererApiMsg::ClearGroups(keys) => {
                     self.temp_shapes.retain(|s| !keys.contains(&s.0));
                 }
+                RendererApiMsg::UpdateStyle(style_id, updater) => {
+                    let mut style = RenderStyle::default();
+                    updater(&mut style);
+                    let fill_color = style.get_fill_color();
+                    let fill_color = Color::from_rgba(
+                        fill_color[0],
+                        fill_color[1],
+                        fill_color[2],
+                        fill_color[3],
+                    )
+                    .unwrap();
+                    self.styles_map.insert(style_id, fill_color);
+                }
             }
         }
 
         // TODO Explore optimization: allocation and screen dividing
         let mut pixmap = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
 
-        pixmap.fill(Color::from_rgba8(244, 243, 240, 255));
+        let ground_color = self
+            .styles_map
+            .get(&self.ground_style)
+            .unwrap_or(&Color::BLACK);
+        pixmap.fill(*ground_color);
+
+        let norm_length = self.calc_normalized_vector_proj_length();
 
         self.temp_shapes
             .iter()
@@ -154,8 +198,18 @@ impl Renderer for CpuRenderer {
 
                 for shape_data in shapes_data {
                     let mut pb = PathBuilder::new();
-                    let mut is_line =
-                        matches!(shape_data.geometry_type, GeometryType::Polyline { .. });
+                    let mut is_line = false;
+                    let mut l_width = 0.0;
+                    match shape_data.geometry_type {
+                        GeometryType::Polyline(options) => {
+                            l_width = (options.width as f64 * norm_length) as f32;
+                            is_line = true;
+                            if l_width < Self::HAIRLINE_THRESHOLD {
+                                continue;
+                            }
+                        }
+                        GeometryType::Polygon => {}
+                    }
                     let mut not_culled = false;
                     shape_data.path.iter().for_each(|path| match path {
                         PathEvent::Begin { at } => {
@@ -210,28 +264,25 @@ impl Renderer for CpuRenderer {
                     });
                     if not_culled && let Some(path) = pb.finish() {
                         let mut paint = Paint::default();
-                        if shape_data.style_id.0 == "building_stand" {
-                            is_line = false;
-                            paint.set_color_rgba8(206, 208, 209, 255);
-                        } else if shape_data.style_id.0 == "water" {
-                            paint.set_color_rgba8(165, 201, 235, 255);
-                        } else if shape_data.style_id.0 == "forest" {
-                            paint.set_color_rgba8(193, 232, 200, 255);
-                        } else if shape_data.style_id.0 == "park" {
-                            paint.set_color_rgba8(209, 241, 215, 255);
-                        } else if shape_data.style_id.0 == "ground" {
-                            paint.set_color_rgba8(244, 243, 240, 255);
-                        } else {
-                            paint.set_color_rgba8(159, 158, 156, 255);
-                        }
-
+                        let color = self
+                            .styles_map
+                            .get(&shape_data.style_id)
+                            .unwrap_or(&Color::BLACK)
+                            .clone();
+                        paint.set_color(color);
                         paint.anti_alias = true;
 
                         if is_line {
                             pixmap.stroke_path(
                                 &path,
                                 &paint,
-                                &Stroke::default(),
+                                &Stroke {
+                                    width: l_width,
+                                    miter_limit: 4.0,
+                                    line_cap: Default::default(),
+                                    line_join: Default::default(),
+                                    dash: None,
+                                },
                                 Transform::default(),
                                 None,
                             )

@@ -94,7 +94,7 @@ pub fn createShashlikMapApi(
     // let tiles_sqlite_store = TilesSQLiteStore::new(tiles_db);
     let reqwest_source = ReqwestSource::new();
     let tile_store = Box::new(TileStore::new(reqwest_source));
-    let feature_processor = ShashlikFeatureProcessor::new();
+    let feature_processor = ShashlikFeatureProcessor::default();
     let shashlik_map = pollster::block_on(async {
         let renderer = GpuRenderer::new(feature_layer_tags(),
                                         Box::new(surface), &DEFAULT_FONT).await?;

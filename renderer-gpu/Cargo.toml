@@ -18,7 +18,7 @@ geo-types = { workspace = true, features = ["rstar_0_12"] }
 tokio = { workspace = true }
 rstar = "0.12.2"
 rustybuzz = { workspace = true }
-rustc-hash = "1.1.0"
+rustc-hash = { workspace = true }
 wesl = { git = "https://github.com/wgsl-tooling-wg/wesl-rs", features = ["naga-ext"]}
 rand = { workspace = true }
 strum = { workspace = true }

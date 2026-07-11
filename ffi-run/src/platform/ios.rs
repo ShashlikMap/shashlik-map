@@ -29,7 +29,7 @@ pub fn create_shashlik_map_api_for_ios(view: u64, metal_layer: u64, maximum_fram
 	let wrapper = IOSPlatformAppSurface { app_surface, surface_texture: None };
 	let reqwest_source = ReqwestSource::new();
 	let tile_store = Box::new(TileStore::new(reqwest_source));
-	let feature_processor = ShashlikFeatureProcessor::new();
+	let feature_processor = ShashlikFeatureProcessor::default();
 	// TODO DPI from iOS
 	let shashlik_map = pollster::block_on(async {
 		let renderer = GpuRenderer::new(feature_layer_tags(),
