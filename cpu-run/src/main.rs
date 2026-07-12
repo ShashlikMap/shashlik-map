@@ -197,6 +197,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 shashlik_map.update_and_render(canvas);
             }
 
+            // TODO Figure out if it should be from_rgba8_premultiplied
             let image = Image::from_rgba8(pixel_buffer);
             window.set_render_texture(image);
             window.window().request_redraw();

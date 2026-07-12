@@ -128,6 +128,8 @@ impl CpuRenderer {
 }
 
 impl CpuRenderer {
+
+    const BLACK_FALLBACK: Color4f = Color4f::new(0.0, 0.0, 0.0, 1.0);
     const HAIRLINE_THRESHOLD: f32 = 1.0;
     #[inline]
     fn calc_normalized_vector_proj_length(&self) -> f64 {
@@ -231,8 +233,7 @@ impl CpuRenderer {
                 let mut paint = Paint::default();
                 let color = styles_map
                     .get(&shape_data.style_id)
-                    .unwrap_or(&Color4f::new(0.0, 0.0, 0.0, 1.0))
-                    .clone();
+                    .unwrap_or_else(|| &Self::BLACK_FALLBACK);
                 paint.set_color(color.to_color());
                 paint.set_anti_alias(true);
 
@@ -263,6 +264,8 @@ impl Renderer for CpuRenderer {
         self.cs_offset = data.cs_offset;
         self.view_proj_matrix = data.view_proj_matrix;
         self.inv_view_proj_matrix = data.view_proj_matrix.inverse();
+
+        self.norm_length = self.calc_normalized_vector_proj_length();
     }
 
     fn clip_to_world(&self, coord: &Coord) -> Option<DVec2> {
@@ -316,8 +319,6 @@ impl Renderer for CpuRenderer {
             }
         }
 
-        self.norm_length = self.calc_normalized_vector_proj_length();
-
         let processor = |shapes: &[(String, SpatialData, Vec<(Box2D, ShapeData)>)],
                          canvas: &Canvas| {
             Self::process_shapes(
@@ -335,11 +336,10 @@ impl Renderer for CpuRenderer {
             || {
                 let mut recorder = PictureRecorder::new();
                 let canvas_back = recorder.begin_recording(Rect::from_wh(CpuRenderer::WIDTH as f32, CpuRenderer::HEIGHT as f32), false);
-                let fallback = Color4f::new(0.0, 0.0, 0.0, 1.0);
                 let ground_color = self
                     .styles_map
                     .get(&self.ground_style)
-                    .unwrap_or(&fallback);
+                    .unwrap_or_else(|| &Self::BLACK_FALLBACK);
                 canvas_back.clear(ground_color.to_color());
                 processor(&self.shapes_background, canvas_back);
                 recorder.finish_recording_as_picture(None).unwrap()
@@ -354,7 +354,7 @@ impl Renderer for CpuRenderer {
 
         input.draw_picture(&pb, None, None);
         input.draw_picture(&pa, None, None);
-        
+
         None
     }
 
