@@ -1,6 +1,7 @@
 use std::time::Instant;
+use skia_safe::{AlphaType, Canvas, PathBuilder, Color, ColorType, Paint, PaintStyle, Path};
 use slint::{Image, SharedPixelBuffer};
-use tiny_skia::{Color, LineCap, LineJoin, Paint, PathBuilder, PixmapMut, PixmapPaint, Stroke, Transform};
+// use tiny_skia::{Color, LineCap, LineJoin, Paint, PathBuilder, PixmapMut, PixmapPaint, Stroke, Transform};
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::ShashlikMap;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
@@ -95,19 +96,74 @@ fn main() -> Result<(), slint::PlatformError> {
         // 3. Wrap Slint's raw memory slice into a tiny-skia canvas surface
         let raw_bytes = pixel_buffer.make_mut_bytes();
 
-        let mut pixmap = PixmapMut::from_bytes(raw_bytes, width, height).unwrap();
-        let pixmap_shash = shashlik_map.update_and_render(pixmap);
+        // 4. Initialize the 0.99.0 Skia Surface Spec Map
+        let row_bytes = (width * 4) as usize;
+        let image_info = skia_safe::ImageInfo::new(
+            skia_safe::ISize::new(width as i32, height as i32),
+            ColorType::RGBA8888,
+            AlphaType::Premul,
+            None,
+        );
+
+        if let Some(mut surface) = unsafe {
+            skia_safe::surfaces::wrap_pixels(&image_info, raw_bytes, Some(row_bytes), None)
+        } {
+            let canvas = surface.canvas(); // This acquires the native drawing context
+            shashlik_map.update_and_render(canvas);
+
+            // shashlik_map.pan_delta(3.0, 0.0);
+
+            shashlik_map.zoom_delta(
+                1.0 - 0.005,
+                (
+                    (CpuRenderer::WIDTH as f32) * 0.5,
+                    (CpuRenderer::HEIGHT as f32) * 0.5,
+                ),
+            );
+
+            // let mut pb = PathBuilder::new(); // Use PathBuilder instead of Path::new()
+            // let points_count = 50;
+            // let t_offset = animation_tick as f32 * 0.06;
+            //
+            // for i in 0..200 {
+            //     pb.move_to(((i * 5) as f32, 0.0));
+            //     pb.line_to(((i * 5) as f32, 600.0));
+            // }
+
+            // for i in 0..points_count {
+            //     let ratio = i as f32 / (points_count - 1) as f32;
+            //     let x = ratio * 800.0;
+            //     let wave_y = (ratio * 6.28 * 2.0 + t_offset).sin() * 120.0;
+            //     let y = 300.0 + wave_y;
+            //
+            //     if i == 0 {
+            //         pb.move_to((x as f32, y as f32)); // move_to lives on the builder
+            //     } else {
+            //         pb.line_to((x as f32, y as f32)); // line_to lives on the builder
+            //     }
+            // }
+
+            // Convert the builder data into a finalized Path snapshot
+            // let path = pb.detach();
+            //
+            // // 7. Define Modern 0.99.0 Paint Attributes
+            // let mut paint = Paint::default();
+            // paint.set_color(Color::from_argb(255, 0, 240, 255));
+            // paint.set_anti_alias(true);
+            // paint.set_style(PaintStyle::Stroke);
+            // paint.set_stroke_width(1.0);
+            // paint.set_stroke_cap(skia_safe::PaintCap::Round);
+            // paint.set_stroke_join(skia_safe::PaintJoin::Round);
+            //
+            // // 8. Rasterize and Write
+            // canvas.draw_path(&path, &paint);
+        }
+
+        // let mut pixmap = PixmapMut::from_bytes(raw_bytes, width, height).unwrap();
+        // let pixmap_shash = shashlik_map.update_and_render(pixmap);
 
         // pixmap.pixels_mut().copy_from_slice(&pixmap_shash.pixels());
-        shashlik_map.pan_delta(5.0, 0.0);
 
-                                // shashlik_map.zoom_delta(
-                                //     1.0 - 0.02,
-                                //     (
-                                //         (CpuRenderer::WIDTH as f32) * 0.5,
-                                //         (CpuRenderer::HEIGHT as f32) * 0.5,
-                                //     ),
-                                // );
         // 5. Build a dynamic vector Path using tiny-skia's PathBuilder API
         // let mut pb = PathBuilder::new();
 

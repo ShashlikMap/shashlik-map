@@ -16,7 +16,8 @@ use std::collections::HashSet;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc};
 use std::mem;
-use tiny_skia::{Color, Paint, PathBuilder, Pixmap, PixmapMut, PremultipliedColorU8, Stroke, Transform};
+use skia_safe::{Canvas, Color, Color4f, Paint, PaintStyle, PathBuilder};
+// use tiny_skia::{Color, Paint, PathBuilder, Pixmap, PixmapMut, PremultipliedColorU8, Stroke, Transform};
 
 /// This is the very beginning of CPU renderer-gpu.
 
@@ -36,10 +37,10 @@ pub struct CpuRenderer {
     inv_view_proj_matrix: DMat4,
     view_proj_matrix: DMat4,
     ground_style: StyleId,
-    styles_map: FxHashMap<StyleId, Color>,
+    styles_map: FxHashMap<StyleId, Color4f>,
     norm_length: f64,
     screen_aabb: Box2D,
-    pixmap_fore: Pixmap,
+    // pixmap_fore: Pixmap,
 }
 
 pub struct CpuRendererApi {
@@ -111,7 +112,7 @@ impl CpuRenderer {
     pub const HEIGHT: u32 = 600;
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel();
-        let pixmap_foreground = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
+        // let pixmap_foreground = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
         Self {
             canvas_api: Default::default(),
             shapes_background: vec![],
@@ -125,7 +126,7 @@ impl CpuRenderer {
             styles_map: Default::default(),
             norm_length: 0.0,
             screen_aabb: Box2D::new(point(-1.0, -1.0), point(1.0, 1.0)),
-            pixmap_fore: pixmap_foreground
+            // pixmap_fore: pixmap_foreground
         }
     }
 }
@@ -144,73 +145,73 @@ impl CpuRenderer {
         (projected_center_offset - projected_center).length() * 250.0
     }
 
-    #[inline]
-    pub fn fast_blend(background: &mut Pixmap, foreground: &Pixmap) {
-        assert_eq!(background.width(), foreground.width());
-        assert_eq!(background.height(), foreground.height());
-
-        let bg_pixels = background.pixels_mut();
-        let fg_pixels = foreground.pixels();
-
-        for (bg, fg) in bg_pixels.iter_mut().zip(fg_pixels.iter()) {
-            if fg.alpha() == 0 {
-                continue;
-            }
-
-            if fg.alpha() == 255 {
-                *bg = *fg;
-                continue;
-            }
-
-            let alpha_inv = 255 - fg.alpha() as u32;
-
-            let r = fg.red() as u32 + ((bg.red() as u32 * alpha_inv + 128) / 255);
-            let g = fg.green() as u32 + ((bg.green() as u32 * alpha_inv + 128) / 255);
-            let b = fg.blue() as u32 + ((bg.blue() as u32 * alpha_inv + 128) / 255);
-            let a = fg.alpha() as u32 + ((bg.alpha() as u32 * alpha_inv + 128) / 255);
-
-            *bg = PremultipliedColorU8::from_rgba(r as u8, g as u8, b as u8, a as u8).unwrap();
-        }
-    }
-
-    #[inline]
-    pub fn fast_blend2(background: &mut PixmapMut, foreground: &Pixmap) {
-        assert_eq!(background.width(), foreground.width());
-        assert_eq!(background.height(), foreground.height());
-
-        let bg_pixels = background.pixels_mut();
-        let fg_pixels = foreground.pixels();
-
-        for (bg, fg) in bg_pixels.iter_mut().zip(fg_pixels.iter()) {
-            if fg.alpha() == 0 {
-                continue;
-            }
-
-            if fg.alpha() == 255 {
-                *bg = *fg;
-                continue;
-            }
-
-            let alpha_inv = 255 - fg.alpha() as u32;
-
-            let r = fg.red() as u32 + ((bg.red() as u32 * alpha_inv + 128) / 255);
-            let g = fg.green() as u32 + ((bg.green() as u32 * alpha_inv + 128) / 255);
-            let b = fg.blue() as u32 + ((bg.blue() as u32 * alpha_inv + 128) / 255);
-            let a = fg.alpha() as u32 + ((bg.alpha() as u32 * alpha_inv + 128) / 255);
-
-            *bg = PremultipliedColorU8::from_rgba(r as u8, g as u8, b as u8, a as u8).unwrap();
-        }
-    }
+    // #[inline]
+    // pub fn fast_blend(background: &mut Pixmap, foreground: &Pixmap) {
+    //     assert_eq!(background.width(), foreground.width());
+    //     assert_eq!(background.height(), foreground.height());
+    //
+    //     let bg_pixels = background.pixels_mut();
+    //     let fg_pixels = foreground.pixels();
+    //
+    //     for (bg, fg) in bg_pixels.iter_mut().zip(fg_pixels.iter()) {
+    //         if fg.alpha() == 0 {
+    //             continue;
+    //         }
+    //
+    //         if fg.alpha() == 255 {
+    //             *bg = *fg;
+    //             continue;
+    //         }
+    //
+    //         let alpha_inv = 255 - fg.alpha() as u32;
+    //
+    //         let r = fg.red() as u32 + ((bg.red() as u32 * alpha_inv + 128) / 255);
+    //         let g = fg.green() as u32 + ((bg.green() as u32 * alpha_inv + 128) / 255);
+    //         let b = fg.blue() as u32 + ((bg.blue() as u32 * alpha_inv + 128) / 255);
+    //         let a = fg.alpha() as u32 + ((bg.alpha() as u32 * alpha_inv + 128) / 255);
+    //
+    //         *bg = PremultipliedColorU8::from_rgba(r as u8, g as u8, b as u8, a as u8).unwrap();
+    //     }
+    // }
+    //
+    // #[inline]
+    // pub fn fast_blend2(background: &mut PixmapMut, foreground: &Pixmap) {
+    //     assert_eq!(background.width(), foreground.width());
+    //     assert_eq!(background.height(), foreground.height());
+    //
+    //     let bg_pixels = background.pixels_mut();
+    //     let fg_pixels = foreground.pixels();
+    //
+    //     for (bg, fg) in bg_pixels.iter_mut().zip(fg_pixels.iter()) {
+    //         if fg.alpha() == 0 {
+    //             continue;
+    //         }
+    //
+    //         if fg.alpha() == 255 {
+    //             *bg = *fg;
+    //             continue;
+    //         }
+    //
+    //         let alpha_inv = 255 - fg.alpha() as u32;
+    //
+    //         let r = fg.red() as u32 + ((bg.red() as u32 * alpha_inv + 128) / 255);
+    //         let g = fg.green() as u32 + ((bg.green() as u32 * alpha_inv + 128) / 255);
+    //         let b = fg.blue() as u32 + ((bg.blue() as u32 * alpha_inv + 128) / 255);
+    //         let a = fg.alpha() as u32 + ((bg.alpha() as u32 * alpha_inv + 128) / 255);
+    //
+    //         *bg = PremultipliedColorU8::from_rgba(r as u8, g as u8, b as u8, a as u8).unwrap();
+    //     }
+    // }
 
     #[inline]
     fn process_shapes(
         shapes: &[(String, SpatialData, Vec<(Box2D, ShapeData)>)],
-        pixmap: &mut PixmapMut,
+        canvas: &Canvas,
         cs_offset: &DVec3,
         norm_length: f64,
         view_proj_matrix: &DMat4,
         screen_aabb: &Box2D,
-        styles_map: &FxHashMap<StyleId, Color>,
+        styles_map: &FxHashMap<StyleId, Color4f>,
     ) {
         shapes.iter().for_each(|(_, spat_data, shapes_data)| {
             let spatial_offset = (spat_data.transform - cs_offset).truncate();
@@ -262,10 +263,10 @@ impl CpuRenderer {
                                 0.0,
                             ))
                             .truncate();
-                        pb.move_to(
+                        pb.move_to((
                             0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
                             0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
-                        );
+                        ));
                     }
                     PathEvent::Line { from: _, to } => {
                         let projected = view_proj_matrix
@@ -275,10 +276,10 @@ impl CpuRenderer {
                                 0.0,
                             ))
                             .truncate();
-                        pb.line_to(
+                        pb.line_to((
                             0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
                             0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
-                        );
+                        ));
                     }
                     PathEvent::Quadratic { .. } => {}
                     PathEvent::Cubic { .. } => {}
@@ -288,38 +289,42 @@ impl CpuRenderer {
                         }
                     }
                 });
-                if let Some(path) = pb.finish() {
-                    let mut paint = Paint::default();
-                    let color = styles_map
-                        .get(&shape_data.style_id)
-                        .unwrap_or(&Color::BLACK)
-                        .clone();
-                    paint.set_color(color);
-                    paint.anti_alias = true;
+                let path = pb.detach();
+                let mut paint = Paint::default();
+                let color = styles_map
+                    .get(&shape_data.style_id)
+                    .unwrap_or(&Color4f::new(0.0, 0.0, 0.0, 1.0))
+                    .clone();
+                paint.set_color(color.to_color());
+                paint.set_anti_alias(true);
 
-                    if is_line {
-                        pixmap.stroke_path(
-                            &path,
-                            &paint,
-                            &Stroke {
-                                width: l_width,
-                                miter_limit: 1.0,
-                                line_cap: Default::default(),
-                                line_join: Default::default(),
-                                dash: None,
-                            },
-                            Transform::default(),
-                            None,
-                        )
-                    } else {
-                        pixmap.fill_path(
-                            &path,
-                            &paint,
-                            tiny_skia::FillRule::Winding,
-                            Transform::default(),
-                            None,
-                        );
-                    }
+                if is_line {
+                    paint.set_stroke_width(l_width);
+                    paint.set_style(PaintStyle::Stroke);
+                    canvas.draw_path(&path, &paint);
+                    // pixmap.stroke_path(
+                    //     &path,
+                    //     &paint,
+                    //     &Stroke {
+                    //         width: l_width,
+                    //         miter_limit: 1.0,
+                    //         line_cap: Default::default(),
+                    //         line_join: Default::default(),
+                    //         dash: None,
+                    //     },
+                    //     Transform::default(),
+                    //     None,
+                    // )
+                } else {
+                    paint.set_style(PaintStyle::Fill);
+                    canvas.draw_path(&path, &paint);
+                    // pixmap.fill_path(
+                    //     &path,
+                    //     &paint,
+                    //     tiny_skia::FillRule::Winding,
+                    //     Transform::default(),
+                    //     None,
+                    // );
                 }
             }
         });
@@ -328,8 +333,8 @@ impl CpuRenderer {
 
 impl Renderer for CpuRenderer {
     type RAPI = CpuRendererApi;
-    type OUTPUT = Pixmap;
-    type INPUT<'a> = PixmapMut<'a>;
+    type OUTPUT = ();
+    type INPUT<'a> = &'a Canvas;
 
     fn screen_size(&self) -> (f32, f32) {
         (Self::WIDTH as f32, Self::HEIGHT as f32)
@@ -348,7 +353,7 @@ impl Renderer for CpuRenderer {
             .map(|coord| coord + self.cs_offset.truncate())
     }
 
-    fn render2(&mut self, mut input: Self::INPUT<'_>) {
+    fn render2(&mut self, input: Self::INPUT<'_>) {
         while let Ok(msg) = self.receiver.try_recv() {
             match msg {
                 RendererApiMsg::RenderGroup(key, spat_data, mut group) => {
@@ -384,13 +389,11 @@ impl Renderer for CpuRenderer {
                     let mut style = RenderStyle::default();
                     updater(&mut style);
                     let fill_color = style.get_fill_color();
-                    let fill_color = Color::from_rgba(
-                        fill_color[0],
-                        fill_color[1],
-                        fill_color[2],
-                        fill_color[3],
-                    )
-                    .unwrap();
+
+                    let fill_color =  Color4f::new(fill_color[0],
+                                                   fill_color[1],
+                                                   fill_color[2],
+                                                   fill_color[3]);
                     self.styles_map.insert(style_id, fill_color);
                 }
             }
@@ -399,10 +402,10 @@ impl Renderer for CpuRenderer {
         self.norm_length = self.calc_normalized_vector_proj_length();
 
         let processor = |shapes: &[(String, SpatialData, Vec<(Box2D, ShapeData)>)],
-                         pixmap: &mut PixmapMut| {
+                         canvas: &Canvas| {
             Self::process_shapes(
                 shapes,
-                pixmap,
+                canvas,
                 &self.cs_offset,
                 self.norm_length,
                 &self.view_proj_matrix,
@@ -410,26 +413,34 @@ impl Renderer for CpuRenderer {
                 &self.styles_map,
             );
         };
-        let (mut pb, mut pa) = rayon::join(
-            || {
-                let ground_color = self
-                    .styles_map
-                    .get(&self.ground_style)
-                    .unwrap_or(&Color::BLACK);
+        let qq = Color4f::new(0.0, 0.0, 0.0, 1.0);
+        let ground_color = self
+            .styles_map
+            .get(&self.ground_style)
+            .unwrap_or(&qq);
+        input.clear(ground_color.to_color());
+        processor(&self.shapes_background, input);
+        processor(&self.shapes_foreground, input);
+        // let (mut pb, mut pa) = rayon::join(
+        //     || {
+        //         let ground_color = self
+        //             .styles_map
+        //             .get(&self.ground_style)
+        //             .unwrap_or(&Color::BLACK);
+        //
+        //         // let mut pixmap_background = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
+        //         // input.fill(*ground_color);
+        //         // processor(&self.shapes_background, &mut input);
+        //         ()
+        //     },
+        //     || {
+        //         // self.pixmap_fore.fill(Color::TRANSPARENT);
+        //         processor(&self.shapes_foreground, input);
+        //         ()
+        //     },
+        // );
 
-                // let mut pixmap_background = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
-                input.fill(*ground_color);
-                processor(&self.shapes_background, &mut input);
-                ()
-            },
-            || {
-                self.pixmap_fore.fill(Color::TRANSPARENT);
-                processor(&self.shapes_foreground, &mut self.pixmap_fore.as_mut());
-                &self.pixmap_fore
-            },
-        );
-
-        Self::fast_blend2(&mut input, &mut pa);
+        // Self::fast_blend2(&mut input, &mut pa);
         // Some(pb)
     }
 
