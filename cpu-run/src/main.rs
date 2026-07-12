@@ -1,5 +1,6 @@
 use std::time::Instant;
 use slint::{Image, SharedPixelBuffer};
+use tiny_skia::{Color, LineCap, LineJoin, Paint, PathBuilder, PixmapMut, Stroke};
 
 slint::slint! {
     export component MainWindow inherits Window { // Uses 'inherits' instead of 'extends'
@@ -21,7 +22,7 @@ slint::slint! {
         // Draw the text overlay on top of the image
         Text {
             text: root.fps_text;
-            color: white;
+            color: red;
             font-size: 24px;
             font-weight: 700;
             x: 20px;
@@ -57,45 +58,91 @@ fn main() -> Result<(), slint::PlatformError> {
     render_timer.start(slint::TimerMode::Repeated, std::time::Duration::from_millis(0), move || {
         let Some(window) = main_window_weak.upgrade() else { return; };
 
-        // 1. Calculate FPS every second
+        // 1. Calculate Frame Rates
         frame_count += 1;
         let elapsed_seconds = fps_timer.elapsed().as_secs_f32();
         if elapsed_seconds >= 1.0 {
             let fps = frame_count as f32 / elapsed_seconds;
             window.set_fps_text(format!("FPS: {:.1}", fps).into());
-
             frame_count = 0;
             fps_timer = Instant::now();
         }
 
-        // 2. Allocate frame memory to build our visual matrix
-        let mut pixel_buffer = SharedPixelBuffer::<slint::Rgb8Pixel>::new(width, height);
-        let pixels = pixel_buffer.make_mut_bytes();
-
-        // Advance animation index
+        // 2. Setup a 4-channel RGBA pixel buffer for tiny-skia compliance
+        let mut pixel_buffer = SharedPixelBuffer::<slint::Rgba8Pixel>::new(width, height);
         animation_tick = animation_tick.wrapping_add(1);
 
-        // 3. Draw a changing color landscape via the CPU
-        for y in 0..height {
-            for x in 0..width {
-                let pixel_index = ((y * width + x) * 3) as usize;
+        // 3. Wrap Slint's raw memory slice into a tiny-skia canvas surface
+        let raw_bytes = pixel_buffer.make_mut_bytes();
 
-                // Mixing the physical position and animation clock
-                let r = ((x * 255 / width) as u32).wrapping_add(animation_tick) as u8;
-                let g = ((y * 255 / height) as u32).wrapping_add(animation_tick * 2) as u8;
-                let b = 128_u8;
+        // 4. Fill a changing color gradient background using raw array loops
+        // for y in 0..height {
+        //     for x in 0..width {
+        //         let pixel_index = ((y * width + x) * 4) as usize; // 4 bytes per pixel now
+        //
+        //         let r = ((x * 255 / width) as u32).wrapping_add(animation_tick) as u8;
+        //         let g = ((y * 255 / height) as u32).wrapping_add(animation_tick * 2) as u8;
+        //
+        //         raw_bytes[pixel_index] = r;     // R
+        //         raw_bytes[pixel_index + 1] = g; // G
+        //         raw_bytes[pixel_index + 2] = 128;// B
+        //         raw_bytes[pixel_index + 3] = 255;// Alpha (Fully Opaque)
+        //     }
+        // }
 
-                pixels[pixel_index] = r;
-                pixels[pixel_index + 1] = g;
-                pixels[pixel_index + 2] = b;
-            }
+        let mut pixmap = PixmapMut::from_bytes(raw_bytes, width, height).unwrap();
+        pixmap.fill(Color::WHITE);
+        // 5. Build a dynamic vector Path using tiny-skia's PathBuilder API
+        let mut pb = PathBuilder::new();
+        let points_count = 50;
+        let t_offset = animation_tick as f32 * 0.06;
+
+        // for i in 0..100 {
+        //     pb.move_to(0.0, (i * 5) as f32);
+        //     pb.line_to(600.0, (i * 5) as f32);
+        // }
+
+        for i in 0..200 {
+            pb.move_to((i * 5) as f32, 0.0);
+            pb.line_to((i * 5) as f32, 600.0);
         }
 
-        // 4. Update the display property
-        let image = Image::from_rgb8(pixel_buffer);
-        window.set_render_texture(image);
 
-        // 5. Explicitly request a redraw from Slint
+        // for i in 0..points_count {
+        //     let ratio = i as f32 / (points_count - 1) as f32;
+        //     let x = ratio * 800.0;
+        //
+        //     // Generate a moving wave vector sequence
+        //     let wave_y = (ratio * 6.28 * 2.0 + t_offset).sin() * 120.0;
+        //     let y = 300.0 + wave_y;
+        //
+        //     if i == 0 {
+        //         pb.move_to(x, y);
+        //     } else {
+        //         pb.line_to(x, y);
+        //     }
+        // }
+
+        // Finalize the mathematical path object
+        let path = pb.finish().unwrap();
+
+        // 6. Define the path coloring property
+        let mut paint = Paint::default();
+        paint.set_color(Color::from_rgba8(0, 240, 255, 255)); // Bright neon cyan
+        paint.anti_alias = true; // Makes the line crisp and edge-smoothed
+
+        // 7. Define the Stroke properties (Weight, Joints, Caps)
+        let mut stroke = Stroke::default();
+        stroke.width = 1.0;
+        stroke.line_cap = LineCap::Round;  // Beautiful rounded line ends
+        stroke.line_join = LineJoin::Round; // Smooth joints at sharp turns
+
+        // 8. Command tiny-skia to rasterize the path vector into the buffer
+        pixmap.stroke_path(&path, &paint, &stroke, tiny_skia::Transform::identity(), None);
+
+        // 9. Hand the final frame over to the Slint UI interface
+        let image = Image::from_rgba8(pixel_buffer);
+        window.set_render_texture(image);
         window.window().request_redraw();
     });
 
