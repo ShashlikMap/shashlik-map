@@ -1,7 +1,7 @@
+use map::ShashlikMap;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::tiles::mvt::mvt_tile_store::MvtTileStore;
-use map::ShashlikMap;
 use renderer_cpu::{CpuRenderer, FpsCounter};
 use skia_safe::{AlphaType, ColorType};
 use slint::platform::Key;
@@ -193,18 +193,8 @@ fn main() -> Result<(), slint::PlatformError> {
             if let Some(mut surface) =
                 skia_safe::surfaces::wrap_pixels(&image_info, raw_bytes, Some(row_bytes), None)
             {
-                let canvas = surface.canvas(); // This acquires the native drawing context
+                let canvas = surface.canvas();
                 shashlik_map.update_and_render(canvas);
-
-                // shashlik_map.pan_delta(0.3, 0.0);
-
-                // shashlik_map.zoom_delta(
-                //     1.0 - 0.002,
-                //     (
-                //         (CpuRenderer::WIDTH as f32) * 0.5,
-                //         (CpuRenderer::HEIGHT as f32) * 0.5,
-                //     ),
-                // );
             }
 
             let image = Image::from_rgba8(pixel_buffer);
