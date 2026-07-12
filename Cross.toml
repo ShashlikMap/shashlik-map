@@ -12,5 +12,5 @@ pre-build = [
     "apt-get update",
     "apt-get install --assume-yes libxkbcommon-dev:arm64 libwayland-dev:arm64 libx11-dev:arm64 libfontconfig1-dev:arm64 libudev-dev:arm64 libinput-dev:arm64 libgbm-dev:arm64"
 ]
-
+# Prevents skia-binding resume downloading feature
 env = { PASSTHROUGH = ["CURLOPT_PASSTHROUGH"], REWRITE = { "CURL_HOME" = "/tmp" } }
