@@ -4,16 +4,36 @@ use map::tiles::mvt::mvt_tile_store::MvtTileStore;
 use map::ShashlikMap;
 use renderer_cpu::{CpuRenderer, FpsCounter};
 use skia_safe::{AlphaType, ColorType};
-use slint::{Image, SharedPixelBuffer};
+use slint::platform::Key;
+use slint::{Image, SharedPixelBuffer, SharedString};
+use std::sync::{Arc, RwLock};
 
 slint::slint! {
     export component MainWindow inherits Window {
         in-out property <image> render_texture;
         in-out property <string> fps_text: "FPS: --";
 
+        callback key-pressed(KeyEvent);
+        callback key-released(KeyEvent);
+
         width: 1024px;
         height: 600px;
         background: black;
+
+        forward-focus: key-handler;
+        key-handler := FocusScope {
+            init => { self.focus(); }
+
+            key-pressed(event) => {
+                root.key-pressed(event);
+                accept
+            }
+            key-released(event) => {
+                root.key-released(event);
+                accept
+            }
+        }
+
 
         Image {
             source: root.render_texture;
@@ -31,6 +51,19 @@ slint::slint! {
         }
     }
 }
+
+enum Interaction {
+    ZoomIn,
+    ZoomOut,
+    Left,
+    Right,
+    Up,
+    Down,
+    None,
+}
+
+const ZOOM_SPEED: f32 = 0.02;
+const PAN_SPEED: f32 = 10.0;
 
 fn main() -> Result<(), slint::PlatformError> {
     env_logger::init();
@@ -63,6 +96,40 @@ fn main() -> Result<(), slint::PlatformError> {
     shashlik_map.set_current_pitch(90.0);
     shashlik_map.resize(CpuRenderer::WIDTH, CpuRenderer::HEIGHT);
 
+    let interaction = Arc::new(RwLock::new(Interaction::None));
+    let press_interaction = Arc::clone(&interaction);
+    main_window.on_key_pressed(move |key_event| {
+        let mut interaction = press_interaction.write().unwrap();
+        if key_event.text == SharedString::from(Key::LeftArrow) {
+            *interaction = Interaction::Left;
+        } else if key_event.text == SharedString::from(Key::RightArrow) {
+            *interaction = Interaction::Right;
+        } else if key_event.text == SharedString::from(Key::UpArrow) {
+            *interaction = Interaction::Up;
+        } else if key_event.text == SharedString::from(Key::DownArrow) {
+            *interaction = Interaction::Down;
+        } else {
+            let key_str = key_event.text.as_str();
+            if let Some(key_char) = key_str.chars().next() {
+                match key_char {
+                    'a' | 'A' => {
+                        *interaction = Interaction::ZoomIn;
+                    }
+                    'z' | 'Z' => {
+                        *interaction = Interaction::ZoomOut;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    });
+
+    let release_interaction = Arc::clone(&interaction);
+    main_window.on_key_released(move |_| {
+        let mut interaction = release_interaction.write().unwrap();
+        *interaction = Interaction::None;
+    });
+
     let mut fps_counter: FpsCounter<100> = FpsCounter::new();
 
     let render_timer = slint::Timer::default();
@@ -73,6 +140,42 @@ fn main() -> Result<(), slint::PlatformError> {
             let Some(window) = main_window_weak.upgrade() else {
                 return;
             };
+
+            if let Ok(interaction) = interaction.try_read() {
+                match *interaction {
+                    Interaction::ZoomIn => {
+                        shashlik_map.zoom_delta(
+                            1.0 + ZOOM_SPEED,
+                            (
+                                (CpuRenderer::WIDTH as f32) * 0.5,
+                                (CpuRenderer::HEIGHT as f32) * 0.5,
+                            ),
+                        );
+                    }
+                    Interaction::ZoomOut => {
+                        shashlik_map.zoom_delta(
+                            1.0 - ZOOM_SPEED,
+                            (
+                                (CpuRenderer::WIDTH as f32) * 0.5,
+                                (CpuRenderer::HEIGHT as f32) * 0.5,
+                            ),
+                        );
+                    }
+                    Interaction::Left => {
+                        shashlik_map.pan_delta(-PAN_SPEED, 0.0);
+                    }
+                    Interaction::Right => {
+                        shashlik_map.pan_delta(PAN_SPEED, 0.0);
+                    }
+                    Interaction::Up => {
+                        shashlik_map.pan_delta(0.0, -PAN_SPEED);
+                    }
+                    Interaction::Down => {
+                        shashlik_map.pan_delta(0.0, PAN_SPEED);
+                    }
+                    Interaction::None => {}
+                }
+            }
 
             window.set_fps_text(format!("FPS: {:.1}", fps_counter.update()).into());
 
@@ -87,7 +190,9 @@ fn main() -> Result<(), slint::PlatformError> {
                 None,
             );
 
-            if let Some(mut surface) = skia_safe::surfaces::wrap_pixels(&image_info, raw_bytes, Some(row_bytes), None) {
+            if let Some(mut surface) =
+                skia_safe::surfaces::wrap_pixels(&image_info, raw_bytes, Some(row_bytes), None)
+            {
                 let canvas = surface.canvas(); // This acquires the native drawing context
                 shashlik_map.update_and_render(canvas);
 
