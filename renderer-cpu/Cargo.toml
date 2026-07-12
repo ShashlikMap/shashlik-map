@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 geo-types = { workspace = true }
 renderer-common = { workspace = true }
-tiny-skia = { workspace = true }
 glam = { workspace = true }
 rustc-hash = { workspace = true }
 lyon_path = { workspace = true }

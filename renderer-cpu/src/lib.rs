@@ -12,12 +12,11 @@ use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
 use renderer_common::{CanvasApi, Renderer, RendererApi, RendererUpdateData};
 use rustc_hash::FxHashMap;
+use skia_safe::{Canvas, Color4f, Paint, PaintStyle, PathBuilder, PictureRecorder, Rect};
 use std::collections::HashSet;
+use std::mem;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc};
-use std::mem;
-use skia_safe::{Canvas, Color, Color4f, Paint, PaintStyle, PathBuilder};
-// use tiny_skia::{Color, Paint, PathBuilder, Pixmap, PixmapMut, PremultipliedColorU8, Stroke, Transform};
 
 /// This is the very beginning of CPU renderer-gpu.
 
@@ -301,31 +300,10 @@ impl CpuRenderer {
                 if is_line {
                     paint.set_stroke_width(l_width);
                     paint.set_style(PaintStyle::Stroke);
-                    canvas.draw_path(&path, &paint);
-                    // pixmap.stroke_path(
-                    //     &path,
-                    //     &paint,
-                    //     &Stroke {
-                    //         width: l_width,
-                    //         miter_limit: 1.0,
-                    //         line_cap: Default::default(),
-                    //         line_join: Default::default(),
-                    //         dash: None,
-                    //     },
-                    //     Transform::default(),
-                    //     None,
-                    // )
                 } else {
                     paint.set_style(PaintStyle::Fill);
-                    canvas.draw_path(&path, &paint);
-                    // pixmap.fill_path(
-                    //     &path,
-                    //     &paint,
-                    //     tiny_skia::FillRule::Winding,
-                    //     Transform::default(),
-                    //     None,
-                    // );
                 }
+                canvas.draw_path(&path, &paint);
             }
         });
     }
@@ -390,10 +368,10 @@ impl Renderer for CpuRenderer {
                     updater(&mut style);
                     let fill_color = style.get_fill_color();
 
-                    let fill_color =  Color4f::new(fill_color[0],
-                                                   fill_color[1],
-                                                   fill_color[2],
-                                                   fill_color[3]);
+                    let fill_color = Color4f::new(fill_color[0],
+                                                  fill_color[1],
+                                                  fill_color[2],
+                                                  fill_color[3]);
                     self.styles_map.insert(style_id, fill_color);
                 }
             }
@@ -413,38 +391,31 @@ impl Renderer for CpuRenderer {
                 &self.styles_map,
             );
         };
-        let qq = Color4f::new(0.0, 0.0, 0.0, 1.0);
-        let ground_color = self
-            .styles_map
-            .get(&self.ground_style)
-            .unwrap_or(&qq);
-        input.clear(ground_color.to_color());
-        processor(&self.shapes_background, input);
-        processor(&self.shapes_foreground, input);
-        // let (mut pb, mut pa) = rayon::join(
-        //     || {
-        //         let ground_color = self
-        //             .styles_map
-        //             .get(&self.ground_style)
-        //             .unwrap_or(&Color::BLACK);
-        //
-        //         // let mut pixmap_background = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
-        //         // input.fill(*ground_color);
-        //         // processor(&self.shapes_background, &mut input);
-        //         ()
-        //     },
-        //     || {
-        //         // self.pixmap_fore.fill(Color::TRANSPARENT);
-        //         processor(&self.shapes_foreground, input);
-        //         ()
-        //     },
-        // );
 
-        // Self::fast_blend2(&mut input, &mut pa);
-        // Some(pb)
+        let (pb, pa) = rayon::join(
+            || {
+                let mut recorder = PictureRecorder::new();
+                let canvas_back = recorder.begin_recording(Rect::from_wh(CpuRenderer::WIDTH as f32, CpuRenderer::HEIGHT as f32), false);
+                let fallback = Color4f::new(0.0, 0.0, 0.0, 1.0);
+                let ground_color = self
+                    .styles_map
+                    .get(&self.ground_style)
+                    .unwrap_or(&fallback);
+                canvas_back.clear(ground_color.to_color());
+                processor(&self.shapes_background, canvas_back);
+                recorder.finish_recording_as_picture(None).unwrap()
+            },
+            || {
+                let mut recorder = PictureRecorder::new();
+                let canvas_front = recorder.begin_recording(Rect::from_wh(CpuRenderer::WIDTH as f32, CpuRenderer::HEIGHT as f32), false);
+                processor(&self.shapes_foreground, canvas_front);
+                recorder.finish_recording_as_picture(None).unwrap()
+            },
+        );
+
+        input.draw_picture(&pb, None, None);
+        input.draw_picture(&pa, None, None);
     }
-
-
 
     fn render(&mut self) -> Option<Self::OUTPUT> {
         None
