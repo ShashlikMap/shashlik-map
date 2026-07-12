@@ -9,4 +9,4 @@ renderer-cpu = { path = "../renderer-cpu" }
 map = { path = "../map" }
 pollster = { workspace = true }
 slint = { version = "1.17.0", features = ["renderer-software", "backend-linuxkms-noseat"] }
-skia-safe = "0.99.0"
+skia-safe = { workspace = true }
