@@ -249,7 +249,7 @@ fn main() {
                             prev_pinch_scale = None;
                         }
 
-                        let target_texture = shashlik_map.update_and_render();
+                        let target_texture = shashlik_map.update_and_render(());
                         app.set_texture(slint::Image::try_from(target_texture.unwrap()).unwrap());
                         app.window().request_redraw();
                     }

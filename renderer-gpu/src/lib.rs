@@ -286,6 +286,7 @@ impl GpuRenderer {
 impl Renderer for GpuRenderer {
     type RAPI = GpuRendererApi;
     type OUTPUT = Texture;
+    type INPUT<'a> = ();
 
     fn screen_size(&self) -> (f32, f32) {
         let config = self.global_context.canvas.config();
@@ -304,7 +305,7 @@ impl Renderer for GpuRenderer {
         self.clip_to_world(coord)
     }
 
-    fn render(&mut self) -> Option<Texture> {
+    fn render(&mut self, _input: Self::INPUT<'_>) -> Option<Self::OUTPUT> {
         self.render()
     }
 

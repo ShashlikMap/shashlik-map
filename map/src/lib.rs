@@ -240,9 +240,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
         self.fetch_tiles();
 
-        self.renderer.render2(input);
-
-        self.renderer.render()
+        self.renderer.render(input)
     }
 
     fn fetch_tiles(&mut self) {

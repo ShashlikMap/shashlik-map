@@ -270,7 +270,7 @@ impl Renderer for CpuRenderer {
             .map(|coord| coord + self.cs_offset.truncate())
     }
 
-    fn render2(&mut self, input: Self::INPUT<'_>) {
+    fn render(&mut self, input: Self::INPUT<'_>) -> Option<Self::OUTPUT>{
         while let Ok(msg) = self.receiver.try_recv() {
             match msg {
                 RendererApiMsg::RenderGroup(key, spat_data, mut group) => {
@@ -354,9 +354,7 @@ impl Renderer for CpuRenderer {
 
         input.draw_picture(&pb, None, None);
         input.draw_picture(&pa, None, None);
-    }
-
-    fn render(&mut self) -> Option<Self::OUTPUT> {
+        
         None
     }
 
