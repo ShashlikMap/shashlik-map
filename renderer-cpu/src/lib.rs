@@ -1,9 +1,9 @@
-use geo_types::{Coord, coord};
+use geo_types::{coord, Coord};
 use glam::{DMat4, DVec2, DVec3};
 use lyon_algorithms::aabb::bounding_box;
-use lyon_path::PathEvent;
 use lyon_path::geom::point;
 use lyon_path::math::Box2D;
+use lyon_path::PathEvent;
 pub use renderer_common::fps::FpsCounter;
 use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData};
 use renderer_common::render_group::RenderGroup;
@@ -14,8 +14,8 @@ use renderer_common::{CanvasApi, Renderer, RendererApi, RendererUpdateData};
 use rustc_hash::FxHashMap;
 use std::collections::HashSet;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{Arc, mpsc};
-use std::{mem, thread};
+use std::sync::{mpsc, Arc};
+use std::mem;
 use tiny_skia::{Color, Paint, PathBuilder, Pixmap, PremultipliedColorU8, Stroke, Transform};
 
 /// This is the very beginning of CPU renderer-gpu.
@@ -365,8 +365,20 @@ impl Renderer for CpuRenderer {
 
         self.norm_length = self.calc_normalized_vector_proj_length();
 
-        let (mut pb, mut pa) = thread::scope(|s| {
-            let pixmap_background_handle = s.spawn(|| {
+        let processor = |shapes: &[(String, SpatialData, Vec<(Box2D, ShapeData)>)],
+                         pixmap: &mut Pixmap| {
+            Self::process_shapes(
+                shapes,
+                pixmap,
+                &self.cs_offset,
+                self.norm_length,
+                &self.view_proj_matrix,
+                &self.screen_aabb,
+                &self.styles_map,
+            );
+        };
+        let (mut pb, mut pa) = rayon::join(
+            || {
                 let ground_color = self
                     .styles_map
                     .get(&self.ground_style)
@@ -374,36 +386,15 @@ impl Renderer for CpuRenderer {
 
                 let mut pixmap_background = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
                 pixmap_background.fill(*ground_color);
-                Self::process_shapes(
-                    &self.shapes_background,
-                    &mut pixmap_background,
-                    &self.cs_offset,
-                    self.norm_length,
-                    &self.view_proj_matrix,
-                    &self.screen_aabb,
-                    &self.styles_map,
-                );
+                processor(&self.shapes_background, &mut pixmap_background);
                 pixmap_background
-            });
-
-            let pixmap_foreground_handle = s.spawn(|| {
+            },
+            || {
                 let mut pixmap_foreground = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
-                Self::process_shapes(
-                    &self.shapes_foreground,
-                    &mut pixmap_foreground,
-                    &self.cs_offset,
-                    self.norm_length,
-                    &self.view_proj_matrix,
-                    &self.screen_aabb,
-                    &self.styles_map,
-                );
+                processor(&self.shapes_foreground, &mut pixmap_foreground);
                 pixmap_foreground
-            });
-            (
-                pixmap_background_handle.join().unwrap(),
-                pixmap_foreground_handle.join().unwrap(),
-            )
-        });
+            },
+        );
 
         Self::fast_blend(&mut pb, &mut pa);
         Some(pb)

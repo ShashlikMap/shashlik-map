@@ -11,3 +11,4 @@ glam = { workspace = true }
 rustc-hash = { workspace = true }
 lyon_path = { workspace = true }
 lyon_algorithms = { workspace = true }
+rayon = "1.12.0"
