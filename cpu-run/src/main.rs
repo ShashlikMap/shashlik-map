@@ -7,23 +7,20 @@ use skia_safe::{AlphaType, ColorType};
 use slint::{Image, SharedPixelBuffer};
 
 slint::slint! {
-    export component MainWindow inherits Window { // Uses 'inherits' instead of 'extends'
+    export component MainWindow inherits Window {
         in-out property <image> render_texture;
-        // Text property to show the frame calculation
         in-out property <string> fps_text: "FPS: --";
 
         width: 1024px;
         height: 600px;
         background: black;
 
-        // Draw the custom CPU pixel buffer
         Image {
             source: root.render_texture;
             width: 100%;
             height: 100%;
         }
 
-        // Draw the text overlay on top of the image
         Text {
             text: root.fps_text;
             color: red;

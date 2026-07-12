@@ -39,7 +39,6 @@ pub struct CpuRenderer {
     styles_map: FxHashMap<StyleId, Color4f>,
     norm_length: f64,
     screen_aabb: Box2D,
-    // pixmap_fore: Pixmap,
 }
 
 pub struct CpuRendererApi {
@@ -111,7 +110,6 @@ impl CpuRenderer {
     pub const HEIGHT: u32 = 600;
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel();
-        // let pixmap_foreground = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
         Self {
             canvas_api: Default::default(),
             shapes_background: vec![],
@@ -125,7 +123,6 @@ impl CpuRenderer {
             styles_map: Default::default(),
             norm_length: 0.0,
             screen_aabb: Box2D::new(point(-1.0, -1.0), point(1.0, 1.0)),
-            // pixmap_fore: pixmap_foreground
         }
     }
 }
@@ -143,64 +140,6 @@ impl CpuRenderer {
         // TODO how to pass 200.0 koef from map?
         (projected_center_offset - projected_center).length() * 250.0
     }
-
-    // #[inline]
-    // pub fn fast_blend(background: &mut Pixmap, foreground: &Pixmap) {
-    //     assert_eq!(background.width(), foreground.width());
-    //     assert_eq!(background.height(), foreground.height());
-    //
-    //     let bg_pixels = background.pixels_mut();
-    //     let fg_pixels = foreground.pixels();
-    //
-    //     for (bg, fg) in bg_pixels.iter_mut().zip(fg_pixels.iter()) {
-    //         if fg.alpha() == 0 {
-    //             continue;
-    //         }
-    //
-    //         if fg.alpha() == 255 {
-    //             *bg = *fg;
-    //             continue;
-    //         }
-    //
-    //         let alpha_inv = 255 - fg.alpha() as u32;
-    //
-    //         let r = fg.red() as u32 + ((bg.red() as u32 * alpha_inv + 128) / 255);
-    //         let g = fg.green() as u32 + ((bg.green() as u32 * alpha_inv + 128) / 255);
-    //         let b = fg.blue() as u32 + ((bg.blue() as u32 * alpha_inv + 128) / 255);
-    //         let a = fg.alpha() as u32 + ((bg.alpha() as u32 * alpha_inv + 128) / 255);
-    //
-    //         *bg = PremultipliedColorU8::from_rgba(r as u8, g as u8, b as u8, a as u8).unwrap();
-    //     }
-    // }
-    //
-    // #[inline]
-    // pub fn fast_blend2(background: &mut PixmapMut, foreground: &Pixmap) {
-    //     assert_eq!(background.width(), foreground.width());
-    //     assert_eq!(background.height(), foreground.height());
-    //
-    //     let bg_pixels = background.pixels_mut();
-    //     let fg_pixels = foreground.pixels();
-    //
-    //     for (bg, fg) in bg_pixels.iter_mut().zip(fg_pixels.iter()) {
-    //         if fg.alpha() == 0 {
-    //             continue;
-    //         }
-    //
-    //         if fg.alpha() == 255 {
-    //             *bg = *fg;
-    //             continue;
-    //         }
-    //
-    //         let alpha_inv = 255 - fg.alpha() as u32;
-    //
-    //         let r = fg.red() as u32 + ((bg.red() as u32 * alpha_inv + 128) / 255);
-    //         let g = fg.green() as u32 + ((bg.green() as u32 * alpha_inv + 128) / 255);
-    //         let b = fg.blue() as u32 + ((bg.blue() as u32 * alpha_inv + 128) / 255);
-    //         let a = fg.alpha() as u32 + ((bg.alpha() as u32 * alpha_inv + 128) / 255);
-    //
-    //         *bg = PremultipliedColorU8::from_rgba(r as u8, g as u8, b as u8, a as u8).unwrap();
-    //     }
-    // }
 
     #[inline]
     fn process_shapes(
