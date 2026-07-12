@@ -16,7 +16,7 @@ use std::collections::HashSet;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc};
 use std::mem;
-use tiny_skia::{Color, Paint, PathBuilder, Pixmap, PremultipliedColorU8, Stroke, Transform};
+use tiny_skia::{Color, Paint, PathBuilder, Pixmap, PixmapMut, PremultipliedColorU8, Stroke, Transform};
 
 /// This is the very beginning of CPU renderer-gpu.
 
@@ -142,7 +142,36 @@ impl CpuRenderer {
     }
 
     #[inline]
-    fn fast_blend(background: &mut Pixmap, foreground: &Pixmap) {
+    pub fn fast_blend(background: &mut Pixmap, foreground: &Pixmap) {
+        assert_eq!(background.width(), foreground.width());
+        assert_eq!(background.height(), foreground.height());
+
+        let bg_pixels = background.pixels_mut();
+        let fg_pixels = foreground.pixels();
+
+        for (bg, fg) in bg_pixels.iter_mut().zip(fg_pixels.iter()) {
+            if fg.alpha() == 0 {
+                continue;
+            }
+
+            if fg.alpha() == 255 {
+                *bg = *fg;
+                continue;
+            }
+
+            let alpha_inv = 255 - fg.alpha() as u32;
+
+            let r = fg.red() as u32 + ((bg.red() as u32 * alpha_inv + 128) / 255);
+            let g = fg.green() as u32 + ((bg.green() as u32 * alpha_inv + 128) / 255);
+            let b = fg.blue() as u32 + ((bg.blue() as u32 * alpha_inv + 128) / 255);
+            let a = fg.alpha() as u32 + ((bg.alpha() as u32 * alpha_inv + 128) / 255);
+
+            *bg = PremultipliedColorU8::from_rgba(r as u8, g as u8, b as u8, a as u8).unwrap();
+        }
+    }
+
+    #[inline]
+    pub fn fast_blend2(background: &mut PixmapMut, foreground: &Pixmap) {
         assert_eq!(background.width(), foreground.width());
         assert_eq!(background.height(), foreground.height());
 

@@ -1,6 +1,11 @@
 use std::time::Instant;
 use slint::{Image, SharedPixelBuffer};
-use tiny_skia::{Color, LineCap, LineJoin, Paint, PathBuilder, PixmapMut, Stroke};
+use tiny_skia::{Color, LineCap, LineJoin, Paint, PathBuilder, PixmapMut, PixmapPaint, Stroke, Transform};
+use map::feature_processor::ShashlikFeatureProcessor;
+use map::ShashlikMap;
+use map::tiles::default_tiles_provider::DefaultTilesProvider;
+use map::tiles::mvt::mvt_tile_store::MvtTileStore;
+use renderer_cpu::CpuRenderer;
 
 slint::slint! {
     export component MainWindow inherits Window { // Uses 'inherits' instead of 'extends'
@@ -45,6 +50,21 @@ fn main() -> Result<(), slint::PlatformError> {
     let width = 1024;
     let height = 600;
 
+    let tiles_provider = DefaultTilesProvider::new(
+        Box::new(MvtTileStore::new()),
+        ShashlikFeatureProcessor::new(false),
+        1.0,
+    );
+
+    let mut shashlik_map = pollster::block_on({
+        let renderer = CpuRenderer::new();
+        ShashlikMap::new(renderer, tiles_provider)
+    })
+        .unwrap();
+    shashlik_map.set_camera_follow_mode(false);
+    shashlik_map.set_current_pitch(90.0);
+    shashlik_map.resize(CpuRenderer::WIDTH, CpuRenderer::HEIGHT);
+
     // Track performance metrics across ticks
     let mut last_frame_time = Instant::now();
     let mut frame_count = 0;
@@ -75,37 +95,30 @@ fn main() -> Result<(), slint::PlatformError> {
         // 3. Wrap Slint's raw memory slice into a tiny-skia canvas surface
         let raw_bytes = pixel_buffer.make_mut_bytes();
 
-        // 4. Fill a changing color gradient background using raw array loops
-        // for y in 0..height {
-        //     for x in 0..width {
-        //         let pixel_index = ((y * width + x) * 4) as usize; // 4 bytes per pixel now
-        //
-        //         let r = ((x * 255 / width) as u32).wrapping_add(animation_tick) as u8;
-        //         let g = ((y * 255 / height) as u32).wrapping_add(animation_tick * 2) as u8;
-        //
-        //         raw_bytes[pixel_index] = r;     // R
-        //         raw_bytes[pixel_index + 1] = g; // G
-        //         raw_bytes[pixel_index + 2] = 128;// B
-        //         raw_bytes[pixel_index + 3] = 255;// Alpha (Fully Opaque)
-        //     }
-        // }
-
+        let pixmap_shash = shashlik_map.update_and_render().unwrap();
         let mut pixmap = PixmapMut::from_bytes(raw_bytes, width, height).unwrap();
-        pixmap.fill(Color::WHITE);
+        pixmap.pixels_mut().copy_from_slice(&pixmap_shash.pixels());
+        // shashlik_map.pan_delta(10.0, 0.0);
+
+                                shashlik_map.zoom_delta(
+                                    1.0 - 0.02,
+                                    (
+                                        (CpuRenderer::WIDTH as f32) * 0.5,
+                                        (CpuRenderer::HEIGHT as f32) * 0.5,
+                                    ),
+                                );
         // 5. Build a dynamic vector Path using tiny-skia's PathBuilder API
-        let mut pb = PathBuilder::new();
-        let points_count = 50;
-        let t_offset = animation_tick as f32 * 0.06;
+        // let mut pb = PathBuilder::new();
 
         // for i in 0..100 {
         //     pb.move_to(0.0, (i * 5) as f32);
         //     pb.line_to(600.0, (i * 5) as f32);
         // }
 
-        for i in 0..200 {
-            pb.move_to((i * 5) as f32, 0.0);
-            pb.line_to((i * 5) as f32, 600.0);
-        }
+        // for i in 0..200 {
+        //     pb.move_to((i * 5) as f32, 0.0);
+        //     pb.line_to((i * 5) as f32, 600.0);
+        // }
 
 
         // for i in 0..points_count {
@@ -124,21 +137,21 @@ fn main() -> Result<(), slint::PlatformError> {
         // }
 
         // Finalize the mathematical path object
-        let path = pb.finish().unwrap();
-
-        // 6. Define the path coloring property
-        let mut paint = Paint::default();
-        paint.set_color(Color::from_rgba8(0, 240, 255, 255)); // Bright neon cyan
-        paint.anti_alias = true; // Makes the line crisp and edge-smoothed
-
-        // 7. Define the Stroke properties (Weight, Joints, Caps)
-        let mut stroke = Stroke::default();
-        stroke.width = 1.0;
-        stroke.line_cap = LineCap::Round;  // Beautiful rounded line ends
-        stroke.line_join = LineJoin::Round; // Smooth joints at sharp turns
-
-        // 8. Command tiny-skia to rasterize the path vector into the buffer
-        pixmap.stroke_path(&path, &paint, &stroke, tiny_skia::Transform::identity(), None);
+        // let path = pb.finish().unwrap();
+        //
+        // // 6. Define the path coloring property
+        // let mut paint = Paint::default();
+        // paint.set_color(Color::from_rgba8(0, 240, 255, 255)); // Bright neon cyan
+        // paint.anti_alias = true; // Makes the line crisp and edge-smoothed
+        //
+        // // 7. Define the Stroke properties (Weight, Joints, Caps)
+        // let mut stroke = Stroke::default();
+        // stroke.width = 1.0;
+        // stroke.line_cap = LineCap::Round;  // Beautiful rounded line ends
+        // stroke.line_join = LineJoin::Round; // Smooth joints at sharp turns
+        //
+        // // 8. Command tiny-skia to rasterize the path vector into the buffer
+        // pixmap.stroke_path(&path, &paint, &stroke, tiny_skia::Transform::identity(), None);
 
         // 9. Hand the final frame over to the Slint UI interface
         let image = Image::from_rgba8(pixel_buffer);
