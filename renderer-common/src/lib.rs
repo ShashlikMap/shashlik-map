@@ -60,11 +60,14 @@ pub struct RendererUpdateData {
 pub trait Renderer {
     type RAPI: RendererApi + 'static; 
     type OUTPUT;
+
+    type INPUT<'a>;
     fn screen_size(&self) -> (f32, f32);
     fn resize(&mut self, width: u32, height: u32);
     fn update(&mut self, data: RendererUpdateData);
     fn clip_to_world(&self, coord: &Coord) -> Option<DVec2>;
     fn render(&mut self) -> Option<Self::OUTPUT>;
+    fn render2(&mut self, input: Self::INPUT<'_>);
 
     fn api(&self) -> Arc<Self::RAPI>;
 

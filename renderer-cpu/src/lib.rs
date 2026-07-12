@@ -39,6 +39,7 @@ pub struct CpuRenderer {
     styles_map: FxHashMap<StyleId, Color>,
     norm_length: f64,
     screen_aabb: Box2D,
+    pixmap_fore: Pixmap,
 }
 
 pub struct CpuRendererApi {
@@ -110,6 +111,7 @@ impl CpuRenderer {
     pub const HEIGHT: u32 = 600;
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel();
+        let pixmap_foreground = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
         Self {
             canvas_api: Default::default(),
             shapes_background: vec![],
@@ -123,6 +125,7 @@ impl CpuRenderer {
             styles_map: Default::default(),
             norm_length: 0.0,
             screen_aabb: Box2D::new(point(-1.0, -1.0), point(1.0, 1.0)),
+            pixmap_fore: pixmap_foreground
         }
     }
 }
@@ -202,7 +205,7 @@ impl CpuRenderer {
     #[inline]
     fn process_shapes(
         shapes: &[(String, SpatialData, Vec<(Box2D, ShapeData)>)],
-        pixmap: &mut Pixmap,
+        pixmap: &mut PixmapMut,
         cs_offset: &DVec3,
         norm_length: f64,
         view_proj_matrix: &DMat4,
@@ -326,6 +329,7 @@ impl CpuRenderer {
 impl Renderer for CpuRenderer {
     type RAPI = CpuRendererApi;
     type OUTPUT = Pixmap;
+    type INPUT<'a> = PixmapMut<'a>;
 
     fn screen_size(&self) -> (f32, f32) {
         (Self::WIDTH as f32, Self::HEIGHT as f32)
@@ -344,7 +348,7 @@ impl Renderer for CpuRenderer {
             .map(|coord| coord + self.cs_offset.truncate())
     }
 
-    fn render(&mut self) -> Option<Self::OUTPUT> {
+    fn render2(&mut self, mut input: Self::INPUT<'_>) {
         while let Ok(msg) = self.receiver.try_recv() {
             match msg {
                 RendererApiMsg::RenderGroup(key, spat_data, mut group) => {
@@ -395,7 +399,7 @@ impl Renderer for CpuRenderer {
         self.norm_length = self.calc_normalized_vector_proj_length();
 
         let processor = |shapes: &[(String, SpatialData, Vec<(Box2D, ShapeData)>)],
-                         pixmap: &mut Pixmap| {
+                         pixmap: &mut PixmapMut| {
             Self::process_shapes(
                 shapes,
                 pixmap,
@@ -413,20 +417,26 @@ impl Renderer for CpuRenderer {
                     .get(&self.ground_style)
                     .unwrap_or(&Color::BLACK);
 
-                let mut pixmap_background = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
-                pixmap_background.fill(*ground_color);
-                processor(&self.shapes_background, &mut pixmap_background);
-                pixmap_background
+                // let mut pixmap_background = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
+                input.fill(*ground_color);
+                processor(&self.shapes_background, &mut input);
+                ()
             },
             || {
-                let mut pixmap_foreground = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
-                processor(&self.shapes_foreground, &mut pixmap_foreground);
-                pixmap_foreground
+                self.pixmap_fore.fill(Color::TRANSPARENT);
+                processor(&self.shapes_foreground, &mut self.pixmap_fore.as_mut());
+                &self.pixmap_fore
             },
         );
 
-        Self::fast_blend(&mut pb, &mut pa);
-        Some(pb)
+        Self::fast_blend2(&mut input, &mut pa);
+        // Some(pb)
+    }
+
+
+
+    fn render(&mut self) -> Option<Self::OUTPUT> {
+        None
     }
 
     fn api(&self) -> Arc<CpuRendererApi> {

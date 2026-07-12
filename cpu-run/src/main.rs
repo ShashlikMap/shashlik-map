@@ -95,18 +95,19 @@ fn main() -> Result<(), slint::PlatformError> {
         // 3. Wrap Slint's raw memory slice into a tiny-skia canvas surface
         let raw_bytes = pixel_buffer.make_mut_bytes();
 
-        let pixmap_shash = shashlik_map.update_and_render().unwrap();
         let mut pixmap = PixmapMut::from_bytes(raw_bytes, width, height).unwrap();
-        pixmap.pixels_mut().copy_from_slice(&pixmap_shash.pixels());
-        // shashlik_map.pan_delta(10.0, 0.0);
+        let pixmap_shash = shashlik_map.update_and_render(pixmap);
 
-                                shashlik_map.zoom_delta(
-                                    1.0 - 0.02,
-                                    (
-                                        (CpuRenderer::WIDTH as f32) * 0.5,
-                                        (CpuRenderer::HEIGHT as f32) * 0.5,
-                                    ),
-                                );
+        // pixmap.pixels_mut().copy_from_slice(&pixmap_shash.pixels());
+        shashlik_map.pan_delta(5.0, 0.0);
+
+                                // shashlik_map.zoom_delta(
+                                //     1.0 - 0.02,
+                                //     (
+                                //         (CpuRenderer::WIDTH as f32) * 0.5,
+                                //         (CpuRenderer::HEIGHT as f32) * 0.5,
+                                //     ),
+                                // );
         // 5. Build a dynamic vector Path using tiny-skia's PathBuilder API
         // let mut pb = PathBuilder::new();
 
