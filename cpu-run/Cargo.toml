@@ -5,7 +5,8 @@ edition = "2024"
 
 [dependencies]
 env_logger = { workspace = true }
-iced = { version = "0.14.0", default-features = false, features = ["tiny-skia", "wayland", "image", "thread-pool"] }
 renderer-cpu = { path = "../renderer-cpu" }
 map = { path = "../map" }
 pollster = { workspace = true }
+slint = { version = "1.17.0", features = ["renderer-software", "backend-linuxkms-noseat"] }
+skia-safe = { workspace = true }

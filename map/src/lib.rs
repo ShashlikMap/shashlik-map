@@ -212,7 +212,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         self.screen_params.height = height;
     }
 
-    pub fn update_and_render(&mut self) -> Option<R::OUTPUT> {
+    pub fn update_and_render(&mut self, input: R::INPUT<'_>) -> Option<R::OUTPUT> {
         self.consume_map_events();
         self.camera_controller.update_camera(&mut self.camera);
 
@@ -240,7 +240,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
         self.fetch_tiles();
 
-        self.renderer.render()
+        self.renderer.render(input)
     }
 
     fn fetch_tiles(&mut self) {

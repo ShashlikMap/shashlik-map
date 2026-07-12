@@ -12,11 +12,11 @@ use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
 use renderer_common::{CanvasApi, Renderer, RendererApi, RendererUpdateData};
 use rustc_hash::FxHashMap;
+use skia_safe::{Canvas, Color4f, Paint, PaintStyle, PathBuilder, PictureRecorder, Rect};
 use std::collections::HashSet;
+use std::mem;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc};
-use std::mem;
-use tiny_skia::{Color, Paint, PathBuilder, Pixmap, PremultipliedColorU8, Stroke, Transform};
 
 /// This is the very beginning of CPU renderer-gpu.
 
@@ -36,7 +36,7 @@ pub struct CpuRenderer {
     inv_view_proj_matrix: DMat4,
     view_proj_matrix: DMat4,
     ground_style: StyleId,
-    styles_map: FxHashMap<StyleId, Color>,
+    styles_map: FxHashMap<StyleId, Color4f>,
     norm_length: f64,
     screen_aabb: Box2D,
 }
@@ -128,6 +128,8 @@ impl CpuRenderer {
 }
 
 impl CpuRenderer {
+
+    const BLACK_FALLBACK: Color4f = Color4f::new(0.0, 0.0, 0.0, 1.0);
     const HAIRLINE_THRESHOLD: f32 = 1.0;
     #[inline]
     fn calc_normalized_vector_proj_length(&self) -> f64 {
@@ -142,43 +144,14 @@ impl CpuRenderer {
     }
 
     #[inline]
-    fn fast_blend(background: &mut Pixmap, foreground: &Pixmap) {
-        assert_eq!(background.width(), foreground.width());
-        assert_eq!(background.height(), foreground.height());
-
-        let bg_pixels = background.pixels_mut();
-        let fg_pixels = foreground.pixels();
-
-        for (bg, fg) in bg_pixels.iter_mut().zip(fg_pixels.iter()) {
-            if fg.alpha() == 0 {
-                continue;
-            }
-
-            if fg.alpha() == 255 {
-                *bg = *fg;
-                continue;
-            }
-
-            let alpha_inv = 255 - fg.alpha() as u32;
-
-            let r = fg.red() as u32 + ((bg.red() as u32 * alpha_inv + 128) / 255);
-            let g = fg.green() as u32 + ((bg.green() as u32 * alpha_inv + 128) / 255);
-            let b = fg.blue() as u32 + ((bg.blue() as u32 * alpha_inv + 128) / 255);
-            let a = fg.alpha() as u32 + ((bg.alpha() as u32 * alpha_inv + 128) / 255);
-
-            *bg = PremultipliedColorU8::from_rgba(r as u8, g as u8, b as u8, a as u8).unwrap();
-        }
-    }
-
-    #[inline]
     fn process_shapes(
         shapes: &[(String, SpatialData, Vec<(Box2D, ShapeData)>)],
-        pixmap: &mut Pixmap,
+        canvas: &Canvas,
         cs_offset: &DVec3,
         norm_length: f64,
         view_proj_matrix: &DMat4,
         screen_aabb: &Box2D,
-        styles_map: &FxHashMap<StyleId, Color>,
+        styles_map: &FxHashMap<StyleId, Color4f>,
     ) {
         shapes.iter().for_each(|(_, spat_data, shapes_data)| {
             let spatial_offset = (spat_data.transform - cs_offset).truncate();
@@ -230,10 +203,10 @@ impl CpuRenderer {
                                 0.0,
                             ))
                             .truncate();
-                        pb.move_to(
+                        pb.move_to((
                             0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
                             0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
-                        );
+                        ));
                     }
                     PathEvent::Line { from: _, to } => {
                         let projected = view_proj_matrix
@@ -243,10 +216,10 @@ impl CpuRenderer {
                                 0.0,
                             ))
                             .truncate();
-                        pb.line_to(
+                        pb.line_to((
                             0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
                             0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
-                        );
+                        ));
                     }
                     PathEvent::Quadratic { .. } => {}
                     PathEvent::Cubic { .. } => {}
@@ -256,39 +229,21 @@ impl CpuRenderer {
                         }
                     }
                 });
-                if let Some(path) = pb.finish() {
-                    let mut paint = Paint::default();
-                    let color = styles_map
-                        .get(&shape_data.style_id)
-                        .unwrap_or(&Color::BLACK)
-                        .clone();
-                    paint.set_color(color);
-                    paint.anti_alias = true;
+                let path = pb.detach();
+                let mut paint = Paint::default();
+                let color = styles_map
+                    .get(&shape_data.style_id)
+                    .unwrap_or_else(|| &Self::BLACK_FALLBACK);
+                paint.set_color(color.to_color());
+                paint.set_anti_alias(true);
 
-                    if is_line {
-                        pixmap.stroke_path(
-                            &path,
-                            &paint,
-                            &Stroke {
-                                width: l_width,
-                                miter_limit: 1.0,
-                                line_cap: Default::default(),
-                                line_join: Default::default(),
-                                dash: None,
-                            },
-                            Transform::default(),
-                            None,
-                        )
-                    } else {
-                        pixmap.fill_path(
-                            &path,
-                            &paint,
-                            tiny_skia::FillRule::Winding,
-                            Transform::default(),
-                            None,
-                        );
-                    }
+                if is_line {
+                    paint.set_stroke_width(l_width);
+                    paint.set_style(PaintStyle::Stroke);
+                } else {
+                    paint.set_style(PaintStyle::Fill);
                 }
+                canvas.draw_path(&path, &paint);
             }
         });
     }
@@ -296,7 +251,8 @@ impl CpuRenderer {
 
 impl Renderer for CpuRenderer {
     type RAPI = CpuRendererApi;
-    type OUTPUT = Pixmap;
+    type OUTPUT = ();
+    type INPUT<'a> = &'a Canvas;
 
     fn screen_size(&self) -> (f32, f32) {
         (Self::WIDTH as f32, Self::HEIGHT as f32)
@@ -308,6 +264,8 @@ impl Renderer for CpuRenderer {
         self.cs_offset = data.cs_offset;
         self.view_proj_matrix = data.view_proj_matrix;
         self.inv_view_proj_matrix = data.view_proj_matrix.inverse();
+
+        self.norm_length = self.calc_normalized_vector_proj_length();
     }
 
     fn clip_to_world(&self, coord: &Coord) -> Option<DVec2> {
@@ -315,7 +273,7 @@ impl Renderer for CpuRenderer {
             .map(|coord| coord + self.cs_offset.truncate())
     }
 
-    fn render(&mut self) -> Option<Self::OUTPUT> {
+    fn render(&mut self, input: Self::INPUT<'_>) -> Option<Self::OUTPUT>{
         while let Ok(msg) = self.receiver.try_recv() {
             match msg {
                 RendererApiMsg::RenderGroup(key, spat_data, mut group) => {
@@ -351,25 +309,21 @@ impl Renderer for CpuRenderer {
                     let mut style = RenderStyle::default();
                     updater(&mut style);
                     let fill_color = style.get_fill_color();
-                    let fill_color = Color::from_rgba(
-                        fill_color[0],
-                        fill_color[1],
-                        fill_color[2],
-                        fill_color[3],
-                    )
-                    .unwrap();
+
+                    let fill_color = Color4f::new(fill_color[0],
+                                                  fill_color[1],
+                                                  fill_color[2],
+                                                  fill_color[3]);
                     self.styles_map.insert(style_id, fill_color);
                 }
             }
         }
 
-        self.norm_length = self.calc_normalized_vector_proj_length();
-
         let processor = |shapes: &[(String, SpatialData, Vec<(Box2D, ShapeData)>)],
-                         pixmap: &mut Pixmap| {
+                         canvas: &Canvas| {
             Self::process_shapes(
                 shapes,
-                pixmap,
+                canvas,
                 &self.cs_offset,
                 self.norm_length,
                 &self.view_proj_matrix,
@@ -377,27 +331,31 @@ impl Renderer for CpuRenderer {
                 &self.styles_map,
             );
         };
-        let (mut pb, mut pa) = rayon::join(
+
+        let (pb, pa) = rayon::join(
             || {
+                let mut recorder = PictureRecorder::new();
+                let canvas_back = recorder.begin_recording(Rect::from_wh(CpuRenderer::WIDTH as f32, CpuRenderer::HEIGHT as f32), false);
                 let ground_color = self
                     .styles_map
                     .get(&self.ground_style)
-                    .unwrap_or(&Color::BLACK);
-
-                let mut pixmap_background = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
-                pixmap_background.fill(*ground_color);
-                processor(&self.shapes_background, &mut pixmap_background);
-                pixmap_background
+                    .unwrap_or_else(|| &Self::BLACK_FALLBACK);
+                canvas_back.clear(ground_color.to_color());
+                processor(&self.shapes_background, canvas_back);
+                recorder.finish_recording_as_picture(None).unwrap()
             },
             || {
-                let mut pixmap_foreground = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
-                processor(&self.shapes_foreground, &mut pixmap_foreground);
-                pixmap_foreground
+                let mut recorder = PictureRecorder::new();
+                let canvas_front = recorder.begin_recording(Rect::from_wh(CpuRenderer::WIDTH as f32, CpuRenderer::HEIGHT as f32), false);
+                processor(&self.shapes_foreground, canvas_front);
+                recorder.finish_recording_as_picture(None).unwrap()
             },
         );
 
-        Self::fast_blend(&mut pb, &mut pa);
-        Some(pb)
+        input.draw_picture(&pb, None, None);
+        input.draw_picture(&pa, None, None);
+
+        None
     }
 
     fn api(&self) -> Arc<CpuRendererApi> {

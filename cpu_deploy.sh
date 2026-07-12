@@ -31,9 +31,9 @@ echo "--- Starting application ---"
 if [ "$RUN_IN_BACKGROUND" = true ]; then
     echo "Running in BACKGROUND (nohup)..."
     # -f tells SSH to background itself; redirects ensure it detaches fully
-    ssh -S "$SOCKET" -f "$TARGET_HOST" "chmod +x $TARGET_PATH/$APP_NAME && LIBGL_ALWAYS_SOFTWARE=true XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-1 nohup $TARGET_PATH/$APP_NAME > /dev/null 2>&1 &"
+    ssh -S "$SOCKET" -f "$TARGET_HOST" "chmod +x $TARGET_PATH/$APP_NAME && nohup $TARGET_PATH/$APP_NAME > /dev/null 2>&1 &"
 else
     echo "Running INTERACTIVELY (attached)..."
     # -t is required for interactive sudo/TTY behavior
-    ssh -S "$SOCKET" -t "$TARGET_HOST" "chmod +x $TARGET_PATH/$APP_NAME && LIBGL_ALWAYS_SOFTWARE=true XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-1 $TARGET_PATH/$APP_NAME"
+    ssh -S "$SOCKET" -t "$TARGET_HOST" "chmod +x $TARGET_PATH/$APP_NAME && $TARGET_PATH/$APP_NAME"
 fi

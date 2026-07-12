@@ -38,7 +38,7 @@ impl ShashlikMapApi {
     fn render(&self) {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
         // TODO handle result
-        shashlik_map.update_and_render();
+        shashlik_map.update_and_render(());
     }
 
     fn resize(&self, width: u32, height: u32) {

@@ -1,41 +1,55 @@
-use iced::keyboard::Key;
-use iced::keyboard::key::Named;
-use iced::widget::image::{self, Image};
-use iced::widget::{center, container, stack, text};
-use iced::{Color, Element, Event, Length, Size, Subscription, Task, event, keyboard, window};
 use map::ShashlikMap;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::tiles::mvt::mvt_tile_store::MvtTileStore;
 use renderer_cpu::{CpuRenderer, FpsCounter};
-use std::time::Instant;
+use skia_safe::{AlphaType, ColorType};
+use slint::platform::Key;
+use slint::{Image, SharedPixelBuffer, SharedString};
+use std::sync::{Arc, RwLock};
 
-fn main() -> iced::Result {
-    env_logger::init();
-    iced::application(App::new, App::update, App::view)
-        .window(window::Settings {
-            size: Size::new(CpuRenderer::WIDTH as f32, CpuRenderer::HEIGHT as f32),
-            fullscreen: false,
-            decorations: false,
-            exit_on_close_request: true,
-            ..Default::default()
-        })
-        .subscription(App::subscription)
-        .run()
-}
+slint::slint! {
+    export component MainWindow inherits Window {
+        in-out property <image> render_texture;
+        in-out property <string> fps_text: "FPS: --";
 
-struct App {
-    shashlik_map: ShashlikMap<CpuRenderer, DefaultTilesProvider<ShashlikFeatureProcessor>>,
-    image_handle: image::Handle,
-    interaction: Interaction,
-    fps_counter: FpsCounter<100>,
-    last_fps: u16,
-}
+        callback key-pressed(KeyEvent);
+        callback key-released(KeyEvent);
 
-#[derive(Debug, Clone)]
-enum Message {
-    HardwareTick(Instant),
-    KeyboardInput(keyboard::Event),
+        width: 1024px;
+        height: 600px;
+        background: black;
+
+        forward-focus: key-handler;
+        key-handler := FocusScope {
+            init => { self.focus(); }
+
+            key-pressed(event) => {
+                root.key-pressed(event);
+                accept
+            }
+            key-released(event) => {
+                root.key-released(event);
+                accept
+            }
+        }
+
+
+        Image {
+            source: root.render_texture;
+            width: 100%;
+            height: 100%;
+        }
+
+        Text {
+            text: root.fps_text;
+            color: red;
+            font-size: 24px;
+            font-weight: 700;
+            x: 20px;
+            y: 20px;
+        }
+    }
 }
 
 enum Interaction {
@@ -48,49 +62,90 @@ enum Interaction {
     None,
 }
 
-impl App {
-    const ZOOM_SPEED: f32 = 0.02;
-    const PAN_SPEED: f32 = 10.0;
-    fn new() -> (Self, Task<Message>) {
-        let tiles_provider = DefaultTilesProvider::new(
-            Box::new(MvtTileStore::new()),
-            ShashlikFeatureProcessor::new(false),
-            1.0,
-        );
+const ZOOM_SPEED: f32 = 0.02;
+const PAN_SPEED: f32 = 10.0;
 
-        let mut shashlik_map = pollster::block_on({
-            let renderer = CpuRenderer::new();
-            ShashlikMap::new(renderer, tiles_provider)
-        })
-        .unwrap();
-        shashlik_map.set_camera_follow_mode(false);
-        shashlik_map.set_current_pitch(90.0);
-        shashlik_map.resize(CpuRenderer::WIDTH, CpuRenderer::HEIGHT);
+fn main() -> Result<(), slint::PlatformError> {
+    env_logger::init();
 
-        let initial_handle = image::Handle::from_rgba(
-            CpuRenderer::WIDTH,
-            CpuRenderer::HEIGHT,
-            vec![0; (CpuRenderer::WIDTH * CpuRenderer::HEIGHT * 4) as usize],
-        );
-        (
-            Self {
-                shashlik_map,
-                image_handle: initial_handle,
-                interaction: Interaction::None,
-                fps_counter: FpsCounter::new(),
-                last_fps: 0u16,
-            },
-            Task::none(),
-        )
+    unsafe {
+        std::env::set_var("SLINT_BACKEND", "linuxkms");
+    }
+    unsafe {
+        std::env::set_var("SLINT_NO_ACCELERATION", "1");
     }
 
-    fn update(&mut self, message: Message) -> Task<Message> {
-        match message {
-            Message::HardwareTick(_frame_time) => {
-                match &self.interaction {
+    let main_window = MainWindow::new()?;
+    let main_window_weak = main_window.as_weak();
+
+    let width = 1024;
+    let height = 600;
+
+    let tiles_provider = DefaultTilesProvider::new(
+        Box::new(MvtTileStore::new()),
+        ShashlikFeatureProcessor::new(false),
+        1.0,
+    );
+
+    let mut shashlik_map = pollster::block_on({
+        let renderer = CpuRenderer::new();
+        ShashlikMap::new(renderer, tiles_provider)
+    })
+    .unwrap();
+    shashlik_map.set_camera_follow_mode(false);
+    shashlik_map.set_current_pitch(90.0);
+    shashlik_map.resize(CpuRenderer::WIDTH, CpuRenderer::HEIGHT);
+
+    let interaction = Arc::new(RwLock::new(Interaction::None));
+    let press_interaction = Arc::clone(&interaction);
+    main_window.on_key_pressed(move |key_event| {
+        let mut interaction = press_interaction.write().unwrap();
+        if key_event.text == SharedString::from(Key::LeftArrow) {
+            *interaction = Interaction::Left;
+        } else if key_event.text == SharedString::from(Key::RightArrow) {
+            *interaction = Interaction::Right;
+        } else if key_event.text == SharedString::from(Key::UpArrow) {
+            *interaction = Interaction::Up;
+        } else if key_event.text == SharedString::from(Key::DownArrow) {
+            *interaction = Interaction::Down;
+        } else {
+            let key_str = key_event.text.as_str();
+            if let Some(key_char) = key_str.chars().next() {
+                match key_char {
+                    'a' | 'A' => {
+                        *interaction = Interaction::ZoomIn;
+                    }
+                    'z' | 'Z' => {
+                        *interaction = Interaction::ZoomOut;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    });
+
+    let release_interaction = Arc::clone(&interaction);
+    main_window.on_key_released(move |_| {
+        let mut interaction = release_interaction.write().unwrap();
+        *interaction = Interaction::None;
+    });
+
+    let mut fps_counter: FpsCounter<100> = FpsCounter::new();
+
+    let render_timer = slint::Timer::default();
+    render_timer.start(
+        slint::TimerMode::Repeated,
+        std::time::Duration::from_millis(0),
+        move || {
+            let Some(window) = main_window_weak.upgrade() else {
+                return;
+            };
+
+            if let Ok(interaction) = interaction.try_read() {
+                match *interaction {
                     Interaction::ZoomIn => {
-                        self.shashlik_map.zoom_delta(
-                            1.0 + Self::ZOOM_SPEED,
+                        shashlik_map.zoom_delta(
+                            1.0 + ZOOM_SPEED,
                             (
                                 (CpuRenderer::WIDTH as f32) * 0.5,
                                 (CpuRenderer::HEIGHT as f32) * 0.5,
@@ -98,8 +153,8 @@ impl App {
                         );
                     }
                     Interaction::ZoomOut => {
-                        self.shashlik_map.zoom_delta(
-                            1.0 - Self::ZOOM_SPEED,
+                        shashlik_map.zoom_delta(
+                            1.0 - ZOOM_SPEED,
                             (
                                 (CpuRenderer::WIDTH as f32) * 0.5,
                                 (CpuRenderer::HEIGHT as f32) * 0.5,
@@ -107,84 +162,47 @@ impl App {
                         );
                     }
                     Interaction::Left => {
-                        self.shashlik_map.pan_delta(-Self::PAN_SPEED, 0.0);
+                        shashlik_map.pan_delta(-PAN_SPEED, 0.0);
                     }
                     Interaction::Right => {
-                        self.shashlik_map.pan_delta(Self::PAN_SPEED, 0.0);
+                        shashlik_map.pan_delta(PAN_SPEED, 0.0);
                     }
                     Interaction::Up => {
-                        self.shashlik_map.pan_delta(0.0, -Self::PAN_SPEED);
+                        shashlik_map.pan_delta(0.0, -PAN_SPEED);
                     }
                     Interaction::Down => {
-                        self.shashlik_map.pan_delta(0.0, Self::PAN_SPEED);
+                        shashlik_map.pan_delta(0.0, PAN_SPEED);
                     }
                     Interaction::None => {}
                 }
-
-                let pixmap = self.shashlik_map.update_and_render().unwrap();
-                let width = pixmap.width();
-                let height = pixmap.height();
-                let raw_rgba_pixels = pixmap.take();
-                self.image_handle = image::Handle::from_rgba(width, height, raw_rgba_pixels);
-                self.last_fps = self.fps_counter.update() as u16;
             }
-            Message::KeyboardInput(event) => match event {
-                keyboard::Event::KeyPressed { key, .. } => match key {
-                    Key::Named(Named::ArrowLeft) => {
-                        self.interaction = Interaction::Left;
-                    }
-                    Key::Named(Named::ArrowRight) => {
-                        self.interaction = Interaction::Right;
-                    }
-                    Key::Named(Named::ArrowUp) => {
-                        self.interaction = Interaction::Up;
-                    }
-                    Key::Named(Named::ArrowDown) => {
-                        self.interaction = Interaction::Down;
-                    }
-                    Key::Character(c) if c == "z" || c == "Z" => {
-                        self.interaction = Interaction::ZoomIn;
-                    }
-                    Key::Character(c) if c == "x" || c == "X" => {
-                        self.interaction = Interaction::ZoomOut;
-                    }
-                    _ => {}
-                },
-                keyboard::Event::KeyReleased { .. } => {
-                    self.interaction = Interaction::None;
-                }
-                _ => {}
-            },
-        }
-        Task::none()
-    }
 
-    fn subscription(&self) -> Subscription<Message> {
-        Subscription::batch(vec![
-            iced::window::frames().map(Message::HardwareTick),
-            event::listen_with(|event, _status, _window_id| match event {
-                Event::Keyboard(kbd_event) => Some(Message::KeyboardInput(kbd_event)),
-                _ => None,
-            }),
-        ])
-    }
+            window.set_fps_text(format!("FPS: {:.1}", fps_counter.update()).into());
 
-    fn view(&self) -> Element<'_, Message> {
-        stack![
-            center(
-                Image::new(self.image_handle.clone())
-                    .width(Length::Shrink)
-                    .height(Length::Shrink)
-            ),
-            container(
-                text(format!("FPS {}", self.last_fps))
-                    .size(20)
-                    .color(Color::BLACK)
-            )
-            .align_x(iced::alignment::Horizontal::Left)
-            .align_y(iced::alignment::Vertical::Top)
-            .padding(10)
-        ]
-        .into()
-    }
+            let mut pixel_buffer = SharedPixelBuffer::<slint::Rgba8Pixel>::new(width, height);
+
+            let raw_bytes = pixel_buffer.make_mut_bytes();
+            let row_bytes = (width * 4) as usize;
+            let image_info = skia_safe::ImageInfo::new(
+                skia_safe::ISize::new(width as i32, height as i32),
+                ColorType::RGBA8888,
+                AlphaType::Premul,
+                None,
+            );
+
+            if let Some(mut surface) =
+                skia_safe::surfaces::wrap_pixels(&image_info, raw_bytes, Some(row_bytes), None)
+            {
+                let canvas = surface.canvas();
+                shashlik_map.update_and_render(canvas);
+            }
+
+            // TODO Figure out if it should be from_rgba8_premultiplied
+            let image = Image::from_rgba8(pixel_buffer);
+            window.set_render_texture(image);
+            window.window().request_redraw();
+        },
+    );
+
+    main_window.run()
 }
