@@ -55,7 +55,7 @@ impl WgpuCanvas for AndroidSurfaceAppSurface {
         self.app_surface.resize_surface();
     }
 
-    fn create_texture_view(&self) -> TextureView {
+    fn create_texture_view(&mut self) -> TextureView {
         let surface_texture = match self.app_surface.surface.get_current_texture() {
             CurrentSurfaceTexture::Success(surface_texture) => surface_texture,
             _ => panic!("Failed to acquire next swap chain texture!"),
@@ -68,7 +68,7 @@ impl WgpuCanvas for AndroidSurfaceAppSurface {
         texture_view
     }
 
-    fn present(&self) -> Option<Texture> {
+    fn present(&mut self) -> Option<Texture> {
         if let Some(surface_texture) = mem::take(&mut self.surface_texture) {
             surface_texture.present();
         }

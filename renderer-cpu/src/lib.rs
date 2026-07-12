@@ -172,7 +172,7 @@ impl CpuRenderer {
 
     #[inline]
     fn process_shapes(
-        shapes: &Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
+        shapes: &[(String, SpatialData, Vec<(Box2D, ShapeData)>)],
         pixmap: &mut Pixmap,
         cs_offset: &DVec3,
         norm_length: f64,
@@ -217,8 +217,7 @@ impl CpuRenderer {
                     point(projected_max.x as f32, projected_max.y as f32),
                 )
                 .intersects(screen_aabb);
-                if cond {
-                } else {
+                if !cond {
                     continue;
                 }
                 shape_data.path.iter().for_each(|path| match path {
@@ -370,11 +369,10 @@ impl Renderer for CpuRenderer {
                 let ground_color = self
                     .styles_map
                     .get(&self.ground_style)
-                    .unwrap_or(&Color::BLACK)
-                    .clone();
+                    .unwrap_or(&Color::BLACK);
 
                 let mut pixmap_background = Pixmap::new(Self::WIDTH, Self::HEIGHT).unwrap();
-                pixmap_background.fill(ground_color);
+                pixmap_background.fill(*ground_color);
                 Self::process_shapes(
                     &self.shapes_background,
                     &mut pixmap_background,

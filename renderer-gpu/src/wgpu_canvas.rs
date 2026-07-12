@@ -5,8 +5,8 @@ pub trait WgpuCanvas: Send + Sync {
     fn queue(&self) -> &wgpu::Queue;
     fn config(&self) -> &wgpu::SurfaceConfiguration;
     fn device(&self) -> &wgpu::Device;
-    fn create_texture_view(&self) -> TextureView;
-    fn present(&self) -> Option<Texture>;
+    fn create_texture_view(&mut self) -> TextureView;
+    fn present(&mut self) -> Option<Texture>;
     fn on_resize(&mut self);
 }
 
@@ -26,11 +26,11 @@ impl WgpuCanvas for DefaultWgpuCanvas {
         &self.1
     }
 
-    fn create_texture_view(&self) -> TextureView {
+    fn create_texture_view(&mut self) -> TextureView {
         self.3.create_view(&TextureViewDescriptor::default())
     }
 
-    fn present(&self) -> Option<Texture> {
+    fn present(&mut self) -> Option<Texture> {
         Some(self.3.clone())
     }
 

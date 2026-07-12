@@ -17,6 +17,8 @@ futures-lite = "2"
 raw-window-handle = "0.6"
 renderer-common = { path = "renderer-common" }
 lyon = "1.0.19"
+lyon_path = "1.0.19"
+lyon_algorithms = "1.0.19"
 bytemuck = { version = "1.16", features = [ "derive" ] }
 geo-types = "0.7.18"
 error-stack = "0.6.0"

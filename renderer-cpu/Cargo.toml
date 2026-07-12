@@ -9,5 +9,5 @@ renderer-common = { workspace = true }
 tiny-skia = { workspace = true }
 glam = { workspace = true }
 rustc-hash = { workspace = true }
-lyon_path = "1.0.19"
-lyon_algorithms = "1.0.19"
+lyon_path = { workspace = true }
+lyon_algorithms = { workspace = true }
