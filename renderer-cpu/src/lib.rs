@@ -197,6 +197,7 @@ impl CpuRenderer {
                     }
                     GeometryType::Polygon => {}
                 }
+                // TODO There might be an issue with rotation, check all corners?
                 let projected_min = view_proj_matrix
                     .project_point3(DVec3::new(
                         aabb.min.x as f64 + spatial_offset.x,
