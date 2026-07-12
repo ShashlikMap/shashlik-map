@@ -240,7 +240,7 @@ impl MainPassNode {
 
 impl PassNode for MainPassNode {
     fn compute(
-        &mut self,
+        &self,
         _encoder: &mut CommandEncoder,
         _layers: &mut Layers,
         _global_context: &mut GlobalContext,
@@ -249,7 +249,7 @@ impl PassNode for MainPassNode {
     }
 
     fn render(
-        &mut self,
+        &self,
         encoder: &mut CommandEncoder,
         output_view: &TextureView,
         layers: &mut Layers,

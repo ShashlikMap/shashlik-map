@@ -1,7 +1,7 @@
 extern crate core;
 
 use crate::buffer_pool::BufferPool;
-use crate::fps::FpsCounter;
+use renderer_common::fps::FpsCounter;
 use crate::mesh_layers::layers::SCREEN_TEXT_LAYER;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::messages::RendererMessage;
@@ -35,7 +35,6 @@ use crate::wgpu_canvas::WgpuCanvas;
 pub mod canvas_api;
 mod collision_handler;
 pub mod draw_commands;
-mod fps;
 pub mod mesh;
 pub mod messages;
 pub mod modifier;

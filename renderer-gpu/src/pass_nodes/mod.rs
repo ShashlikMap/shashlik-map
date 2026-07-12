@@ -17,14 +17,14 @@ const BACKGROUND_ATTACHMENT_COLOR: Color = Color {
 
 pub trait PassNode {
     fn compute(
-        &mut self,
+        &self,
         encoder: &mut CommandEncoder,
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     );
 
     fn render(
-        &mut self,
+        &self,
         encoder: &mut CommandEncoder,
         output_view: &TextureView,
         layers: &mut Layers,
