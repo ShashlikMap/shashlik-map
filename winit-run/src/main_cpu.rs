@@ -16,6 +16,9 @@ pub fn prepare() {
     unsafe {
         std::env::set_var("SLINT_NO_ACCELERATION", "1");
     }
+    slint::BackendSelector::new()
+        .renderer_name("software".into())
+        .select().expect("Unable to create Slint backend with Software renderer");
 }
 
 pub fn launch_internal(ui: &ShashlikUI, render_timer: &Timer) {
