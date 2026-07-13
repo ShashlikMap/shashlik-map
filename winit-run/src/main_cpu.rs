@@ -65,7 +65,7 @@ enum Interaction {
 const ZOOM_SPEED: f32 = 0.02;
 const PAN_SPEED: f32 = 10.0;
 
-fn main() -> Result<(), slint::PlatformError> {
+pub fn main_internal() {
     env_logger::init();
 
     unsafe {
@@ -75,7 +75,7 @@ fn main() -> Result<(), slint::PlatformError> {
         std::env::set_var("SLINT_NO_ACCELERATION", "1");
     }
 
-    let main_window = MainWindow::new()?;
+    let main_window = MainWindow::new().unwrap();
     let main_window_weak = main_window.as_weak();
 
     let width = 1024;
@@ -91,7 +91,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let renderer = CpuRenderer::new();
         ShashlikMap::new(renderer, tiles_provider)
     })
-    .unwrap();
+        .unwrap();
     shashlik_map.set_camera_follow_mode(false);
     shashlik_map.set_current_pitch(90.0);
     shashlik_map.resize(CpuRenderer::WIDTH, CpuRenderer::HEIGHT);
@@ -204,5 +204,5 @@ fn main() -> Result<(), slint::PlatformError> {
         },
     );
 
-    main_window.run()
+    main_window.run().unwrap()
 }

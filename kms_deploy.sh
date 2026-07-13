@@ -3,15 +3,17 @@
 # Exit immediately if a command fails
 set -euo pipefail
 
-APP_NAME="winit-run"
 TARGET_PATH="/home/admin"
 TARGET_TRIPLE="aarch64-unknown-linux-gnu"
 SOCKET="/tmp/ssh-socket-%r@%h:%p"
+
+FEATURE_FLAG="${RENDER_MODE:-linux-gpu}"
 
 RUN_IN_BACKGROUND=false
 
 echo "--- Building $APP_NAME ---"
 CROSS_CONTAINER_OPTS="--platform linux/amd64" cross build \
+    --features "$FEATURE_FLAG" \
     --package "$APP_NAME" \
     --target "$TARGET_TRIPLE" \
     --release

@@ -6,20 +6,29 @@ edition = "2024"
 [dependencies]
 osm = { workspace = true }
 map = { path = "../map" }
-renderer-gpu = { path = "../renderer-gpu" }
 renderer-common = { workspace = true }
 env_logger = { workspace = true }
 pollster = { workspace = true }
-wgpu = { workspace = true}
+wgpu = { workspace = true, optional = true }
 strum = { workspace = true }
 native-dialog = "0.9.3"
 
-slint = { version = "=1.17.0", features = ["unstable-wgpu-29"] }
+slint = { version = "=1.17.0", optional = true }
+
 [target.'cfg(target_os = "linux")'.dependencies]
-slint = { version = "=1.17.0", features = ["backend-linuxkms-noseat", "renderer-skia-vulkan"] }
+skia-safe = { workspace = true, optional = true }
+renderer-cpu = { path = "../renderer-cpu", optional = true }
+renderer-gpu = { path = "../renderer-gpu", optional = true }
 map = { path = "../map", features = ["sgnss"] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
-slint = { version = "=1.17.0", features = ["backend-winit", "renderer-skia"] }
+wgpu = { workspace = true }
+renderer-gpu = { path = "../renderer-gpu" }
+slint = { version = "=1.17.0", features = ["backend-winit", "renderer-skia", "unstable-wgpu-29"] }
+
+[features]
+linux-gpu = ["dep:slint", "dep:wgpu", "dep:renderer-gpu", "slint/unstable-wgpu-29", "slint/backend-linuxkms-noseat", "slint/renderer-skia-vulkan"]
+linux-cpu = ["dep:slint", "dep:skia-safe", "dep:renderer-cpu", "slint/backend-linuxkms-noseat", "slint/renderer-software"]
 
 [build-dependencies]
 slint-build = "=1.17.0"
