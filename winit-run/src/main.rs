@@ -64,9 +64,7 @@ fn main() {
         .collect();
     ui.set_preview_type_items(Rc::new(VecModel::from(items)).into());
 
-    // keep the timer here otherwise it'll be dropped
-    let render_timer = slint::Timer::default();
-    launch_internal(&ui, &render_timer);
+    launch_internal(&ui);
 
     ui.run().unwrap();
 }

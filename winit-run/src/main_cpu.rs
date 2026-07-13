@@ -1,16 +1,16 @@
 use crate::Interaction;
-use crate::PAN_SPEED;
 use crate::ShashlikUI;
+use crate::PAN_SPEED;
 use crate::ZOOM_SPEED;
-use map::ShashlikMap;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::tiles::mvt::mvt_tile_store::MvtTileStore;
+use map::ShashlikMap;
 use renderer_common::fps::FpsCounter;
 use renderer_cpu::CpuRenderer;
 use skia_safe::{AlphaType, ColorType};
 use slint::platform::Key;
-use slint::{ComponentHandle, Image, SharedPixelBuffer, SharedString, Timer};
+use slint::{ComponentHandle, Image, SharedPixelBuffer, SharedString};
 use std::sync::{Arc, RwLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
@@ -25,7 +25,7 @@ pub fn prepare() {
         .expect("Unable to create Slint backend with Software renderer");
 }
 
-pub fn launch_internal(ui: &ShashlikUI, render_timer: &Timer) {
+pub fn launch_internal(ui: &ShashlikUI) {
     let width = CpuRenderer::WIDTH;
     let height = CpuRenderer::HEIGHT;
 
