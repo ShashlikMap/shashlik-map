@@ -28,7 +28,7 @@ slint = { version = "=1.17.0", features = ["backend-winit", "renderer-skia", "un
 
 [features]
 linux-gpu = ["dep:slint", "dep:wgpu", "dep:renderer-gpu", "slint/unstable-wgpu-29", "slint/backend-linuxkms-noseat", "slint/renderer-skia-vulkan"]
-linux-cpu = ["dep:slint", "dep:skia-safe", "dep:renderer-cpu", "slint/backend-linuxkms-noseat", "slint/renderer-software"]
+linux-cpu = ["dep:slint", "dep:skia-safe", "dep:renderer-cpu", "slint/backend-linuxkms-noseat", "slint/renderer-skia"]
 
 [build-dependencies]
 slint-build = "=1.17.0"

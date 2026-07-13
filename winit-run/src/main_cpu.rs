@@ -17,7 +17,7 @@ pub fn prepare() {
         std::env::set_var("SLINT_NO_ACCELERATION", "1");
     }
     slint::BackendSelector::new()
-        .renderer_name("software".into())
+        .renderer_name("skia-software".into())
         .select().expect("Unable to create Slint backend with Software renderer");
 }
 
