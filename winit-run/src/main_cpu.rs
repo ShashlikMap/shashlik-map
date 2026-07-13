@@ -1,16 +1,19 @@
+use crate::Interaction;
+use crate::PAN_SPEED;
+use crate::ShashlikUI;
+use crate::ZOOM_SPEED;
 use map::ShashlikMap;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::tiles::mvt::mvt_tile_store::MvtTileStore;
-use renderer_cpu::{CpuRenderer, FpsCounter};
+use renderer_common::fps::FpsCounter;
+use renderer_cpu::CpuRenderer;
 use skia_safe::{AlphaType, ColorType};
 use slint::platform::Key;
 use slint::{ComponentHandle, Image, SharedPixelBuffer, SharedString, Timer};
 use std::sync::{Arc, RwLock};
-use crate::ShashlikUI;
-use crate::Interaction;
-use crate::PAN_SPEED;
-use crate::ZOOM_SPEED;
+use std::thread::{sleep, spawn};
+use std::time::{Duration, Instant};
 
 pub fn prepare() {
     unsafe {
@@ -18,7 +21,8 @@ pub fn prepare() {
     }
     slint::BackendSelector::new()
         .renderer_name("skia-software".into())
-        .select().expect("Unable to create Slint backend with Software renderer");
+        .select()
+        .expect("Unable to create Slint backend with Software renderer");
 }
 
 pub fn launch_internal(ui: &ShashlikUI, render_timer: &Timer) {
@@ -35,7 +39,7 @@ pub fn launch_internal(ui: &ShashlikUI, render_timer: &Timer) {
         let renderer = CpuRenderer::new();
         ShashlikMap::new(renderer, tiles_provider)
     })
-        .unwrap();
+    .unwrap();
     shashlik_map.set_camera_follow_mode(false);
     shashlik_map.set_current_pitch(90.0);
     shashlik_map.resize(CpuRenderer::WIDTH, CpuRenderer::HEIGHT);
@@ -76,15 +80,10 @@ pub fn launch_internal(ui: &ShashlikUI, render_timer: &Timer) {
         *interaction = Interaction::None;
     });
 
-    let mut pixel_buffer = SharedPixelBuffer::<slint::Rgba8Pixel>::new(width, height);
-    let mut fps_counter: FpsCounter<100> = FpsCounter::new();
-    render_timer.start(
-        slint::TimerMode::Repeated,
-        std::time::Duration::from_millis(0),
-        move || {
-            let Some(window) = ui_weak.upgrade() else {
-                return;
-            };
+    spawn(move || {
+        let mut fps_counter: FpsCounter<100> = FpsCounter::new();
+        loop {
+            let frame_start = Instant::now();
             if let Ok(interaction) = interaction.try_read() {
                 match *interaction {
                     Interaction::ZoomIn => {
@@ -121,6 +120,7 @@ pub fn launch_internal(ui: &ShashlikUI, render_timer: &Timer) {
                 }
             }
 
+            let mut pixel_buffer = SharedPixelBuffer::<slint::Rgba8Pixel>::new(width, height);
             let raw_bytes = pixel_buffer.make_mut_bytes();
             let row_bytes = (width * 4) as usize;
             let image_info = skia_safe::ImageInfo::new(
@@ -137,12 +137,23 @@ pub fn launch_internal(ui: &ShashlikUI, render_timer: &Timer) {
                 shashlik_map.update_and_render(canvas);
             }
 
-            let image = Image::from_rgba8_premultiplied(pixel_buffer.clone());
-            window.set_texture(image);
-            window.window().request_redraw();
+            let ui_weak = ui_weak.clone();
+            let fps = fps_counter.update();
+            slint::invoke_from_event_loop(move || {
+                if let Some(ui) = ui_weak.upgrade() {
+                    let image = Image::from_rgba8_premultiplied(pixel_buffer.clone());
+                    ui.set_texture(image);
+                    ui.set_fps_text(format!("FPS: {:.1}", fps).into());
+                    ui.window().request_redraw();
+                }
+            })
+            .expect("Can't execute invoke_from_event_loop");
 
-            window.set_fps_text(format!("FPS: {:.1}", fps_counter.update()).into());
-
-        },
-    );
+            let work_duration = frame_start.elapsed();
+            if let Some(remaining_sleep_time) = Duration::from_millis(16).checked_sub(work_duration)
+            {
+                sleep(remaining_sleep_time);
+            }
+        }
+    });
 }

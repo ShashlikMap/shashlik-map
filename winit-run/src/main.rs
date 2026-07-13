@@ -45,6 +45,7 @@ fn main() {
     #[cfg(target_os = "linux")]
     unsafe {
         std::env::set_var("SLINT_BACKEND", "linuxkms");
+        std::env::set_var("SLINT_DEBUG_PERFORMANCE", "refresh_full_speed,overlay");
     }
 
     prepare();
