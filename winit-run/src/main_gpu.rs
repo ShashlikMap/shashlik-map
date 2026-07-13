@@ -1,3 +1,4 @@
+use crate::{Action, Feature, PanState, Scale, ShashlikUI, SlintMapEvent};
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
@@ -5,35 +6,20 @@ use map::{ShashlikMap, DEFAULT_FONT};
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
 use osm::tiles::TileStore;
+use renderer_common::{feature_layer_tags, PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
+use renderer_gpu::wgpu_canvas::DefaultWgpuCanvas;
+use renderer_gpu::GpuRenderer;
 use slint::wgpu_29::{WGPUConfiguration, WGPUSettings};
-use slint::{GraphicsAPI, PhysicalSize, RenderingState, VecModel};
+use slint::{ComponentHandle, GraphicsAPI, PhysicalSize, RenderingState};
 use std::cmp::max;
-use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::mpsc;
-use strum::IntoEnumIterator;
 use wgpu::SurfaceConfiguration;
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
 use wgpu::{Features, Limits};
-use renderer_gpu::GpuRenderer;
-use renderer_gpu::wgpu_canvas::DefaultWgpuCanvas;
-use renderer_common::{feature_layer_tags, PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
 
-slint::include_modules!();
-
-enum SlintMapEvent {
-    VerticalScroll(f32),
-    FollowMode(bool),
-    FeatureEnabled(Feature, bool),
-    BtnAction(Action, i32),
-}
-
-pub fn main_internal() {
-    env_logger::init();
-
-    let (slint_map_event_sender, slint_map_event_receiver) = mpsc::channel();
-
+pub fn prepare() {
     let mut wgpu_settings = WGPUSettings::default();
     wgpu_settings.device_required_features = Features::CLEAR_TEXTURE | Features::IMMEDIATES;
     wgpu_settings.device_required_limits = Limits::downlevel_defaults();
@@ -43,8 +29,11 @@ pub fn main_internal() {
         .require_wgpu_29(WGPUConfiguration::Automatic(wgpu_settings))
         .select()
         .expect("Unable to create Slint backend with WGPU based renderer-gpu");
+}
 
-    let ui = ShashlikUI::new().unwrap();
+pub fn launch_internal(ui: &ShashlikUI) {
+    let (slint_map_event_sender, slint_map_event_receiver) = mpsc::channel();
+
     let mut screen_size = ui.window().size();
     println!("screen size: {:?}", screen_size);
     if screen_size.width == 0 || screen_size.height == 0 {
@@ -52,11 +41,6 @@ pub fn main_internal() {
     }
     ui.set_screen_width(screen_size.width as i32);
     ui.set_screen_height(screen_size.height as i32);
-
-    let items: Vec<slint::SharedString> = PreviewType::iter().map(move |preview_type| preview_type
-        .to_string()
-        .into()).collect();
-    ui.set_preview_type_items(Rc::new(VecModel::from(items)).into());
 
     if max(screen_size.width, screen_size.height) <= 1024 {
         unsafe { SHADOWS_TEX_SIZE = (1024, 1024); }
@@ -260,6 +244,4 @@ pub fn main_internal() {
             }
         })
         .expect("Can't set Slint rendering_notifier");
-
-    ui.run().unwrap();
 }

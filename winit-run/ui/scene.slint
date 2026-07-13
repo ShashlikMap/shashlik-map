@@ -45,15 +45,32 @@ export component ShashlikUI inherits Window {
     out property <int> requested-texture-height: image.height / 1phx;
     out property <Scale> current-scale;
     out property <PanState> current-pan-state;
+    in-out property <string> fps_text: "";
     property <bool> pressed: false;
     callback vert_scroll(float);
     callback follow_mode(bool);
     callback preview_type(string);
     callback feature_enabled(Feature, bool);
     callback btn_click(Action, int);
+    callback key-pressed(KeyEvent);
+    callback key-released(KeyEvent);
     title: "ShashlikMap";
     width: screen-width * 1phx;
     height: screen-height * 1phx;
+
+    forward-focus: key-handler;
+        key-handler := FocusScope {
+            init => { self.focus(); }
+
+            key-pressed(event) => {
+                root.key-pressed(event);
+                accept
+            }
+            key-released(event) => {
+                root.key-released(event);
+                accept
+            }
+        }
 
     HorizontalBox {
         image := Image {
@@ -165,5 +182,14 @@ export component ShashlikUI inherits Window {
                 }
             }
         }
+    }
+
+    Text {
+        text: root.fps_text;
+        color: red;
+        font-size: 24px;
+        font-weight: 700;
+        x: 20px;
+        y: 20px;
     }
 }

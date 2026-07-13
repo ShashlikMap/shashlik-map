@@ -1,85 +1,33 @@
-use map::ShashlikMap;
+use crate::Interaction;
+use crate::ShashlikUI;
+use crate::PAN_SPEED;
+use crate::ZOOM_SPEED;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::tiles::mvt::mvt_tile_store::MvtTileStore;
-use renderer_cpu::{CpuRenderer, FpsCounter};
+use map::ShashlikMap;
+use renderer_common::fps::FpsCounter;
+use renderer_cpu::CpuRenderer;
 use skia_safe::{AlphaType, ColorType};
 use slint::platform::Key;
-use slint::{Image, SharedPixelBuffer, SharedString};
+use slint::{ComponentHandle, Image, SharedPixelBuffer, SharedString};
 use std::sync::{Arc, RwLock};
+use std::thread::{sleep, spawn};
+use std::time::{Duration, Instant};
 
-slint::slint! {
-    export component MainWindow inherits Window {
-        in-out property <image> render_texture;
-        in-out property <string> fps_text: "FPS: --";
-
-        callback key-pressed(KeyEvent);
-        callback key-released(KeyEvent);
-
-        width: 1024px;
-        height: 600px;
-        background: black;
-
-        forward-focus: key-handler;
-        key-handler := FocusScope {
-            init => { self.focus(); }
-
-            key-pressed(event) => {
-                root.key-pressed(event);
-                accept
-            }
-            key-released(event) => {
-                root.key-released(event);
-                accept
-            }
-        }
-
-
-        Image {
-            source: root.render_texture;
-            width: 100%;
-            height: 100%;
-        }
-
-        Text {
-            text: root.fps_text;
-            color: red;
-            font-size: 24px;
-            font-weight: 700;
-            x: 20px;
-            y: 20px;
-        }
-    }
-}
-
-enum Interaction {
-    ZoomIn,
-    ZoomOut,
-    Left,
-    Right,
-    Up,
-    Down,
-    None,
-}
-
-const ZOOM_SPEED: f32 = 0.02;
-const PAN_SPEED: f32 = 10.0;
-
-pub fn main_internal() {
-    env_logger::init();
-
-    unsafe {
-        std::env::set_var("SLINT_BACKEND", "linuxkms");
-    }
+pub fn prepare() {
     unsafe {
         std::env::set_var("SLINT_NO_ACCELERATION", "1");
     }
+    slint::BackendSelector::new()
+        .renderer_name("skia-software".into())
+        .select()
+        .expect("Unable to create Slint backend with Software renderer");
+}
 
-    let main_window = MainWindow::new().unwrap();
-    let main_window_weak = main_window.as_weak();
-
-    let width = 1024;
-    let height = 600;
+pub fn launch_internal(ui: &ShashlikUI) {
+    let width = CpuRenderer::WIDTH;
+    let height = CpuRenderer::HEIGHT;
 
     let tiles_provider = DefaultTilesProvider::new(
         Box::new(MvtTileStore::new()),
@@ -91,14 +39,16 @@ pub fn main_internal() {
         let renderer = CpuRenderer::new();
         ShashlikMap::new(renderer, tiles_provider)
     })
-        .unwrap();
+    .unwrap();
     shashlik_map.set_camera_follow_mode(false);
     shashlik_map.set_current_pitch(90.0);
     shashlik_map.resize(CpuRenderer::WIDTH, CpuRenderer::HEIGHT);
 
+    let ui_weak = ui.as_weak();
+
     let interaction = Arc::new(RwLock::new(Interaction::None));
     let press_interaction = Arc::clone(&interaction);
-    main_window.on_key_pressed(move |key_event| {
+    ui.on_key_pressed(move |key_event| {
         let mut interaction = press_interaction.write().unwrap();
         if key_event.text == SharedString::from(Key::LeftArrow) {
             *interaction = Interaction::Left;
@@ -125,22 +75,15 @@ pub fn main_internal() {
     });
 
     let release_interaction = Arc::clone(&interaction);
-    main_window.on_key_released(move |_| {
+    ui.on_key_released(move |_| {
         let mut interaction = release_interaction.write().unwrap();
         *interaction = Interaction::None;
     });
 
-    let mut fps_counter: FpsCounter<100> = FpsCounter::new();
-
-    let render_timer = slint::Timer::default();
-    render_timer.start(
-        slint::TimerMode::Repeated,
-        std::time::Duration::from_millis(0),
-        move || {
-            let Some(window) = main_window_weak.upgrade() else {
-                return;
-            };
-
+    spawn(move || {
+        let mut fps_counter: FpsCounter<100> = FpsCounter::new();
+        loop {
+            let frame_start = Instant::now();
             if let Ok(interaction) = interaction.try_read() {
                 match *interaction {
                     Interaction::ZoomIn => {
@@ -177,10 +120,7 @@ pub fn main_internal() {
                 }
             }
 
-            window.set_fps_text(format!("FPS: {:.1}", fps_counter.update()).into());
-
             let mut pixel_buffer = SharedPixelBuffer::<slint::Rgba8Pixel>::new(width, height);
-
             let raw_bytes = pixel_buffer.make_mut_bytes();
             let row_bytes = (width * 4) as usize;
             let image_info = skia_safe::ImageInfo::new(
@@ -197,12 +137,23 @@ pub fn main_internal() {
                 shashlik_map.update_and_render(canvas);
             }
 
-            // TODO Figure out if it should be from_rgba8_premultiplied
-            let image = Image::from_rgba8(pixel_buffer);
-            window.set_render_texture(image);
-            window.window().request_redraw();
-        },
-    );
+            let ui_weak = ui_weak.clone();
+            let fps = fps_counter.update();
+            slint::invoke_from_event_loop(move || {
+                if let Some(ui) = ui_weak.upgrade() {
+                    let image = Image::from_rgba8_premultiplied(pixel_buffer.clone());
+                    ui.set_texture(image);
+                    ui.set_fps_text(format!("FPS: {:.1}", fps).into());
+                    ui.window().request_redraw();
+                }
+            })
+            .expect("Can't execute invoke_from_event_loop");
 
-    main_window.run().unwrap()
+            let work_duration = frame_start.elapsed();
+            if let Some(remaining_sleep_time) = Duration::from_millis(16).checked_sub(work_duration)
+            {
+                sleep(remaining_sleep_time);
+            }
+        }
+    });
 }
