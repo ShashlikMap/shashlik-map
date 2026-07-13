@@ -27,6 +27,7 @@ pub enum RendererApiMsg {
 }
 
 pub struct CpuRenderer {
+    size: (u32, u32),
     canvas_api: CpuCanvasApi,
     shapes_background: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
     shapes_foreground: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
@@ -106,11 +107,10 @@ impl RendererApi for CpuRendererApi {
 }
 
 impl CpuRenderer {
-    pub const WIDTH: u32 = 780;
-    pub const HEIGHT: u32 = 568;
-    pub fn new() -> Self {
+    pub fn new(width: u32, height: u32) -> Self {
         let (sender, receiver) = mpsc::channel();
         Self {
+            size: (width, height),
             canvas_api: Default::default(),
             shapes_background: vec![],
             shapes_foreground: vec![],
@@ -145,6 +145,7 @@ impl CpuRenderer {
 
     #[inline]
     fn process_shapes(
+        size: (u32, u32),
         shapes: &[(String, SpatialData, Vec<(Box2D, ShapeData)>)],
         canvas: &Canvas,
         cs_offset: &DVec3,
@@ -204,8 +205,8 @@ impl CpuRenderer {
                             ))
                             .truncate();
                         pb.move_to((
-                            0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
-                            0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
+                            0.5 * (1.0 + projected.x as f32) * size.0 as f32,
+                            0.5 * (1.0 + projected.y as f32) * size.1 as f32,
                         ));
                     }
                     PathEvent::Line { from: _, to } => {
@@ -217,8 +218,8 @@ impl CpuRenderer {
                             ))
                             .truncate();
                         pb.line_to((
-                            0.5 * (1.0 + projected.x as f32) * Self::WIDTH as f32,
-                            0.5 * (1.0 + projected.y as f32) * Self::HEIGHT as f32,
+                            0.5 * (1.0 + projected.x as f32) * size.0 as f32,
+                            0.5 * (1.0 + projected.y as f32) * size.1 as f32,
                         ));
                     }
                     PathEvent::Quadratic { .. } => {}
@@ -255,7 +256,7 @@ impl Renderer for CpuRenderer {
     type INPUT<'a> = &'a Canvas;
 
     fn screen_size(&self) -> (f32, f32) {
-        (Self::WIDTH as f32, Self::HEIGHT as f32)
+        (self.size.0 as f32, self.size.1 as f32)
     }
 
     fn resize(&mut self, _width: u32, _height: u32) {}
@@ -322,6 +323,7 @@ impl Renderer for CpuRenderer {
         let processor = |shapes: &[(String, SpatialData, Vec<(Box2D, ShapeData)>)],
                          canvas: &Canvas| {
             Self::process_shapes(
+                self.size,
                 shapes,
                 canvas,
                 &self.cs_offset,
@@ -335,7 +337,7 @@ impl Renderer for CpuRenderer {
         let (pb, pa) = rayon::join(
             || {
                 let mut recorder = PictureRecorder::new();
-                let canvas_back = recorder.begin_recording(Rect::from_wh(CpuRenderer::WIDTH as f32, CpuRenderer::HEIGHT as f32), false);
+                let canvas_back = recorder.begin_recording(Rect::from_wh(self.size.0 as f32, self.size.1 as f32), false);
                 let ground_color = self
                     .styles_map
                     .get(&self.ground_style)
@@ -346,7 +348,7 @@ impl Renderer for CpuRenderer {
             },
             || {
                 let mut recorder = PictureRecorder::new();
-                let canvas_front = recorder.begin_recording(Rect::from_wh(CpuRenderer::WIDTH as f32, CpuRenderer::HEIGHT as f32), false);
+                let canvas_front = recorder.begin_recording(Rect::from_wh(self.size.0 as f32, self.size.1 as f32), false);
                 processor(&self.shapes_foreground, canvas_front);
                 recorder.finish_recording_as_picture(None).unwrap()
             },
