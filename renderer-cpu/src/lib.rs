@@ -106,8 +106,8 @@ impl RendererApi for CpuRendererApi {
 }
 
 impl CpuRenderer {
-    pub const WIDTH: u32 = 1024;
-    pub const HEIGHT: u32 = 600;
+    pub const WIDTH: u32 = 780;
+    pub const HEIGHT: u32 = 568;
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel();
         Self {

@@ -5,81 +5,22 @@ use map::tiles::mvt::mvt_tile_store::MvtTileStore;
 use renderer_cpu::{CpuRenderer, FpsCounter};
 use skia_safe::{AlphaType, ColorType};
 use slint::platform::Key;
-use slint::{Image, SharedPixelBuffer, SharedString};
+use slint::{ComponentHandle, Image, SharedPixelBuffer, SharedString};
 use std::sync::{Arc, RwLock};
+use crate::ShashlikUI;
+use crate::Interaction;
+use crate::PAN_SPEED;
+use crate::ZOOM_SPEED;
 
-slint::slint! {
-    export component MainWindow inherits Window {
-        in-out property <image> render_texture;
-        in-out property <string> fps_text: "FPS: --";
-
-        callback key-pressed(KeyEvent);
-        callback key-released(KeyEvent);
-
-        width: 1024px;
-        height: 600px;
-        background: black;
-
-        forward-focus: key-handler;
-        key-handler := FocusScope {
-            init => { self.focus(); }
-
-            key-pressed(event) => {
-                root.key-pressed(event);
-                accept
-            }
-            key-released(event) => {
-                root.key-released(event);
-                accept
-            }
-        }
-
-
-        Image {
-            source: root.render_texture;
-            width: 100%;
-            height: 100%;
-        }
-
-        Text {
-            text: root.fps_text;
-            color: red;
-            font-size: 24px;
-            font-weight: 700;
-            x: 20px;
-            y: 20px;
-        }
-    }
-}
-
-enum Interaction {
-    ZoomIn,
-    ZoomOut,
-    Left,
-    Right,
-    Up,
-    Down,
-    None,
-}
-
-const ZOOM_SPEED: f32 = 0.02;
-const PAN_SPEED: f32 = 10.0;
-
-pub fn main_internal() {
-    env_logger::init();
-
-    unsafe {
-        std::env::set_var("SLINT_BACKEND", "linuxkms");
-    }
+pub fn prepare() {
     unsafe {
         std::env::set_var("SLINT_NO_ACCELERATION", "1");
     }
+}
 
-    let main_window = MainWindow::new().unwrap();
-    let main_window_weak = main_window.as_weak();
-
-    let width = 1024;
-    let height = 600;
+pub fn launch_internal(ui: &ShashlikUI) {
+    let width = 780;
+    let height = 568;
 
     let tiles_provider = DefaultTilesProvider::new(
         Box::new(MvtTileStore::new()),
@@ -96,9 +37,11 @@ pub fn main_internal() {
     shashlik_map.set_current_pitch(90.0);
     shashlik_map.resize(CpuRenderer::WIDTH, CpuRenderer::HEIGHT);
 
+    let ui_weak = ui.as_weak();
+
     let interaction = Arc::new(RwLock::new(Interaction::None));
     let press_interaction = Arc::clone(&interaction);
-    main_window.on_key_pressed(move |key_event| {
+    ui.on_key_pressed(move |key_event| {
         let mut interaction = press_interaction.write().unwrap();
         if key_event.text == SharedString::from(Key::LeftArrow) {
             *interaction = Interaction::Left;
@@ -125,7 +68,7 @@ pub fn main_internal() {
     });
 
     let release_interaction = Arc::clone(&interaction);
-    main_window.on_key_released(move |_| {
+    ui.on_key_released(move |_| {
         let mut interaction = release_interaction.write().unwrap();
         *interaction = Interaction::None;
     });
@@ -137,7 +80,7 @@ pub fn main_internal() {
         slint::TimerMode::Repeated,
         std::time::Duration::from_millis(0),
         move || {
-            let Some(window) = main_window_weak.upgrade() else {
+            let Some(window) = ui_weak.upgrade() else {
                 return;
             };
 
@@ -199,10 +142,8 @@ pub fn main_internal() {
 
             // TODO Figure out if it should be from_rgba8_premultiplied
             let image = Image::from_rgba8(pixel_buffer);
-            window.set_render_texture(image);
+            window.set_texture(image);
             window.window().request_redraw();
         },
     );
-
-    main_window.run().unwrap()
 }
