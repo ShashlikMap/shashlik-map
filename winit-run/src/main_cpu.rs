@@ -10,7 +10,7 @@ use renderer_common::fps::FpsCounter;
 use renderer_cpu::CpuRenderer;
 use skia_safe::{AlphaType, ColorType};
 use slint::platform::Key;
-use slint::{ComponentHandle, Image, SharedPixelBuffer, SharedString};
+use slint::{ComponentHandle, Image, PhysicalSize, SharedPixelBuffer, SharedString};
 use std::sync::{Arc, RwLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
@@ -26,8 +26,24 @@ pub fn prepare() {
 }
 
 pub fn launch_internal(ui: &ShashlikUI) {
-    let width = CpuRenderer::WIDTH;
-    let height = CpuRenderer::HEIGHT;
+    let mut screen_size = ui.window().size();
+    println!("cpu screen size: {:?}", screen_size);
+    if screen_size.width == 0 || screen_size.height == 0 {
+        println!("set to default: 1024x600");
+        screen_size = PhysicalSize::new(1024, 600);
+    }
+    ui.set_screen_width(screen_size.width as i32);
+    ui.set_screen_height(screen_size.height as i32);
+
+    let texture_width = ui.get_requested_texture_width();
+    let texture_height = ui.get_requested_texture_height();
+    println!(
+        "texture width: {} and height: {}",
+        texture_width, texture_height
+    );
+
+    let width = texture_width as u32;
+    let height = texture_height as u32;
 
     let tiles_provider = DefaultTilesProvider::new(
         Box::new(MvtTileStore::new()),
@@ -36,13 +52,13 @@ pub fn launch_internal(ui: &ShashlikUI) {
     );
 
     let mut shashlik_map = pollster::block_on({
-        let renderer = CpuRenderer::new();
+        let renderer = CpuRenderer::new(width, height);
         ShashlikMap::new(renderer, tiles_provider)
     })
     .unwrap();
     shashlik_map.set_camera_follow_mode(false);
     shashlik_map.set_current_pitch(90.0);
-    shashlik_map.resize(CpuRenderer::WIDTH, CpuRenderer::HEIGHT);
+    shashlik_map.resize(width, height);
 
     let ui_weak = ui.as_weak();
 
@@ -89,19 +105,13 @@ pub fn launch_internal(ui: &ShashlikUI) {
                     Interaction::ZoomIn => {
                         shashlik_map.zoom_delta(
                             1.0 + ZOOM_SPEED,
-                            (
-                                (CpuRenderer::WIDTH as f32) * 0.5,
-                                (CpuRenderer::HEIGHT as f32) * 0.5,
-                            ),
+                            ((width as f32) * 0.5, (height as f32) * 0.5),
                         );
                     }
                     Interaction::ZoomOut => {
                         shashlik_map.zoom_delta(
                             1.0 - ZOOM_SPEED,
-                            (
-                                (CpuRenderer::WIDTH as f32) * 0.5,
-                                (CpuRenderer::HEIGHT as f32) * 0.5,
-                            ),
+                            ((width as f32) * 0.5, (height as f32) * 0.5),
                         );
                     }
                     Interaction::Left => {
@@ -120,7 +130,8 @@ pub fn launch_internal(ui: &ShashlikUI) {
                 }
             }
 
-            let mut pixel_buffer = SharedPixelBuffer::<slint::Rgba8Pixel>::new(width, height);
+            let mut pixel_buffer =
+                SharedPixelBuffer::<slint::Rgba8Pixel>::new(width as u32, height as u32);
             let raw_bytes = pixel_buffer.make_mut_bytes();
             let row_bytes = (width * 4) as usize;
             let image_info = skia_safe::ImageInfo::new(
