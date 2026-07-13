@@ -40,8 +40,12 @@ const ZOOM_SPEED: f32 = 0.02;
 const PAN_SPEED: f32 = 10.0;
 
 fn main() {
-    // texture width: 780 and height: 568
     env_logger::init();
+
+    #[cfg(target_os = "linux")]
+    unsafe {
+        std::env::set_var("SLINT_BACKEND", "linuxkms");
+    }
 
     prepare();
 

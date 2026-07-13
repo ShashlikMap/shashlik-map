@@ -76,6 +76,7 @@ pub fn launch_internal(ui: &ShashlikUI, render_timer: &Timer) {
         *interaction = Interaction::None;
     });
 
+    let mut pixel_buffer = SharedPixelBuffer::<slint::Rgba8Pixel>::new(width, height);
     let mut fps_counter: FpsCounter<100> = FpsCounter::new();
     render_timer.start(
         slint::TimerMode::Repeated,
@@ -120,10 +121,6 @@ pub fn launch_internal(ui: &ShashlikUI, render_timer: &Timer) {
                 }
             }
 
-            window.set_fps_text(format!("FPS: {:.1}", fps_counter.update()).into());
-
-            let mut pixel_buffer = SharedPixelBuffer::<slint::Rgba8Pixel>::new(width, height);
-
             let raw_bytes = pixel_buffer.make_mut_bytes();
             let row_bytes = (width * 4) as usize;
             let image_info = skia_safe::ImageInfo::new(
@@ -140,10 +137,12 @@ pub fn launch_internal(ui: &ShashlikUI, render_timer: &Timer) {
                 shashlik_map.update_and_render(canvas);
             }
 
-            // TODO Figure out if it should be from_rgba8_premultiplied
-            let image = Image::from_rgba8(pixel_buffer);
+            let image = Image::from_rgba8_premultiplied(pixel_buffer.clone());
             window.set_texture(image);
             window.window().request_redraw();
+
+            window.set_fps_text(format!("FPS: {:.1}", fps_counter.update()).into());
+
         },
     );
 }
