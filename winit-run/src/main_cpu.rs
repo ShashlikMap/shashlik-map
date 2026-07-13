@@ -5,7 +5,7 @@ use map::tiles::mvt::mvt_tile_store::MvtTileStore;
 use renderer_cpu::{CpuRenderer, FpsCounter};
 use skia_safe::{AlphaType, ColorType};
 use slint::platform::Key;
-use slint::{ComponentHandle, Image, SharedPixelBuffer, SharedString};
+use slint::{ComponentHandle, Image, SharedPixelBuffer, SharedString, Timer};
 use std::sync::{Arc, RwLock};
 use crate::ShashlikUI;
 use crate::Interaction;
@@ -18,7 +18,7 @@ pub fn prepare() {
     }
 }
 
-pub fn launch_internal(ui: &ShashlikUI) {
+pub fn launch_internal(ui: &ShashlikUI, render_timer: &Timer) {
     let width = 780;
     let height = 568;
 
@@ -74,8 +74,6 @@ pub fn launch_internal(ui: &ShashlikUI) {
     });
 
     let mut fps_counter: FpsCounter<100> = FpsCounter::new();
-
-    let render_timer = slint::Timer::default();
     render_timer.start(
         slint::TimerMode::Repeated,
         std::time::Duration::from_millis(0),
@@ -83,7 +81,6 @@ pub fn launch_internal(ui: &ShashlikUI) {
             let Some(window) = ui_weak.upgrade() else {
                 return;
             };
-
             if let Ok(interaction) = interaction.try_read() {
                 match *interaction {
                     Interaction::ZoomIn => {

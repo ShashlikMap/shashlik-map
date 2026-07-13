@@ -10,7 +10,7 @@ use renderer_common::{feature_layer_tags, PreviewType, PREVIEW_TYPE, SHADOWS_ENA
 use renderer_gpu::wgpu_canvas::DefaultWgpuCanvas;
 use renderer_gpu::GpuRenderer;
 use slint::wgpu_29::{WGPUConfiguration, WGPUSettings};
-use slint::{ComponentHandle, GraphicsAPI, PhysicalSize, RenderingState};
+use slint::{ComponentHandle, GraphicsAPI, PhysicalSize, RenderingState, Timer};
 use std::cmp::max;
 use std::str::FromStr;
 use std::sync::mpsc;
@@ -31,7 +31,7 @@ pub fn prepare() {
         .expect("Unable to create Slint backend with WGPU based renderer-gpu");
 }
 
-pub fn launch_internal(ui: &ShashlikUI) {
+pub fn launch_internal(ui: &ShashlikUI, _render_timer: &Timer) {
     let (slint_map_event_sender, slint_map_event_receiver) = mpsc::channel();
 
     let mut screen_size = ui.window().size();
