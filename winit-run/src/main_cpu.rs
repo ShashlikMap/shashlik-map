@@ -22,8 +22,8 @@ pub fn prepare() {
 }
 
 pub fn launch_internal(ui: &ShashlikUI, render_timer: &Timer) {
-    let width = 780;
-    let height = 568;
+    let width = CpuRenderer::WIDTH;
+    let height = CpuRenderer::HEIGHT;
 
     let tiles_provider = DefaultTilesProvider::new(
         Box::new(MvtTileStore::new()),
