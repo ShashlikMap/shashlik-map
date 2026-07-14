@@ -9,6 +9,7 @@ import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -103,6 +104,8 @@ suspend fun PointerInputScope.detectTwoFingersScrollZoom(
     }
 }
 
+private const val EXTENDED_CONTROLS = false
+
 @Composable
 @Preview
 fun App() {
@@ -150,7 +153,7 @@ fun App() {
                     }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Column {
+                Column(verticalArrangement = Arrangement.Center) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         var checkedState by remember { mutableStateOf(true) }
                         Checkbox(
@@ -168,23 +171,27 @@ fun App() {
                             })
                         Text("MVT")
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        var ssaoCheckedState by remember { mutableStateOf(false) }
-                        Checkbox(
-                            ssaoCheckedState, onCheckedChange = {
-                                ShashlikMapApiHolder.shashlikMapApi?.setSsaoMode(it)
-                                ssaoCheckedState = it
-                            })
-                        Text("SSAO")
+                    if(EXTENDED_CONTROLS) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            var ssaoCheckedState by remember { mutableStateOf(false) }
+                            Checkbox(
+                                ssaoCheckedState, onCheckedChange = {
+                                    ShashlikMapApiHolder.shashlikMapApi?.setSsaoMode(it)
+                                    ssaoCheckedState = it
+                                })
+                            Text("SSAO")
 
-                        var previewCheckedState by remember { mutableStateOf(false) }
-                        Checkbox(
-                            previewCheckedState, onCheckedChange = {
-                                ShashlikMapApiHolder.shashlikMapApi?.setPreviewEnabled(it)
-                                previewCheckedState = it
-                            })
-                        Text("Preview")
+                            var previewCheckedState by remember { mutableStateOf(false) }
+                            Checkbox(
+                                previewCheckedState, onCheckedChange = {
+                                    ShashlikMapApiHolder.shashlikMapApi?.setPreviewEnabled(it)
+                                    previewCheckedState = it
+                                })
+                            Text("Preview")
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.height(32.dp))
                     }
                 }
 

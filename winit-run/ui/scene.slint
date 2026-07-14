@@ -46,6 +46,7 @@ export component ShashlikUI inherits Window {
     out property <Scale> current-scale;
     out property <PanState> current-pan-state;
     in-out property <string> fps_text: "";
+    private property <bool> extended_controls: false;
     property <bool> pressed: false;
     callback vert_scroll(float);
     callback follow_mode(bool);
@@ -147,38 +148,40 @@ export component ShashlikUI inherits Window {
                 }
             }
 
-            Button {
-                text: "Open KML";
-                height: 48px;
-                clicked => {
-                    btn_click(Action.KML, cost.current-index)
+            if extended_controls : VerticalLayout {
+                Button {
+                    text: "Open KML";
+                    height: 48px;
+                    clicked => {
+                        btn_click(Action.KML, cost.current-index)
+                    }
                 }
-            }
 
-            CheckBox {
-                text: "SSAO";
-                height: 24px;
-                checked: false;
-                toggled => {
-                    feature_enabled(Feature.SSAO, self.checked)
+                CheckBox {
+                    text: "SSAO";
+                    height: 24px;
+                    checked: false;
+                    toggled => {
+                        feature_enabled(Feature.SSAO, self.checked)
+                    }
                 }
-            }
 
-            CheckBox {
-                text: "Shadows";
-                height: 24px;
-                checked: true;
-                toggled => {
-                    feature_enabled(Feature.Shadows, self.checked)
+                CheckBox {
+                    text: "Shadows";
+                    height: 24px;
+                    checked: true;
+                    toggled => {
+                        feature_enabled(Feature.Shadows, self.checked)
+                    }
                 }
-            }
 
-            preview_types := ComboBox {
-                height: 48px;
-                model: preview_type_items;
-                current-index: 0;
-                selected(value) => {
-                    preview_type(value)
+                preview_types := ComboBox {
+                    height: 48px;
+                    model: preview_type_items;
+                    current-index: 0;
+                    selected(value) => {
+                        preview_type(value)
+                    }
                 }
             }
         }
