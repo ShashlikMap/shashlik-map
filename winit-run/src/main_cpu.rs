@@ -1,7 +1,4 @@
-use crate::Interaction;
 use crate::ShashlikUI;
-use crate::PAN_SPEED;
-use crate::ZOOM_SPEED;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::tiles::mvt::mvt_tile_store::MvtTileStore;
@@ -15,6 +12,19 @@ use std::sync::{Arc, RwLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 
+enum Interaction {
+    ZoomIn,
+    ZoomOut,
+    Left,
+    Right,
+    Up,
+    Down,
+    None,
+}
+
+const ZOOM_SPEED: f32 = 0.02;
+const PAN_SPEED: f32 = 10.0;
+
 pub fn prepare() {
     unsafe {
         std::env::set_var("SLINT_NO_ACCELERATION", "1");
@@ -27,11 +37,9 @@ pub fn prepare() {
 
 pub fn launch_internal(ui: &ShashlikUI) {
     let mut screen_size = ui.window().size();
-    println!("cpu screen size: {:?}", screen_size);
-    if screen_size.width == 0 || screen_size.height == 0 {
-        println!("set to default: 1024x600");
-        screen_size = PhysicalSize::new(1024, 600);
-    }
+    println!("cpu actual screen size: {:?}", screen_size);
+    // fyi, better use a small screen for CPU only renderer
+    screen_size = PhysicalSize::new(800, 480);
     ui.set_screen_width(screen_size.width as i32);
     ui.set_screen_height(screen_size.height as i32);
 
