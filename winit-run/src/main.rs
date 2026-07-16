@@ -10,11 +10,11 @@ use crate::main_cpu::launch_internal;
 #[cfg(feature = "linux-cpu")]
 use crate::main_cpu::prepare;
 
-#[cfg(any(feature = "linux-gpu", target_os = "macos"))]
+#[cfg(any(feature = "linux-gpu"))]
 mod main_gpu;
-#[cfg(any(feature = "linux-gpu", target_os = "macos"))]
+#[cfg(any(feature = "linux-gpu"))]
 use crate::main_gpu::launch_internal;
-#[cfg(any(feature = "linux-gpu", target_os = "macos"))]
+#[cfg(any(feature = "linux-gpu"))]
 use crate::main_gpu::prepare;
 
 slint::include_modules!();
@@ -26,26 +26,16 @@ enum SlintMapEvent {
     BtnAction(Action, i32),
 }
 
-enum Interaction {
-    ZoomIn,
-    ZoomOut,
-    Left,
-    Right,
-    Up,
-    Down,
-    None,
-}
-
-const ZOOM_SPEED: f32 = 0.02;
-const PAN_SPEED: f32 = 10.0;
-
 fn main() {
     env_logger::init();
+
+    unsafe {
+        std::env::set_var("SLINT_DEBUG_PERFORMANCE", "refresh_full_speed,overlay");
+    }
 
     #[cfg(target_os = "linux")]
     unsafe {
         std::env::set_var("SLINT_BACKEND", "linuxkms");
-        std::env::set_var("SLINT_DEBUG_PERFORMANCE", "refresh_full_speed,overlay");
     }
 
     prepare();
