@@ -40,3 +40,5 @@ dbs/*.db
 *.kml
 
 .env
+
+styles_v0.json

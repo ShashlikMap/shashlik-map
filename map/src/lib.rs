@@ -476,11 +476,11 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
     fn load_styles(renderer_api: Arc<R::RAPI>) {
         spawn(move || {
-            let mut styles = StyleLoader::load();
+            let mut styles = StyleLoader::load(false);
             if styles.is_empty() {
                 error!("No styles loaded! Trying again!");
                 sleep(Duration::from_millis(1000));
-                styles = StyleLoader::load();
+                styles = StyleLoader::load(false);
             }
             styles.into_iter().for_each(|style| {
                 let style_id = StyleId::new(style.id);
