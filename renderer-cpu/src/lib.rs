@@ -133,6 +133,20 @@ impl CpuRenderer {
     }
 }
 
+macro_rules! min_f64 {
+    ($x:expr) => ($x);
+    ($x:expr, $($y:expr),+) => {
+        ($x).min(min_f64!($($y),+))
+    };
+}
+
+macro_rules! max_f64 {
+    ($x:expr) => ($x);
+    ($x:expr, $($y:expr),+) => {
+        ($x).max(max_f64!($($y),+))
+    };
+}
+
 impl CpuRenderer {
 
     const BLACK_FALLBACK: Color4f = Color4f::new(0.0, 0.0, 0.0, 1.0);
@@ -191,23 +205,37 @@ impl CpuRenderer {
                     }
                     GeometryType::Polygon => {}
                 }
-                // TODO There might be an issue with rotation, check all corners?
-                let projected_min = project_point(DVec3::new(
+
+                let aabb_projected1 = project_point(DVec3::new(
                     aabb.min.x as f64,
                     aabb.min.y as f64,
                     0.0,
                 ));
-                let projected_max = project_point(DVec3::new(
+                let aabb_projected2 = project_point(DVec3::new(
+                    aabb.max.x as f64,
+                    aabb.min.y as f64,
+                    0.0,
+                ));
+                let aabb_projected3 = project_point(DVec3::new(
+                    aabb.min.x as f64,
+                    aabb.max.y as f64,
+                    0.0,
+                ));
+                let aabb_projected4 = project_point(DVec3::new(
                     aabb.max.x as f64,
                     aabb.max.y as f64,
                     0.0,
                 ));
+                let aabb_min_x = min_f64!(aabb_projected1.x, aabb_projected2.x, aabb_projected3.x, aabb_projected4.x);
+                let aabb_max_x = max_f64!(aabb_projected1.x, aabb_projected2.x, aabb_projected3.x, aabb_projected4.x);
+                let aabb_min_y = min_f64!(aabb_projected1.y, aabb_projected2.y, aabb_projected3.y, aabb_projected4.y);
+                let aabb_max_y = max_f64!(aabb_projected1.y, aabb_projected2.y, aabb_projected3.y, aabb_projected4.y);
 
                 let cond = Box2D::new(
-                    point(projected_min.x as f32, projected_min.y as f32),
-                    point(projected_max.x as f32, projected_max.y as f32),
+                    point(aabb_min_x as f32, aabb_min_y as f32),
+                    point(aabb_max_x as f32, aabb_max_y as f32),
                 )
-                .intersects(screen_aabb);
+                    .intersects(screen_aabb);
                 if !cond {
                     continue;
                 }
