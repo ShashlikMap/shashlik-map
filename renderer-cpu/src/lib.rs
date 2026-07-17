@@ -23,6 +23,7 @@ use std::sync::{mpsc, Arc};
 pub enum RendererApiMsg {
     RenderGroup(String, SpatialData, Box<dyn RenderGroup<CpuCanvasApi>>),
     UpdateStyle(StyleId, Box<dyn FnOnce(&mut RenderStyle) + Send>),
+    UpdateSpatialData(String, Box<dyn FnOnce(&mut SpatialData) + Send>),
     ClearGroups(HashSet<String>),
 }
 
@@ -38,6 +39,7 @@ pub struct CpuRenderer {
     view_proj_matrix: DMat4,
     ground_style: StyleId,
     styles_map: FxHashMap<StyleId, Color4f>,
+    spatial_map: FxHashMap<String, SpatialData>,
     norm_length: f64,
     screen_aabb: Box2D,
 }
@@ -100,9 +102,12 @@ impl RendererApi for CpuRendererApi {
 
     fn update_spatial_data<F: FnOnce(&mut SpatialData) + Send + 'static>(
         &self,
-        _key: String,
-        _updater: F,
+        key: String,
+        updater: F,
     ) {
+        self.sender
+            .send(RendererApiMsg::UpdateSpatialData(key, Box::new(updater)))
+            .unwrap();
     }
 }
 
@@ -121,6 +126,7 @@ impl CpuRenderer {
             view_proj_matrix: Default::default(),
             ground_style: StyleId::new("ground"),
             styles_map: Default::default(),
+            spatial_map: Default::default(),
             norm_length: 0.0,
             screen_aabb: Box2D::new(point(-1.0, -1.0), point(1.0, 1.0)),
         }
@@ -153,10 +159,25 @@ impl CpuRenderer {
         view_proj_matrix: &DMat4,
         screen_aabb: &Box2D,
         styles_map: &FxHashMap<StyleId, Color4f>,
+        spatial_map: &FxHashMap<String, SpatialData>,
     ) {
-        shapes.iter().for_each(|(_, spat_data, shapes_data)| {
-            let spatial_offset = (spat_data.transform - cs_offset).truncate();
+        shapes.iter().for_each(|(key, spat_data, shapes_data)| {
 
+            let external_spat_data = spatial_map.get(key);
+
+            let project_point = |point| {
+                let modified = if let Some(external_spat_data) = external_spat_data {
+                    let scale_rot = external_spat_data.scale_rot_matrix();
+                    scale_rot.project_point3(point) + external_spat_data.transform
+                } else {
+                    point
+                };
+                view_proj_matrix
+                    .project_point3(modified + spat_data.transform - cs_offset)
+                    .truncate()
+            };
+
+            let spatial_offset = (spat_data.transform - cs_offset).truncate();
             for (aabb, shape_data) in shapes_data {
                 let mut pb = PathBuilder::new();
                 let mut is_line = false;
@@ -172,20 +193,16 @@ impl CpuRenderer {
                     GeometryType::Polygon => {}
                 }
                 // TODO There might be an issue with rotation, check all corners?
-                let projected_min = view_proj_matrix
-                    .project_point3(DVec3::new(
-                        aabb.min.x as f64 + spatial_offset.x,
-                        aabb.min.y as f64 + spatial_offset.y,
-                        0.0,
-                    ))
-                    .truncate();
-                let projected_max = view_proj_matrix
-                    .project_point3(DVec3::new(
-                        aabb.max.x as f64 + spatial_offset.x,
-                        aabb.max.y as f64 + spatial_offset.y,
-                        0.0,
-                    ))
-                    .truncate();
+                let projected_min = project_point(DVec3::new(
+                    aabb.min.x as f64 + spatial_offset.x,
+                    aabb.min.y as f64 + spatial_offset.y,
+                    0.0,
+                ));
+                let projected_max = project_point(DVec3::new(
+                    aabb.max.x as f64 + spatial_offset.x,
+                    aabb.max.y as f64 + spatial_offset.y,
+                    0.0,
+                ));
 
                 let cond = Box2D::new(
                     point(projected_min.x as f32, projected_min.y as f32),
@@ -197,26 +214,22 @@ impl CpuRenderer {
                 }
                 shape_data.path.iter().for_each(|path| match path {
                     PathEvent::Begin { at } => {
-                        let projected = view_proj_matrix
-                            .project_point3(DVec3::new(
-                                at.x as f64 + spatial_offset.x,
-                                at.y as f64 + spatial_offset.y,
+                        let projected = project_point(DVec3::new(
+                                at.x as f64,
+                                at.y as f64,
                                 0.0,
-                            ))
-                            .truncate();
+                            ));
                         pb.move_to((
                             0.5 * (1.0 + projected.x as f32) * size.0 as f32,
                             0.5 * (1.0 + projected.y as f32) * size.1 as f32,
                         ));
                     }
                     PathEvent::Line { from: _, to } => {
-                        let projected = view_proj_matrix
-                            .project_point3(DVec3::new(
-                                to.x as f64 + spatial_offset.x,
-                                to.y as f64 + spatial_offset.y,
+                        let projected = project_point(DVec3::new(
+                                to.x as f64,
+                                to.y as f64,
                                 0.0,
-                            ))
-                            .truncate();
+                            ));
                         pb.line_to((
                             0.5 * (1.0 + projected.x as f32) * size.0 as f32,
                             0.5 * (1.0 + projected.y as f32) * size.1 as f32,
@@ -290,7 +303,8 @@ impl Renderer for CpuRenderer {
                         .collect();
                     let background_shapes = shapes
                         .extract_if(.., |(_, shape_data)| {
-                            matches!(shape_data.geometry_type, GeometryType::Polygon)
+                            // TODO another layer..
+                            matches!(shape_data.geometry_type, GeometryType::Polygon) && key != "puck"
                         })
                         .collect();
                     let foreground_shapes = shapes;
@@ -316,6 +330,12 @@ impl Renderer for CpuRenderer {
                                                   fill_color[2],
                                                   fill_color[3]);
                     self.styles_map.insert(style_id, fill_color);
+                },
+                RendererApiMsg::UpdateSpatialData(key, updater) => {
+                    let spatial_data = self.spatial_map.entry(key).or_insert_with(|| {
+                        SpatialData::new()
+                    });
+                    updater(spatial_data);
                 }
             }
         }
@@ -331,6 +351,7 @@ impl Renderer for CpuRenderer {
                 &self.view_proj_matrix,
                 &self.screen_aabb,
                 &self.styles_map,
+                &self.spatial_map
             );
         };
 
