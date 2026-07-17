@@ -177,7 +177,6 @@ impl CpuRenderer {
                     .truncate()
             };
 
-            let spatial_offset = (spat_data.transform - cs_offset).truncate();
             for (aabb, shape_data) in shapes_data {
                 let mut pb = PathBuilder::new();
                 let mut is_line = false;
@@ -194,13 +193,13 @@ impl CpuRenderer {
                 }
                 // TODO There might be an issue with rotation, check all corners?
                 let projected_min = project_point(DVec3::new(
-                    aabb.min.x as f64 + spatial_offset.x,
-                    aabb.min.y as f64 + spatial_offset.y,
+                    aabb.min.x as f64,
+                    aabb.min.y as f64,
                     0.0,
                 ));
                 let projected_max = project_point(DVec3::new(
-                    aabb.max.x as f64 + spatial_offset.x,
-                    aabb.max.y as f64 + spatial_offset.y,
+                    aabb.max.x as f64,
+                    aabb.max.y as f64,
                     0.0,
                 ));
 
