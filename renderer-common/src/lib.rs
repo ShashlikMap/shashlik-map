@@ -16,6 +16,7 @@ pub mod render_modifier;
 pub mod render_style;
 pub mod style_id;
 pub mod fps;
+pub mod r_api_messenger;
 
 /// should be the same as mesh_shader.wgsl
 pub static LIGHT_POS: DVec3 = dvec3(0.84, 1.12, 1.42);

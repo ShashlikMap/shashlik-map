@@ -1,41 +1,32 @@
-use geo_types::{coord, Coord};
+use geo_types::{Coord, coord};
 use glam::{DMat4, DVec2, DVec3};
+use indexmap::IndexMap;
 use lyon_algorithms::aabb::bounding_box;
+use lyon_path::PathEvent;
 use lyon_path::geom::point;
 use lyon_path::math::Box2D;
-use lyon_path::PathEvent;
 pub use renderer_common::fps::FpsCounter;
 use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData};
-use renderer_common::render_group::RenderGroup;
+use renderer_common::r_api_messenger::{CommonRendererApi2, RendererApiMsg2};
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
-use renderer_common::{CanvasApi, Renderer, RendererApi, RendererUpdateData};
+use renderer_common::{CanvasApi, Renderer, RendererUpdateData};
 use rustc_hash::FxHashMap;
 use skia_safe::{Canvas, Color4f, Paint, PaintStyle, PathBuilder, PictureRecorder, Rect};
-use std::collections::HashSet;
 use std::mem;
-use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{mpsc, Arc};
-use indexmap::IndexMap;
+use std::sync::mpsc::Receiver;
+use std::sync::{Arc, mpsc};
 
 /// This is the very beginning of CPU renderer-gpu.
-
-pub enum RendererApiMsg {
-    RenderGroup(String, SpatialData, Box<dyn RenderGroup<CpuCanvasApi>>),
-    UpdateStyle(StyleId, Box<dyn FnOnce(&mut RenderStyle) + Send>),
-    UpdateSpatialData(String, Box<dyn FnOnce(&mut SpatialData) + Send>),
-    ClearGroups(HashSet<String>),
-}
-
 pub struct CpuRenderer {
     size: (u32, u32),
     canvas_api: CpuCanvasApi,
     shapes_background: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
     shapes_foreground: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
     shapes_features: IndexMap<String, Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>>,
-    receiver: Receiver<RendererApiMsg>,
-    cpu_renderer_api: Arc<CpuRendererApi>,
+    receiver: Receiver<RendererApiMsg2<CpuCanvasApi>>,
+    cpu_renderer_api: Arc<CommonRendererApi2<CpuCanvasApi>>,
     cs_offset: DVec3,
     inv_view_proj_matrix: DMat4,
     view_proj_matrix: DMat4,
@@ -46,15 +37,11 @@ pub struct CpuRenderer {
     screen_aabb: Box2D,
 }
 
-pub struct CpuRendererApi {
-    pub sender: Sender<RendererApiMsg>,
-}
-
 #[derive(Default)]
 pub struct CpuCanvasApi {
     shapes: Vec<ShapeData>,
     feature_shapes: IndexMap<String, Vec<ShapeData>>,
-    current_tag: Option<String>
+    current_tag: Option<String>,
 }
 
 impl CpuCanvasApi {
@@ -87,45 +74,6 @@ impl CanvasApi for CpuCanvasApi {
     }
 }
 
-impl RendererApi for CpuRendererApi {
-    type CANVAS = CpuCanvasApi;
-
-    fn add_render_group(
-        &self,
-        key: String,
-        spatial_data: SpatialData,
-        group: Box<dyn RenderGroup<Self::CANVAS>>,
-    ) {
-        self.sender
-            .send(RendererApiMsg::RenderGroup(key, spatial_data, group))
-            .unwrap();
-    }
-
-    fn clear_render_groups(&self, keys: HashSet<String>) {
-        self.sender.send(RendererApiMsg::ClearGroups(keys)).unwrap();
-    }
-
-    fn update_style<F: FnOnce(&mut RenderStyle) + Send + 'static>(
-        &self,
-        style_id: StyleId,
-        updater: F,
-    ) {
-        self.sender
-            .send(RendererApiMsg::UpdateStyle(style_id, Box::new(updater)))
-            .unwrap();
-    }
-
-    fn update_spatial_data<F: FnOnce(&mut SpatialData) + Send + 'static>(
-        &self,
-        key: String,
-        updater: F,
-    ) {
-        self.sender
-            .send(RendererApiMsg::UpdateSpatialData(key, Box::new(updater)))
-            .unwrap();
-    }
-}
-
 impl CpuRenderer {
     pub fn new(width: u32, height: u32) -> Self {
         let (sender, receiver) = mpsc::channel();
@@ -136,7 +84,7 @@ impl CpuRenderer {
             shapes_foreground: vec![],
             shapes_features: Default::default(),
             receiver,
-            cpu_renderer_api: Arc::new(CpuRendererApi { sender }),
+            cpu_renderer_api: Arc::new(CommonRendererApi2::new(sender)),
             cs_offset: Default::default(),
             inv_view_proj_matrix: Default::default(),
             view_proj_matrix: Default::default(),
@@ -164,7 +112,6 @@ macro_rules! max_f64 {
 }
 
 impl CpuRenderer {
-
     const BLACK_FALLBACK: Color4f = Color4f::new(0.0, 0.0, 0.0, 1.0);
     const HAIRLINE_THRESHOLD: f32 = 1.0;
     #[inline]
@@ -192,7 +139,6 @@ impl CpuRenderer {
         spatial_map: &FxHashMap<String, SpatialData>,
     ) {
         shapes.iter().for_each(|(key, spat_data, shapes_data)| {
-
             let external_spat_data = spatial_map.get(key);
 
             let project_point = |point| {
@@ -222,57 +168,57 @@ impl CpuRenderer {
                     GeometryType::Polygon => {}
                 }
 
-                let aabb_projected1 = project_point(DVec3::new(
-                    aabb.min.x as f64,
-                    aabb.min.y as f64,
-                    0.0,
-                ));
-                let aabb_projected2 = project_point(DVec3::new(
-                    aabb.max.x as f64,
-                    aabb.min.y as f64,
-                    0.0,
-                ));
-                let aabb_projected3 = project_point(DVec3::new(
-                    aabb.min.x as f64,
-                    aabb.max.y as f64,
-                    0.0,
-                ));
-                let aabb_projected4 = project_point(DVec3::new(
-                    aabb.max.x as f64,
-                    aabb.max.y as f64,
-                    0.0,
-                ));
-                let aabb_min_x = min_f64!(aabb_projected1.x, aabb_projected2.x, aabb_projected3.x, aabb_projected4.x);
-                let aabb_max_x = max_f64!(aabb_projected1.x, aabb_projected2.x, aabb_projected3.x, aabb_projected4.x);
-                let aabb_min_y = min_f64!(aabb_projected1.y, aabb_projected2.y, aabb_projected3.y, aabb_projected4.y);
-                let aabb_max_y = max_f64!(aabb_projected1.y, aabb_projected2.y, aabb_projected3.y, aabb_projected4.y);
+                let aabb_projected1 =
+                    project_point(DVec3::new(aabb.min.x as f64, aabb.min.y as f64, 0.0));
+                let aabb_projected2 =
+                    project_point(DVec3::new(aabb.max.x as f64, aabb.min.y as f64, 0.0));
+                let aabb_projected3 =
+                    project_point(DVec3::new(aabb.min.x as f64, aabb.max.y as f64, 0.0));
+                let aabb_projected4 =
+                    project_point(DVec3::new(aabb.max.x as f64, aabb.max.y as f64, 0.0));
+                let aabb_min_x = min_f64!(
+                    aabb_projected1.x,
+                    aabb_projected2.x,
+                    aabb_projected3.x,
+                    aabb_projected4.x
+                );
+                let aabb_max_x = max_f64!(
+                    aabb_projected1.x,
+                    aabb_projected2.x,
+                    aabb_projected3.x,
+                    aabb_projected4.x
+                );
+                let aabb_min_y = min_f64!(
+                    aabb_projected1.y,
+                    aabb_projected2.y,
+                    aabb_projected3.y,
+                    aabb_projected4.y
+                );
+                let aabb_max_y = max_f64!(
+                    aabb_projected1.y,
+                    aabb_projected2.y,
+                    aabb_projected3.y,
+                    aabb_projected4.y
+                );
 
                 let cond = Box2D::new(
                     point(aabb_min_x as f32, aabb_min_y as f32),
                     point(aabb_max_x as f32, aabb_max_y as f32),
                 )
-                    .intersects(screen_aabb);
+                .intersects(screen_aabb);
                 if !cond {
                     continue;
                 }
                 shape_data.path.iter().for_each(|path| match path {
                     PathEvent::Begin { at } => {
-                        let projected = project_point(DVec3::new(
-                                at.x as f64,
-                                at.y as f64,
-                                0.0,
-                            ));
+                        let projected = project_point(DVec3::new(at.x as f64, at.y as f64, 0.0));
                         pb.move_to((
                             0.5 * (1.0 + projected.x as f32) * size.0 as f32,
                             0.5 * (1.0 + projected.y as f32) * size.1 as f32,
                         ));
                     }
                     PathEvent::Line { from: _, to } => {
-                        let projected = project_point(DVec3::new(
-                                to.x as f64,
-                                to.y as f64,
-                                0.0,
-                            ));
+                        let projected = project_point(DVec3::new(to.x as f64, to.y as f64, 0.0));
                         pb.line_to((
                             0.5 * (1.0 + projected.x as f32) * size.0 as f32,
                             0.5 * (1.0 + projected.y as f32) * size.1 as f32,
@@ -307,7 +253,7 @@ impl CpuRenderer {
 }
 
 impl Renderer for CpuRenderer {
-    type RAPI = CpuRendererApi;
+    type RAPI = CommonRendererApi2<CpuCanvasApi>;
     type OUTPUT = ();
     type INPUT<'a> = &'a Canvas;
 
@@ -330,10 +276,10 @@ impl Renderer for CpuRenderer {
             .map(|coord| coord + self.cs_offset.truncate())
     }
 
-    fn render(&mut self, input: Self::INPUT<'_>) -> Option<Self::OUTPUT>{
+    fn render(&mut self, input: Self::INPUT<'_>) -> Option<Self::OUTPUT> {
         while let Ok(msg) = self.receiver.try_recv() {
             match msg {
-                RendererApiMsg::RenderGroup(key, spat_data, mut group) => {
+                RendererApiMsg2::RenderGroup(key, spat_data, mut group) => {
                     group.content(&mut self.canvas_api);
                     let mut shapes: Vec<_> = self
                         .canvas_api
@@ -350,7 +296,8 @@ impl Renderer for CpuRenderer {
                         .take_feature_shapes()
                         .into_iter()
                         .map(|item| {
-                            let shapes_with_bbox: Vec<_> = item.1
+                            let shapes_with_bbox: Vec<_> = item
+                                .1
                                 .into_iter()
                                 .map(|shape_data| {
                                     let path_aabb = bounding_box(shape_data.path.iter());
@@ -372,14 +319,21 @@ impl Renderer for CpuRenderer {
                         spat_data.clone(),
                         background_shapes,
                     ));
-                    self.shapes_foreground
-                        .push((key.clone(), spat_data.clone(), foreground_shapes));
+                    self.shapes_foreground.push((
+                        key.clone(),
+                        spat_data.clone(),
+                        foreground_shapes,
+                    ));
 
                     shapes_features.into_iter().for_each(|(tag_key, data)| {
-                        self.shapes_features.entry(tag_key).or_default().push((key.clone(), spat_data.clone(), data));
+                        self.shapes_features.entry(tag_key).or_default().push((
+                            key.clone(),
+                            spat_data.clone(),
+                            data,
+                        ));
                     });
                 }
-                RendererApiMsg::ClearGroups(keys) => {
+                RendererApiMsg2::ClearGroups(keys) => {
                     self.shapes_background.retain(|s| !keys.contains(&s.0));
                     self.shapes_foreground.retain(|s| !keys.contains(&s.0));
                     // TODO reset spatial_map too?
@@ -387,18 +341,16 @@ impl Renderer for CpuRenderer {
                         list.retain(|s| !keys.contains(&s.0));
                     });
                 }
-                RendererApiMsg::UpdateStyle(style_id, updater) => {
+                RendererApiMsg2::UpdateStyle(style_id, updater) => {
                     let mut style = RenderStyle::default();
                     updater(&mut style);
                     let fill_color = style.get_fill_color();
 
-                    let fill_color = Color4f::new(fill_color[0],
-                                                  fill_color[1],
-                                                  fill_color[2],
-                                                  fill_color[3]);
+                    let fill_color =
+                        Color4f::new(fill_color[0], fill_color[1], fill_color[2], fill_color[3]);
                     self.styles_map.insert(style_id, fill_color);
-                },
-                RendererApiMsg::UpdateSpatialData(key, updater) => {
+                }
+                RendererApiMsg2::UpdateSpatialData(key, updater) => {
                     let spatial_data = self.spatial_map.entry(key).or_insert(SpatialData::new());
                     updater(spatial_data);
                 }
@@ -416,14 +368,15 @@ impl Renderer for CpuRenderer {
                 &self.view_proj_matrix,
                 &self.screen_aabb,
                 &self.styles_map,
-                &self.spatial_map
+                &self.spatial_map,
             );
         };
 
         let (pb, pa) = rayon::join(
             || {
                 let mut recorder = PictureRecorder::new();
-                let canvas_back = recorder.begin_recording(Rect::from_wh(self.size.0 as f32, self.size.1 as f32), false);
+                let canvas_back = recorder
+                    .begin_recording(Rect::from_wh(self.size.0 as f32, self.size.1 as f32), false);
                 let ground_color = self
                     .styles_map
                     .get(&self.ground_style)
@@ -434,7 +387,8 @@ impl Renderer for CpuRenderer {
             },
             || {
                 let mut recorder = PictureRecorder::new();
-                let canvas_front = recorder.begin_recording(Rect::from_wh(self.size.0 as f32, self.size.1 as f32), false);
+                let canvas_front = recorder
+                    .begin_recording(Rect::from_wh(self.size.0 as f32, self.size.1 as f32), false);
                 processor(&self.shapes_foreground, canvas_front);
                 self.shapes_features.values().for_each(|list| {
                     processor(list, canvas_front);
@@ -449,7 +403,7 @@ impl Renderer for CpuRenderer {
         None
     }
 
-    fn api(&self) -> Arc<CpuRendererApi> {
+    fn api(&self) -> Arc<CommonRendererApi2<CpuCanvasApi>> {
         self.cpu_renderer_api.clone()
     }
 }
