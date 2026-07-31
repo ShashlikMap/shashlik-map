@@ -63,6 +63,7 @@ impl CpuCanvasApi {
     }
 
     pub fn take_feature_shapes(&mut self) -> IndexMap<String, Vec<ShapeData>> {
+        self.current_tag = None;
         mem::take(&mut self.feature_shapes)
     }
 }
@@ -75,7 +76,7 @@ impl CanvasApi for CpuCanvasApi {
     fn geometry_data(&mut self, geometry_data: GeometryData) {
         match geometry_data {
             GeometryData::Shape(data) => {
-                if let Some(tag) = mem::take(&mut self.current_tag) {
+                if let Some(tag) = self.current_tag.clone() {
                     self.feature_shapes.insert(tag, vec![data]);
                 } else {
                     self.shapes.push(data);
@@ -381,6 +382,7 @@ impl Renderer for CpuRenderer {
                 RendererApiMsg::ClearGroups(keys) => {
                     self.shapes_background.retain(|s| !keys.contains(&s.0));
                     self.shapes_foreground.retain(|s| !keys.contains(&s.0));
+                    // TODO reset spatial_map too?
                     self.shapes_features.values_mut().for_each(|list| {
                         list.retain(|s| !keys.contains(&s.0));
                     });
@@ -397,9 +399,7 @@ impl Renderer for CpuRenderer {
                     self.styles_map.insert(style_id, fill_color);
                 },
                 RendererApiMsg::UpdateSpatialData(key, updater) => {
-                    let spatial_data = self.spatial_map.entry(key).or_insert_with(|| {
-                        SpatialData::new()
-                    });
+                    let spatial_data = self.spatial_map.entry(key).or_insert(SpatialData::new());
                     updater(spatial_data);
                 }
             }
