@@ -159,3 +159,17 @@ pub static mut SHADOWS_ENABLED: bool = true;
 pub static mut SHADOWS_TEX_SIZE: (u32, u32) = (2048, 2048);
 pub static mut SSAO_ENABLED: bool = true;
 pub static mut PREVIEW_TYPE: PreviewType = PreviewType::None;
+
+#[macro_export] macro_rules! min_f64 {
+    ($x:expr) => ($x);
+    ($x:expr, $($y:expr),+) => {
+        ($x).min(min_f64!($($y),+))
+    };
+}
+
+#[macro_export] macro_rules! max_f64 {
+    ($x:expr) => ($x);
+    ($x:expr, $($y:expr),+) => {
+        ($x).max(max_f64!($($y),+))
+    };
+}

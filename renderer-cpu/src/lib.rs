@@ -11,7 +11,7 @@ use renderer_common::r_api_messenger::{CommonRendererApi, RendererApiMsg};
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
-use renderer_common::{CanvasApi, Renderer, RendererUpdateData};
+use renderer_common::{min_f64, CanvasApi, Renderer, RendererUpdateData, max_f64};
 use rustc_hash::FxHashMap;
 use skia_safe::{Canvas, Color4f, Paint, PaintStyle, PathBuilder, PictureRecorder, Rect};
 use std::mem;
@@ -95,20 +95,6 @@ impl CpuRenderer {
             screen_aabb: Box2D::new(point(-1.0, -1.0), point(1.0, 1.0)),
         }
     }
-}
-
-macro_rules! min_f64 {
-    ($x:expr) => ($x);
-    ($x:expr, $($y:expr),+) => {
-        ($x).min(min_f64!($($y),+))
-    };
-}
-
-macro_rules! max_f64 {
-    ($x:expr) => ($x);
-    ($x:expr, $($y:expr),+) => {
-        ($x).max(max_f64!($($y),+))
-    };
 }
 
 impl CpuRenderer {
