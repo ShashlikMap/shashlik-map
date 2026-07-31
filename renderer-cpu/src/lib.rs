@@ -17,6 +17,7 @@ use std::collections::HashSet;
 use std::mem;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc};
+use indexmap::IndexMap;
 
 /// This is the very beginning of CPU renderer-gpu.
 
@@ -32,6 +33,7 @@ pub struct CpuRenderer {
     canvas_api: CpuCanvasApi,
     shapes_background: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
     shapes_foreground: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
+    shapes_features: IndexMap<String, Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>>,
     receiver: Receiver<RendererApiMsg>,
     cpu_renderer_api: Arc<CpuRendererApi>,
     cs_offset: DVec3,
@@ -50,22 +52,34 @@ pub struct CpuRendererApi {
 
 #[derive(Default)]
 pub struct CpuCanvasApi {
-    pub shapes: Vec<ShapeData>,
+    shapes: Vec<ShapeData>,
+    feature_shapes: IndexMap<String, Vec<ShapeData>>,
+    current_tag: Option<String>
 }
 
 impl CpuCanvasApi {
     pub fn take_shapes(&mut self) -> Vec<ShapeData> {
         mem::take(&mut self.shapes)
     }
+
+    pub fn take_feature_shapes(&mut self) -> IndexMap<String, Vec<ShapeData>> {
+        mem::take(&mut self.feature_shapes)
+    }
 }
 
 impl CanvasApi for CpuCanvasApi {
-    fn set_feature_layer_tag(&mut self, _tag: Option<String>) {}
+    fn set_feature_layer_tag(&mut self, tag: Option<String>) {
+        self.current_tag = tag;
+    }
 
     fn geometry_data(&mut self, geometry_data: GeometryData) {
         match geometry_data {
             GeometryData::Shape(data) => {
-                self.shapes.push(data);
+                if let Some(tag) = mem::take(&mut self.current_tag) {
+                    self.feature_shapes.insert(tag, vec![data]);
+                } else {
+                    self.shapes.push(data);
+                }
             }
             _ => {}
         }
@@ -119,6 +133,7 @@ impl CpuRenderer {
             canvas_api: Default::default(),
             shapes_background: vec![],
             shapes_foreground: vec![],
+            shapes_features: Default::default(),
             receiver,
             cpu_renderer_api: Arc::new(CpuRendererApi { sender }),
             cs_offset: Default::default(),
@@ -328,10 +343,26 @@ impl Renderer for CpuRenderer {
                             (path_aabb, shape_data)
                         })
                         .collect();
+
+                    let shapes_features: IndexMap<String, Vec<(Box2D, ShapeData)>> = self
+                        .canvas_api
+                        .take_feature_shapes()
+                        .into_iter()
+                        .map(|item| {
+                            let shapes_with_bbox: Vec<_> = item.1
+                                .into_iter()
+                                .map(|shape_data| {
+                                    let path_aabb = bounding_box(shape_data.path.iter());
+                                    (path_aabb, shape_data)
+                                })
+                                .collect();
+                            (item.0, shapes_with_bbox)
+                        })
+                        .collect();
+
                     let background_shapes = shapes
                         .extract_if(.., |(_, shape_data)| {
-                            // TODO another layer..
-                            matches!(shape_data.geometry_type, GeometryType::Polygon) && key != "puck"
+                            matches!(shape_data.geometry_type, GeometryType::Polygon)
                         })
                         .collect();
                     let foreground_shapes = shapes;
@@ -341,11 +372,18 @@ impl Renderer for CpuRenderer {
                         background_shapes,
                     ));
                     self.shapes_foreground
-                        .push((key, spat_data, foreground_shapes));
+                        .push((key.clone(), spat_data.clone(), foreground_shapes));
+
+                    shapes_features.into_iter().for_each(|(tag_key, data)| {
+                        self.shapes_features.entry(tag_key).or_default().push((key.clone(), spat_data.clone(), data));
+                    });
                 }
                 RendererApiMsg::ClearGroups(keys) => {
                     self.shapes_background.retain(|s| !keys.contains(&s.0));
                     self.shapes_foreground.retain(|s| !keys.contains(&s.0));
+                    self.shapes_features.values_mut().for_each(|list| {
+                        list.retain(|s| !keys.contains(&s.0));
+                    });
                 }
                 RendererApiMsg::UpdateStyle(style_id, updater) => {
                     let mut style = RenderStyle::default();
@@ -398,6 +436,9 @@ impl Renderer for CpuRenderer {
                 let mut recorder = PictureRecorder::new();
                 let canvas_front = recorder.begin_recording(Rect::from_wh(self.size.0 as f32, self.size.1 as f32), false);
                 processor(&self.shapes_foreground, canvas_front);
+                self.shapes_features.values().for_each(|list| {
+                    processor(list, canvas_front);
+                });
                 recorder.finish_recording_as_picture(None).unwrap()
             },
         );

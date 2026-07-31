@@ -32,7 +32,7 @@ pub fn feature_layer_tags() -> Vec<WorldShapeFeatureLayerTag> {
             indirect: true,
         },
         WorldShapeFeatureLayerTag {
-            name: "puck_layer",
+            name: "puck",
             ..Default::default()
         },
     ]

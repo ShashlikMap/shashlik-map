@@ -8,7 +8,7 @@ pub struct SimplePuck {}
 
 impl <T: CanvasApi> RenderGroup<T> for SimplePuck {
     fn content(&mut self, canvas: &mut T) {
-        canvas.set_feature_layer_tag(Some("puck_layer".to_string()));
+        canvas.set_feature_layer_tag(Some("puck".to_string()));
         canvas.geometry_data(GeometryData::Shape(
             ShapeData {
                 path: MeshLoader::load_simple_puck(),
