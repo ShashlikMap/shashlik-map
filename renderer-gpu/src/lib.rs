@@ -16,8 +16,6 @@ use geo_types::Coord;
 use glam::{dvec3, vec2, DVec2};
 use global_context::GlobalContext;
 use mesh_layers::layers::Layers;
-use messages::RendererApiMsg;
-use renderer_api::GpuRendererApi;
 use rustybuzz::ttf_parser;
 use std::collections::HashMap;
 use std::iter;
@@ -30,6 +28,7 @@ use wgpu::{Texture, TextureView};
 use ::renderer_common::{PreviewType, Renderer, RendererUpdateData, WorldShapeFeatureLayerTag, PREVIEW_TYPE};
 use ::renderer_common::geometry_data::{LineData, TextData};
 use ::renderer_common::render_modifier::SpatialData;
+use renderer_common::r_api_messenger::{CommonRendererApi, RendererApiMsg};
 use crate::wgpu_canvas::WgpuCanvas;
 
 pub mod canvas_api;
@@ -38,7 +37,6 @@ pub mod draw_commands;
 pub mod mesh;
 pub mod messages;
 pub mod modifier;
-pub mod renderer_api;
 pub mod styles;
 mod svg;
 mod text;
@@ -60,7 +58,7 @@ pub struct GpuRenderer {
     layers: Layers,
     pass_nodes: Vec<Box<dyn PassNode>>,
     renderer_rx: Receiver<RendererMessage>,
-    pub api: Arc<GpuRendererApi>,
+    pub api: Arc<CommonRendererApi<GpuCanvasApi>>,
     fps_counter: FpsCounter<100>,
     global_context: GlobalContext,
     buffer_pool: BufferPool,
@@ -93,7 +91,7 @@ impl GpuRenderer {
         let (renderer_tx, renderer_rx) = channel();
         Self::run_background(style_store, renderer_tx.clone(), renderer_api_rx);
 
-        let api = Arc::new(GpuRendererApi::new(renderer_api_tx));
+        let api = Arc::new(CommonRendererApi::new(renderer_api_tx));
 
         layers.prepare(&mut global_context);
 
@@ -113,7 +111,7 @@ impl GpuRenderer {
     fn run_background(
         style_store: StyleStore,
         renderer_tx: Sender<RendererMessage>,
-        receiver_api_rx: Receiver<RendererApiMsg>,
+        receiver_api_rx: Receiver<RendererApiMsg<GpuCanvasApi>>,
     ) {
         spawn(move || {
             let mut canvas_api = GpuCanvasApi::new(style_store);
@@ -121,7 +119,7 @@ impl GpuRenderer {
             loop {
                 if let Some(api_msg) = receiver_api_rx.recv().ok() {
                     match api_msg {
-                        RendererApiMsg::RenderGroup((key, spatial_data, mut rg)) => {
+                        RendererApiMsg::RenderGroup(key, spatial_data, mut rg) => {
                             let (spatial_tx, _) = broadcast::channel(1);
                             spatial_data_map
                                 .insert(key.clone(), (spatial_data.clone(), spatial_tx.clone()));
@@ -132,10 +130,10 @@ impl GpuRenderer {
 
                             renderer_tx.send(RendererMessage::Draw(commands)).unwrap();
                         }
-                        RendererApiMsg::UpdateStyle((style, block)) => {
+                        RendererApiMsg::UpdateStyle(style, block) => {
                             canvas_api.update_style(&style, block);
                         }
-                        RendererApiMsg::UpdateSpatialData((key, spatial_data_cb)) => {
+                        RendererApiMsg::UpdateSpatialData(key, spatial_data_cb) => {
                             if let Some((spatial_data, tx)) = spatial_data_map.get_mut(&key) {
                                 spatial_data_cb(spatial_data);
                                 if tx.receiver_count() > 0 {
@@ -284,7 +282,7 @@ impl GpuRenderer {
 }
 
 impl Renderer for GpuRenderer {
-    type RAPI = GpuRendererApi;
+    type RAPI = CommonRendererApi<GpuCanvasApi>;
     type OUTPUT = Texture;
     type INPUT<'a> = ();
 
@@ -309,7 +307,7 @@ impl Renderer for GpuRenderer {
         self.render()
     }
 
-    fn api(&self) -> Arc<GpuRendererApi> {
+    fn api(&self) -> Arc<CommonRendererApi<GpuCanvasApi>> {
         Arc::clone(&self.api)
     }
 }

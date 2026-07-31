@@ -2,7 +2,7 @@ use crate::{GpuRenderer, RendererUpdateData};
 use crate::Renderer;
 use geo_types::{coord, Coord};
 use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec4Swizzles};
-use renderer_common::{LIGHT_POS, SHADOWS_ENABLED, SHADOWS_TEX_SIZE};
+use renderer_common::{min_f64, LIGHT_POS, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, max_f64};
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 
 #[rustfmt::skip]
@@ -12,20 +12,6 @@ const FLIP_Y: DMat4 = DMat4::from_cols_array(
     0.0, 0.0, 1.0, 0.0,
     0.0, 0.0, 0.0, 1.0],
 );
-
-macro_rules! min_f64 {
-    ($x:expr) => ($x);
-    ($x:expr, $($y:expr),+) => {
-        ($x).min(min_f64!($($y),+))
-    };
-}
-
-macro_rules! max_f64 {
-    ($x:expr) => ($x);
-    ($x:expr, $($y:expr),+) => {
-        ($x).max(max_f64!($($y),+))
-    };
-}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]

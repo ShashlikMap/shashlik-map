@@ -16,6 +16,7 @@ pub mod render_modifier;
 pub mod render_style;
 pub mod style_id;
 pub mod fps;
+pub mod r_api_messenger;
 
 /// should be the same as mesh_shader.wgsl
 pub static LIGHT_POS: DVec3 = dvec3(0.84, 1.12, 1.42);
@@ -158,3 +159,17 @@ pub static mut SHADOWS_ENABLED: bool = true;
 pub static mut SHADOWS_TEX_SIZE: (u32, u32) = (2048, 2048);
 pub static mut SSAO_ENABLED: bool = true;
 pub static mut PREVIEW_TYPE: PreviewType = PreviewType::None;
+
+#[macro_export] macro_rules! min_f64 {
+    ($x:expr) => ($x);
+    ($x:expr, $($y:expr),+) => {
+        ($x).min($crate::min_f64!($($y),+))
+    };
+}
+
+#[macro_export] macro_rules! max_f64 {
+    ($x:expr) => ($x);
+    ($x:expr, $($y:expr),+) => {
+        ($x).max($crate::max_f64!($($y),+))
+    };
+}
