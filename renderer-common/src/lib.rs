@@ -163,13 +163,13 @@ pub static mut PREVIEW_TYPE: PreviewType = PreviewType::None;
 #[macro_export] macro_rules! min_f64 {
     ($x:expr) => ($x);
     ($x:expr, $($y:expr),+) => {
-        ($x).min(min_f64!($($y),+))
+        ($x).min($crate::min_f64!($($y),+))
     };
 }
 
 #[macro_export] macro_rules! max_f64 {
     ($x:expr) => ($x);
     ($x:expr, $($y:expr),+) => {
-        ($x).max(max_f64!($($y),+))
+        ($x).max($crate::max_f64!($($y),+))
     };
 }
