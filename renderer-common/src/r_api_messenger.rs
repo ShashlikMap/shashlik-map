@@ -6,24 +6,24 @@ use crate::{CanvasApi, RendererApi};
 use std::collections::HashSet;
 use std::sync::mpsc::Sender;
 
-pub enum RendererApiMsg2<T: CanvasApi> {
+pub enum RendererApiMsg<T: CanvasApi> {
     RenderGroup(String, SpatialData, Box<dyn RenderGroup<T>>),
     UpdateStyle(StyleId, Box<dyn FnOnce(&mut RenderStyle) + Send>),
     UpdateSpatialData(String, Box<dyn FnOnce(&mut SpatialData) + Send>),
     ClearGroups(HashSet<String>),
 }
 
-pub struct CommonRendererApi2<T: CanvasApi> {
-    sender: Sender<RendererApiMsg2<T>>,
+pub struct CommonRendererApi<T: CanvasApi> {
+    sender: Sender<RendererApiMsg<T>>,
 }
 
-impl<T: CanvasApi> CommonRendererApi2<T> {
-    pub fn new(sender: Sender<RendererApiMsg2<T>>) -> CommonRendererApi2<T> {
+impl<T: CanvasApi> CommonRendererApi<T> {
+    pub fn new(sender: Sender<RendererApiMsg<T>>) -> CommonRendererApi<T> {
         Self { sender }
     }
 }
 
-impl<T: CanvasApi> RendererApi for CommonRendererApi2<T> {
+impl<T: CanvasApi> RendererApi for CommonRendererApi<T> {
     type CANVAS = T;
 
     fn add_render_group(
@@ -33,13 +33,13 @@ impl<T: CanvasApi> RendererApi for CommonRendererApi2<T> {
         group: Box<dyn RenderGroup<Self::CANVAS>>,
     ) {
         self.sender
-            .send(RendererApiMsg2::RenderGroup(key, spatial_data, group))
+            .send(RendererApiMsg::RenderGroup(key, spatial_data, group))
             .unwrap();
     }
 
     fn clear_render_groups(&self, keys: HashSet<String>) {
         self.sender
-            .send(RendererApiMsg2::ClearGroups(keys))
+            .send(RendererApiMsg::ClearGroups(keys))
             .unwrap();
     }
 
@@ -49,7 +49,7 @@ impl<T: CanvasApi> RendererApi for CommonRendererApi2<T> {
         updater: F,
     ) {
         self.sender
-            .send(RendererApiMsg2::UpdateStyle(style_id, Box::new(updater)))
+            .send(RendererApiMsg::UpdateStyle(style_id, Box::new(updater)))
             .unwrap();
     }
 
@@ -59,7 +59,7 @@ impl<T: CanvasApi> RendererApi for CommonRendererApi2<T> {
         updater: F,
     ) {
         self.sender
-            .send(RendererApiMsg2::UpdateSpatialData(key, Box::new(updater)))
+            .send(RendererApiMsg::UpdateSpatialData(key, Box::new(updater)))
             .unwrap();
     }
 }

@@ -7,7 +7,7 @@ use lyon_path::geom::point;
 use lyon_path::math::Box2D;
 pub use renderer_common::fps::FpsCounter;
 use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData};
-use renderer_common::r_api_messenger::{CommonRendererApi2, RendererApiMsg2};
+use renderer_common::r_api_messenger::{CommonRendererApi, RendererApiMsg};
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
@@ -25,8 +25,8 @@ pub struct CpuRenderer {
     shapes_background: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
     shapes_foreground: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
     shapes_features: IndexMap<String, Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>>,
-    receiver: Receiver<RendererApiMsg2<CpuCanvasApi>>,
-    cpu_renderer_api: Arc<CommonRendererApi2<CpuCanvasApi>>,
+    receiver: Receiver<RendererApiMsg<CpuCanvasApi>>,
+    cpu_renderer_api: Arc<CommonRendererApi<CpuCanvasApi>>,
     cs_offset: DVec3,
     inv_view_proj_matrix: DMat4,
     view_proj_matrix: DMat4,
@@ -84,7 +84,7 @@ impl CpuRenderer {
             shapes_foreground: vec![],
             shapes_features: Default::default(),
             receiver,
-            cpu_renderer_api: Arc::new(CommonRendererApi2::new(sender)),
+            cpu_renderer_api: Arc::new(CommonRendererApi::new(sender)),
             cs_offset: Default::default(),
             inv_view_proj_matrix: Default::default(),
             view_proj_matrix: Default::default(),
@@ -253,7 +253,7 @@ impl CpuRenderer {
 }
 
 impl Renderer for CpuRenderer {
-    type RAPI = CommonRendererApi2<CpuCanvasApi>;
+    type RAPI = CommonRendererApi<CpuCanvasApi>;
     type OUTPUT = ();
     type INPUT<'a> = &'a Canvas;
 
@@ -279,7 +279,7 @@ impl Renderer for CpuRenderer {
     fn render(&mut self, input: Self::INPUT<'_>) -> Option<Self::OUTPUT> {
         while let Ok(msg) = self.receiver.try_recv() {
             match msg {
-                RendererApiMsg2::RenderGroup(key, spat_data, mut group) => {
+                RendererApiMsg::RenderGroup(key, spat_data, mut group) => {
                     group.content(&mut self.canvas_api);
                     let mut shapes: Vec<_> = self
                         .canvas_api
@@ -333,7 +333,7 @@ impl Renderer for CpuRenderer {
                         ));
                     });
                 }
-                RendererApiMsg2::ClearGroups(keys) => {
+                RendererApiMsg::ClearGroups(keys) => {
                     self.shapes_background.retain(|s| !keys.contains(&s.0));
                     self.shapes_foreground.retain(|s| !keys.contains(&s.0));
                     // TODO reset spatial_map too?
@@ -341,7 +341,7 @@ impl Renderer for CpuRenderer {
                         list.retain(|s| !keys.contains(&s.0));
                     });
                 }
-                RendererApiMsg2::UpdateStyle(style_id, updater) => {
+                RendererApiMsg::UpdateStyle(style_id, updater) => {
                     let mut style = RenderStyle::default();
                     updater(&mut style);
                     let fill_color = style.get_fill_color();
@@ -350,7 +350,7 @@ impl Renderer for CpuRenderer {
                         Color4f::new(fill_color[0], fill_color[1], fill_color[2], fill_color[3]);
                     self.styles_map.insert(style_id, fill_color);
                 }
-                RendererApiMsg2::UpdateSpatialData(key, updater) => {
+                RendererApiMsg::UpdateSpatialData(key, updater) => {
                     let spatial_data = self.spatial_map.entry(key).or_insert(SpatialData::new());
                     updater(spatial_data);
                 }
@@ -403,7 +403,7 @@ impl Renderer for CpuRenderer {
         None
     }
 
-    fn api(&self) -> Arc<CommonRendererApi2<CpuCanvasApi>> {
+    fn api(&self) -> Arc<CommonRendererApi<CpuCanvasApi>> {
         self.cpu_renderer_api.clone()
     }
 }
