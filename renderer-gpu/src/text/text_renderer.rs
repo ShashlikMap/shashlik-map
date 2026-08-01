@@ -43,7 +43,7 @@ pub struct TextRenderer {
 impl TextRenderer {
     pub fn new(
         global_context: &mut GlobalContext,
-        font: &'static rustybuzz::ttf_parser::Face,
+        font: rustybuzz::ttf_parser::Face<'static>,
     ) -> TextRenderer {
         let default_face = Arc::new(DefaultFaceWrapper::new(font));
         let (task_wrapper, collision_task_controller) = CollisionTaskWrapper::new();

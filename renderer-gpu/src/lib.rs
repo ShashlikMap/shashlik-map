@@ -1,35 +1,35 @@
 extern crate core;
 
 use crate::buffer_pool::BufferPool;
-use renderer_common::fps::FpsCounter;
-use crate::mesh_layers::layers::SCREEN_TEXT_LAYER;
 use crate::mesh_layers::BaseMeshLayer;
+use crate::mesh_layers::layers::SCREEN_TEXT_LAYER;
 use crate::messages::RendererMessage;
+use crate::pass_nodes::PassNode;
 use crate::pass_nodes::main_pass_node::MainPassNode;
 use crate::pass_nodes::prepass_node::PrepassNode;
 use crate::pass_nodes::render_to_texture_pass_node::RenderToTexturePassNode;
 use crate::pass_nodes::shadow_pre_pass::ShadowPrepass;
-use crate::pass_nodes::PassNode;
 use crate::styles::style_store::StyleStore;
+use crate::wgpu_canvas::WgpuCanvas;
 use canvas_api::GpuCanvasApi;
 use geo_types::Coord;
-use glam::{dvec3, vec2, DVec2};
+use glam::{DVec2, dvec3, vec2};
 use global_context::GlobalContext;
 use mesh_layers::layers::Layers;
-use rustybuzz::ttf_parser;
+use renderer_common::fps::FpsCounter;
+use ::renderer_common::geometry_data::{LineData, TextData};
+use renderer_common::r_api_messenger::{CommonRendererApi, RendererApiMsg};
+use ::renderer_common::render_modifier::SpatialData;
+use ::renderer_common::{PREVIEW_TYPE, PreviewType, Renderer, RendererUpdateData, WorldShapeFeatureLayerTag};
+use rustybuzz::ttf_parser::Face;
 use std::collections::HashMap;
 use std::iter;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
 use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
-use ::renderer_common::{PreviewType, Renderer, RendererUpdateData, WorldShapeFeatureLayerTag, PREVIEW_TYPE};
-use ::renderer_common::geometry_data::{LineData, TextData};
-use ::renderer_common::render_modifier::SpatialData;
-use renderer_common::r_api_messenger::{CommonRendererApi, RendererApiMsg};
-use crate::wgpu_canvas::WgpuCanvas;
 
 pub mod canvas_api;
 mod collision_handler;
@@ -70,12 +70,13 @@ impl GpuRenderer {
     pub async fn new(
         feature_tags: Vec<WorldShapeFeatureLayerTag>,
         canvas: Box<dyn WgpuCanvas>,
-        font: &'static ttf_parser::Face<'static>,
+        font_data: &'static [u8],
     ) -> anyhow::Result<GpuRenderer> {
         let style_store = StyleStore::new();
 
         let mut global_context = GlobalContext::new(canvas, &style_store);
 
+        let font = Face::parse(font_data, 0)?;
         let mut layers = Layers::new(feature_tags, &mut global_context, font);
         
         layers.text_feature_layers.get_layer(SCREEN_TEXT_LAYER).unwrap().add(

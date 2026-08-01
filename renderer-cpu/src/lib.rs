@@ -49,11 +49,9 @@ struct FontData {
 }
 
 impl FontData {
-    pub fn new() -> Self {
-        let font_bytes =
-            std::fs::read("map/font.ttf").expect("Could not find system font on macOS");
+    pub fn new(font_data: &'static [u8],) -> Self {
         let typeface = FontMgr::new()
-            .new_from_data(&font_bytes, 0)
+            .new_from_data(&font_data, 0)
             .expect("Failed to parse font data into a usable Typeface layer");
         let font = Font::from_typeface(typeface, 19.0);
         let mut paint = Paint::default();
@@ -131,7 +129,7 @@ impl CanvasApi for CpuCanvasApi {
 }
 
 impl CpuRenderer {
-    pub fn new(width: u32, height: u32) -> Self {
+    pub fn new(width: u32, height: u32, font_data: &'static [u8],) -> Self {
         let (sender, receiver) = mpsc::channel();
         Self {
             size: (width, height),
@@ -150,7 +148,7 @@ impl CpuRenderer {
             spatial_map: Default::default(),
             norm_length: 0.0,
             screen_aabb: Box2D::new(point(-1.0, -1.0), point(1.0, 1.0)),
-            font_data: FontData::new(),
+            font_data: FontData::new(font_data),
         }
     }
 }
@@ -188,8 +186,8 @@ impl CpuRenderer {
                     .truncate()
             };
 
-            for vv in data {
-                let proj_pos = project_point(vv.line_data);
+            for data_item in data {
+                let proj_pos = project_point(data_item.line_data);
                 if !screen_aabb.contains(point(proj_pos.x as f32, proj_pos.y as f32)) {
                     continue;
                 }
@@ -198,7 +196,7 @@ impl CpuRenderer {
                     0.5 * (1.0 + proj_pos.y as f32) * size.1 as f32,
                 );
                 canvas.draw_str_align(
-                    vv.text.as_str(),
+                    data_item.text.as_str(),
                     target_point,
                     &font_data.font,
                     &font_data.paint,

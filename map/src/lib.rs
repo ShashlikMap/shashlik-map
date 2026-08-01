@@ -29,7 +29,6 @@ use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use log::error;
-use ttf_parser::Face;
 use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData, SSAO_ENABLED};
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
@@ -86,8 +85,9 @@ impl <T: CanvasApi> RenderGroup<T> for TileData {
             });
     }
 }
-pub static DEFAULT_FONT: LazyLock<Face, fn() -> Face<'static>> =
-    LazyLock::new(|| Face::parse(include_bytes!("../font.ttf"), 0).unwrap());
+
+pub static DEFAULT_FONT_DATA: LazyLock<&[u8], fn() -> &'static [u8]> =
+    LazyLock::new(|| include_bytes!("../font.ttf"));
 
 // FIXME We should not hardcode it in general. But so far it's just a first step.
 const MAX_ZOOM_LEVEL: i32 = 15;
