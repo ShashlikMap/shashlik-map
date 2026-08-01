@@ -16,7 +16,7 @@ impl<P: RenderPipeline> TextMeshLayer<P> {
     pub fn new(
         render_pipeline: P,
         global_context: &mut GlobalContext,
-        font: &'static rustybuzz::ttf_parser::Face,
+        font: rustybuzz::ttf_parser::Face<'static>,
     ) -> Self {
         Self {
             render_pipeline,

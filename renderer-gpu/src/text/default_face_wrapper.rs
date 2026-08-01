@@ -10,8 +10,8 @@ pub struct DefaultFaceWrapper {
 
 impl DefaultFaceWrapper {
     pub const MAX_SCALE: f32 = 0.035;
-    pub fn new(font: &'static rustybuzz::ttf_parser::Face) -> DefaultFaceWrapper {
-        let face = rustybuzz::Face::from_face(font.clone());
+    pub fn new(font: rustybuzz::ttf_parser::Face<'static>) -> DefaultFaceWrapper {
+        let face = Face::from_face(font);
         let glyph_height = (face.ascender() + face.descender()) as f32;
 
         DefaultFaceWrapper { face, glyph_height }

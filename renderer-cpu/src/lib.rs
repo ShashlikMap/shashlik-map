@@ -1,5 +1,5 @@
 use geo_types::{Coord, coord};
-use glam::{DMat4, DVec2, DVec3};
+use glam::{DMat4, DVec2, DVec3, Vec2};
 use indexmap::IndexMap;
 use lyon_algorithms::aabb::bounding_box;
 use lyon_path::PathEvent;
@@ -11,9 +11,13 @@ use renderer_common::r_api_messenger::{CommonRendererApi, RendererApiMsg};
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
-use renderer_common::{min_f64, CanvasApi, Renderer, RendererUpdateData, max_f64};
+use renderer_common::{CanvasApi, Renderer, RendererUpdateData, max_f64, min_f64};
 use rustc_hash::FxHashMap;
-use skia_safe::{Canvas, Color4f, Paint, PaintStyle, PathBuilder, PictureRecorder, Rect};
+use skia_safe::utils::text_utils::Align;
+use skia_safe::{
+    Canvas, Color, Color4f, Font, FontMgr, Paint, PaintStyle, PathBuilder, PictureRecorder, Point,
+    Rect,
+};
 use std::mem;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, mpsc};
@@ -24,6 +28,7 @@ pub struct CpuRenderer {
     canvas_api: CpuCanvasApi,
     shapes_background: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
     shapes_foreground: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
+    text_data: Vec<(String, SpatialData, Vec<InternalTextData>)>,
     shapes_features: IndexMap<String, Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>>,
     receiver: Receiver<RendererApiMsg<CpuCanvasApi>>,
     cpu_renderer_api: Arc<CommonRendererApi<CpuCanvasApi>>,
@@ -35,18 +40,53 @@ pub struct CpuRenderer {
     spatial_map: FxHashMap<String, SpatialData>,
     norm_length: f64,
     screen_aabb: Box2D,
+    font_data: FontData,
+}
+
+struct FontData {
+    font: Font,
+    paint: Paint,
+}
+
+impl FontData {
+    pub fn new(font_data: &'static [u8],) -> Self {
+        let typeface = FontMgr::new()
+            .new_from_data(&font_data, 0)
+            .expect("Failed to parse font data into a usable Typeface layer");
+        let font = Font::from_typeface(typeface, 19.0);
+        let mut paint = Paint::default();
+        paint.set_color(Color::BLACK);
+        paint.set_anti_alias(true);
+
+        Self { font, paint }
+    }
+}
+
+// TODO We can't use original TextData at this moment
+struct InternalTextData {
+    pub _id: u64,
+    pub text: String,
+    pub _screen_offset: Vec2,
+    pub _size: f32,
+    pub _alpha: f32,
+    pub line_data: DVec3,
+    pub _screen_space: bool,
 }
 
 #[derive(Default)]
 pub struct CpuCanvasApi {
     shapes: Vec<ShapeData>,
     feature_shapes: IndexMap<String, Vec<ShapeData>>,
+    text_data: Vec<InternalTextData>,
     current_tag: Option<String>,
 }
 
 impl CpuCanvasApi {
     pub fn take_shapes(&mut self) -> Vec<ShapeData> {
         mem::take(&mut self.shapes)
+    }
+    fn take_text_data(&mut self) -> Vec<InternalTextData> {
+        mem::take(&mut self.text_data)
     }
 
     pub fn take_feature_shapes(&mut self) -> IndexMap<String, Vec<ShapeData>> {
@@ -69,19 +109,34 @@ impl CanvasApi for CpuCanvasApi {
                     self.shapes.push(data);
                 }
             }
+            GeometryData::Text(data) => {
+                if data.line_data.positions.len() == 1 {
+                    let qq = InternalTextData {
+                        _id: data.id,
+                        text: data.text,
+                        _screen_offset: data.screen_offset,
+                        _size: data.size,
+                        _alpha: data.alpha,
+                        line_data: data.line_data.positions[0],
+                        _screen_space: data.screen_space,
+                    };
+                    self.text_data.push(qq);
+                }
+            }
             _ => {}
         }
     }
 }
 
 impl CpuRenderer {
-    pub fn new(width: u32, height: u32) -> Self {
+    pub fn new(width: u32, height: u32, font_data: &'static [u8],) -> Self {
         let (sender, receiver) = mpsc::channel();
         Self {
             size: (width, height),
             canvas_api: Default::default(),
             shapes_background: vec![],
             shapes_foreground: vec![],
+            text_data: vec![],
             shapes_features: Default::default(),
             receiver,
             cpu_renderer_api: Arc::new(CommonRendererApi::new(sender)),
@@ -93,6 +148,7 @@ impl CpuRenderer {
             spatial_map: Default::default(),
             norm_length: 0.0,
             screen_aabb: Box2D::new(point(-1.0, -1.0), point(1.0, 1.0)),
+            font_data: FontData::new(font_data),
         }
     }
 }
@@ -110,6 +166,44 @@ impl CpuRenderer {
             .project_point3(center_with_offset.extend(0.0));
         // TODO how to pass 200.0 koef from map?
         (projected_center_offset - projected_center).length() * 250.0
+    }
+
+    #[inline]
+    fn process_text(
+        size: (u32, u32),
+        font_data: &FontData,
+        text_data: &[(String, SpatialData, Vec<InternalTextData>)],
+        canvas: &Canvas,
+        cs_offset: &DVec3,
+        view_proj_matrix: &DMat4,
+        screen_aabb: &Box2D,
+    ) {
+        text_data.iter().for_each(|(_, spat_data, data)| {
+            let project_point = |point| {
+                let modified = point;
+                view_proj_matrix
+                    .project_point3(modified + spat_data.transform - cs_offset)
+                    .truncate()
+            };
+
+            for data_item in data {
+                let proj_pos = project_point(data_item.line_data);
+                if !screen_aabb.contains(point(proj_pos.x as f32, proj_pos.y as f32)) {
+                    continue;
+                }
+                let target_point = Point::new(
+                    0.5 * (1.0 + proj_pos.x as f32) * size.0 as f32,
+                    0.5 * (1.0 + proj_pos.y as f32) * size.1 as f32,
+                );
+                canvas.draw_str_align(
+                    data_item.text.as_str(),
+                    target_point,
+                    &font_data.font,
+                    &font_data.paint,
+                    Align::Center,
+                );
+            }
+        })
     }
 
     #[inline]
@@ -267,6 +361,13 @@ impl Renderer for CpuRenderer {
             match msg {
                 RendererApiMsg::RenderGroup(key, spat_data, mut group) => {
                     group.content(&mut self.canvas_api);
+
+                    self.text_data.push((
+                        key.clone(),
+                        spat_data.clone(),
+                        self.canvas_api.take_text_data(),
+                    ));
+
                     let mut shapes: Vec<_> = self
                         .canvas_api
                         .take_shapes()
@@ -320,6 +421,7 @@ impl Renderer for CpuRenderer {
                     });
                 }
                 RendererApiMsg::ClearGroups(keys) => {
+                    self.text_data.retain(|s| !keys.contains(&s.0));
                     self.shapes_background.retain(|s| !keys.contains(&s.0));
                     self.shapes_foreground.retain(|s| !keys.contains(&s.0));
                     // TODO reset spatial_map too?
@@ -358,6 +460,19 @@ impl Renderer for CpuRenderer {
             );
         };
 
+        let text_processor = |data: &[(String, SpatialData, Vec<InternalTextData>)],
+                              canvas: &Canvas| {
+            Self::process_text(
+                self.size,
+                &self.font_data,
+                data,
+                canvas,
+                &self.cs_offset,
+                &self.view_proj_matrix,
+                &self.screen_aabb,
+            );
+        };
+
         let (pb, pa) = rayon::join(
             || {
                 let mut recorder = PictureRecorder::new();
@@ -379,6 +494,9 @@ impl Renderer for CpuRenderer {
                 self.shapes_features.values().for_each(|list| {
                     processor(list, canvas_front);
                 });
+
+                text_processor(&self.text_data, canvas_front);
+
                 recorder.finish_recording_as_picture(None).unwrap()
             },
         );

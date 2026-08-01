@@ -2,7 +2,7 @@ use crate::{Action, Feature, PanState, Scale, ShashlikUI, SlintMapEvent};
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
-use map::{ShashlikMap, DEFAULT_FONT};
+use map::{ShashlikMap, DEFAULT_FONT_DATA};
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
 use osm::tiles::TileStore;
@@ -141,7 +141,7 @@ pub fn launch_internal(ui: &ShashlikUI) {
                         let mut map =
                             pollster::block_on(async {
                                 let renderer = GpuRenderer::new(feature_layer_tags(),
-                                                                Box::new(canvas), &DEFAULT_FONT).await?;
+                                                                Box::new(canvas), &DEFAULT_FONT_DATA).await?;
                                 ShashlikMap::new(renderer, tiles_provider).await
                             }).unwrap();
                         map.resize(texture_width as u32, texture_height as u32);
