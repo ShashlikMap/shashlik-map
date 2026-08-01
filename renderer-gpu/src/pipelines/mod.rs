@@ -63,7 +63,7 @@ impl OwnedRenderPipelineDescriptor<'_> {
             vertex: wgpu::VertexState {
                 module: &descriptor.vertex.module,
                 entry_point: descriptor.vertex.entry_point,
-                buffers: &*descriptor.vertex.buffers,
+                buffers: &*descriptor.vertex.buffers.into_iter().map(Some).collect::<Vec<_>>(),
                 compilation_options: Default::default(),
             },
             fragment: descriptor.fragment.as_ref().map(|owned_fragment_state| {

@@ -9,24 +9,25 @@ use osm::tiles::TileStore;
 use renderer_common::{feature_layer_tags, PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
 use renderer_gpu::wgpu_canvas::DefaultWgpuCanvas;
 use renderer_gpu::GpuRenderer;
-use slint::wgpu_29::{WGPUConfiguration, WGPUSettings};
+use slint::wgpu_30::{WGPUConfiguration, WGPUSettings};
 use slint::{ComponentHandle, GraphicsAPI, PhysicalSize, RenderingState};
 use std::cmp::max;
 use std::str::FromStr;
 use std::sync::mpsc;
-use wgpu::SurfaceConfiguration;
+use slint::wgpu_30::wgpu::{Features, Limits};
+use wgpu::{SurfaceColorSpace, SurfaceConfiguration};
 use wgpu::TextureFormat;
 use wgpu::TextureUsages;
-use wgpu::{Features, Limits};
 
 pub fn prepare() {
     let mut wgpu_settings = WGPUSettings::default();
     wgpu_settings.device_required_features = Features::CLEAR_TEXTURE | Features::IMMEDIATES;
-    wgpu_settings.device_required_limits = Limits::downlevel_defaults();
+    wgpu_settings.device_required_limits = Limits::default();
     wgpu_settings.device_required_limits.max_immediate_size = 4;
 
+
     slint::BackendSelector::new()
-        .require_wgpu_29(WGPUConfiguration::Automatic(wgpu_settings))
+        .require_wgpu_30(WGPUConfiguration::Automatic(wgpu_settings))
         .select()
         .expect("Unable to create Slint backend with WGPU based renderer-gpu");
 }
@@ -64,7 +65,7 @@ pub fn launch_internal(ui: &ShashlikUI) {
         .set_rendering_notifier(move |state, graphics_api: &GraphicsAPI| {
             match state {
                 RenderingState::RenderingSetup => match graphics_api {
-                    GraphicsAPI::WGPU29 { device, queue, .. } => {
+                    GraphicsAPI::WGPU30 { device, queue, .. } => {
                         let target_texture = device.create_texture(&wgpu::TextureDescriptor {
                             label: None,
                             size: wgpu::Extent3d {
@@ -84,6 +85,7 @@ pub fn launch_internal(ui: &ShashlikUI) {
                         let config = SurfaceConfiguration {
                             usage: TextureUsages::RENDER_ATTACHMENT,
                             format: TextureFormat::Rgba8UnormSrgb,
+                            color_space: SurfaceColorSpace::Auto,
                             width: texture_width as u32,
                             height: texture_height as u32,
                             present_mode: Default::default(),

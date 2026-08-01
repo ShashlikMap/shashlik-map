@@ -45,7 +45,7 @@ struct VertexOutput {
     @location(1) @interpolate(flat) style2: vec3<f32>,
     @location(2) @interpolate(flat) style3: vec3<f32>,
     @location(3) @interpolate(flat) style4: vec3<f32>,
-    @location(4) outline_flag: u32,
+    @location(4) @interpolate(flat) outline_flag: u32,
     @location(5) color_alpha: f32,
     @location(6) vertex_pos_xy: vec2<f32>,
     @location(7) bbox: vec4<f32>,
