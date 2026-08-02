@@ -17,14 +17,17 @@ use skia_safe::{scalar, Canvas, Color, Color4f, Font, FontMgr, Paint, PaintStyle
 use std::mem;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, mpsc};
+use renderer_common::worker_handler::WorkerHandler;
 
 /// This is the very beginning of CPU renderer-gpu.
 pub struct CpuRenderer {
     size: (u32, u32),
     canvas_api: CpuCanvasApi,
+    worker_handler: WorkerHandler<Vec<(String, SpatialData, Vec<InternalTextData>)>,
+        Vec<(String, SpatialData, Vec<InternalTextData>)>>,
     shapes_background: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
     shapes_foreground: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
-    text_data: Vec<(String, SpatialData, Vec<InternalTextData>)>,
+    text_data2: Vec<(String, SpatialData, Vec<InternalTextData>)>,
     shapes_features: IndexMap<String, Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>>,
     receiver: Receiver<RendererApiMsg<CpuCanvasApi>>,
     cpu_renderer_api: Arc<CommonRendererApi<CpuCanvasApi>>,
@@ -58,6 +61,7 @@ impl FontData {
 }
 
 // TODO We can't use original TextData at this moment
+#[derive(Clone)]
 struct InternalTextData {
     pub _id: u64,
     pub text_blob: TextBlob,
@@ -140,12 +144,21 @@ impl CpuRenderer {
     pub fn new(width: u32, height: u32, font_data: &'static [u8],) -> Self {
         let (sender, receiver) = mpsc::channel();
         let font_data = FontData::new(font_data);
+        let worker_handler = WorkerHandler::spawn(|input: &mut Vec<(String, SpatialData, Vec<InternalTextData>)>| {
+            input.iter_mut().for_each(|group| {
+                group.2.iter_mut().for_each(|item| {
+                    item.position.x += 0.5;
+                });
+            });
+            Vec::clone(input)
+        });
         Self {
             size: (width, height),
             canvas_api: CpuCanvasApi::new(font_data),
+            worker_handler,
             shapes_background: vec![],
             shapes_foreground: vec![],
-            text_data: vec![],
+            text_data2: vec![],
             shapes_features: Default::default(),
             receiver,
             cpu_renderer_api: Arc::new(CommonRendererApi::new(sender)),
@@ -377,12 +390,6 @@ impl Renderer for CpuRenderer {
                 RendererApiMsg::RenderGroup(key, spat_data, mut group) => {
                     group.content(&mut self.canvas_api);
 
-                    self.text_data.push((
-                        key.clone(),
-                        spat_data.clone(),
-                        self.canvas_api.take_text_data(),
-                    ));
-
                     let mut shapes: Vec<_> = self
                         .canvas_api
                         .take_shapes()
@@ -434,14 +441,26 @@ impl Renderer for CpuRenderer {
                             data,
                         ));
                     });
+
+                    let internal_text_data = self.canvas_api.take_text_data();
+                    self.worker_handler.update_data(move |text_data| {
+                        text_data.push((
+                            key.clone(),
+                            spat_data.clone(),
+                            internal_text_data,
+                        ))
+                    });
                 }
                 RendererApiMsg::ClearGroups(keys) => {
-                    self.text_data.retain(|s| !keys.contains(&s.0));
                     self.shapes_background.retain(|s| !keys.contains(&s.0));
                     self.shapes_foreground.retain(|s| !keys.contains(&s.0));
                     // TODO reset spatial_map too?
                     self.shapes_features.values_mut().for_each(|list| {
                         list.retain(|s| !keys.contains(&s.0));
+                    });
+
+                    self.worker_handler.update_data(move |text_data| {
+                        text_data.retain(|s| !keys.contains(&s.0));
                     });
                 }
                 RendererApiMsg::UpdateStyle(style_id, updater) => {
@@ -458,6 +477,10 @@ impl Renderer for CpuRenderer {
                     updater(spatial_data);
                 }
             }
+        }
+        self.worker_handler.trigger();
+        if let Some(r) = self.worker_handler.try_get_result() {
+            self.text_data2 = r;
         }
 
         let processor = |shapes: &[(String, SpatialData, Vec<(Box2D, ShapeData)>)],
@@ -510,7 +533,7 @@ impl Renderer for CpuRenderer {
                     processor(list, canvas_front);
                 });
 
-                text_processor(&self.text_data, canvas_front);
+                text_processor(&self.text_data2, canvas_front);
 
                 recorder.finish_recording_as_picture(None).unwrap()
             },

@@ -10,3 +10,4 @@ geo-types = { workspace = true }
 lyon = { workspace = true}
 rustybuzz = { workspace = true}
 bytemuck = { workspace = true}
+crossbeam = { workspace = true }
