@@ -329,6 +329,12 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
                     ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
             });
 
+        self.renderer
+            .api()
+            .update_spatial_data("route".to_string(), move |spatial_data| {
+                spatial_data.normal_scale = cam_zoom.max(0.25);
+            });
+
         if self.should_animate() {
             let cam_pos = self.camera_controller.position;
             let cam_pos = DVec3::new(cam_pos.x, cam_pos.y, cam_pos.z);

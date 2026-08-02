@@ -112,6 +112,8 @@ pub struct ShapeInstanceInput {
     pub(crate) color_alpha: f32,
     pub(crate) matrix: [[f32; 4]; 4],
     pub(crate) bbox: [f32; 4],
+    pub(crate) normal_scale: f32,
+    pub _padding: [u32; 3],
 }
 impl VertexAttrib for ShapeInstanceInput {
     const ATTRIBUTES: &[VertexAttribute] = &wgpu::vertex_attr_array![
@@ -122,6 +124,7 @@ impl VertexAttrib for ShapeInstanceInput {
         9 => Float32x4,
         10 => Float32x4,
         11 => Float32x4,
+        12 => Float32,
     ];
 
     const STEP_MODE: VertexStepMode = wgpu::VertexStepMode::Instance;
@@ -143,7 +146,7 @@ impl VertexAttrib for TextInstanceInput {
         7 => Float32x4,
         8 => Float32x4,
         9 => Float32x4,
-        12 => Uint32,
+        13 => Uint32,
     ];
 
     const STEP_MODE: VertexStepMode = wgpu::VertexStepMode::Instance;

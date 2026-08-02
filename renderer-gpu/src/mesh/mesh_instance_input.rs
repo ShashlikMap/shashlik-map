@@ -21,7 +21,6 @@ pub trait MeshInstanceInput: Sized + Pod {
 
             let transform_with_cs_offset = item.0 + spatial_data.transform - cs_offset;
 
-
             let bbox_origin_with_cs_offset = item.0
                 + DVec3::new(spatial_data.bbox.min().x, spatial_data.bbox.min().y, 0.0) - cs_offset;
             let instance_input = Self::create_instance_struct(
@@ -34,6 +33,7 @@ pub trait MeshInstanceInput: Sized + Pod {
                     spatial_data.bbox.width() as f32,
                     spatial_data.bbox.height() as f32,
                 ],
+                spatial_data.normal_scale as f32
             );
             attrs.push(instance_input);
             if double_style {
@@ -47,6 +47,7 @@ pub trait MeshInstanceInput: Sized + Pod {
         color_alpha: f32,
         matrix: [[f32; 4]; 4],
         bbox: [f32; 4],
+        normal_scale: f32
     ) -> Self;
 }
 
@@ -56,6 +57,7 @@ impl MeshInstanceInput for GeneralInstanceInput {
         color_alpha: f32,
         matrix: [[f32; 4]; 4],
         _bbox: [f32; 4],
+        _normal_scale: f32
     ) -> Self {
         GeneralInstanceInput {
             position,
@@ -71,12 +73,15 @@ impl MeshInstanceInput for ShapeInstanceInput {
         color_alpha: f32,
         matrix: [[f32; 4]; 4],
         bbox: [f32; 4],
+        normal_scale: f32
     ) -> Self {
         ShapeInstanceInput {
             position,
             color_alpha,
             matrix,
             bbox,
+            normal_scale,
+            _padding: [0; 3]
         }
     }
 }
