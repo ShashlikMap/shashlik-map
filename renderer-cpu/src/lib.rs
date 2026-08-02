@@ -13,7 +13,7 @@ use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
 use renderer_common::{CanvasApi, Renderer, RendererUpdateData, max_f64, min_f64};
 use rustc_hash::FxHashMap;
-use skia_safe::{Canvas, Color, Color4f, Font, FontMgr, Paint, PaintStyle, PathBuilder, PictureRecorder, Point, Rect, TextBlob};
+use skia_safe::{scalar, Canvas, Color, Color4f, Font, FontMgr, Paint, PaintStyle, PathBuilder, PictureRecorder, Point, Rect, TextBlob, Vector};
 use std::mem;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, mpsc};
@@ -194,25 +194,25 @@ impl CpuRenderer {
                     .truncate()
             };
 
+            let screen_size_as_vec = DVec2::new(size.0 as f64, size.1 as f64);
             for data_item in data {
-                let proj_pos = project_point(data_item.position);
+                let clip_pos = project_point(data_item.position);
+                let screen_pos = 0.5 * ((1.0 + clip_pos) * screen_size_as_vec) - DVec2::new((data_item.bounds.width() * 0.5) as f64, 0.0);
 
-                let bounds_w = data_item.bounds.width() / size.0 as f32;
-                let bounds_h = data_item.bounds.height() / size.1 as f32;
-                let proj_bounds = Box2D::new(
-                    point(proj_pos.x as f32 - bounds_w, proj_pos.y as f32 - bounds_h),
-                    point(proj_pos.x as f32 + bounds_w * 0.5, proj_pos.y as f32));
-                if !screen_aabb.intersects(&proj_bounds) {
+                let screen_bounds = data_item.bounds.with_offset(Vector::new(screen_pos.x as scalar, screen_pos.y as scalar));
+
+                let clip_bounds = Box2D::new(
+                    point(2.0 * ((screen_bounds.left / screen_size_as_vec.x as f32) - 0.5), 2.0 * ((screen_bounds.top / screen_size_as_vec.y as f32) - 0.5)),
+                    point(2.0 * ((screen_bounds.right / screen_size_as_vec.x as f32) - 0.5), 2.0 * ((screen_bounds.bottom / screen_size_as_vec.y as f32) - 0.5)),
+                );
+
+                if !screen_aabb.intersects(&clip_bounds) {
                     continue;
                 }
-                let target_point_center_aligned = Point::new(
-                    0.5 * (1.0 + proj_pos.x as f32) * size.0 as f32 - data_item.bounds.width() * 0.5,
-                    0.5 * (1.0 + proj_pos.y as f32) * size.1 as f32,
 
-                );
                 canvas.draw_text_blob(
                     &data_item.text_blob,
-                    target_point_center_aligned,
+                    Point::new(screen_pos.x as scalar, screen_pos.y as scalar),
                     &font_data.paint,
                 );
             }
