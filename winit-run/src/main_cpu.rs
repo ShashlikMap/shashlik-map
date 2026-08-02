@@ -11,8 +11,10 @@ use slint::{ComponentHandle, Image, PhysicalSize, SharedPixelBuffer, SharedStrin
 use std::sync::{Arc, RwLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
+use map::route::RouteCosting;
 
 enum Interaction {
+    Route,
     ZoomIn,
     ZoomOut,
     Left,
@@ -92,6 +94,9 @@ pub fn launch_internal(ui: &ShashlikUI) {
                     'z' | 'Z' => {
                         *interaction = Interaction::ZoomOut;
                     }
+                    'r' | 'R' => {
+                        *interaction = Interaction::Route;
+                    }
                     _ => {}
                 }
             }
@@ -110,6 +115,10 @@ pub fn launch_internal(ui: &ShashlikUI) {
             let frame_start = Instant::now();
             if let Ok(interaction) = interaction.try_read() {
                 match *interaction {
+                    Interaction::Route => {
+                        shashlik_map
+                            .create_route_to_from_screen_center(RouteCosting::Auto);
+                    }
                     Interaction::ZoomIn => {
                         shashlik_map.zoom_delta(
                             1.0 + ZOOM_SPEED,

@@ -220,6 +220,8 @@ impl CpuRenderer {
     ) {
         shapes.iter().for_each(|(key, spat_data, shapes_data)| {
             let external_spat_data = spatial_map.get(key);
+            let normal_scale = external_spat_data.map(|spatial_data| spatial_data.normal_scale)
+                .unwrap_or(spat_data.normal_scale);
 
             let project_point = |point| {
                 let modified = if let Some(external_spat_data) = external_spat_data {
@@ -239,7 +241,7 @@ impl CpuRenderer {
                 let mut l_width = 0.0;
                 match shape_data.geometry_type {
                     GeometryType::Polyline(options) => {
-                        l_width = (options.width as f64 * norm_length) as f32;
+                        l_width = (options.width as f64 * norm_length) as f32 * (normal_scale as f32);
                         is_line = true;
                         if l_width < Self::HAIRLINE_THRESHOLD {
                             continue;

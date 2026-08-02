@@ -6,6 +6,7 @@ pub struct SpatialData {
     pub transform: DVec3,
     pub scale: DVec3,
     pub yaw: f64,
+    pub normal_scale: f64,
     pub bbox: Rect,
 }
 
@@ -15,6 +16,7 @@ impl SpatialData {
             transform: DVec3::new(0.0, 0.0, 0.0),
             scale: DVec3::splat(1.0),
             yaw: 0.0,
+            normal_scale: 1.0,
             bbox: Rect::new((0.0, 0.0), (0.0, 0.0)),
         }
     }
@@ -24,6 +26,7 @@ impl SpatialData {
             transform,
             scale: DVec3::splat(1.0),
             yaw: 0.0,
+            normal_scale: 1.0,
             bbox: Rect::new((0.0, 0.0), (0.0, 0.0)),
         }
     }
@@ -38,6 +41,10 @@ impl SpatialData {
     }
     pub fn yaw(&mut self, yaw: f64) {
         self.yaw = yaw;
+    }
+
+    pub fn normal_scale(&mut self, normal_scale: f64) {
+        self.normal_scale = normal_scale;
     }
 
     pub fn scale_rot_matrix(&self) -> DMat4 {
