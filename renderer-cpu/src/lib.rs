@@ -13,11 +13,7 @@ use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
 use renderer_common::{CanvasApi, Renderer, RendererUpdateData, max_f64, min_f64};
 use rustc_hash::FxHashMap;
-use skia_safe::utils::text_utils::Align;
-use skia_safe::{
-    Canvas, Color, Color4f, Font, FontMgr, Paint, PaintStyle, PathBuilder, PictureRecorder, Point,
-    Rect,
-};
+use skia_safe::{Canvas, Color, Color4f, Font, FontMgr, Paint, PaintStyle, PathBuilder, PictureRecorder, Point, Rect, TextBlob};
 use std::mem;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, mpsc};
@@ -40,7 +36,6 @@ pub struct CpuRenderer {
     spatial_map: FxHashMap<String, SpatialData>,
     norm_length: f64,
     screen_aabb: Box2D,
-    font_data: FontData,
 }
 
 struct FontData {
@@ -65,16 +60,17 @@ impl FontData {
 // TODO We can't use original TextData at this moment
 struct InternalTextData {
     pub _id: u64,
-    pub text: String,
+    pub text_blob: TextBlob,
+    pub bounds: Rect,
     pub _screen_offset: Vec2,
     pub _size: f32,
     pub _alpha: f32,
-    pub line_data: DVec3,
+    pub position: DVec3,
     pub _screen_space: bool,
 }
 
-#[derive(Default)]
 pub struct CpuCanvasApi {
+    font_data: FontData,
     shapes: Vec<ShapeData>,
     feature_shapes: IndexMap<String, Vec<ShapeData>>,
     text_data: Vec<InternalTextData>,
@@ -82,6 +78,15 @@ pub struct CpuCanvasApi {
 }
 
 impl CpuCanvasApi {
+    fn new(font_data: FontData) -> Self {
+        Self {
+            font_data,
+            shapes: vec![],
+            feature_shapes: Default::default(),
+            text_data: vec![],
+            current_tag: None,
+        }
+    }
     pub fn take_shapes(&mut self) -> Vec<ShapeData> {
         mem::take(&mut self.shapes)
     }
@@ -111,16 +116,19 @@ impl CanvasApi for CpuCanvasApi {
             }
             GeometryData::Text(data) => {
                 if data.line_data.positions.len() == 1 {
-                    let qq = InternalTextData {
+                    let text_blob = TextBlob::from_str(data.text, &self.font_data.font).expect("Failed to parse font data to create TextBlob");
+                    let bounds = text_blob.bounds().clone();
+                    let internal_text_data = InternalTextData {
                         _id: data.id,
-                        text: data.text,
+                        text_blob,
+                        bounds,
                         _screen_offset: data.screen_offset,
                         _size: data.size,
                         _alpha: data.alpha,
-                        line_data: data.line_data.positions[0],
+                        position: data.line_data.positions[0],
                         _screen_space: data.screen_space,
                     };
-                    self.text_data.push(qq);
+                    self.text_data.push(internal_text_data);
                 }
             }
             _ => {}
@@ -131,9 +139,10 @@ impl CanvasApi for CpuCanvasApi {
 impl CpuRenderer {
     pub fn new(width: u32, height: u32, font_data: &'static [u8],) -> Self {
         let (sender, receiver) = mpsc::channel();
+        let font_data = FontData::new(font_data);
         Self {
             size: (width, height),
-            canvas_api: Default::default(),
+            canvas_api: CpuCanvasApi::new(font_data),
             shapes_background: vec![],
             shapes_foreground: vec![],
             text_data: vec![],
@@ -148,7 +157,6 @@ impl CpuRenderer {
             spatial_map: Default::default(),
             norm_length: 0.0,
             screen_aabb: Box2D::new(point(-1.0, -1.0), point(1.0, 1.0)),
-            font_data: FontData::new(font_data),
         }
     }
 }
@@ -187,20 +195,25 @@ impl CpuRenderer {
             };
 
             for data_item in data {
-                let proj_pos = project_point(data_item.line_data);
-                if !screen_aabb.contains(point(proj_pos.x as f32, proj_pos.y as f32)) {
+                let proj_pos = project_point(data_item.position);
+
+                let bounds_w = data_item.bounds.width() / size.0 as f32;
+                let bounds_h = data_item.bounds.height() / size.1 as f32;
+                let proj_bounds = Box2D::new(
+                    point(proj_pos.x as f32 - bounds_w, proj_pos.y as f32 - bounds_h),
+                    point(proj_pos.x as f32 + bounds_w * 0.5, proj_pos.y as f32));
+                if !screen_aabb.intersects(&proj_bounds) {
                     continue;
                 }
-                let target_point = Point::new(
-                    0.5 * (1.0 + proj_pos.x as f32) * size.0 as f32,
+                let target_point_center_aligned = Point::new(
+                    0.5 * (1.0 + proj_pos.x as f32) * size.0 as f32 - data_item.bounds.width() * 0.5,
                     0.5 * (1.0 + proj_pos.y as f32) * size.1 as f32,
+
                 );
-                canvas.draw_str_align(
-                    data_item.text.as_str(),
-                    target_point,
-                    &font_data.font,
+                canvas.draw_text_blob(
+                    &data_item.text_blob,
+                    target_point_center_aligned,
                     &font_data.paint,
-                    Align::Center,
                 );
             }
         })
@@ -466,7 +479,7 @@ impl Renderer for CpuRenderer {
                               canvas: &Canvas| {
             Self::process_text(
                 self.size,
-                &self.font_data,
+                &self.canvas_api.font_data,
                 data,
                 canvas,
                 &self.cs_offset,
