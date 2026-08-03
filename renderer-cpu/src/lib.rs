@@ -564,7 +564,7 @@ impl Renderer for CpuRenderer {
             );
         };
 
-        let text_processor = |data: &mut [(String, SpatialData, Vec<InternalTextData>)],
+        let text_processor = |data: &[(String, SpatialData, Vec<InternalTextData>)],
                               canvas: &Canvas| {
             Self::process_text(
                 self.size,
@@ -599,7 +599,7 @@ impl Renderer for CpuRenderer {
                     processor(list, canvas_front);
                 });
 
-                text_processor(&mut self.text_data, canvas_front);
+                text_processor(&self.text_data, canvas_front);
 
                 recorder.finish_recording_as_picture(None).unwrap()
             },
