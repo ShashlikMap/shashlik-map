@@ -10,5 +10,5 @@ geo-types = { workspace = true, features = ["rstar_0_12"] }
 lyon = { workspace = true}
 rustybuzz = { workspace = true}
 bytemuck = { workspace = true}
-crossbeam = { workspace = true }
+crossbeam-queue = { workspace = true }
 rstar = { workspace = true }

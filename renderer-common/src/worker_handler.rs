@@ -1,8 +1,8 @@
-use crossbeam::queue::SegQueue;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, mpsc};
 use std::thread;
 use std::thread::JoinHandle;
+use crossbeam_queue::SegQueue;
 
 type ModificationClosure<B> = Box<dyn FnOnce(&mut B) + Send + 'static>;
 
