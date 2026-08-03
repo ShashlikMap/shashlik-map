@@ -13,9 +13,9 @@ pub struct WorkerHandler<B: Send + 'static, P: Send + 'static> {
 }
 
 impl<B: Default + Send + 'static, P: Send + 'static> WorkerHandler<B, P> {
-    pub fn spawn<F>(post_process_fn: F) -> Self
+    pub fn spawn<F>(mut post_process_fn: F) -> Self
     where
-        F: Fn(&mut B) -> P + Send + 'static,
+        F: FnMut(&mut B) -> P + Send + 'static,
     {
         let instruction_queue = Arc::new(SegQueue::<ModificationClosure<B>>::new());
         let (tx_to_renderer, rx_from_worker) = mpsc::sync_channel(1);
