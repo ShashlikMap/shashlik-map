@@ -12,12 +12,16 @@ impl CollisionHandler {
     pub fn new(width: f32, height: f32) -> Self {
         CollisionHandler {
             objects: RTree::new(),
-            screen_rect: Rectangle::from_corners(Point::new(0.0, 0.0), Point::new(width, height)),
+            screen_rect: Self::create_rect(width, height),
         }
     }
 
     pub fn resize(&mut self, width: f32, height: f32) {
-        self.screen_rect = Rectangle::from_corners(Point::new(0.0, 0.0), Point::new(width, height));
+        self.screen_rect = Self::create_rect(width, height);
+    }
+
+    fn create_rect(width: f32, height: f32) -> Rectangle<Point<f32>> {
+        Rectangle::from_corners(Point::new(0.0, 0.0), Point::new(width, height))
     }
 
     pub fn within_screen(
@@ -66,11 +70,8 @@ impl CollisionHandler {
         let has_items = self
             .objects
             .locate_in_envelope_intersecting(&envelope)
-            .peekable().peek().is_some();
-        if has_items {
-            return false;
-        }
-        true
+            .next().is_some();
+        !has_items
     }
 
     pub fn clear(&mut self) {
