@@ -11,4 +11,5 @@ lyon = { workspace = true}
 rustybuzz = { workspace = true}
 bytemuck = { workspace = true}
 crossbeam-queue = { workspace = true }
+crossbeam-channel = { workspace = true }
 rstar = { workspace = true }

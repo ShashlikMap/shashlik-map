@@ -176,7 +176,7 @@ impl CpuRenderer {
 
         let mut collider = CollisionHandler::new(width as f32, height as f32);
         let screen_size_as_vec = DVec2::new(width as f64, height as f64);
-        let worker_handler = WorkerHandler::spawn(true, move |input: &mut TextColliderData| {
+        let worker_handler = WorkerHandler::spawn(move |input: &mut TextColliderData| {
             let view_proj = &input.view_projection;
             let project_point = |point| {
                 view_proj
@@ -598,11 +598,12 @@ impl Renderer for CpuRenderer {
                 let canvas_front = recorder
                     .begin_recording(Rect::from_wh(self.size.0 as f32, self.size.1 as f32), false);
                 processor(&self.shapes_foreground, canvas_front);
+
+                text_processor(&self.text_data, canvas_front);
+
                 self.shapes_features.values().for_each(|list| {
                     processor(list, canvas_front);
                 });
-
-                text_processor(&self.text_data, canvas_front);
 
                 recorder.finish_recording_as_picture(None).unwrap()
             },
