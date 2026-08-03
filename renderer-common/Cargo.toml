@@ -6,8 +6,9 @@ edition = "2024"
 [dependencies]
 strum = { workspace = true }
 glam = { workspace = true }
-geo-types = { workspace = true }
+geo-types = { workspace = true, features = ["rstar_0_12"] }
 lyon = { workspace = true}
 rustybuzz = { workspace = true}
 bytemuck = { workspace = true}
 crossbeam = { workspace = true }
+rstar = { workspace = true }

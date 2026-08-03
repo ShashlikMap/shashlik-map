@@ -34,6 +34,7 @@ rustc-hash = "1.1.0"
 skia-safe = "0.99.0"
 indexmap = "2.12.0"
 crossbeam = "0.8.4"
+rstar = "0.12.2"
 
 # macOS, iOS
 libc = { version = "0.2", default-features = false }

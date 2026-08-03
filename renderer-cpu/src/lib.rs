@@ -23,7 +23,7 @@ use renderer_common::worker_handler::WorkerHandler;
 pub struct CpuRenderer {
     size: (u32, u32),
     canvas_api: CpuCanvasApi,
-    worker_handler: WorkerHandler<Vec<(String, SpatialData, Vec<InternalTextData>)>,
+    worker_handler: WorkerHandler<TextColliderData,
         Vec<(String, SpatialData, Vec<InternalTextData>)>>,
     shapes_background: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
     shapes_foreground: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
@@ -71,6 +71,12 @@ struct InternalTextData {
     pub _alpha: f32,
     pub position: DVec3,
     pub _screen_space: bool,
+}
+
+#[derive(Default)]
+struct TextColliderData {
+    view_proj_matrix: DMat4,
+    data: Vec<(String, SpatialData, Vec<InternalTextData>)>,
 }
 
 pub struct CpuCanvasApi {
@@ -144,13 +150,13 @@ impl CpuRenderer {
     pub fn new(width: u32, height: u32, font_data: &'static [u8],) -> Self {
         let (sender, receiver) = mpsc::channel();
         let font_data = FontData::new(font_data);
-        let worker_handler = WorkerHandler::spawn(|input: &mut Vec<(String, SpatialData, Vec<InternalTextData>)>| {
-            input.iter_mut().for_each(|group| {
+        let worker_handler = WorkerHandler::spawn(|input: &mut TextColliderData| {
+            input.data.iter_mut().for_each(|group| {
                 group.2.iter_mut().for_each(|item| {
                     item.position.x += 0.5;
                 });
             });
-            Vec::clone(input)
+            input.data.clone()
         });
         Self {
             size: (width, height),
@@ -443,8 +449,8 @@ impl Renderer for CpuRenderer {
                     });
 
                     let internal_text_data = self.canvas_api.take_text_data();
-                    self.worker_handler.update_data(move |text_data| {
-                        text_data.push((
+                    self.worker_handler.update_data(move |collider_data| {
+                        collider_data.data.push((
                             key.clone(),
                             spat_data.clone(),
                             internal_text_data,
@@ -459,8 +465,8 @@ impl Renderer for CpuRenderer {
                         list.retain(|s| !keys.contains(&s.0));
                     });
 
-                    self.worker_handler.update_data(move |text_data| {
-                        text_data.retain(|s| !keys.contains(&s.0));
+                    self.worker_handler.update_data(move |collider_data| {
+                        collider_data.data.retain(|s| !keys.contains(&s.0));
                     });
                 }
                 RendererApiMsg::UpdateStyle(style_id, updater) => {
@@ -478,7 +484,10 @@ impl Renderer for CpuRenderer {
                 }
             }
         }
-        self.worker_handler.trigger();
+        let proj_matrix = self.view_proj_matrix.clone();
+        self.worker_handler.update_data(move |collider_data| {
+            collider_data.view_proj_matrix = proj_matrix;
+        });
         if let Some(r) = self.worker_handler.try_get_result() {
             self.text_data2 = r;
         }

@@ -32,7 +32,6 @@ use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
 
 pub mod canvas_api;
-mod collision_handler;
 pub mod draw_commands;
 pub mod mesh;
 pub mod messages;

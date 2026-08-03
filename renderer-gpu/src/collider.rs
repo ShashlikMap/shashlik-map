@@ -1,8 +1,8 @@
-use crate::collision_handler::CollisionHandler;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::view_projection::ViewProjection;
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::{mpsc, Arc, Mutex};
+use renderer_common::collision_handler::CollisionHandler;
+use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::{Arc, Mutex, mpsc};
 use std::thread::spawn;
 
 enum ColliderMsg {

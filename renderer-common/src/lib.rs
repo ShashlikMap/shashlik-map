@@ -4,7 +4,7 @@ use crate::render_modifier::SpatialData;
 use crate::render_style::RenderStyle;
 use crate::style_id::StyleId;
 use geo_types::Coord;
-use glam::{dvec3, DMat4, DVec2, DVec3};
+use glam::{DMat4, DVec2, DVec3, dvec3};
 use std::collections::HashSet;
 use std::sync::Arc;
 use strum::{Display, EnumIter, EnumString};
@@ -18,6 +18,7 @@ pub mod style_id;
 pub mod fps;
 pub mod r_api_messenger;
 pub mod worker_handler;
+pub mod collision_handler;
 
 /// should be the same as mesh_shader.wgsl
 pub static LIGHT_POS: DVec3 = dvec3(0.84, 1.12, 1.42);
