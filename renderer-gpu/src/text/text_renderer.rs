@@ -1,6 +1,5 @@
+use crate::buffer_pool::BufferPool;
 use crate::collider::{ColliderTask, CollisionTaskController, CollisionTaskWrapper};
-use crate::collision_handler::CollisionHandler;
-use renderer_common::geometry_data::TextData;
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
@@ -9,8 +8,10 @@ use crate::text::glyph_cache::GlyphCache;
 use crate::vertex_attrs::TextInstanceInput;
 use crate::view_projection::ViewProjection;
 use geo_types::{coord, point};
-use glam::{dvec3, vec3, DVec3, Mat4, Vec2, Vec3};
+use glam::{DVec3, Mat4, Vec2, Vec3, dvec3, vec3};
 use num::clamp;
+use renderer_common::collision_handler::CollisionHandler;
+use renderer_common::geometry_data::TextData;
 use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
 use rustybuzz::ttf_parser::GlyphId;
@@ -20,7 +21,6 @@ use std::f32::consts::PI;
 use std::mem;
 use std::sync::Arc;
 use wgpu::RenderPass;
-use crate::buffer_pool::BufferPool;
 
 #[derive(Clone)]
 pub struct GlyphData {
