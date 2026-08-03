@@ -168,13 +168,15 @@ impl CanvasApi for CpuCanvasApi {
 }
 
 impl CpuRenderer {
+    const ALPHA_STEP: f32 = 0.1;
+
     pub fn new(width: u32, height: u32, font_data: &'static [u8]) -> Self {
         let (sender, receiver) = mpsc::channel();
         let font_data = FontData::new(font_data);
 
         let mut collider = CollisionHandler::new(width as f32, height as f32);
         let screen_size_as_vec = DVec2::new(width as f64, height as f64);
-        let worker_handler = WorkerHandler::spawn(move |input: &mut TextColliderData| {
+        let worker_handler = WorkerHandler::spawn(true, move |input: &mut TextColliderData| {
             let view_proj = &input.view_projection;
             let project_point = |point| {
                 view_proj
@@ -199,10 +201,13 @@ impl CpuRenderer {
                     let screen_bounds = Rectangle::from_corners(min_point, max_point);
                     if collider.within_screen(screen_bounds) {
                         if collider.check_and_insert(screen_bounds) {
-                            data_item.current_alpha = f32::min(data_item.current_alpha + 0.1, 1.0);
+                            data_item.current_alpha = f32::min(data_item.current_alpha + Self::ALPHA_STEP, 1.0);
                         } else {
-                            data_item.current_alpha = f32::max(data_item.current_alpha - 0.1, 0.0);
+                            data_item.current_alpha = f32::max(data_item.current_alpha - Self::ALPHA_STEP, 0.0);
                         }
+                        // There is an issue that 0.0 value will never appear in id_to_alpha map.
+                        // Fade out from 0.0 or 0.1 is not a big difference, let's keep a performance tradeoff.
+                        // Plus, the general cross-zoom behavior is not good anyway. Need to rethink.
                         if data_item.current_alpha > 0.0 {
                             res_internal.push(data_item.clone());
                         }

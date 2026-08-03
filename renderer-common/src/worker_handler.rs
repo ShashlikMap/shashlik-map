@@ -13,7 +13,7 @@ pub struct WorkerHandler<B: Send + 'static, P: Send + 'static> {
 }
 
 impl<B: Default + Send + 'static, P: Send + 'static> WorkerHandler<B, P> {
-    pub fn spawn<F>(mut post_process_fn: F) -> Self
+    pub fn spawn<F>(wait_consumer_result: bool, mut post_process_fn: F) -> Self
     where
         F: FnMut(&mut B) -> P + Send + 'static,
     {
@@ -27,7 +27,6 @@ impl<B: Default + Send + 'static, P: Send + 'static> WorkerHandler<B, P> {
             loop {
                 if worker_input.is_empty() {
                     thread::park();
-                    // continue;
                 }
 
                 while let Some(modify_closure) = worker_input.pop() {
@@ -36,7 +35,11 @@ impl<B: Default + Send + 'static, P: Send + 'static> WorkerHandler<B, P> {
 
                 let result = post_process_fn(&mut local_state);
 
-                let _ = tx_to_renderer.try_send(result);
+                if wait_consumer_result {
+                    let _ = tx_to_renderer.send(result);
+                } else {
+                    let _ = tx_to_renderer.try_send(result);
+                };
             }
         });
 

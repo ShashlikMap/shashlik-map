@@ -16,10 +16,6 @@ impl CollisionHandler {
         }
     }
 
-    pub fn resize(&mut self, width: f32, height: f32) {
-        self.screen_rect = Self::create_rect(width, height);
-    }
-
     fn create_rect(width: f32, height: f32) -> Rectangle<Point<f32>> {
         Rectangle::from_corners(Point::new(0.0, 0.0), Point::new(width, height))
     }
@@ -50,7 +46,7 @@ impl CollisionHandler {
         true
     }
 
-    /// Method first check if any of rectangles intersects anything and only then adds it to R-tree
+    /// Method first check if any of rectangles intersects previously added data to r-tree and only then adds rectangles to R-tree
     pub fn check_and_insert_rectangles(&mut self, rectangles: Vec<Rectangle<Point<f32>>>) -> bool {
         for rect in &rectangles {
             if !self.check_rectangle(rect) {
