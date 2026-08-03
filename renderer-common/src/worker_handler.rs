@@ -55,7 +55,7 @@ impl<B: Default + Send + 'static, P: Send + 'static> WorkerHandler<B, P> {
         self.trigger();
     }
 
-    pub fn trigger(&self) {
+    fn trigger(&self) {
         self.worker_thread.thread().unpark();
     }
 

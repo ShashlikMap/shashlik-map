@@ -32,7 +32,7 @@ pub struct CpuRenderer {
         WorkerHandler<TextColliderData, Vec<(String, SpatialData, Vec<InternalTextData>)>>,
     shapes_background: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
     shapes_foreground: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
-    text_data2: Vec<(String, SpatialData, Vec<InternalTextData>)>,
+    text_data: Vec<(String, SpatialData, Vec<InternalTextData>)>,
     shapes_features: IndexMap<String, Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>>,
     receiver: Receiver<RendererApiMsg<CpuCanvasApi>>,
     cpu_renderer_api: Arc<CommonRendererApi<CpuCanvasApi>>,
@@ -68,7 +68,7 @@ impl FontData {
 // TODO We can't use original TextData at this moment
 #[derive(Clone)]
 struct InternalTextData {
-    pub _id: u64,
+    pub id: u64,
     pub text_blob: TextBlob,
     pub bounds: Rect,
     pub _screen_offset: Vec2,
@@ -77,7 +77,6 @@ struct InternalTextData {
     pub position: DVec3,
     pub _screen_space: bool,
     pub current_alpha: f32,
-    pub target_alpha: f32,
 }
 
 #[derive(Default)]
@@ -98,6 +97,7 @@ pub struct CpuCanvasApi {
     feature_shapes: IndexMap<String, Vec<ShapeData>>,
     text_data: Vec<InternalTextData>,
     current_tag: Option<String>,
+    id_to_alpha: IndexMap<u64, f32>,
 }
 
 impl CpuCanvasApi {
@@ -108,6 +108,7 @@ impl CpuCanvasApi {
             feature_shapes: Default::default(),
             text_data: vec![],
             current_tag: None,
+            id_to_alpha: Default::default(),
         }
     }
     pub fn take_shapes(&mut self) -> Vec<ShapeData> {
@@ -120,6 +121,11 @@ impl CpuCanvasApi {
     pub fn take_feature_shapes(&mut self) -> IndexMap<String, Vec<ShapeData>> {
         self.current_tag = None;
         mem::take(&mut self.feature_shapes)
+    }
+
+    pub fn update_id_to_alpha(&mut self, internal_text_data: &InternalTextData) {
+        self.id_to_alpha
+            .insert(internal_text_data.id, internal_text_data.current_alpha);
     }
 }
 
@@ -143,7 +149,7 @@ impl CanvasApi for CpuCanvasApi {
                         .expect("Failed to parse font data to create TextBlob");
                     let bounds = text_blob.bounds().clone();
                     let internal_text_data = InternalTextData {
-                        _id: data.id,
+                        id: data.id,
                         text_blob,
                         bounds,
                         _screen_offset: data.screen_offset,
@@ -151,8 +157,7 @@ impl CanvasApi for CpuCanvasApi {
                         _alpha: data.alpha,
                         position: data.line_data.positions[0],
                         _screen_space: data.screen_space,
-                        current_alpha: 1.0,
-                        target_alpha: 1.0,
+                        current_alpha: self.id_to_alpha.get(&data.id).copied().unwrap_or(0.0),
                     };
                     self.text_data.push(internal_text_data);
                 }
@@ -194,16 +199,13 @@ impl CpuRenderer {
                     let screen_bounds = Rectangle::from_corners(min_point, max_point);
                     if collider.within_screen(screen_bounds) {
                         if collider.check_and_insert(screen_bounds) {
-                            data_item.current_alpha = f32::min(data_item.current_alpha + 0.05, 1.0);
+                            data_item.current_alpha = f32::min(data_item.current_alpha + 0.1, 1.0);
                         } else {
-                            data_item.current_alpha = f32::max(data_item.current_alpha - 0.05, 0.0);
+                            data_item.current_alpha = f32::max(data_item.current_alpha - 0.1, 0.0);
                         }
                         if data_item.current_alpha > 0.0 {
                             res_internal.push(data_item.clone());
                         }
-                    } else {
-                        data_item.current_alpha = 1.0;
-                        data_item.target_alpha = 1.0;
                     }
                 });
                 res.push((group.0.clone(), group.1.clone(), res_internal));
@@ -217,7 +219,7 @@ impl CpuRenderer {
             worker_handler,
             shapes_background: vec![],
             shapes_foreground: vec![],
-            text_data2: vec![],
+            text_data: vec![],
             shapes_features: Default::default(),
             receiver,
             cpu_renderer_api: Arc::new(CommonRendererApi::new(sender)),
@@ -538,8 +540,13 @@ impl Renderer for CpuRenderer {
                 cs_offset,
             };
         });
-        if let Some(r) = self.worker_handler.try_get_result() {
-            self.text_data2 = r;
+        if let Some(result) = self.worker_handler.try_get_result() {
+            result.iter().for_each(|group| {
+                group.2.iter().for_each(|data| {
+                    self.canvas_api.update_id_to_alpha(data);
+                })
+            });
+            self.text_data = result;
         }
 
         let processor = |shapes: &[(String, SpatialData, Vec<(Box2D, ShapeData)>)],
@@ -592,7 +599,7 @@ impl Renderer for CpuRenderer {
                     processor(list, canvas_front);
                 });
 
-                text_processor(&mut self.text_data2, canvas_front);
+                text_processor(&mut self.text_data, canvas_front);
 
                 recorder.finish_recording_as_picture(None).unwrap()
             },
