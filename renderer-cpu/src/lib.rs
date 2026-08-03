@@ -123,7 +123,7 @@ impl CpuCanvasApi {
         mem::take(&mut self.feature_shapes)
     }
 
-    pub fn update_id_to_alpha(&mut self, internal_text_data: &InternalTextData) {
+    fn update_id_to_alpha(&mut self, internal_text_data: &InternalTextData) {
         self.id_to_alpha
             .insert(internal_text_data.id, internal_text_data.current_alpha);
     }
@@ -258,7 +258,6 @@ impl CpuRenderer {
         canvas: &Canvas,
         cs_offset: &DVec3,
         view_proj_matrix: &DMat4,
-        screen_aabb: &Box2D,
     ) {
         let mut font_paint = font_data.paint.clone();
         text_data.iter().for_each(|(_, spat_data, data)| {
@@ -573,7 +572,6 @@ impl Renderer for CpuRenderer {
                 canvas,
                 &self.cs_offset,
                 &self.view_proj_matrix,
-                &self.screen_aabb,
             );
         };
 
