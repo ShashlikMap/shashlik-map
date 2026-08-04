@@ -56,7 +56,7 @@ impl FontData {
         let typeface = FontMgr::new()
             .new_from_data(&font_data, 0)
             .expect("Failed to parse font data into a usable Typeface layer");
-        let font = Font::from_typeface(typeface, 19.0);
+        let font = Font::from_typeface(typeface, 14.0);
         let mut paint = Paint::default();
         paint.set_color(Color::BLACK);
         paint.set_anti_alias(true);
@@ -326,9 +326,9 @@ impl CpuRenderer {
                         l_width =
                             (options.width as f64 * norm_length) as f32 * (normal_scale as f32);
                         is_line = true;
-                        // if l_width < Self::HAIRLINE_THRESHOLD {
-                        //     continue;
-                        // }
+                        if l_width < Self::HAIRLINE_THRESHOLD {
+                            continue;
+                        }
                     }
                     _ => {}
                 }

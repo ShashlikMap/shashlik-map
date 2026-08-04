@@ -28,6 +28,8 @@ enum Interaction {
 const ZOOM_SPEED: f32 = 0.02;
 const PAN_SPEED: f32 = 10.0;
 
+const MAX_FPS: f32 = 24.0;
+
 pub fn prepare() {
     unsafe {
         std::env::set_var("SLINT_NO_ACCELERATION", "1");
@@ -61,7 +63,7 @@ pub fn launch_internal(ui: &ShashlikUI) {
         ShashlikFeatureProcessor::new(false, |zoom_level, kind| {
             match kind {
                 MapGeomObjectKind::Nature(kind) => match kind {
-                    NatureKind::Park => zoom_level >= 13,
+                    NatureKind::Park => zoom_level >= 12,
                     _ => true,
                 }
                 MapGeomObjectKind::Building(_) => zoom_level >= 15,
@@ -69,10 +71,10 @@ pub fn launch_internal(ui: &ShashlikUI) {
                     match info.line_kind {
                         LineKind::Highway { kind } => {
                             match kind {
-                                HighwayKind::Motorway => zoom_level >= 6,
-                                HighwayKind::Trunk => zoom_level >= 8,
-                                HighwayKind::Primary => zoom_level >= 8,
-                                HighwayKind::Secondary => zoom_level >= 11,
+                                HighwayKind::Motorway => zoom_level >= 5,
+                                HighwayKind::Trunk => zoom_level >= 10,
+                                HighwayKind::Primary => zoom_level >= 11,
+                                HighwayKind::Secondary => zoom_level >= 12,
                                 HighwayKind::Service => zoom_level >= 15,
                                 _ => zoom_level >= 14
                             }
@@ -210,7 +212,7 @@ pub fn launch_internal(ui: &ShashlikUI) {
             .expect("Can't execute invoke_from_event_loop");
 
             let work_duration = frame_start.elapsed();
-            if let Some(remaining_sleep_time) = Duration::from_millis(16).checked_sub(work_duration)
+            if let Some(remaining_sleep_time) = Duration::from_millis((1000.0 / MAX_FPS) as u64).checked_sub(work_duration)
             {
                 sleep(remaining_sleep_time);
             }
