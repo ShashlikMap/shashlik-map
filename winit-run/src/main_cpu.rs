@@ -11,6 +11,7 @@ use slint::{ComponentHandle, Image, PhysicalSize, SharedPixelBuffer, SharedStrin
 use std::sync::{Arc, RwLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
+use osm::map::{HighwayKind, LineKind, MapGeomObjectKind, MapPointObjectKind, NatureKind};
 use map::route::RouteCosting;
 
 enum Interaction {
@@ -57,7 +58,38 @@ pub fn launch_internal(ui: &ShashlikUI) {
 
     let tiles_provider = DefaultTilesProvider::new(
         Box::new(MvtTileStore::new()),
-        ShashlikFeatureProcessor::new(false),
+        ShashlikFeatureProcessor::new(false, |zoom_level, kind| {
+            match kind {
+                MapGeomObjectKind::Nature(kind) => match kind {
+                    NatureKind::Park => zoom_level >= 13,
+                    _ => true,
+                }
+                MapGeomObjectKind::Building(_) => zoom_level >= 15,
+                MapGeomObjectKind::Way(info) => {
+                    match info.line_kind {
+                        LineKind::Highway { kind } => {
+                            match kind {
+                                HighwayKind::Motorway => zoom_level >= 6,
+                                HighwayKind::Trunk => zoom_level >= 8,
+                                HighwayKind::Primary => zoom_level >= 8,
+                                HighwayKind::Secondary => zoom_level >= 11,
+                                HighwayKind::Service => zoom_level >= 15,
+                                _ => zoom_level >= 14
+                            }
+                        },
+                        LineKind::Railway { .. } => zoom_level >= 14,
+                    }
+                }
+                MapGeomObjectKind::Poi(info) => {
+                    match info.kind {
+                        MapPointObjectKind::PopArea(_) => true,
+                        MapPointObjectKind::TrainStation(_) => true,
+                        _ => false
+                    }
+                },
+                _ => true
+            }
+        }),
         1.0,
     );
 

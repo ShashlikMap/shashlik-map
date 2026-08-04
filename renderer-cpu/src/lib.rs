@@ -319,7 +319,6 @@ impl CpuRenderer {
             };
 
             for (aabb, shape_data) in shapes_data {
-                let mut pb = PathBuilder::new();
                 let mut is_line = false;
                 let mut l_width = 0.0;
                 match shape_data.geometry_type {
@@ -327,11 +326,11 @@ impl CpuRenderer {
                         l_width =
                             (options.width as f64 * norm_length) as f32 * (normal_scale as f32);
                         is_line = true;
-                        if l_width < Self::HAIRLINE_THRESHOLD {
-                            continue;
-                        }
+                        // if l_width < Self::HAIRLINE_THRESHOLD {
+                        //     continue;
+                        // }
                     }
-                    GeometryType::Polygon => {}
+                    _ => {}
                 }
 
                 let aabb_projected1 =
@@ -375,6 +374,7 @@ impl CpuRenderer {
                 if !cond {
                     continue;
                 }
+                let mut pb = PathBuilder::new();
                 shape_data.path.iter().for_each(|path| match path {
                     PathEvent::Begin { at } => {
                         let projected = project_point(DVec3::new(at.x as f64, at.y as f64, 0.0));

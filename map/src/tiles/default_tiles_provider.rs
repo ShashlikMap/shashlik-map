@@ -26,6 +26,7 @@ pub trait FeatureProcessor: Send + Sync {
         &self,
         geometry_data: &mut Vec<GeometryData>,
         poi: &MapPointInfo,
+        zoom_level: i32,
         local_position: &geo::Coord,
         dpi_scale: f32,
     );
@@ -124,6 +125,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                             feature_processor.process_poi(
                                 &mut geometry_data,
                                 poi,
+                                zoom_level,
                                 &local_position,
                                 dpi_scale,
                             );
