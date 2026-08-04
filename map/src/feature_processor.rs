@@ -90,7 +90,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         local_position: &Coord,
         dpi_scale: f32,
     ) {
-        if !(self.data_filter)(MAX_ZOOM_LEVEL - zoom_level, &MapGeomObjectKind::Poi(poi.clone())) {
+        if !(self.data_filter)(zoom_level, &MapGeomObjectKind::Poi(poi.clone())) {
             return;
         }
         let icon: Option<(&str, &[u8])> = match poi.kind {
