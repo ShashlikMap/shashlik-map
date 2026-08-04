@@ -56,7 +56,7 @@ impl FontData {
         let typeface = FontMgr::new()
             .new_from_data(&font_data, 0)
             .expect("Failed to parse font data into a usable Typeface layer");
-        let font = Font::from_typeface(typeface, 19.0);
+        let font = Font::from_typeface(typeface, 14.0);
         let mut paint = Paint::default();
         paint.set_color(Color::BLACK);
         paint.set_anti_alias(true);
@@ -319,7 +319,6 @@ impl CpuRenderer {
             };
 
             for (aabb, shape_data) in shapes_data {
-                let mut pb = PathBuilder::new();
                 let mut is_line = false;
                 let mut l_width = 0.0;
                 match shape_data.geometry_type {
@@ -331,7 +330,7 @@ impl CpuRenderer {
                             continue;
                         }
                     }
-                    GeometryType::Polygon => {}
+                    _ => {}
                 }
 
                 let aabb_projected1 =
@@ -375,6 +374,7 @@ impl CpuRenderer {
                 if !cond {
                     continue;
                 }
+                let mut pb = PathBuilder::new();
                 shape_data.path.iter().for_each(|path| match path {
                     PathEvent::Begin { at } => {
                         let projected = project_point(DVec3::new(at.x as f64, at.y as f64, 0.0));
