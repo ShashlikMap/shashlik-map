@@ -22,7 +22,7 @@ use wgpu::TextureUsages;
 pub fn prepare() {
     let mut wgpu_settings = WGPUSettings::default();
     wgpu_settings.device_required_features = Features::CLEAR_TEXTURE | Features::IMMEDIATES;
-    wgpu_settings.device_required_limits = Limits::default();
+    wgpu_settings.device_required_limits = Limits::downlevel_defaults();
     wgpu_settings.device_required_limits.max_immediate_size = 4;
 
 

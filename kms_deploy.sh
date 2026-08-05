@@ -7,7 +7,7 @@ TARGET_PATH="/home/admin"
 TARGET_TRIPLE="aarch64-unknown-linux-gnu"
 SOCKET="/tmp/ssh-socket-%r@%h:%p"
 
-FEATURE_FLAG="${RENDER_MODE:-linux-gpu}"
+FEATURE_FLAG="${RENDER_MODE}"
 
 RUN_IN_BACKGROUND=false
 

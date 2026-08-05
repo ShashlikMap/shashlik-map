@@ -25,7 +25,6 @@ wgpu = { workspace = true }
 slint = { git = "https://github.com/slint-ui/slint", rev = "d263608", features = ["backend-winit", "renderer-skia", "unstable-wgpu-30"] }
 
 [features]
-default = ["linux-gpu"]
 linux-gpu = ["dep:slint", "dep:wgpu", "dep:renderer-gpu", "slint/unstable-wgpu-30", "slint/backend-linuxkms-noseat", "slint/renderer-skia"]
 linux-cpu = ["dep:slint", "dep:skia-safe", "dep:renderer-cpu", "slint/backend-linuxkms-noseat", "slint/renderer-skia"]
 
