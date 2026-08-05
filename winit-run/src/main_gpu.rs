@@ -83,10 +83,10 @@ pub fn launch_internal(ui: &ShashlikUI) {
                         });
                         let config = SurfaceConfiguration {
                             usage: TextureUsages::RENDER_ATTACHMENT,
-                            format: TextureFormat::Rgba8Unorm,
+                            format: target_texture.format(),
                             color_space: SurfaceColorSpace::Auto,
-                            width: texture_width as u32,
-                            height: texture_height as u32,
+                            width: target_texture.width(),
+                            height: target_texture.height(),
                             present_mode: Default::default(),
                             desired_maximum_frame_latency: 2,
                             alpha_mode: Default::default(),
