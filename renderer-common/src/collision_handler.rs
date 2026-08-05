@@ -12,12 +12,12 @@ impl CollisionHandler {
     pub fn new(width: f32, height: f32) -> Self {
         CollisionHandler {
             objects: RTree::new(),
-            screen_rect: Rectangle::from_corners(Point::new(0.0, 0.0), Point::new(width, height)),
+            screen_rect: Self::create_rect(width, height),
         }
     }
 
-    pub fn resize(&mut self, width: f32, height: f32) {
-        self.screen_rect = Rectangle::from_corners(Point::new(0.0, 0.0), Point::new(width, height));
+    fn create_rect(width: f32, height: f32) -> Rectangle<Point<f32>> {
+        Rectangle::from_corners(Point::new(0.0, 0.0), Point::new(width, height))
     }
 
     pub fn within_screen(
@@ -46,7 +46,7 @@ impl CollisionHandler {
         true
     }
 
-    /// Method first check if any of rectangles intersects anything and only then adds it to R-tree
+    /// Method first check if any of rectangles intersects previously added data to r-tree and only then adds rectangles to R-tree
     pub fn check_and_insert_rectangles(&mut self, rectangles: Vec<Rectangle<Point<f32>>>) -> bool {
         for rect in &rectangles {
             if !self.check_rectangle(rect) {
@@ -66,11 +66,8 @@ impl CollisionHandler {
         let has_items = self
             .objects
             .locate_in_envelope_intersecting(&envelope)
-            .peekable().peek().is_some();
-        if has_items {
-            return false;
-        }
-        true
+            .next().is_some();
+        !has_items
     }
 
     pub fn clear(&mut self) {

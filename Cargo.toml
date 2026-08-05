@@ -33,6 +33,9 @@ rustybuzz = "0.20.1"
 rustc-hash = "1.1.0"
 skia-safe = "0.99.0"
 indexmap = "2.12.0"
+crossbeam-queue = "0.3.13"
+crossbeam-channel = "0.5.16"
+rstar = "0.12.2"
 
 # macOS, iOS
 libc = { version = "0.2", default-features = false }

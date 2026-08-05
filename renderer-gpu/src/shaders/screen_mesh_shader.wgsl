@@ -22,7 +22,7 @@ struct InstanceInput {
     @location(7) model_matrix_1: vec4<f32>,
     @location(8) model_matrix_2: vec4<f32>,
     @location(9) model_matrix_3: vec4<f32>,
-    @location(12) screen_space: u32, // question: should the location be universal across
+    @location(13) screen_space: u32, // question: should the location be universal across
 }
 
 struct VertexOutput {

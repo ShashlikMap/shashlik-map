@@ -18,11 +18,12 @@ use crate::MAX_ZOOM_LEVEL;
 
 pub struct ShashlikFeatureProcessor {
     include_extruded: bool,
+    data_filter: fn(zoom_level: i32, &MapGeomObjectKind) -> bool
 }
 
 impl Default for ShashlikFeatureProcessor {
     fn default() -> Self {
-        ShashlikFeatureProcessor::new(true)
+        ShashlikFeatureProcessor::new(true, |_, _| true)
     }
 }
 
@@ -32,9 +33,11 @@ impl ShashlikFeatureProcessor {
     const TOILETS_SVG: &'static [u8] = include_bytes!("../svg/toilet.svg");
     const TRAIN_STATION_SVG: &'static [u8] = include_bytes!("../svg/train_station.svg");
     const EV_STATION_SVG: &'static [u8] = include_bytes!("../svg/ev_station.svg");
-    pub fn new(include_extruded: bool) -> Self {
+    pub fn new(include_extruded: bool,
+               data_filter: fn(zoom_level: i32, kind: &MapGeomObjectKind) -> bool) -> Self {
         ShashlikFeatureProcessor {
-            include_extruded
+            include_extruded,
+            data_filter
         }
     }
 
@@ -83,9 +86,13 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         &self,
         geometry_data: &mut Vec<GeometryData>,
         poi: &MapPointInfo,
+        zoom_level: i32,
         local_position: &Coord,
         dpi_scale: f32,
     ) {
+        if !(self.data_filter)(zoom_level, &MapGeomObjectKind::Poi(poi.clone())) {
+            return;
+        }
         let icon: Option<(&str, &[u8])> = match poi.kind {
             MapPointObjectKind::TrainStation(is_train) => {
                 if is_train {
@@ -170,30 +177,9 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         let zoom_level = MAX_ZOOM_LEVEL - zoom_level;
         let line = line.0;
         if line.len() >= 2 {
-            let mut path_builder = Path::builder();
-            path_builder.begin(point(line[0].x, line[0].y));
-
-            for &p in line[1..].iter() {
-                path_builder.line_to(point(p.x, p.y));
+            if !(self.data_filter)(MAX_ZOOM_LEVEL - zoom_level, &kind) {
+                return;
             }
-
-            // fyi, we need to close the building path to properly build a closed stroke
-            // also if interiors are not empty!
-            let end_with_closing = matches!(kind, MapGeomObjectKind::Building(_)) || !interiors.is_empty();
-            path_builder.end(end_with_closing);
-
-            for interior in interiors {
-                if let Some(first_point) = interior.0.first() {
-                    path_builder.begin(point(first_point.x, first_point.y));
-
-                    for p in interior.0.iter().skip(1) {
-                        path_builder.line_to(point(p.x, p.y));
-                    }
-
-                    path_builder.end(true);
-                }
-            }
-
             if let Some((style_id, layer_level, geometry_type, name)) = match &kind {
                 MapGeomObjectKind::Way(info) => match info.line_kind {
                     LineKind::Highway { kind } => {
@@ -260,6 +246,30 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 }
                 _ => None,
             } {
+                let mut path_builder = Path::builder();
+                path_builder.begin(point(line[0].x, line[0].y));
+
+                for &p in line[1..].iter() {
+                    path_builder.line_to(point(p.x, p.y));
+                }
+
+                // fyi, we need to close the building path to properly build a closed stroke
+                // also if interiors are not empty!
+                let end_with_closing = matches!(kind, MapGeomObjectKind::Building(_)) || !interiors.is_empty();
+                path_builder.end(end_with_closing);
+
+                for interior in interiors {
+                    if let Some(first_point) = interior.0.first() {
+                        path_builder.begin(point(first_point.x, first_point.y));
+
+                        for p in interior.0.iter().skip(1) {
+                            path_builder.line_to(point(p.x, p.y));
+                        }
+
+                        path_builder.end(true);
+                    }
+                }
+
                 if let MapGeomObjectKind::Building(level) = kind
                     && zoom_level == 0 && self.include_extruded
                 {

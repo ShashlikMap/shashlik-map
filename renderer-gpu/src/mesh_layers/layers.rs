@@ -37,7 +37,7 @@ impl Layers {
     pub fn new(
         world_shapes_feature_tags: Vec<WorldShapeFeatureLayerTag>,
         global_context: &mut GlobalContext,
-        font: &'static ttf_parser::Face<'static>,
+        font: ttf_parser::Face<'static>,
     ) -> Layers {
         let feature_layers = FeatureLayers::new(world_shapes_feature_tags,
                                                 |tag| {
@@ -55,7 +55,7 @@ impl Layers {
                     fs_shader: "",
                 }),
                 global_context,
-                font,
+                font.clone(),
             )
         });
 

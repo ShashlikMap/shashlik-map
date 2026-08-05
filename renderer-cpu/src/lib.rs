@@ -1,19 +1,25 @@
 use geo_types::{Coord, coord};
-use glam::{DMat4, DVec2, DVec3};
+use glam::{DMat4, DVec2, DVec3, Vec2};
 use indexmap::IndexMap;
 use lyon_algorithms::aabb::bounding_box;
 use lyon_path::PathEvent;
 use lyon_path::geom::point;
 use lyon_path::math::Box2D;
+use renderer_common::collision_handler::CollisionHandler;
 pub use renderer_common::fps::FpsCounter;
 use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData};
 use renderer_common::r_api_messenger::{CommonRendererApi, RendererApiMsg};
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
-use renderer_common::{min_f64, CanvasApi, Renderer, RendererUpdateData, max_f64};
+use renderer_common::worker_handler::WorkerHandler;
+use renderer_common::{CanvasApi, Renderer, RendererUpdateData, max_f64, min_f64};
+use rstar::primitives::Rectangle;
 use rustc_hash::FxHashMap;
-use skia_safe::{Canvas, Color4f, Paint, PaintStyle, PathBuilder, PictureRecorder, Rect};
+use skia_safe::{
+    Canvas, Color, Color4f, Font, FontMgr, Paint, PaintStyle, PathBuilder, PictureRecorder, Rect,
+    TextBlob, Vector, scalar,
+};
 use std::mem;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, mpsc};
@@ -22,8 +28,11 @@ use std::sync::{Arc, mpsc};
 pub struct CpuRenderer {
     size: (u32, u32),
     canvas_api: CpuCanvasApi,
+    worker_handler:
+        WorkerHandler<TextColliderData, Vec<(String, SpatialData, Vec<InternalTextData>)>>,
     shapes_background: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
     shapes_foreground: Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>,
+    text_data: Vec<(String, SpatialData, Vec<InternalTextData>)>,
     shapes_features: IndexMap<String, Vec<(String, SpatialData, Vec<(Box2D, ShapeData)>)>>,
     receiver: Receiver<RendererApiMsg<CpuCanvasApi>>,
     cpu_renderer_api: Arc<CommonRendererApi<CpuCanvasApi>>,
@@ -37,21 +46,86 @@ pub struct CpuRenderer {
     screen_aabb: Box2D,
 }
 
+struct FontData {
+    font: Font,
+    paint: Paint,
+}
+
+impl FontData {
+    pub fn new(font_data: &'static [u8]) -> Self {
+        let typeface = FontMgr::new()
+            .new_from_data(&font_data, 0)
+            .expect("Failed to parse font data into a usable Typeface layer");
+        let font = Font::from_typeface(typeface, 14.0);
+        let mut paint = Paint::default();
+        paint.set_color(Color::BLACK);
+        paint.set_anti_alias(true);
+
+        Self { font, paint }
+    }
+}
+
+// TODO We can't use original TextData at this moment
+#[derive(Clone)]
+struct InternalTextData {
+    pub id: u64,
+    pub text_blob: TextBlob,
+    pub bounds: Rect,
+    pub _screen_offset: Vec2,
+    pub _size: f32,
+    pub _alpha: f32,
+    pub position: DVec3,
+    pub _screen_space: bool,
+    pub current_alpha: f32,
+}
+
 #[derive(Default)]
+struct ViewProjection {
+    view_proj_matrix: DMat4,
+    cs_offset: DVec3,
+}
+
+#[derive(Default)]
+struct TextColliderData {
+    view_projection: ViewProjection,
+    data: Vec<(String, SpatialData, Vec<InternalTextData>)>,
+}
+
 pub struct CpuCanvasApi {
+    font_data: FontData,
     shapes: Vec<ShapeData>,
     feature_shapes: IndexMap<String, Vec<ShapeData>>,
+    text_data: Vec<InternalTextData>,
     current_tag: Option<String>,
+    id_to_alpha: IndexMap<u64, f32>,
 }
 
 impl CpuCanvasApi {
+    fn new(font_data: FontData) -> Self {
+        Self {
+            font_data,
+            shapes: vec![],
+            feature_shapes: Default::default(),
+            text_data: vec![],
+            current_tag: None,
+            id_to_alpha: Default::default(),
+        }
+    }
     pub fn take_shapes(&mut self) -> Vec<ShapeData> {
         mem::take(&mut self.shapes)
+    }
+    fn take_text_data(&mut self) -> Vec<InternalTextData> {
+        mem::take(&mut self.text_data)
     }
 
     pub fn take_feature_shapes(&mut self) -> IndexMap<String, Vec<ShapeData>> {
         self.current_tag = None;
         mem::take(&mut self.feature_shapes)
+    }
+
+    fn update_id_to_alpha(&mut self, internal_text_data: &InternalTextData) {
+        self.id_to_alpha
+            .insert(internal_text_data.id, internal_text_data.current_alpha);
     }
 }
 
@@ -69,19 +143,88 @@ impl CanvasApi for CpuCanvasApi {
                     self.shapes.push(data);
                 }
             }
+            GeometryData::Text(data) => {
+                if data.line_data.positions.len() == 1 {
+                    let text_blob = TextBlob::from_str(data.text, &self.font_data.font)
+                        .expect("Failed to parse font data to create TextBlob");
+                    let bounds = text_blob.bounds().clone();
+                    let internal_text_data = InternalTextData {
+                        id: data.id,
+                        text_blob,
+                        bounds,
+                        _screen_offset: data.screen_offset,
+                        _size: data.size,
+                        _alpha: data.alpha,
+                        position: data.line_data.positions[0],
+                        _screen_space: data.screen_space,
+                        current_alpha: self.id_to_alpha.get(&data.id).copied().unwrap_or(0.0),
+                    };
+                    self.text_data.push(internal_text_data);
+                }
+            }
             _ => {}
         }
     }
 }
 
 impl CpuRenderer {
-    pub fn new(width: u32, height: u32) -> Self {
+    const ALPHA_STEP: f32 = 0.1;
+
+    pub fn new(width: u32, height: u32, font_data: &'static [u8]) -> Self {
         let (sender, receiver) = mpsc::channel();
+        let font_data = FontData::new(font_data);
+
+        let mut collider = CollisionHandler::new(width as f32, height as f32);
+        let screen_size_as_vec = DVec2::new(width as f64, height as f64);
+        let worker_handler = WorkerHandler::spawn(move |input: &mut TextColliderData| {
+            let view_proj = &input.view_projection;
+            let project_point = |point| {
+                view_proj
+                    .view_proj_matrix
+                    .project_point3(point - view_proj.cs_offset)
+                    .truncate()
+            };
+
+            let mut res = vec![];
+            collider.clear();
+            input.data.iter_mut().for_each(|group| {
+                let mut res_internal = vec![];
+                group.2.iter_mut().for_each(|data_item| {
+                    let clip_pos = project_point(data_item.position + group.1.transform);
+                    let screen_pos = 0.5 * ((1.0 + clip_pos) * screen_size_as_vec)
+                        - DVec2::new((data_item.bounds.width() * 0.5) as f64, 0.0);
+                    let screen_bounds = data_item
+                        .bounds
+                        .with_offset(Vector::new(screen_pos.x as scalar, screen_pos.y as scalar));
+                    let min_point = geo_types::Point::new(screen_bounds.left, screen_bounds.bottom);
+                    let max_point = geo_types::Point::new(screen_bounds.right, screen_bounds.top);
+                    let screen_bounds = Rectangle::from_corners(min_point, max_point);
+                    if collider.within_screen(screen_bounds) {
+                        if collider.check_and_insert(screen_bounds) {
+                            data_item.current_alpha = f32::min(data_item.current_alpha + Self::ALPHA_STEP, 1.0);
+                        } else {
+                            data_item.current_alpha = f32::max(data_item.current_alpha - Self::ALPHA_STEP, 0.0);
+                        }
+                        // There is an issue that 0.0 value will never appear in id_to_alpha map.
+                        // Fade out from 0.0 or 0.1 is not a big difference, let's keep a performance tradeoff.
+                        // Plus, the general cross-zoom behavior is not good anyway. Need to rethink.
+                        if data_item.current_alpha > 0.0 {
+                            res_internal.push(data_item.clone());
+                        }
+                    }
+                });
+                res.push((group.0.clone(), group.1.clone(), res_internal));
+            });
+            res
+        });
+
         Self {
             size: (width, height),
-            canvas_api: Default::default(),
+            canvas_api: CpuCanvasApi::new(font_data),
+            worker_handler,
             shapes_background: vec![],
             shapes_foreground: vec![],
+            text_data: vec![],
             shapes_features: Default::default(),
             receiver,
             cpu_renderer_api: Arc::new(CommonRendererApi::new(sender)),
@@ -113,6 +256,39 @@ impl CpuRenderer {
     }
 
     #[inline]
+    fn process_text(
+        size: (u32, u32),
+        font_data: &FontData,
+        text_data: &[(String, SpatialData, Vec<InternalTextData>)],
+        canvas: &Canvas,
+        cs_offset: &DVec3,
+        view_proj_matrix: &DMat4,
+    ) {
+        let mut font_paint = font_data.paint.clone();
+        text_data.iter().for_each(|(_, spat_data, data)| {
+            let project_point = |point| {
+                view_proj_matrix
+                    .project_point3(point - cs_offset)
+                    .truncate()
+            };
+
+            let screen_size_as_vec = DVec2::new(size.0 as f64, size.1 as f64);
+            for data_item in data {
+                let clip_pos = project_point(data_item.position + spat_data.transform);
+                let screen_pos = 0.5 * ((1.0 + clip_pos) * screen_size_as_vec)
+                    - DVec2::new((data_item.bounds.width() * 0.5) as f64, 0.0);
+
+                font_paint.set_alpha_f(data_item.current_alpha);
+                canvas.draw_text_blob(
+                    &data_item.text_blob,
+                    skia_safe::Point::new(screen_pos.x as scalar, screen_pos.y as scalar),
+                    &font_paint,
+                );
+            }
+        })
+    }
+
+    #[inline]
     fn process_shapes(
         size: (u32, u32),
         shapes: &[(String, SpatialData, Vec<(Box2D, ShapeData)>)],
@@ -126,6 +302,9 @@ impl CpuRenderer {
     ) {
         shapes.iter().for_each(|(key, spat_data, shapes_data)| {
             let external_spat_data = spatial_map.get(key);
+            let normal_scale = external_spat_data
+                .map(|spatial_data| spatial_data.normal_scale)
+                .unwrap_or(spat_data.normal_scale);
 
             let project_point = |point| {
                 let modified = if let Some(external_spat_data) = external_spat_data {
@@ -140,18 +319,18 @@ impl CpuRenderer {
             };
 
             for (aabb, shape_data) in shapes_data {
-                let mut pb = PathBuilder::new();
                 let mut is_line = false;
                 let mut l_width = 0.0;
                 match shape_data.geometry_type {
                     GeometryType::Polyline(options) => {
-                        l_width = (options.width as f64 * norm_length) as f32;
+                        l_width =
+                            (options.width as f64 * norm_length) as f32 * (normal_scale as f32);
                         is_line = true;
                         if l_width < Self::HAIRLINE_THRESHOLD {
                             continue;
                         }
                     }
-                    GeometryType::Polygon => {}
+                    _ => {}
                 }
 
                 let aabb_projected1 =
@@ -195,6 +374,7 @@ impl CpuRenderer {
                 if !cond {
                     continue;
                 }
+                let mut pb = PathBuilder::new();
                 shape_data.path.iter().for_each(|path| match path {
                     PathEvent::Begin { at } => {
                         let projected = project_point(DVec3::new(at.x as f64, at.y as f64, 0.0));
@@ -267,6 +447,7 @@ impl Renderer for CpuRenderer {
             match msg {
                 RendererApiMsg::RenderGroup(key, spat_data, mut group) => {
                     group.content(&mut self.canvas_api);
+
                     let mut shapes: Vec<_> = self
                         .canvas_api
                         .take_shapes()
@@ -318,6 +499,15 @@ impl Renderer for CpuRenderer {
                             data,
                         ));
                     });
+
+                    let internal_text_data = self.canvas_api.take_text_data();
+                    self.worker_handler.update_data(move |collider_data| {
+                        collider_data.data.push((
+                            key.clone(),
+                            spat_data.clone(),
+                            internal_text_data,
+                        ))
+                    });
                 }
                 RendererApiMsg::ClearGroups(keys) => {
                     self.shapes_background.retain(|s| !keys.contains(&s.0));
@@ -325,6 +515,10 @@ impl Renderer for CpuRenderer {
                     // TODO reset spatial_map too?
                     self.shapes_features.values_mut().for_each(|list| {
                         list.retain(|s| !keys.contains(&s.0));
+                    });
+
+                    self.worker_handler.update_data(move |collider_data| {
+                        collider_data.data.retain(|s| !keys.contains(&s.0));
                     });
                 }
                 RendererApiMsg::UpdateStyle(style_id, updater) => {
@@ -342,6 +536,22 @@ impl Renderer for CpuRenderer {
                 }
             }
         }
+        let view_proj_matrix = self.view_proj_matrix.clone();
+        let cs_offset = self.cs_offset;
+        self.worker_handler.update_data(move |collider_data| {
+            collider_data.view_projection = ViewProjection {
+                view_proj_matrix,
+                cs_offset,
+            };
+        });
+        if let Some(result) = self.worker_handler.try_get_result() {
+            result.iter().for_each(|group| {
+                group.2.iter().for_each(|data| {
+                    self.canvas_api.update_id_to_alpha(data);
+                })
+            });
+            self.text_data = result;
+        }
 
         let processor = |shapes: &[(String, SpatialData, Vec<(Box2D, ShapeData)>)],
                          canvas: &Canvas| {
@@ -355,6 +565,18 @@ impl Renderer for CpuRenderer {
                 &self.screen_aabb,
                 &self.styles_map,
                 &self.spatial_map,
+            );
+        };
+
+        let text_processor = |data: &[(String, SpatialData, Vec<InternalTextData>)],
+                              canvas: &Canvas| {
+            Self::process_text(
+                self.size,
+                &self.canvas_api.font_data,
+                data,
+                canvas,
+                &self.cs_offset,
+                &self.view_proj_matrix,
             );
         };
 
@@ -376,9 +598,13 @@ impl Renderer for CpuRenderer {
                 let canvas_front = recorder
                     .begin_recording(Rect::from_wh(self.size.0 as f32, self.size.1 as f32), false);
                 processor(&self.shapes_foreground, canvas_front);
+
+                text_processor(&self.text_data, canvas_front);
+
                 self.shapes_features.values().for_each(|list| {
                     processor(list, canvas_front);
                 });
+
                 recorder.finish_recording_as_picture(None).unwrap()
             },
         );
