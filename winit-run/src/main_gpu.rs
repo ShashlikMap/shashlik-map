@@ -76,15 +76,14 @@ pub fn launch_internal(ui: &ShashlikUI) {
                             mip_level_count: 1,
                             sample_count: 1,
                             dimension: wgpu::TextureDimension::D2,
-                            // TODO How to use Bgra?
-                            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                            format: wgpu::TextureFormat::Rgba8Unorm,
                             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                                 | wgpu::TextureUsages::TEXTURE_BINDING,
                             view_formats: &[],
                         });
                         let config = SurfaceConfiguration {
                             usage: TextureUsages::RENDER_ATTACHMENT,
-                            format: TextureFormat::Rgba8UnormSrgb,
+                            format: TextureFormat::Rgba8Unorm,
                             color_space: SurfaceColorSpace::Auto,
                             width: texture_width as u32,
                             height: texture_height as u32,
