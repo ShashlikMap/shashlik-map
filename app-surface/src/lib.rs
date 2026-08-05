@@ -187,6 +187,7 @@ async fn request_device(
                 .unwrap_or(wgpu::PowerPreference::HighPerformance),
             force_fallback_adapter: false,
             compatible_surface: Some(surface),
+            apply_limit_buckets: false,
         })
         .await
         .expect("No suitable GPU adapters found on the system!");

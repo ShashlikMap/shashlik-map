@@ -69,7 +69,7 @@ impl WgpuCanvas for IOSPlatformAppSurface {
 
 	fn present(&mut self) -> Option<Texture> {
 		if let Some(surface_texture) = mem::take(&mut self.surface_texture) {
-			surface_texture.present();
+			self.queue().present(surface_texture);
 		}
 		None
 	}
