@@ -15,14 +15,14 @@ native-dialog = "0.9.3"
 skia-safe = { workspace = true, optional = true }
 renderer-cpu = { path = "../renderer-cpu", optional = true }
 renderer-gpu = { path = "../renderer-gpu", optional = true }
-slint = { git = "https://github.com/slint-ui/slint", rev = "7ecf312", optional = true }
+slint = { git = "https://github.com/slint-ui/slint", rev = "d263608", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 map = { path = "../map", features = ["sgnss"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 wgpu = { workspace = true }
-slint = { git = "https://github.com/slint-ui/slint", rev = "7ecf312", features = ["backend-winit", "renderer-skia", "unstable-wgpu-30"] }
+slint = { git = "https://github.com/slint-ui/slint", rev = "d263608", features = ["backend-winit", "renderer-skia", "unstable-wgpu-30"] }
 
 [features]
 default = ["linux-gpu"]
@@ -30,4 +30,4 @@ linux-gpu = ["dep:slint", "dep:wgpu", "dep:renderer-gpu", "slint/unstable-wgpu-3
 linux-cpu = ["dep:slint", "dep:skia-safe", "dep:renderer-cpu", "slint/backend-linuxkms-noseat", "slint/renderer-skia"]
 
 [build-dependencies]
-slint-build = { git = "https://github.com/slint-ui/slint", rev = "7ecf312" }
+slint-build = { git = "https://github.com/slint-ui/slint", rev = "d263608" }
