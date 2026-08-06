@@ -218,6 +218,21 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                             None
                         }
                     }
+                    LineKind::Label => {
+                        info.name_en.as_ref().map(|name| {
+                            (
+                                // so far there is no styling for text
+                                StyleId::new("no_style_label"),
+                                info.layer,
+                                GeometryType::Polyline(PolylineOptions {
+                                    // 0 width to drop rendering processing
+                                    width: 0f32,
+                                    ..Default::default()
+                                }),
+                                Some(name.clone()),
+                            )
+                        })
+                    }
                 },
                 MapGeomObjectKind::AdminLine => {
                     (zoom_level >= 10).then(|| {
@@ -317,6 +332,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 }
 
                 if let Some(name) = name {
+                    // TODO Need to create a proper repetition logic for line label once shashlik-tiles-v1 added and v0 dropped
                     // TODO When text render along the path is ready, it has to be decided how to reduce the repetitive data inside tile
                     //  So far just accept every 30 item. There might be more then 500 lines with the same name!
                     let name_count = line_text_map

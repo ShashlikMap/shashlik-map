@@ -148,6 +148,15 @@ export component ShashlikUI inherits Window {
                 }
             }
 
+            CheckBox {
+                text: "Shadows";
+                height: 24px;
+                checked: true;
+                toggled => {
+                    feature_enabled(Feature.Shadows, self.checked)
+                }
+            }
+
             if extended_controls : VerticalLayout {
                 Button {
                     text: "Open KML";
@@ -163,15 +172,6 @@ export component ShashlikUI inherits Window {
                     checked: false;
                     toggled => {
                         feature_enabled(Feature.SSAO, self.checked)
-                    }
-                }
-
-                CheckBox {
-                    text: "Shadows";
-                    height: 24px;
-                    checked: true;
-                    toggled => {
-                        feature_enabled(Feature.Shadows, self.checked)
                     }
                 }
 

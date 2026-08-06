@@ -248,6 +248,10 @@ impl GpuCanvasApi {
         let initial_index = self.geometry.indices.len();
         match geom_type {
             GeometryType::Polyline(options) => {
+                // drop polylines with non-positive width
+                if options.width <= 0.0 {
+                    return;
+                }
                 self.tessellate_stroke_path(&data.path, options, |vertex| {
                     ShapeVertex::new([vertex.position().x, vertex.position().y],
                                      [vertex.normal().x, vertex.normal().y],
