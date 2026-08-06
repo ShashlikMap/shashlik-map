@@ -50,6 +50,21 @@ impl MvtSchemeParser {
             })
         });
 
+        let road_label_handler = MvtPropHandler::new("road_label", |handler| {
+            let name_en: String = handler.get_prop_value("name:en");
+            let name: String = handler.get_prop_value("name");
+
+            Some(MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::Way(WayInfo {
+                    line_kind: LineKind::Label,
+                    layer: 0,
+                    layer_kind: LayerKind::None,
+                    name_en: Some(if name_en.is_empty() { name } else { name_en }),
+                }),
+            })
+        });
+
         let water_handler = MvtPropHandler::new("water", |_| {
             Some(MapGeomObject {
                 id: -1,
@@ -186,6 +201,7 @@ impl MvtSchemeParser {
 
         Self::new_from_handlers(vec![
             road_handler,
+            road_label_handler,
             railway_handler,
             water_handler,
             building_handler,

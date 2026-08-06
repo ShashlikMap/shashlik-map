@@ -80,6 +80,8 @@ pub fn launch_internal(ui: &ShashlikUI) {
                             }
                         },
                         LineKind::Railway { .. } => zoom_level >= 14,
+                        // no line label on CPU only devices
+                        LineKind::Label => false
                     }
                 }
                 MapGeomObjectKind::Poi(info) => {
