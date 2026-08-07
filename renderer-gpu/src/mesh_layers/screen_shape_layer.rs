@@ -1,7 +1,7 @@
 use crate::buffer_pool::BufferPool;
 use crate::collider::{ColliderTask, CollisionTaskController, CollisionTaskWrapper};
 use crate::draw_commands::mesh2d_draw_command::Mesh2dDrawCommand;
-use crate::global_context::GlobalContext;
+use crate::global_context::{GlobalContext, GlobalRenderStep};
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
@@ -133,7 +133,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        if global_context.is_g_buffer_render {
+        if global_context.check_render_step(GlobalRenderStep::GBufferStep) {
             return;
         }
         if let Some(render_pipeline) = self.pipeline.as_ref() {

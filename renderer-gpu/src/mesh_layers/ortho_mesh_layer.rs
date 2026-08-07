@@ -1,5 +1,5 @@
 use glam::Mat4;
-use crate::global_context::GlobalContext;
+use crate::global_context::{GlobalContext, GlobalRenderStep};
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh_layers::BaseMeshLayer;
@@ -149,7 +149,7 @@ impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
 
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        if global_context.is_g_buffer_render {
+        if global_context.check_render_step(GlobalRenderStep::GBufferStep) {
             return;
         }
         if let (Some(render_pipeline), Some(mesh)) = (self.pipeline.as_ref(), self.mesh.as_ref()) {

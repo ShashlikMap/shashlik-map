@@ -2,22 +2,21 @@ use crate::{Action, Feature, PanState, Scale, ShashlikUI, SlintMapEvent};
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
-use map::{ShashlikMap, DEFAULT_FONT_DATA};
+use map::{DEFAULT_FONT_DATA, ShashlikMap};
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
 use osm::tiles::TileStore;
-use renderer_common::{feature_layer_tags, PreviewType, PREVIEW_TYPE, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED};
-use renderer_gpu::wgpu_canvas::DefaultWgpuCanvas;
+use renderer_common::{PREVIEW_TYPE, PreviewType, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED, feature_layer_tags};
 use renderer_gpu::GpuRenderer;
+use renderer_gpu::wgpu_canvas::DefaultWgpuCanvas;
+use slint::wgpu_30::wgpu::{Features, Limits};
 use slint::wgpu_30::{WGPUConfiguration, WGPUSettings};
 use slint::{ComponentHandle, GraphicsAPI, PhysicalSize, RenderingState};
 use std::cmp::max;
 use std::str::FromStr;
 use std::sync::mpsc;
-use slint::wgpu_30::wgpu::{Features, Limits};
-use wgpu::{SurfaceColorSpace, SurfaceConfiguration};
-use wgpu::TextureFormat;
 use wgpu::TextureUsages;
+use wgpu::{SurfaceColorSpace, SurfaceConfiguration};
 
 pub fn prepare() {
     let mut wgpu_settings = WGPUSettings::default();

@@ -9,15 +9,21 @@ use wgpu::{BindGroup, BindGroupLayout, Device, TextureFormat, TextureUsages, Tex
 use renderer_common::SHADOWS_TEX_SIZE;
 use crate::wgpu_canvas::WgpuCanvas;
 
+#[derive(Eq, PartialEq)]
+pub(crate) enum GlobalRenderStep {
+    MainStep,
+    ShadowStep,
+    GBufferStep,
+    PreviewStep
+}
+
 pub struct GlobalContext {
     pub canvas: Box<dyn WgpuCanvas>,
     pub view_projection: ViewProjection,
     pub collider: Collider,
     pub styles_bind_group_layout: BindGroupLayout,
     pub style_bind_group: Option<BindGroup>,
-    pub is_preview_render: bool,
-    pub is_g_buffer_render: bool,
-    pub is_shadow_render: bool,
+    pub(crate) render_step: GlobalRenderStep,
     pub ssao_texture: TextureView,
     pub shadow_map_depth_texture: TextureView,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[[f32; 4]; 4]>>,
@@ -54,9 +60,7 @@ impl GlobalContext {
             collider,
             styles_bind_group_layout,
             style_bind_group: None,
-            is_preview_render: false,
-            is_g_buffer_render: false,
-            is_shadow_render: false,
+            render_step: GlobalRenderStep::MainStep,
             ssao_texture,
             shadow_map_depth_texture,
             style_uniform_rx: style_store.subscribe(),
@@ -134,5 +138,9 @@ impl GlobalContext {
 
     pub fn is_shadow_mapping_enabled(&self) -> bool {
         self.view_projection.is_shadow_mapping_enabled()
+    }
+
+    pub(crate) fn check_render_step(&self, step: GlobalRenderStep) -> bool {
+        self.render_step == step
     }
 }
