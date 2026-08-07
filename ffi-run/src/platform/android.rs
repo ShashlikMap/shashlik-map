@@ -20,7 +20,7 @@ use wgpu::{
 };
 use renderer_gpu::GpuRenderer;
 use renderer_gpu::wgpu_canvas::WgpuCanvas;
-use renderer_common::{feature_layer_tags, PreviewType, PREVIEW_TYPE};
+use renderer_common::{feature_layer_tags, PreviewType};
 
 //FIXME https://github.com/gobley/gobley/issues/20
 #[uniffi::export]

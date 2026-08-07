@@ -4,7 +4,6 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::pass_nodes::{PassNode, BACKGROUND_ATTACHMENT_COLOR};
 use crate::textures::{create_color_binding_texture, create_common_texture, create_depth_texture, SAMPLE_COUNT};
 use wgpu::{CommandEncoder, TextureFormat, TextureView};
-use renderer_common::PREVIEW_TYPE;
 
 pub(crate) struct RenderToTexturePassNode {
     msaa_texture_view: TextureView,
@@ -40,7 +39,7 @@ impl PassNode for RenderToTexturePassNode {
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {
-        if unsafe { !PREVIEW_TYPE.is_enabled() } {
+        if !global_context.preview_type().is_enabled() {
             return;
         }
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

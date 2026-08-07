@@ -6,7 +6,7 @@ use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::ShashlikMap;
 use renderer_gpu::GpuRenderer;
-use renderer_common::{PreviewType, PREVIEW_TYPE, SSAO_ENABLED};
+use renderer_common::{PreviewType};
 use std::sync::RwLock;
 
 #[derive(uniffi::Object)]
@@ -73,16 +73,21 @@ impl ShashlikMapApi {
     }
 
     fn set_ssao_mode(&self, enabled: bool) {
-        unsafe { SSAO_ENABLED = enabled };
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
+        shashlik_map.renderer.update_config(|config| {
+            config.ssao_enabled = enabled;
+        });
     }
 
     fn set_preview_enabled(&self, enabled: bool) {
-        // TODO Better config manager
-        if enabled {
-            unsafe { PREVIEW_TYPE = PreviewType::Camera }
-        } else {
-            unsafe { PREVIEW_TYPE = PreviewType::None }
-        }
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
+        shashlik_map.renderer.update_config(|config| {
+            if enabled {
+                config.preview_type = PreviewType::Camera;
+            } else {
+                config.preview_type = PreviewType::None;
+            }
+        });
     }
 
     fn set_mvt_tileset(&self, enabled: bool) {

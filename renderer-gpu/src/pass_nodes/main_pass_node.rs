@@ -9,7 +9,6 @@ use rand::{rng, RngExt};
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, ImageSubresourceRange, ShaderModuleDescriptor, ShaderSource, StorageTextureAccess, TextureFormat, TextureUsages, TextureView, TextureViewDimension};
-use renderer_common::SSAO_ENABLED;
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
@@ -277,8 +276,8 @@ impl PassNode for MainPassNode {
                 store: wgpu::StoreOp::Store,
             }),
         };
-
-        if unsafe { SSAO_ENABLED } {
+        
+        if global_context.ssao_enabled {
             {
                 let non_msaa_color_attachment_positions = wgpu::RenderPassColorAttachment {
                     view: &self.non_msaa_texture_view_positions,
