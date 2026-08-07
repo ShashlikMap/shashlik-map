@@ -190,7 +190,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             let instance_buffer_length = self.get_instance_buffer_length() as u32;
             let mut x = instance_buffer_length / 64;
             if instance_buffer_length % 64 != 0 {
-                x += 64;
+                x += 1; // those are workgroups, not invocations.
             }
             compute_pass.dispatch_workgroups(x, 1, 1);
         }
