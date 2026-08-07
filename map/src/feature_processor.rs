@@ -314,7 +314,13 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 } else {
                     let double_style = match &kind {
                         MapGeomObjectKind::Nature(_) |
-                        MapGeomObjectKind::Building(_) => { false },
+                        MapGeomObjectKind::Building(_) => { false }
+                        MapGeomObjectKind::Way(info) => {
+                            match info.line_kind {
+                                LineKind::Highway { .. } => { zoom_level < 1 }
+                                _ => { false }
+                            }
+                        }
                         _ => { zoom_level < 1 }
                     };
                     let tag = match &kind {
