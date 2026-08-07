@@ -107,7 +107,7 @@ impl <T: CanvasApi> RenderGroup<T> for RouteGroup {
                 geometry_type: GeometryType::Polyline(options),
                 style_id,
                 index_layer_level: 0,
-                styled_range_info: StyledRangeInfo(0, ""),
+                styled_range_info: StyledRangeInfo::default(),
             }));
         }
     }

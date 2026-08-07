@@ -304,7 +304,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         }),
                         style_id: StyleId::new("building_stand"),
                         index_layer_level: -99, // same as just buildings
-                        styled_range_info: StyledRangeInfo(1, "skip"),
+                        styled_range_info: StyledRangeInfo::new(1, true),
                     }));
 
                     geometry_data.push(GeometryData::ExtrudedPolygon(ExtrudedPolygonData {
@@ -323,17 +323,14 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         }
                         _ => { zoom_level < 1 }
                     };
-                    let tag = match &kind {
-                        MapGeomObjectKind::Building(_) => { "skip" },
-                        _ => { "" }
-                    };
+                    let skip_preview = matches!(kind, MapGeomObjectKind::Building(_));
 
                     geometry_data.push(GeometryData::Shape(ShapeData {
                         path: path_builder.build(),
                         geometry_type,
                         style_id,
                         index_layer_level: layer_level as i8,
-                        styled_range_info: StyledRangeInfo(if double_style { 0 } else { 1 }, tag),
+                        styled_range_info: StyledRangeInfo::new(if double_style { 0 } else { 1 }, skip_preview),
                     }));
                 }
 

@@ -46,7 +46,7 @@ impl GlyphCache {
             let path = path_builder.create_path();
             path_builder.tessellate_stroke(&mut buffer, &path, 4.0, Self::HALO_COLOR);
             path_builder.tessellate_fill(&mut buffer, &path, Self::PRIMARY_COLOR);
-            Mesh::create(None, global_context, buffer_pool, &buffer, StyledRangeInfo(0, ""))
+            Mesh::create(None, global_context, buffer_pool, &buffer, StyledRangeInfo::default())
         });
 
         mesh
