@@ -5,8 +5,20 @@ use lyon::path::Path;
 use rustybuzz::GlyphBuffer;
 use std::cell::OnceCell;
 
-#[derive(Clone)]
-pub struct StyledRangeInfo(pub u8, pub &'static str);
+#[derive(Clone, Default)]
+pub struct StyledRangeInfo {
+    pub instance_offset: u8,
+    pub skip_preview: bool,
+}
+
+impl StyledRangeInfo {
+    pub fn new(instance_offset: u8, skip_preview: bool) -> StyledRangeInfo {
+        StyledRangeInfo {
+            instance_offset,
+            skip_preview,
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct FaceTextParams {

@@ -82,7 +82,6 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 &self.cs_offset,
                 &self.original_instance_positions_alpha,
                 &self.original_spatial_data,
-                self.double_style,
             );
             self.instance_buffer.update(
                 "PositionedInstanceBuffer",
@@ -91,10 +90,10 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             );
 
             if let Some(instances_bind_group_layout) = instances_bind_group_layout {
-
+                let instance_buffer_length = self.get_instance_buffer_length();
                 let culled_buffer = global_context.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Culled Buffer"),
-                    contents: bytemuck::cast_slice(&vec![0;  self.instance_buffer.length]),
+                    contents: bytemuck::cast_slice(&vec![0; instance_buffer_length]),
                     usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
                 });
 
@@ -112,7 +111,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 ));
                 
                 let instance_count = if self.attrs.len() <= 2 {
-                    self.attrs.len()
+                    self.attrs.len() * instance_buffer_length
                 } else {
                     0
                 };
@@ -188,12 +187,18 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
     ) {
         if self.instances_args_buffer.is_some() {
             // workgroups are batches by 64/128
-            let mut x = self.instance_buffer.length as u32 / 64;
-            if self.instance_buffer.length as u32 % 64 != 0 {
+            let instance_buffer_length = self.get_instance_buffer_length() as u32;
+            let mut x = instance_buffer_length / 64;
+            if instance_buffer_length % 64 != 0 {
                 x += 64;
             }
             compute_pass.dispatch_workgroups(x, 1, 1);
         }
+    }
+
+    fn get_instance_buffer_length(&self) -> usize {
+        let factor = if self.double_style { 2 } else { 1 };
+        self.instance_buffer.length * factor
     }
 
     pub fn render_instanced(
@@ -209,6 +214,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         self.mesh.render_instanced(
             instances_vertex_slot,
             render_pass,
+            self.double_style,
             &self.instance_buffer,
             disable_skip_mesh_feature,
             self.instances_args_buffer.as_ref()

@@ -1,5 +1,5 @@
 use renderer_common::geometry_data::{LineData, TextData};
-use crate::global_context::GlobalContext;
+use crate::global_context::{GlobalContext, GlobalRenderStep};
 use crate::mesh_layers::BaseMeshLayer;
 use renderer_common::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
@@ -61,7 +61,7 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
     }
 
     fn update(&mut self, global_context: &mut GlobalContext) {
-        if global_context.is_g_buffer_render {
+        if global_context.check_render_step(GlobalRenderStep::GBufferStep) {
             return;
         }
         self.text_renderer.update(global_context);
@@ -71,7 +71,7 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
 
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        if global_context.is_g_buffer_render {
+        if global_context.check_render_step(GlobalRenderStep::GBufferStep) {
             return;
         }
         if let Some(render_pipeline) = self.pipeline.as_ref() {

@@ -144,7 +144,7 @@ impl GpuCanvasApi {
                 if mesh_info.instance_positions.is_none() {
                     return None;
                 }
-                let styled_range = StyledRange(0..mesh.indices.len(), StyledRangeInfo(0, ""));
+                let styled_range = StyledRange(0..mesh.indices.len(), StyledRangeInfo::default());
                 Some(Mesh2dCommandBatch {
                     mesh,
                     layers_indices: vec![styled_range],

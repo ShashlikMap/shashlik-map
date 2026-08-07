@@ -6,6 +6,7 @@ use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, ComputePass, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, TextureFormat, TextureUsages};
 use renderer_common::geometry_data::MeshVertex;
+use crate::global_context::GlobalRenderStep::{MainStep, ShadowStep};
 
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,
@@ -136,7 +137,7 @@ impl RenderPipeline for MeshPipeline {
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
-        let mut mask = global_context.is_shadow_render as u32;
+        let mut mask = global_context.check_render_step(ShadowStep) as u32;
         if global_context.is_shadow_mapping_enabled() {
             mask |= 2;
         }
@@ -148,9 +149,7 @@ impl RenderPipeline for MeshPipeline {
 
 
         if !global_context.is_shadow_mapping_enabled() ||
-            global_context.is_shadow_render ||
-            global_context.is_preview_render ||
-            global_context.is_g_buffer_render {
+            !global_context.check_render_step(MainStep) {
             render_pass.set_bind_group(1, &self.depth_dummy_bind_group, &[]);
         } else {
             render_pass.set_bind_group(1, &self.depth_bind_group, &[]);

@@ -68,6 +68,10 @@ fn vs_main(
     model: VertexInput,
     pos: InstanceInput
 ) -> VertexOutput {
+    if(pos.color_alpha <= 0.0) {
+        // degrading polygon to drop FS stage at all
+        return VertexOutput();
+    }
     let model_matrix = mat4x4<f32>(
             pos.model_matrix_0,
             pos.model_matrix_1,
@@ -207,6 +211,12 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             discard;
         }
     }
+
+    @if(OUTLINE_DEBUG)
+    if(in.outline_flag == 0) {
+        return vec4f(1.0, 0.0, 0.0, 1.0);
+    }
+
     let style = mat4x3<f32>(
             in.style1,
             in.style2,
@@ -218,11 +228,11 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     var res_color = vec4(0.0, 0.0, 0.0, 1.0);
     if(style_type == 0) {
-        res_color = solid_style(in.outline_flag, style);
+        res_color = solid_style(style);
     } else if(style_type == 1) {
         res_color = border_style(in.outline_flag, style);
     } else if(style_type == 2) {
-        res_color = dashed_style(in.outline_flag, in.uv_dist, style);
+        res_color = dashed_style(in.uv_dist, style);
     } else {
         res_color = vec4(0.0, 0.0, 0.0, 1.0);
     }
@@ -239,10 +249,7 @@ fn circle(st: vec2f, radius: f32) -> f32 {
                          dot(dist,dist)*4.0);
 }
 
-fn solid_style(outline_flag: u32, params: mat4x3<f32>) -> vec4<f32> {
-    if(outline_flag == 0) {
-        discard;
-    }
+fn solid_style(params: mat4x3<f32>) -> vec4<f32> {
     let fill_color = vec4(params[0][1], params[0][2], params[1][0], params[1][1]);
     return fill_color;
 }
@@ -256,12 +263,8 @@ fn border_style(outline_flag: u32, params: mat4x3<f32>) -> vec4<f32> {
     return fill_color;
 }
 
-fn dashed_style(outline_flag: u32, uv_dist: vec3f, params: mat4x3<f32>) -> vec4<f32> {
+fn dashed_style(uv_dist: vec3f, params: mat4x3<f32>) -> vec4<f32> {
     let dash_style = u32(params[3][0]); // 0: solid, 1: circle
-    if(outline_flag == 0) {
-        // TODO Border + Dashed later
-        discard;
-    }
 
     let fill_color = vec4(params[0][1], params[0][2], params[1][0], params[1][1]);
     let dash_color = vec4(params[1][2], params[2][0], params[2][1], params[2][2]);

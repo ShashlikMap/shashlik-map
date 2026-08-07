@@ -1,4 +1,4 @@
-use crate::global_context::GlobalContext;
+use crate::global_context::{GlobalContext, GlobalRenderStep};
 use crate::mesh_layers::layers::Layers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pass_nodes::PassNode;
@@ -51,9 +51,7 @@ impl PassNode for ShadowPrepass {
 
         let mut render_pass = encoder.begin_render_pass(&descriptor);
 
-        global_context.is_shadow_render = true;
-        global_context.is_preview_render = false;
-        global_context.is_g_buffer_render = false;
+        global_context.render_step = GlobalRenderStep::ShadowStep;
 
         layers.render(&mut render_pass, global_context);
     }

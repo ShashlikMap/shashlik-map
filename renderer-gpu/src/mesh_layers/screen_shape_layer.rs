@@ -1,7 +1,7 @@
 use crate::buffer_pool::BufferPool;
 use crate::collider::{ColliderTask, CollisionTaskController, CollisionTaskWrapper};
 use crate::draw_commands::mesh2d_draw_command::Mesh2dDrawCommand;
-use crate::global_context::GlobalContext;
+use crate::global_context::{GlobalContext, GlobalRenderStep};
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
@@ -120,7 +120,6 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
                         &cs_offset,
                         pos_alpha,
                         &SpatialData::new(),
-                        false,
                     );
                 }
 
@@ -133,7 +132,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        if global_context.is_g_buffer_render {
+        if global_context.check_render_step(GlobalRenderStep::GBufferStep) {
             return;
         }
         if let Some(render_pipeline) = self.pipeline.as_ref() {
@@ -142,7 +141,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
             self.render_pipeline.render(render_pass, global_context);
 
             self.meshes.iter().for_each(|(_, (mesh, instance_buf))| {
-                mesh.render_instanced(Some(1), render_pass, instance_buf, false, None);
+                mesh.render_instanced(Some(1), render_pass, false, instance_buf, false, None);
             });
         }
     }

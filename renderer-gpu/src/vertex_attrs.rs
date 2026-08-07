@@ -1,15 +1,22 @@
-use std::mem;
 use glam::{Vec2, Vec4};
-use wgpu::{BufferAddress, VertexAttribute, VertexStepMode};
 use renderer_common::geometry_data::MeshVertex;
+use wgpu::{BufferAddress, VertexAttribute, VertexStepMode};
 
 pub trait VertexAttrib: Sized {
     const ATTRIBUTES: &[VertexAttribute];
     const STEP_MODE: wgpu::VertexStepMode;
 
     fn desc() -> wgpu::VertexBufferLayout<'static> {
+        Self::desc_with_stride(size_of::<Self>() as BufferAddress)
+    }
+
+    fn desc_no_stride() -> wgpu::VertexBufferLayout<'static> {
+        Self::desc_with_stride(0)
+    }
+
+    fn desc_with_stride(array_stride: BufferAddress) -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<Self>() as BufferAddress,
+            array_stride,
             step_mode: Self::STEP_MODE,
             attributes: Self::ATTRIBUTES,
         }

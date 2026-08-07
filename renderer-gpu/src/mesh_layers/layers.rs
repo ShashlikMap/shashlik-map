@@ -1,4 +1,4 @@
-use crate::global_context::GlobalContext;
+use crate::global_context::{GlobalContext, GlobalRenderStep};
 use crate::mesh_layers::feature_layers::{FeatureLayerTag, FeatureLayers, NameLayerTag};
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
 use crate::mesh_layers::ortho_mesh_layer::OrthoMeshLayer;
@@ -41,7 +41,7 @@ impl Layers {
     ) -> Layers {
         let feature_layers = FeatureLayers::new(world_shapes_feature_tags,
                                                 |tag| {
-                                                    GeneralMeshLayer::new(ShapePipeline::new(global_context, tag.vertex_shader, tag.indirect),
+                                                    GeneralMeshLayer::new(ShapePipeline::new(global_context, tag.vertex_shader, tag.indirect, tag.single_instance_step),
                                                     false)
                                                 });
         let text_feature_layers = FeatureLayers::new(vec![
@@ -62,8 +62,8 @@ impl Layers {
         Layers {
             feature_layers,
             mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context), true),
-            shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, None, false), false),
-            screen_shape_layer: ScreenShapeLayer::new(ShapePipeline::new(global_context, Some("vs_main_screen"), false),
+            shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, None, false, true), false),
+            screen_shape_layer: ScreenShapeLayer::new(ShapePipeline::new(global_context, Some("vs_main_screen"), false, false),
                                                       global_context),
             shadow_map_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
                 use_texture: true,
@@ -122,31 +122,34 @@ impl BaseMeshLayer for Layers {
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        if !global_context.is_g_buffer_render && !global_context.is_shadow_render {
-            self.shape_layer.disable_skip_mesh_feature = global_context.is_preview_render;
+        let is_preview_step = global_context.check_render_step(GlobalRenderStep::PreviewStep);
+        let is_main_step = global_context.check_render_step(GlobalRenderStep::MainStep);
+        let main_or_preview_step = is_main_step
+            || is_preview_step;
+        if main_or_preview_step {
+            self.shape_layer.disable_skip_mesh_feature = is_preview_step;
             self.shape_layer.render(render_pass, global_context);
         }
-        if !global_context.is_preview_render {
+        if !is_preview_step {
             self.mesh_layer.render(render_pass, global_context);
 
-            let not_shadow_or_g_buf = !global_context.is_g_buffer_render && !global_context.is_shadow_render;
-            if global_context.is_shadow_mapping_enabled() && not_shadow_or_g_buf {
+            if global_context.is_shadow_mapping_enabled() && main_or_preview_step {
                 self.shadow_map_layer.render(render_pass, global_context);
             }
 
-            if unsafe { SSAO_ENABLED } && not_shadow_or_g_buf {
+            if unsafe { SSAO_ENABLED } && main_or_preview_step {
                 self.post_process_layer.render(render_pass, global_context);
             }
-            if not_shadow_or_g_buf {
+            if main_or_preview_step {
                 self.screen_shape_layer
                     .render(render_pass, global_context);
                 self.text_feature_layers.render(render_pass, global_context);
             }
         }
-        if !global_context.is_g_buffer_render && !global_context.is_shadow_render {
+        if main_or_preview_step {
             self.feature_layers.render(render_pass, global_context);
         }
-        if unsafe { PREVIEW_TYPE.is_enabled() } && !global_context.is_preview_render && !global_context.is_shadow_render {
+        if unsafe { PREVIEW_TYPE.is_enabled() } && is_main_step {
             self.preview_mesh_layer.render(render_pass, global_context);
         }
     }

@@ -1,5 +1,5 @@
 use crate::draw_commands::mesh2d_draw_command::Mesh2dCommandBatch;
-use crate::global_context::GlobalContext;
+use crate::global_context::{GlobalContext, GlobalRenderStep};
 use crate::mesh::mesh::Mesh;
 use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
@@ -158,9 +158,9 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         if let Some(render_pipeline) = self.pipeline.as_ref() {
-            if global_context.is_g_buffer_render && let Some(g_buffer_pipeline) = self.g_buffer_pipeline.as_ref() {
+            if global_context.check_render_step(GlobalRenderStep::GBufferStep) && let Some(g_buffer_pipeline) = self.g_buffer_pipeline.as_ref() {
                 render_pass.set_pipeline(g_buffer_pipeline);
-            } else if global_context.is_shadow_render {
+            } else if global_context.check_render_step(GlobalRenderStep::ShadowStep) {
                 render_pass.set_pipeline(self.shadow_pipeline.as_ref().unwrap());
             } else {
                 render_pass.set_pipeline(render_pipeline);
