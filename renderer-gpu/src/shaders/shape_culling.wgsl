@@ -41,7 +41,8 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let instances_size = arrayLength(&indirect_instances);
     // a bit ugly but fast exit to skip culling for only 2 instances
     if(instances_size <= 2) {
-        args.instanceCount = instances_size;
+        // for just a route the instances length now can be 1(since not instance data dublication) but the real count should be 2
+        args.instanceCount = 2u;
         return;
     }
 

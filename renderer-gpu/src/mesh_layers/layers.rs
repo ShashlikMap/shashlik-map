@@ -41,7 +41,7 @@ impl Layers {
     ) -> Layers {
         let feature_layers = FeatureLayers::new(world_shapes_feature_tags,
                                                 |tag| {
-                                                    GeneralMeshLayer::new(ShapePipeline::new(global_context, tag.vertex_shader, tag.indirect),
+                                                    GeneralMeshLayer::new(ShapePipeline::new(global_context, tag.vertex_shader, tag.indirect, tag.single_instance_step),
                                                     false)
                                                 });
         let text_feature_layers = FeatureLayers::new(vec![
@@ -62,8 +62,8 @@ impl Layers {
         Layers {
             feature_layers,
             mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context), true),
-            shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, None, false), false),
-            screen_shape_layer: ScreenShapeLayer::new(ShapePipeline::new(global_context, Some("vs_main_screen"), false),
+            shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, None, false, true), false),
+            screen_shape_layer: ScreenShapeLayer::new(ShapePipeline::new(global_context, Some("vs_main_screen"), false, false),
                                                       global_context),
             shadow_map_layer: OrthoMeshLayer::new(ScreenMeshPipeline::new(global_context, TextureInfo {
                 use_texture: true,

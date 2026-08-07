@@ -33,9 +33,12 @@ pub fn feature_layer_tags() -> Vec<WorldShapeFeatureLayerTag> {
             name: "route_layer",
             vertex_shader: Some("vs_main_route"),
             indirect: true,
+            single_instance_step: true,
+            ..Default::default()
         },
         WorldShapeFeatureLayerTag {
             name: "puck",
+            single_instance_step: true,
             ..Default::default()
         },
     ]
@@ -46,6 +49,7 @@ pub struct WorldShapeFeatureLayerTag {
     pub name: &'static str,
     pub vertex_shader: Option<&'static str>,
     pub indirect: bool,
+    pub single_instance_step: bool,
 }
 
 pub struct RendererUpdateData {
@@ -159,7 +163,7 @@ impl PreviewType {
 
 pub static mut SHADOWS_ENABLED: bool = true;
 pub static mut SHADOWS_TEX_SIZE: (u32, u32) = (2048, 2048);
-pub static mut SSAO_ENABLED: bool = true;
+pub static mut SSAO_ENABLED: bool = false;
 pub static mut PREVIEW_TYPE: PreviewType = PreviewType::None;
 
 #[macro_export] macro_rules! min_f64 {

@@ -8,8 +8,7 @@ pub trait MeshInstanceInput: Sized + Pod {
         attrs: &mut Vec<Self>,
         cs_offset: &DVec3,
         original_positions_alpha: &Vec<(DVec3, f32)>,
-        spatial_data: &SpatialData,
-        double_style: bool,
+        spatial_data: &SpatialData
     ) {
         attrs.clear();
         let matrix = spatial_data.scale_rot_matrix();
@@ -36,9 +35,6 @@ pub trait MeshInstanceInput: Sized + Pod {
                 spatial_data.normal_scale as f32
             );
             attrs.push(instance_input);
-            if double_style {
-                attrs.push(instance_input);
-            }
         }
     }
 

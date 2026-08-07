@@ -120,7 +120,6 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
                         &cs_offset,
                         pos_alpha,
                         &SpatialData::new(),
-                        false,
                     );
                 }
 
@@ -142,7 +141,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
             self.render_pipeline.render(render_pass, global_context);
 
             self.meshes.iter().for_each(|(_, (mesh, instance_buf))| {
-                mesh.render_instanced(Some(1), render_pass, instance_buf, false, None);
+                mesh.render_instanced(Some(1), render_pass, false, instance_buf, false, None);
             });
         }
     }

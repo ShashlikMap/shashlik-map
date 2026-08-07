@@ -14,14 +14,16 @@ pub struct ShapePipeline {
     indirect_instances_args_layout: BindGroupLayout,
     culling_compute_pipeline: ComputePipeline,
     reset_culling_compute_pipeline: ComputePipeline,
-    indirect: bool
-
+    indirect: bool,
+    single_instance_step: bool,
 }
 
 impl ShapePipeline {
     const SHADER_STYLE_GROUP_INDEX: u32 = 1;
 
-    pub fn new(global_context: &GlobalContext, vs_func_name: Option<&'static str>, indirect: bool) -> Self {
+    pub fn new(global_context: &GlobalContext, vs_func_name: Option<&'static str>,
+               indirect: bool,
+               single_instance_step: bool) -> Self {
         let indirect_instances_layout = Self::create_indirect_layout(global_context, false);
         let indirect_compute_instances_layout = Self::create_indirect_layout(global_context, true);
         let indirect_instances_args_layout = global_context.device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -86,7 +88,8 @@ impl ShapePipeline {
             indirect_instances_args_layout,
             culling_compute_pipeline,
             reset_culling_compute_pipeline,
-            indirect
+            indirect,
+            single_instance_step
         }
     }
 
@@ -182,7 +185,12 @@ impl RenderPipeline for ShapePipeline {
         vertex.buffers = if self.indirect {
             vec![ShapeVertex::desc()]
         } else {
-            vec![ShapeVertex::desc(), ShapeInstanceInput::desc()]
+            let layout = if self.single_instance_step {
+                ShapeInstanceInput::desc_no_stride()
+            } else {
+                ShapeInstanceInput::desc()
+            };
+            vec![ShapeVertex::desc(), layout]
         };
         let fragment = &mut mesh_descriptor.fragment.as_mut().unwrap();
         fragment.module = shader_module;
