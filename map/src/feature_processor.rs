@@ -294,6 +294,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         level
                     };
 
+                    // TODO This stuff is quite expensive. Need to figure out optimization at least when color alpha is zero
                     geometry_data.push(GeometryData::Shape(ShapeData {
                         path: path_builder.clone().build(),
                         geometry_type: GeometryType::Polyline(PolylineOptions {

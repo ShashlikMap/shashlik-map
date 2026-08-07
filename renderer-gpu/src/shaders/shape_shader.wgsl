@@ -68,6 +68,10 @@ fn vs_main(
     model: VertexInput,
     pos: InstanceInput
 ) -> VertexOutput {
+    if(pos.color_alpha <= 0.0) {
+        // degrading polygon to drop FS stage at all
+        return VertexOutput();
+    }
     let model_matrix = mat4x4<f32>(
             pos.model_matrix_0,
             pos.model_matrix_1,
