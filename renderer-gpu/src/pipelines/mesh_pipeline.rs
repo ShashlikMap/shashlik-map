@@ -10,14 +10,14 @@ use crate::global_context::GlobalRenderStep::{MainStep, ShadowStep};
 
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,
-    pub depth_bind_group_layout: BindGroupLayout,
+    depth_bind_group_layout: Option<BindGroupLayout>,
     pub bind_group: BindGroup,
     depth_bind_group: BindGroup,
     depth_dummy_bind_group: BindGroup,
 }
 
 impl MeshPipeline {
-    pub fn new(global_context: &GlobalContext) -> Self {
+    pub fn new(global_context: &GlobalContext, enable_depth_group: bool) -> Self {
         let device = global_context.device();
         let entries = vec![wgpu::BindGroupLayoutEntry {
             binding: 0,
@@ -119,7 +119,7 @@ impl MeshPipeline {
             entries: &depth_entries,
             label: Some("mesh_pipeline_dummy_depth_bind_group"),
         });
-
+        let depth_bind_group_layout= if enable_depth_group { Some(depth_bind_group_layout) } else { None };
         MeshPipeline {
             bind_group_layout,
             depth_bind_group_layout,
@@ -148,11 +148,13 @@ impl RenderPipeline for MeshPipeline {
         render_pass.set_bind_group(0, &self.bind_group, &[]);
 
 
-        if !global_context.is_shadow_mapping_enabled() ||
-            !global_context.check_render_step(MainStep) {
-            render_pass.set_bind_group(1, &self.depth_dummy_bind_group, &[]);
-        } else {
-            render_pass.set_bind_group(1, &self.depth_bind_group, &[]);
+        if self.depth_bind_group_layout.is_some() {
+            if !global_context.is_shadow_mapping_enabled() ||
+                !global_context.check_render_step(MainStep) {
+                render_pass.set_bind_group(1, &self.depth_dummy_bind_group, &[]);
+            } else {
+                render_pass.set_bind_group(1, &self.depth_bind_group, &[]);
+            }
         }
     }
 
@@ -162,7 +164,7 @@ impl RenderPipeline for MeshPipeline {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Mesh Render Pipeline Layout"),
-            bind_group_layouts: &[Some(&self.bind_group_layout), Some(&self.depth_bind_group_layout)],
+            bind_group_layouts: &[Some(&self.bind_group_layout), self.depth_bind_group_layout.as_ref()],
             immediate_size: 4,
             ..Default::default()
         });
