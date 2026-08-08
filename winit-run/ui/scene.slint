@@ -46,7 +46,7 @@ export component ShashlikUI inherits Window {
     out property <Scale> current-scale;
     out property <PanState> current-pan-state;
     in-out property <string> fps_text: "";
-    private property <bool> extended_controls: true;
+    private property <bool> extended_controls: false;
     property <bool> pressed: false;
     callback vert_scroll(float);
     callback follow_mode(bool);

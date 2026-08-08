@@ -23,6 +23,7 @@ impl SsaoPassNode {
     pub fn new(global_context: &GlobalContext) -> Self {
         let device = global_context.device();
 
+        // TODO Remove the third Vec4 value from the texture data generators.
         let noise_texture = create_simple_texture_with_data(
             TextureData {
                 sample_count: 1,
@@ -35,6 +36,7 @@ impl SsaoPassNode {
             bytemuck::cast_slice(&Self::generate_noise_texture_data()),
         );
 
+        // TODO Remove the third Vec4 value from the texture data generators.
         let kernel_texture = create_simple_texture_with_data(
             TextureData {
                 sample_count: 1,

@@ -35,9 +35,6 @@ impl PassNode for RenderToTexturePassNode {
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {
-        if !global_context.preview_type().is_enabled() {
-            return;
-        }
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render To Texture Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {

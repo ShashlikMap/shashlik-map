@@ -22,10 +22,9 @@ impl GBufferPassNode {
             },
             global_context.device(),
         );
-        let _ = global_context
+        global_context
             .texture_view_resources
-            .non_msaa_texture_view_positions
-            .insert(non_msaa_texture_view_positions);
+            .non_msaa_texture_view_positions = Some(non_msaa_texture_view_positions);
 
         let non_msaa_texture_view_normals = create_simple_texture(
             TextureData {
@@ -36,10 +35,9 @@ impl GBufferPassNode {
             },
             global_context.device(),
         );
-        let _ = global_context
+        global_context
             .texture_view_resources
-            .non_msaa_texture_view_normals
-            .insert(non_msaa_texture_view_normals);
+            .non_msaa_texture_view_normals = Some(non_msaa_texture_view_normals);
 
         let non_msaa_depth_texture_view = create_depth_texture(
             non_msaa_size,
@@ -48,12 +46,11 @@ impl GBufferPassNode {
             global_context.device(),
         );
 
-        let _ = global_context
+        global_context
             .texture_view_resources
-            .non_msaa_depth_texture_view
-            .insert(non_msaa_depth_texture_view);
+            .non_msaa_depth_texture_view = Some(non_msaa_depth_texture_view);
 
-        GBufferPassNode {}
+        Self
     }
 }
 
@@ -93,7 +90,7 @@ impl PassNode for GBufferPassNode {
                 load: wgpu::LoadOp::Clear(wgpu::Color {
                     r: 0.0,
                     g: 0.0,
-                    b: 0.0, // We use 1.0 here to simulate z normal for ground
+                    b: 0.0,
                     a: 1.0,
                 }),
                 store: wgpu::StoreOp::Store,

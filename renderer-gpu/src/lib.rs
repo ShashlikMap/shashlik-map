@@ -194,31 +194,6 @@ impl GpuRenderer {
     }
 
     fn config_pass_nodes(&mut self) {
-        let pre_pass_node = PrepassNode::new();
-        let shadow_pass_node = ShadowPrepass::new();
-
-        let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
-
-        let g_buf_node = GBufferPassNode::new(&mut self.global_context);
-        let ssao_node = SsaoPassNode::new(&mut self.global_context);
-
-        let main_node = MainPassNode::new(&mut self.global_context);
-
-        self.preview_textures.clear();
-        PreviewType::iter().for_each(|preview_type| {
-            if let Some(texture_view) = match preview_type {
-                PreviewType::None => None,
-                PreviewType::Camera => Some(rt_node.rt_texture_view.clone()),
-                PreviewType::SSAO => Some(self.global_context.ssao_texture.clone()),
-                PreviewType::SSAOPositions => self.global_context.texture_view_resources.non_msaa_texture_view_positions.clone(),
-                PreviewType::SSAONormals => self.global_context.texture_view_resources.non_msaa_texture_view_normals.clone(),
-                PreviewType::SSAODepth => self.global_context.texture_view_resources.non_msaa_depth_texture_view.clone(),
-                PreviewType::ShadowMap => Some(self.global_context.shadow_map_depth_texture.clone()),
-            } {
-                self.preview_textures.insert(preview_type, texture_view);
-            }
-        });
-
         self.layers
             .shadow_map_layer
             .set_texture(&self.global_context.shadow_map_depth_texture, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
@@ -227,22 +202,50 @@ impl GpuRenderer {
             .post_process_layer
             .set_texture(&self.global_context.ssao_texture, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
 
-
+        let pre_pass_node = PrepassNode::new();
         self.pass_nodes = vec![Box::new(pre_pass_node)];
 
-        if self.render_config.preview_type != PreviewType::None {
-            self.pass_nodes.push(Box::new(rt_node));
-        }
-
         if self.render_config.shadow_enabled {
+            let shadow_pass_node = ShadowPrepass::new();
             self.pass_nodes.push(Box::new(shadow_pass_node));
         }
 
         if self.render_config.ssao_enabled {
+            let g_buf_node = GBufferPassNode::new(&mut self.global_context);
             self.pass_nodes.push(Box::new(g_buf_node));
+
+            let ssao_node = SsaoPassNode::new(&mut self.global_context);
             self.pass_nodes.push(Box::new(ssao_node));
         }
 
+        self.preview_textures.clear();
+        if self.render_config.preview_type != PreviewType::None {
+            let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
+
+            PreviewType::iter().for_each(|preview_type| {
+                if let Some(texture_view) = match preview_type {
+                    PreviewType::None => None,
+                    PreviewType::Camera => Some(rt_node.rt_texture_view.clone()),
+                    PreviewType::SSAO => Some(self.global_context.ssao_texture.clone()),
+                    PreviewType::SSAOPositions => {
+                        self.global_context.texture_view_resources.non_msaa_texture_view_positions.clone()
+                    }
+                    PreviewType::SSAONormals => {
+                        self.global_context.texture_view_resources.non_msaa_texture_view_normals.clone()
+                    },
+                    PreviewType::SSAODepth => {
+                        self.global_context.texture_view_resources.non_msaa_depth_texture_view.clone()
+                    },
+                    PreviewType::ShadowMap => Some(self.global_context.shadow_map_depth_texture.clone()),
+                } {
+                    self.preview_textures.insert(preview_type, texture_view);
+                }
+            });
+
+            self.pass_nodes.push(Box::new(rt_node));
+        }
+
+        let main_node = MainPassNode::new(&mut self.global_context);
         self.pass_nodes.push(Box::new(main_node));
     }
 
@@ -282,7 +285,7 @@ impl GpuRenderer {
                 item.update_text(fps.as_str(), 1.0);
             });
 
-        self.pass_nodes.iter_mut().for_each(|node| {
+        self.pass_nodes.iter().for_each(|node| {
             node.run(
                 &mut encoder,
                 &mut self.layers,

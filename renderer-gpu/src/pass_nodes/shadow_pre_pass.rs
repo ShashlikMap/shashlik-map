@@ -20,9 +20,6 @@ impl PassNode for ShadowPrepass {
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {
-        if !global_context.is_shadow_mapping_enabled() {
-            return;
-        }
         let depth_attachment = wgpu::RenderPassDepthStencilAttachment {
             view: &global_context.shadow_map_depth_texture,
             depth_ops: Some(wgpu::Operations {
