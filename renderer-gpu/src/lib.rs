@@ -182,6 +182,7 @@ impl GpuRenderer {
 
     pub fn update_config(&mut self, action: impl Fn(&mut RenderConfig)) {
         action(&mut self.render_config);
+        self.config_pass_nodes();
         if self.current_preview_type != self.render_config.preview_type {
             self.current_preview_type = self.render_config.preview_type;
             if let Some(texture_view) = self.preview_textures.get(&self.current_preview_type) {
@@ -190,7 +191,6 @@ impl GpuRenderer {
                     .set_texture(texture_view, (-100.0, -100.0), &self.global_context, &mut self.buffer_pool);
             }
         }
-        self.config_pass_nodes();
     }
 
     fn config_pass_nodes(&mut self) {
@@ -204,6 +204,7 @@ impl GpuRenderer {
 
         let main_node = MainPassNode::new(&mut self.global_context);
 
+        self.preview_textures.clear();
         PreviewType::iter().for_each(|preview_type| {
             if let Some(texture_view) = match preview_type {
                 PreviewType::None => None,
