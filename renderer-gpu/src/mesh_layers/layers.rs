@@ -61,7 +61,7 @@ impl Layers {
 
         Layers {
             feature_layers,
-            mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context), true),
+            mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context, true), true),
             shape_layer: GeneralMeshLayer::new(ShapePipeline::new(global_context, None, false, true), false),
             screen_shape_layer: ScreenShapeLayer::new(ShapePipeline::new(global_context, Some("vs_main_screen"), false, false),
                                                       global_context),
