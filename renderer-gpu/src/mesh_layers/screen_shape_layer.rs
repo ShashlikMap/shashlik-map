@@ -132,9 +132,6 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        if global_context.check_render_step(GlobalRenderStep::GBufferStep) {
-            return;
-        }
         if let Some(render_pipeline) = self.pipeline.as_ref() {
             render_pass.set_pipeline(render_pipeline);
 
