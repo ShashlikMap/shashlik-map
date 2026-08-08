@@ -277,7 +277,7 @@ impl PassNode for MainPassNode {
             }),
         };
         
-        if global_context.ssao_enabled {
+        if global_context.is_ssao_enabled() {
             {
                 let non_msaa_color_attachment_positions = wgpu::RenderPassColorAttachment {
                     view: &self.non_msaa_texture_view_positions,

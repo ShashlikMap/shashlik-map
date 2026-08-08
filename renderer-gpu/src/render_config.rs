@@ -2,9 +2,21 @@ use renderer_common::PreviewType;
 
 pub struct RenderConfig {
     pub shadow_enabled: bool,
-    pub shadow_texture_size: (u32, u32),
+    shadow_texture_size: (u32, u32),
     pub ssao_enabled: bool,
     pub preview_type: PreviewType,
+}
+
+impl RenderConfig {
+    pub fn new(shadow_texture_size: (u32, u32)) -> RenderConfig {
+        let mut config = RenderConfig::default();
+        config.shadow_texture_size = shadow_texture_size;
+        config
+    }
+
+    pub fn shadow_texture_size(&self) -> (u32, u32) {
+        self.shadow_texture_size
+    }
 }
 
 impl Default for RenderConfig {

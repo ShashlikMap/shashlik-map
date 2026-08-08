@@ -25,10 +25,10 @@ pub struct GlobalContext {
     pub styles_bind_group_layout: BindGroupLayout,
     pub style_bind_group: Option<BindGroup>,
     pub(crate) render_step: GlobalRenderStep,
-    pub ssao_enabled: bool,
+    ssao_enabled: bool,
     pub ssao_texture: TextureView,
     pub shadow_map_depth_texture: TextureView,
-    pub preview_type: PreviewType,
+    preview_type: PreviewType,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[[f32; 4]; 4]>>,
 }
 
@@ -53,7 +53,7 @@ impl GlobalContext {
             },
             device,
         );
-        let shadow_map_depth_texture = create_depth_texture(render_config.shadow_texture_size,
+        let shadow_map_depth_texture = create_depth_texture(render_config.shadow_texture_size(),
                                                             1,
                                                             TextureFormat::Depth32Float,
                                                             device);
@@ -109,6 +109,7 @@ impl GlobalContext {
         self.update_style_bind_group();
 
         self.preview_type = render_config.preview_type;
+        self.ssao_enabled = render_config.ssao_enabled;
     }
 
     fn update_style_bind_group(&mut self) {

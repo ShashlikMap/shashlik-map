@@ -69,14 +69,18 @@ pub struct GpuRenderer {
 }
 
 impl GpuRenderer {
-
-    pub async fn new(
+    pub async fn new(feature_tags: Vec<WorldShapeFeatureLayerTag>,
+                     canvas: Box<dyn WgpuCanvas>,
+                     font_data: &'static [u8]) -> anyhow::Result<GpuRenderer> {
+        Self::new_with_config(RenderConfig::default(), feature_tags, canvas, font_data).await
+    }
+    pub async fn new_with_config(
+        render_config: RenderConfig,
         feature_tags: Vec<WorldShapeFeatureLayerTag>,
         canvas: Box<dyn WgpuCanvas>,
         font_data: &'static [u8],
     ) -> anyhow::Result<GpuRenderer> {
         let style_store = StyleStore::new();
-        let render_config= RenderConfig::default();
         let mut global_context = GlobalContext::new(canvas, &render_config, &style_store);
 
         let font = Face::parse(font_data, 0)?;

@@ -17,6 +17,7 @@ use std::str::FromStr;
 use std::sync::mpsc;
 use wgpu::TextureUsages;
 use wgpu::{SurfaceColorSpace, SurfaceConfiguration};
+use renderer_gpu::render_config::RenderConfig;
 
 pub fn prepare() {
     let mut wgpu_settings = WGPUSettings::default();
@@ -142,13 +143,14 @@ pub fn launch_internal(ui: &ShashlikUI) {
 
                         let mut map =
                             pollster::block_on(async {
-                                let mut renderer = GpuRenderer::new(feature_layer_tags(),
-                                                                Box::new(canvas), &DEFAULT_FONT_DATA).await?;
-                                if low_res {
-                                    renderer.update_config(|config| {
-                                        config.shadow_texture_size = (1024, 1024);
-                                    });
-                                }
+                                let render_config = if low_res {
+                                    RenderConfig::new((1024, 1024))
+                                } else {
+                                    RenderConfig::default()
+                                };
+                                let renderer = GpuRenderer::new_with_config(render_config, feature_layer_tags(),
+                                                                            Box::new(canvas), &DEFAULT_FONT_DATA).await?;
+
                                 ShashlikMap::new(renderer, tiles_provider).await
                             }).unwrap();
 

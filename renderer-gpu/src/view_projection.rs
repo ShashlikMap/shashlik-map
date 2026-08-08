@@ -84,7 +84,7 @@ impl ViewProjection {
             uniform_buffer,
             ortho,
             is_shadow_enabled: render_config.shadow_enabled,
-            shadow_texture_size: render_config.shadow_texture_size,
+            shadow_texture_size: render_config.shadow_texture_size(),
         }
     }
 
@@ -127,7 +127,7 @@ impl ViewProjection {
         self.screen_size = (config.width as f64, config.height as f64);
 
         self.is_shadow_enabled = render_config.shadow_enabled;
-        self.shadow_texture_size = render_config.shadow_texture_size;
+        self.shadow_texture_size = render_config.shadow_texture_size();
 
         queue.write_buffer(
             &self.uniform_buffer,

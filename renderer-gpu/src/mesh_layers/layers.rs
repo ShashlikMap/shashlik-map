@@ -137,7 +137,7 @@ impl BaseMeshLayer for Layers {
                 self.shadow_map_layer.render(render_pass, global_context);
             }
 
-            if global_context.ssao_enabled && main_or_preview_step {
+            if global_context.is_ssao_enabled() && main_or_preview_step {
                 self.post_process_layer.render(render_pass, global_context);
             }
             if main_or_preview_step {
@@ -150,7 +150,7 @@ impl BaseMeshLayer for Layers {
             self.feature_layers.render(render_pass, global_context);
         }
 
-        if global_context.preview_type.is_enabled() && is_main_step {
+        if global_context.preview_type().is_enabled() && is_main_step {
             self.preview_mesh_layer.render(render_pass, global_context);
         }
     }
