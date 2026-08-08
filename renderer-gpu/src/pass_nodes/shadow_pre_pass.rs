@@ -1,8 +1,8 @@
 use crate::global_context::{GlobalContext, GlobalRenderStep};
-use crate::mesh_layers::layers::Layers;
 use crate::mesh_layers::BaseMeshLayer;
+use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::PassNode;
-use wgpu::{CommandEncoder, TextureView};
+use wgpu::CommandEncoder;
 
 pub(crate) struct ShadowPrepass {}
 
@@ -13,15 +13,8 @@ impl ShadowPrepass {
 }
 
 impl PassNode for ShadowPrepass {
-    fn compute(
-        &self,
-        _encoder: &mut CommandEncoder,
-        _layers: &mut Layers,
-        _global_context: &mut GlobalContext,
-    ) {
-    }
 
-    fn render(
+    fn run(
         &self,
         encoder: &mut CommandEncoder,
         layers: &mut Layers,

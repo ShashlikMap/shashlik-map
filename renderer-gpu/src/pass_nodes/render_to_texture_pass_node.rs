@@ -28,11 +28,8 @@ impl RenderToTexturePassNode {
 }
 
 impl PassNode for RenderToTexturePassNode {
-    fn compute(&self, _encoder: &mut CommandEncoder, _layers: &mut Layers, _global_context: &mut GlobalContext) {
-        // no special computes
-    }
-    
-    fn render(
+ 
+    fn run(
         &self,
         encoder: &mut CommandEncoder,
         layers: &mut Layers,
