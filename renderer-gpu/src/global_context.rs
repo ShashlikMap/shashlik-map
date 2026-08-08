@@ -8,6 +8,7 @@ use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Device, TextureFormat, TextureUsages, TextureView};
 use renderer_common::PreviewType;
 use crate::render_config::RenderConfig;
+use crate::texture_view_resources::TextureViewResources;
 use crate::wgpu_canvas::WgpuCanvas;
 
 #[derive(Eq, PartialEq)]
@@ -26,6 +27,7 @@ pub struct GlobalContext {
     pub style_bind_group: Option<BindGroup>,
     pub(crate) render_step: GlobalRenderStep,
     ssao_enabled: bool,
+    pub(crate) texture_view_resources: TextureViewResources,
     pub ssao_texture: TextureView,
     pub shadow_map_depth_texture: TextureView,
     preview_type: PreviewType,
@@ -65,6 +67,7 @@ impl GlobalContext {
             style_bind_group: None,
             render_step: GlobalRenderStep::MainStep,
             ssao_enabled: render_config.ssao_enabled,
+            texture_view_resources: TextureViewResources::default(),
             ssao_texture,
             shadow_map_depth_texture,
             preview_type: render_config.preview_type,

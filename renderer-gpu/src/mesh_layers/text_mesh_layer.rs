@@ -1,9 +1,9 @@
-use renderer_common::geometry_data::{LineData, TextData};
-use crate::global_context::{GlobalContext, GlobalRenderStep};
+use crate::global_context::GlobalContext;
 use crate::mesh_layers::BaseMeshLayer;
-use renderer_common::render_modifier::SpatialData;
 use crate::pipelines::RenderPipeline;
 use crate::text::text_renderer::TextRenderer;
+use renderer_common::geometry_data::{LineData, TextData};
+use renderer_common::render_modifier::SpatialData;
 use wgpu::{CommandEncoder, RenderPass};
 
 pub struct TextMeshLayer<P: RenderPipeline> {

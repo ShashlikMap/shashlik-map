@@ -3,9 +3,9 @@ import super::common::frag_pos_from_ray;
 
 @group(0) @binding(0) var ssao_texture: texture_storage_2d<rgba16float, write>;
 
-@group(0) @binding(1) var normals: texture_2d<f32>;
+@group(0) @binding(1) var positions: texture_2d<f32>;
 
-@group(0) @binding(2) var positions: texture_2d<f32>;
+@group(0) @binding(2) var normals: texture_2d<f32>;
 
 @group(0) @binding(3) var noise: texture_2d<f32>;
 

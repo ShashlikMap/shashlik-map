@@ -2,10 +2,12 @@ pub mod render_to_texture_pass_node;
 pub mod main_pass_node;
 pub mod prepass_node;
 pub mod shadow_pre_pass;
+pub mod g_buffer_pass_node;
+pub mod ssao_pass_node;
 
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
-use wgpu::{Color, CommandEncoder, TextureView};
+use wgpu::{Color, CommandEncoder};
 
 // TODO Ideally, it should be set from Styles somehow
 const BACKGROUND_ATTACHMENT_COLOR: Color = Color {
@@ -16,17 +18,9 @@ const BACKGROUND_ATTACHMENT_COLOR: Color = Color {
 };
 
 pub trait PassNode {
-    fn compute(
+    fn run(
         &self,
         encoder: &mut CommandEncoder,
-        layers: &mut Layers,
-        global_context: &mut GlobalContext,
-    );
-
-    fn render(
-        &self,
-        encoder: &mut CommandEncoder,
-        output_view: &TextureView,
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     );

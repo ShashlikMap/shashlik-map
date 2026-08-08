@@ -28,20 +28,13 @@ impl RenderToTexturePassNode {
 }
 
 impl PassNode for RenderToTexturePassNode {
-    fn compute(&self, _encoder: &mut CommandEncoder, _layers: &mut Layers, _global_context: &mut GlobalContext) {
-        // no special computes
-    }
-    
-    fn render(
+ 
+    fn run(
         &self,
         encoder: &mut CommandEncoder,
-        _output_view: &TextureView,
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {
-        if !global_context.preview_type().is_enabled() {
-            return;
-        }
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render To Texture Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {

@@ -1,5 +1,5 @@
 use glam::Mat4;
-use crate::global_context::{GlobalContext, GlobalRenderStep};
+use crate::global_context::{GlobalContext};
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh_layers::BaseMeshLayer;

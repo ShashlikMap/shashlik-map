@@ -30,6 +30,8 @@ use std::thread::spawn;
 use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
+use crate::pass_nodes::g_buffer_pass_node::GBufferPassNode;
+use crate::pass_nodes::ssao_pass_node::SsaoPassNode;
 use crate::render_config::RenderConfig;
 
 pub mod canvas_api;
@@ -54,6 +56,8 @@ mod buffer_pool;
 
 pub mod wgpu_canvas;
 pub mod render_config;
+
+pub(crate) mod texture_view_resources;
 
 pub struct GpuRenderer {
     render_config: RenderConfig,
@@ -178,6 +182,7 @@ impl GpuRenderer {
 
     pub fn update_config(&mut self, action: impl Fn(&mut RenderConfig)) {
         action(&mut self.render_config);
+        self.config_pass_nodes();
         if self.current_preview_type != self.render_config.preview_type {
             self.current_preview_type = self.render_config.preview_type;
             if let Some(texture_view) = self.preview_textures.get(&self.current_preview_type) {
@@ -189,26 +194,6 @@ impl GpuRenderer {
     }
 
     fn config_pass_nodes(&mut self) {
-        let pre_pass_node = PrepassNode::new();
-        let shadow_pass_node = ShadowPrepass::new();
-
-        let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
-        let main_node = MainPassNode::new(&mut self.global_context);
-
-        PreviewType::iter().for_each(|preview_type| {
-            if let Some(texture_view) = match preview_type {
-                PreviewType::None => None,
-                PreviewType::Camera => Some(rt_node.rt_texture_view.clone()),
-                PreviewType::SSAO => Some(self.global_context.ssao_texture.clone()),
-                PreviewType::SSAOPositions => Some(main_node.non_msaa_texture_view_positions.clone()),
-                PreviewType::SSAONormals => Some(main_node.non_msaa_texture_view_normals.clone()),
-                PreviewType::SSAODepth => Some(main_node.non_msaa_depth_texture_view.clone()),
-                PreviewType::ShadowMap => Some(self.global_context.shadow_map_depth_texture.clone()),
-            } {
-                self.preview_textures.insert(preview_type, texture_view);
-            }
-        });
-
         self.layers
             .shadow_map_layer
             .set_texture(&self.global_context.shadow_map_depth_texture, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
@@ -217,13 +202,50 @@ impl GpuRenderer {
             .post_process_layer
             .set_texture(&self.global_context.ssao_texture, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
 
-
+        let pre_pass_node = PrepassNode::new();
         self.pass_nodes = vec![Box::new(pre_pass_node)];
 
-        self.pass_nodes.push(Box::new(rt_node));
+        if self.render_config.shadow_enabled {
+            let shadow_pass_node = ShadowPrepass::new();
+            self.pass_nodes.push(Box::new(shadow_pass_node));
+        }
 
-        self.pass_nodes.push(Box::new(shadow_pass_node));
+        if self.render_config.ssao_enabled {
+            let g_buf_node = GBufferPassNode::new(&mut self.global_context);
+            self.pass_nodes.push(Box::new(g_buf_node));
 
+            let ssao_node = SsaoPassNode::new(&mut self.global_context);
+            self.pass_nodes.push(Box::new(ssao_node));
+        }
+
+        self.preview_textures.clear();
+        if self.render_config.preview_type != PreviewType::None {
+            let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
+
+            PreviewType::iter().for_each(|preview_type| {
+                if let Some(texture_view) = match preview_type {
+                    PreviewType::None => None,
+                    PreviewType::Camera => Some(rt_node.rt_texture_view.clone()),
+                    PreviewType::SSAO => Some(self.global_context.ssao_texture.clone()),
+                    PreviewType::SSAOPositions => {
+                        self.global_context.texture_view_resources.non_msaa_texture_view_positions.clone()
+                    }
+                    PreviewType::SSAONormals => {
+                        self.global_context.texture_view_resources.non_msaa_texture_view_normals.clone()
+                    },
+                    PreviewType::SSAODepth => {
+                        self.global_context.texture_view_resources.non_msaa_depth_texture_view.clone()
+                    },
+                    PreviewType::ShadowMap => Some(self.global_context.shadow_map_depth_texture.clone()),
+                } {
+                    self.preview_textures.insert(preview_type, texture_view);
+                }
+            });
+
+            self.pass_nodes.push(Box::new(rt_node));
+        }
+
+        let main_node = MainPassNode::new(&mut self.global_context);
         self.pass_nodes.push(Box::new(main_node));
     }
 
@@ -249,13 +271,6 @@ impl GpuRenderer {
     }
 
     pub fn render(&mut self) -> Option<Texture> {
-        // // We can't render unless the surface is configured
-        // if !self.is_surface_configured {
-        //     return Ok(());
-        // }
-
-        let output_view = self.global_context.canvas.create_texture_view();
-
         let mut encoder =
             self.global_context
                 .device()
@@ -270,14 +285,9 @@ impl GpuRenderer {
                 item.update_text(fps.as_str(), 1.0);
             });
 
-        self.pass_nodes.iter_mut().for_each(|node| {
-            node.compute(&mut encoder,
-                         &mut self.layers,
-                         &mut self.global_context);
-
-            node.render(
+        self.pass_nodes.iter().for_each(|node| {
+            node.run(
                 &mut encoder,
-                &output_view,
                 &mut self.layers,
                 &mut self.global_context,
             );
