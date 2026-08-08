@@ -144,7 +144,7 @@ pub fn launch_internal(ui: &ShashlikUI) {
                         let mut map =
                             pollster::block_on(async {
                                 let render_config = if low_res {
-                                    RenderConfig::new((1024, 1024))
+                                    RenderConfig::new(1024)
                                 } else {
                                     RenderConfig::default()
                                 };
