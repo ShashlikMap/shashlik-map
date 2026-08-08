@@ -26,7 +26,6 @@ pub trait PassNode {
     fn render(
         &self,
         encoder: &mut CommandEncoder,
-        output_view: &TextureView,
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     );

@@ -25,7 +25,6 @@ impl PassNode for PrepassNode {
     fn render(
         &self,
         _encoder: &mut CommandEncoder,
-        _output_view: &TextureView,
         _layers: &mut Layers,
         _global_context: &mut GlobalContext,
     ) {

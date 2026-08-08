@@ -35,7 +35,6 @@ impl PassNode for RenderToTexturePassNode {
     fn render(
         &self,
         encoder: &mut CommandEncoder,
-        _output_view: &TextureView,
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {

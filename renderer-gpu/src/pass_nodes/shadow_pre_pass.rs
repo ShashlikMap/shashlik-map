@@ -24,7 +24,6 @@ impl PassNode for ShadowPrepass {
     fn render(
         &self,
         encoder: &mut CommandEncoder,
-        _output_view: &TextureView,
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {

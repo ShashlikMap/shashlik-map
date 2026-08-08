@@ -249,13 +249,6 @@ impl GpuRenderer {
     }
 
     pub fn render(&mut self) -> Option<Texture> {
-        // // We can't render unless the surface is configured
-        // if !self.is_surface_configured {
-        //     return Ok(());
-        // }
-
-        let output_view = self.global_context.canvas.create_texture_view();
-
         let mut encoder =
             self.global_context
                 .device()
@@ -277,7 +270,6 @@ impl GpuRenderer {
 
             node.render(
                 &mut encoder,
-                &output_view,
                 &mut self.layers,
                 &mut self.global_context,
             );

@@ -250,13 +250,13 @@ impl PassNode for MainPassNode {
     fn render(
         &self,
         encoder: &mut CommandEncoder,
-        output_view: &TextureView,
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {
+        let output_view = global_context.canvas.create_texture_view();
         let msaa_color_attachment = wgpu::RenderPassColorAttachment {
             view: &self.msaa_texture_view,
-            resolve_target: Some(output_view),
+            resolve_target: Some(&output_view),
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(BACKGROUND_ATTACHMENT_COLOR),
                 // FYI!! Discard output! It improves MSAA drastically on low-end devices
