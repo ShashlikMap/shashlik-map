@@ -6,7 +6,7 @@ use map::{DEFAULT_FONT_DATA, ShashlikMap};
 use native_dialog::DialogBuilder;
 use osm::source::reqwest_source::ReqwestSource;
 use osm::tiles::TileStore;
-use renderer_common::{PREVIEW_TYPE, PreviewType, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, SSAO_ENABLED, feature_layer_tags};
+use renderer_common::{PreviewType, feature_layer_tags};
 use renderer_gpu::GpuRenderer;
 use renderer_gpu::wgpu_canvas::DefaultWgpuCanvas;
 use slint::wgpu_30::wgpu::{Features, Limits};
@@ -17,6 +17,7 @@ use std::str::FromStr;
 use std::sync::mpsc;
 use wgpu::TextureUsages;
 use wgpu::{SurfaceColorSpace, SurfaceConfiguration};
+use renderer_gpu::render_config::RenderConfig;
 
 pub fn prepare() {
     let mut wgpu_settings = WGPUSettings::default();
@@ -42,9 +43,7 @@ pub fn launch_internal(ui: &ShashlikUI) {
     ui.set_screen_width(screen_size.width as i32);
     ui.set_screen_height(screen_size.height as i32);
 
-    if max(screen_size.width, screen_size.height) <= 1024 {
-        unsafe { SHADOWS_TEX_SIZE = (1024, 1024); }
-    }
+    let low_res = max(screen_size.width, screen_size.height) <= 1024;
 
     let dpi = if screen_size.height <= 600 { 0.7 } else { 1.0 };
     let texture_width = ui.get_requested_texture_width();
@@ -133,17 +132,28 @@ pub fn launch_internal(ui: &ShashlikUI) {
                                     .unwrap()
                             });
 
+                            let slint_map_event_sender_internal = slint_map_event_sender.clone();
                             ui_weak.on_preview_type(move |preview_type| {
-                                unsafe { PREVIEW_TYPE = PreviewType::from_str(preview_type.as_str()).unwrap(); }
+                                let preview_type = PreviewType::from_str(preview_type.as_str()).unwrap();
+                                slint_map_event_sender_internal
+                                    .send(SlintMapEvent::PreviewType(preview_type))
+                                    .unwrap();
                             });
                         }
 
                         let mut map =
                             pollster::block_on(async {
-                                let renderer = GpuRenderer::new(feature_layer_tags(),
-                                                                Box::new(canvas), &DEFAULT_FONT_DATA).await?;
+                                let render_config = if low_res {
+                                    RenderConfig::new(1024)
+                                } else {
+                                    RenderConfig::default()
+                                };
+                                let renderer = GpuRenderer::new_with_config(render_config, feature_layer_tags(),
+                                                                            Box::new(canvas), &DEFAULT_FONT_DATA).await?;
+
                                 ShashlikMap::new(renderer, tiles_provider).await
                             }).unwrap();
+
                         map.resize(texture_width as u32, texture_height as u32);
                         shashlik_map = Some(map);
                     }
@@ -192,11 +202,15 @@ pub fn launch_internal(ui: &ShashlikUI) {
                                     }
                                 },
                                 SlintMapEvent::FeatureEnabled(feature, enabled) => match feature {
-                                    Feature::SSAO => unsafe {
-                                        SSAO_ENABLED = enabled;
+                                    Feature::SSAO => {
+                                        shashlik_map.renderer.update_config(|config| {
+                                            config.ssao_enabled = enabled;
+                                        });
                                     },
-                                    Feature::Shadows => unsafe {
-                                        SHADOWS_ENABLED = enabled;
+                                    Feature::Shadows => {
+                                        shashlik_map.renderer.update_config(|config| {
+                                            config.shadow_enabled = enabled;
+                                        });
                                     },
                                     Feature::MapTiler => {
                                         shashlik_map.update_tile_store(|tile_provider| {
@@ -204,6 +218,11 @@ pub fn launch_internal(ui: &ShashlikUI) {
                                         });
                                     }
                                 },
+                                SlintMapEvent::PreviewType(preview_type) => {
+                                    shashlik_map.renderer.update_config(|config| {
+                                        config.preview_type = preview_type;
+                                    });
+                                }
                             };
                         }
                         let curr_pan_state = app.get_current_pan_state();

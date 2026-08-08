@@ -6,7 +6,8 @@ use crate::view_projection::ViewProjection;
 use crate::RendererUpdateData;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Device, TextureFormat, TextureUsages, TextureView};
-use renderer_common::SHADOWS_TEX_SIZE;
+use renderer_common::PreviewType;
+use crate::render_config::RenderConfig;
 use crate::wgpu_canvas::WgpuCanvas;
 
 #[derive(Eq, PartialEq)]
@@ -24,15 +25,17 @@ pub struct GlobalContext {
     pub styles_bind_group_layout: BindGroupLayout,
     pub style_bind_group: Option<BindGroup>,
     pub(crate) render_step: GlobalRenderStep,
+    ssao_enabled: bool,
     pub ssao_texture: TextureView,
     pub shadow_map_depth_texture: TextureView,
+    preview_type: PreviewType,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[[f32; 4]; 4]>>,
 }
 
 impl GlobalContext {
-    pub fn new(canvas: Box<dyn WgpuCanvas>, style_store: &StyleStore) -> Self {
+    pub fn new(canvas: Box<dyn WgpuCanvas>, render_config: &RenderConfig, style_store: &StyleStore) -> Self {
         let device = canvas.device();
-        let view_projection = ViewProjection::new(device);
+        let view_projection = ViewProjection::new(device, render_config);
         let collider = Collider::new();
         let styles_bind_group_layout = Self::create_style_bind_group_layout(device);
 
@@ -50,7 +53,7 @@ impl GlobalContext {
             },
             device,
         );
-        let shadow_map_depth_texture = create_depth_texture(unsafe { SHADOWS_TEX_SIZE },
+        let shadow_map_depth_texture = create_depth_texture(render_config.shadow_texture_size(),
                                                             1,
                                                             TextureFormat::Depth32Float,
                                                             device);
@@ -61,8 +64,10 @@ impl GlobalContext {
             styles_bind_group_layout,
             style_bind_group: None,
             render_step: GlobalRenderStep::MainStep,
+            ssao_enabled: render_config.ssao_enabled,
             ssao_texture,
             shadow_map_depth_texture,
+            preview_type: render_config.preview_type,
             style_uniform_rx: style_store.subscribe(),
         }
     }
@@ -92,15 +97,19 @@ impl GlobalContext {
         }
     }
 
-    pub fn update(&mut self, data: RendererUpdateData) {
+    pub fn update(&mut self, render_config: &RenderConfig, data: RendererUpdateData) {
         self.view_projection.update(
             self.canvas.queue(),
+            render_config,
             self.canvas.config(),
-            data
+            data,
         );
         self.collider.update_view_proj(&self.view_projection);
 
         self.update_style_bind_group();
+
+        self.preview_type = render_config.preview_type;
+        self.ssao_enabled = render_config.ssao_enabled;
     }
 
     fn update_style_bind_group(&mut self) {
@@ -138,6 +147,14 @@ impl GlobalContext {
 
     pub fn is_shadow_mapping_enabled(&self) -> bool {
         self.view_projection.is_shadow_mapping_enabled()
+    }
+
+    pub fn is_ssao_enabled(&self) -> bool {
+        self.ssao_enabled
+    }
+
+    pub fn preview_type(&self) -> PreviewType {
+        self.preview_type
     }
 
     pub(crate) fn check_render_step(&self, step: GlobalRenderStep) -> bool {

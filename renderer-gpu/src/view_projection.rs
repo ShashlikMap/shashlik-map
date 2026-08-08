@@ -2,8 +2,9 @@ use crate::{GpuRenderer, RendererUpdateData};
 use crate::Renderer;
 use geo_types::{coord, Coord};
 use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec4Swizzles};
-use renderer_common::{min_f64, LIGHT_POS, SHADOWS_ENABLED, SHADOWS_TEX_SIZE, max_f64};
+use renderer_common::{min_f64, LIGHT_POS, max_f64};
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
+use crate::render_config::RenderConfig;
 
 #[rustfmt::skip]
 const FLIP_Y: DMat4 = DMat4::from_cols_array(
@@ -36,7 +37,9 @@ pub struct ViewProjection {
     pub screen_size: (f64, f64),
     inv_view_proj_matrix: DMat4,
     pub uniform_buffer: Buffer,
-    ortho: DMat4
+    ortho: DMat4,
+    is_shadow_enabled: bool,
+    shadow_texture_size: (u32, u32),
 }
 
 impl ViewProjection {
@@ -44,7 +47,7 @@ impl ViewProjection {
 
     const ORTHO_STEP: f64 = 5.0;
 
-    pub fn new(device: &Device) -> Self {
+    pub fn new(device: &Device, render_config: &RenderConfig) -> Self {
         // ViewProjection align is 16byte since vec4 is used
         let vec4size = size_of::<[f32; 4]>() as u64;
         let size = size_of::<ViewProjUniform>() as u64;
@@ -79,11 +82,14 @@ impl ViewProjection {
             cs_offset: DVec3::new(0.0, 0.0, 0.0),
             inv_view_proj_matrix: DMat4::IDENTITY,
             uniform_buffer,
-            ortho
+            ortho,
+            is_shadow_enabled: render_config.shadow_enabled,
+            shadow_texture_size: render_config.shadow_texture_size(),
         }
     }
 
     pub fn update(&mut self, queue: &Queue,
+                  render_config: &RenderConfig,
                   config: &SurfaceConfiguration,
                   mut data: RendererUpdateData) {
 
@@ -120,6 +126,9 @@ impl ViewProjection {
         self.inv_view_proj_matrix = data.view_proj_matrix.inverse();
         self.screen_size = (config.width as f64, config.height as f64);
 
+        self.is_shadow_enabled = render_config.shadow_enabled;
+        self.shadow_texture_size = render_config.shadow_texture_size();
+
         queue.write_buffer(
             &self.uniform_buffer,
             0,
@@ -150,7 +159,7 @@ impl ViewProjection {
             let max_x = max_f64!(p1.x, p2.x, p3.x, p4.x) + Self::MAX_MESH_HEIGHT;
             let max_y = max_f64!(p1.y, p2.y, p3.y, p4.y) + Self::MAX_MESH_HEIGHT;
 
-            let depth_texture_size = unsafe { SHADOWS_TEX_SIZE.0 as f64 };
+            let depth_texture_size = self.shadow_texture_size.0 as f64;
             let ortho_width = ((max_x - min_x) / Self::ORTHO_STEP).round() * Self::ORTHO_STEP;
             let ortho_height = ((max_y - min_y) / Self::ORTHO_STEP).round() * Self::ORTHO_STEP;
 
@@ -213,6 +222,6 @@ impl ViewProjection {
     }
 
     pub fn is_shadow_mapping_enabled(&self) -> bool {
-        (self.scale_2d_3d > 0.0) && unsafe { SHADOWS_ENABLED }
+        (self.scale_2d_3d > 0.0) && self.is_shadow_enabled
     }
 }

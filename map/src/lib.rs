@@ -29,7 +29,7 @@ use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use log::error;
-use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData, SSAO_ENABLED};
+use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData};
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
 mod camera;
@@ -42,7 +42,7 @@ pub mod tiles;
 mod transition_2d_3d_helper;
 
 pub struct ShashlikMap<R: Renderer, T: TilesProvider> {
-    renderer: R,
+    pub renderer: R,
     camera: Camera,
     camera_controller: CameraController,
     tiles_provider: T,
@@ -308,11 +308,6 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         let cam_zoom = self.camera.scale() as f64;
 
         let cam_yaw = self.camera_controller.yaw;
-
-        // SSAO is only enabled for near ground
-        if unsafe { SSAO_ENABLED } {
-            unsafe { SSAO_ENABLED = self.camera.scale() < 1.0 };
-        }
 
         self.renderer
             .api() //  fyi, it seems to be fast enough(need to learn more here)

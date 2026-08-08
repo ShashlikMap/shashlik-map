@@ -20,7 +20,7 @@ use renderer_common::fps::FpsCounter;
 use ::renderer_common::geometry_data::{LineData, TextData};
 use renderer_common::r_api_messenger::{CommonRendererApi, RendererApiMsg};
 use ::renderer_common::render_modifier::SpatialData;
-use ::renderer_common::{PREVIEW_TYPE, PreviewType, Renderer, RendererUpdateData, WorldShapeFeatureLayerTag};
+use ::renderer_common::{PreviewType, Renderer, RendererUpdateData, WorldShapeFeatureLayerTag};
 use rustybuzz::ttf_parser::Face;
 use std::collections::HashMap;
 use std::iter;
@@ -30,6 +30,7 @@ use std::thread::spawn;
 use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
+use crate::render_config::RenderConfig;
 
 pub mod canvas_api;
 pub mod draw_commands;
@@ -52,8 +53,10 @@ mod utils;
 mod buffer_pool;
 
 pub mod wgpu_canvas;
+pub mod render_config;
 
 pub struct GpuRenderer {
+    render_config: RenderConfig,
     layers: Layers,
     pass_nodes: Vec<Box<dyn PassNode>>,
     renderer_rx: Receiver<RendererMessage>,
@@ -66,14 +69,19 @@ pub struct GpuRenderer {
 }
 
 impl GpuRenderer {
-    pub async fn new(
+    pub async fn new(feature_tags: Vec<WorldShapeFeatureLayerTag>,
+                     canvas: Box<dyn WgpuCanvas>,
+                     font_data: &'static [u8]) -> anyhow::Result<GpuRenderer> {
+        Self::new_with_config(RenderConfig::default(), feature_tags, canvas, font_data).await
+    }
+    pub async fn new_with_config(
+        render_config: RenderConfig,
         feature_tags: Vec<WorldShapeFeatureLayerTag>,
         canvas: Box<dyn WgpuCanvas>,
         font_data: &'static [u8],
     ) -> anyhow::Result<GpuRenderer> {
         let style_store = StyleStore::new();
-
-        let mut global_context = GlobalContext::new(canvas, &style_store);
+        let mut global_context = GlobalContext::new(canvas, &render_config, &style_store);
 
         let font = Face::parse(font_data, 0)?;
         let mut layers = Layers::new(feature_tags, &mut global_context, font);
@@ -96,6 +104,7 @@ impl GpuRenderer {
         layers.prepare(&mut global_context);
 
         Ok(Self {
+            render_config,
             layers,
             pass_nodes: vec![],
             renderer_rx,
@@ -167,6 +176,18 @@ impl GpuRenderer {
         }
     }
 
+    pub fn update_config(&mut self, action: impl Fn(&mut RenderConfig)) {
+        action(&mut self.render_config);
+        if self.current_preview_type != self.render_config.preview_type {
+            self.current_preview_type = self.render_config.preview_type;
+            if let Some(texture_view) = self.preview_textures.get(&self.current_preview_type) {
+                self.layers
+                    .preview_mesh_layer
+                    .set_texture(texture_view, (-100.0, -100.0), &self.global_context, &mut self.buffer_pool);
+            }
+        }
+    }
+
     fn config_pass_nodes(&mut self) {
         let pre_pass_node = PrepassNode::new();
         let shadow_pass_node = ShadowPrepass::new();
@@ -207,18 +228,7 @@ impl GpuRenderer {
     }
 
     pub fn update(&mut self, data: RendererUpdateData) {
-        unsafe {
-            if self.current_preview_type != PREVIEW_TYPE {
-                self.current_preview_type = PREVIEW_TYPE;
-                if let Some(texture_view) = self.preview_textures.get(&self.current_preview_type) {
-                    self.layers
-                        .preview_mesh_layer
-                        .set_texture(texture_view, (-100.0, -100.0), &self.global_context, &mut self.buffer_pool);
-                }
-            }
-        }
-
-        self.global_context.update(data);
+        self.global_context.update(&self.render_config, data);
 
         // read all messages between renders
         for message in self.renderer_rx.try_iter() {

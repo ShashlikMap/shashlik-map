@@ -23,6 +23,7 @@ enum SlintMapEvent {
     VerticalScroll(f32),
     FollowMode(bool),
     FeatureEnabled(Feature, bool),
+    PreviewType(PreviewType),
     BtnAction(Action, i32),
 }
 
