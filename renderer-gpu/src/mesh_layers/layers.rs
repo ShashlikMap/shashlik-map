@@ -124,33 +124,35 @@ impl BaseMeshLayer for Layers {
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         let is_preview_step = global_context.check_render_step(GlobalRenderStep::PreviewStep);
         let is_main_step = global_context.check_render_step(GlobalRenderStep::MainStep);
-        let main_or_preview_step = is_main_step
-            || is_preview_step;
-        if main_or_preview_step {
+        let is_main_or_preview_step = is_main_step || is_preview_step;
+
+        if is_main_or_preview_step {
             self.shape_layer.disable_skip_mesh_feature = is_preview_step;
             self.shape_layer.render(render_pass, global_context);
         }
         if !is_preview_step {
             self.mesh_layer.render(render_pass, global_context);
 
-            if global_context.is_shadow_mapping_enabled() && main_or_preview_step {
-                self.shadow_map_layer.render(render_pass, global_context);
-            }
+            if is_main_step {
+                if global_context.is_shadow_mapping_enabled() {
+                    self.shadow_map_layer.render(render_pass, global_context);
+                }
 
-            if global_context.is_ssao_enabled() && main_or_preview_step {
-                self.post_process_layer.render(render_pass, global_context);
-            }
-            if main_or_preview_step {
+                if global_context.is_ssao_enabled() {
+                    self.post_process_layer.render(render_pass, global_context);
+                }
+
                 self.screen_shape_layer
                     .render(render_pass, global_context);
+
                 self.text_feature_layers.render(render_pass, global_context);
             }
         }
-        if main_or_preview_step {
+        if is_main_or_preview_step {
             self.feature_layers.render(render_pass, global_context);
         }
 
-        if global_context.preview_type().is_enabled() && is_main_step {
+        if is_main_step && global_context.preview_type().is_enabled() {
             self.preview_mesh_layer.render(render_pass, global_context);
         }
     }
