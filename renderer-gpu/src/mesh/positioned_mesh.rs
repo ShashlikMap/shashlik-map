@@ -19,7 +19,7 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
     original_instance_positions_alpha: Vec<(DVec3, f32)>,
-    pub instances_args_buffer: Option<Buffer>,
+    instances_args_buffer: Option<Buffer>,
     instances_args_buffer_data: Vec<u8>,
     pub instances_bind_group: Option<BindGroup>,
     pub instances_compute_bind_group: Option<BindGroup>,
