@@ -147,9 +147,9 @@ pub enum PreviewType {
     None,
     Camera,
     SSAO,
-    SSAOPositions,
-    SSAONormals,
-    SSAODepth,
+    GBufPositions,
+    GBufNormals,
+    GBufDepth,
     ShadowMap,
 }
 

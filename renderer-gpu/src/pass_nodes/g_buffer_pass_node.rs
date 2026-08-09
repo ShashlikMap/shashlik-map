@@ -4,6 +4,7 @@ use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::PassNode;
 use crate::textures::{TextureData, create_depth_texture, create_simple_texture};
 use wgpu::{CommandEncoder, TextureFormat, TextureUsages};
+use crate::texture_view_resources::TextureViewKind;
 
 pub(crate) struct GBufferPassNode;
 
@@ -23,8 +24,7 @@ impl GBufferPassNode {
             global_context.device(),
         );
         global_context
-            .texture_view_resources
-            .non_msaa_texture_view_positions = Some(non_msaa_texture_view_positions);
+            .texture_view_resources.insert(TextureViewKind::GBufPositions, non_msaa_texture_view_positions);
 
         let non_msaa_texture_view_normals = create_simple_texture(
             TextureData {
@@ -36,8 +36,7 @@ impl GBufferPassNode {
             global_context.device(),
         );
         global_context
-            .texture_view_resources
-            .non_msaa_texture_view_normals = Some(non_msaa_texture_view_normals);
+            .texture_view_resources.insert(TextureViewKind::GBufNormals, non_msaa_texture_view_normals);
 
         let non_msaa_depth_texture_view = create_depth_texture(
             non_msaa_size,
@@ -47,8 +46,7 @@ impl GBufferPassNode {
         );
 
         global_context
-            .texture_view_resources
-            .non_msaa_depth_texture_view = Some(non_msaa_depth_texture_view);
+            .texture_view_resources.insert(TextureViewKind::GBufDepth, non_msaa_depth_texture_view);
 
         Self
     }
@@ -64,9 +62,7 @@ impl PassNode for GBufferPassNode {
         let non_msaa_color_attachment_positions = wgpu::RenderPassColorAttachment {
             view: global_context
                 .texture_view_resources
-                .non_msaa_texture_view_positions
-                .as_ref()
-                .expect("non_msaa_texture_view_positions is expected"),
+                .get_or_unwrap(TextureViewKind::GBufPositions),
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -82,9 +78,7 @@ impl PassNode for GBufferPassNode {
         let non_msaa_color_attachment_normals = wgpu::RenderPassColorAttachment {
             view: global_context
                 .texture_view_resources
-                .non_msaa_texture_view_normals
-                .as_ref()
-                .expect("non_msaa_texture_view_normals is expected"),
+                .get_or_unwrap(TextureViewKind::GBufNormals),
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -101,9 +95,7 @@ impl PassNode for GBufferPassNode {
         let non_msaa_depth_attachment = wgpu::RenderPassDepthStencilAttachment {
             view: global_context
                 .texture_view_resources
-                .non_msaa_depth_texture_view
-                .as_ref()
-                .expect("non_msaa_depth_texture_view is expected"),
+                .get_or_unwrap(TextureViewKind::GBufDepth),
             depth_ops: Some(wgpu::Operations {
                 load: wgpu::LoadOp::Clear(1.0),
                 store: wgpu::StoreOp::Store,

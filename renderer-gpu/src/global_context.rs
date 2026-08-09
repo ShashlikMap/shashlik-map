@@ -1,22 +1,21 @@
+use crate::RendererUpdateData;
 use crate::collider::Collider;
+use crate::render_config::RenderConfig;
 use crate::styles::style_store::StyleStore;
-use crate::textures::{create_depth_texture, create_simple_texture, TextureData};
+use crate::texture_view_resources::TextureViewResources;
 use crate::utils::ReceiverExt;
 use crate::view_projection::ViewProjection;
-use crate::RendererUpdateData;
-use wgpu::util::DeviceExt;
-use wgpu::{BindGroup, BindGroupLayout, Device, TextureFormat, TextureUsages, TextureView};
-use renderer_common::PreviewType;
-use crate::render_config::RenderConfig;
-use crate::texture_view_resources::TextureViewResources;
 use crate::wgpu_canvas::WgpuCanvas;
+use renderer_common::PreviewType;
+use wgpu::util::DeviceExt;
+use wgpu::{BindGroup, BindGroupLayout, Device};
 
 #[derive(Eq, PartialEq)]
 pub(crate) enum GlobalRenderStep {
     MainStep,
     ShadowStep,
     GBufferStep,
-    PreviewStep
+    PreviewStep,
 }
 
 pub struct GlobalContext {
@@ -28,8 +27,6 @@ pub struct GlobalContext {
     pub(crate) render_step: GlobalRenderStep,
     ssao_enabled: bool,
     pub(crate) texture_view_resources: TextureViewResources,
-    pub ssao_texture: TextureView,
-    pub shadow_map_depth_texture: TextureView,
     preview_type: PreviewType,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[[f32; 4]; 4]>>,
 }
@@ -40,25 +37,8 @@ impl GlobalContext {
         let view_projection = ViewProjection::new(device, render_config);
         let collider = Collider::new();
         let styles_bind_group_layout = Self::create_style_bind_group_layout(device);
-
-        #[cfg(target_os = "macos")]
-        let ssao_size = (canvas.config().width, canvas.config().height);
-        #[cfg(not(target_os = "macos"))]
-        let mut ssao_size = (canvas.config().width / 2, canvas.config().height / 2);
-
-        let ssao_texture = create_simple_texture(
-            TextureData {
-                sample_count: 1,
-                size: ssao_size,
-                usage: TextureUsages::TEXTURE_BINDING | TextureUsages::STORAGE_BINDING,
-                format: TextureFormat::Rgba16Float,
-            },
-            device,
-        );
-        let shadow_map_depth_texture = create_depth_texture(render_config.shadow_texture_size(),
-                                                            1,
-                                                            TextureFormat::Depth32Float,
-                                                            device);
+        
+        let texture_view_resources = TextureViewResources::new(render_config, device);
         GlobalContext {
             canvas,
             view_projection,
@@ -67,9 +47,7 @@ impl GlobalContext {
             style_bind_group: None,
             render_step: GlobalRenderStep::MainStep,
             ssao_enabled: render_config.ssao_enabled,
-            texture_view_resources: TextureViewResources::default(),
-            ssao_texture,
-            shadow_map_depth_texture,
+            texture_view_resources,
             preview_type: render_config.preview_type,
             style_uniform_rx: style_store.subscribe(),
         }

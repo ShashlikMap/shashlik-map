@@ -3,6 +3,7 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::PassNode;
 use wgpu::CommandEncoder;
+use crate::texture_view_resources::TextureViewKind;
 
 pub(crate) struct ShadowPrepass {}
 
@@ -21,7 +22,7 @@ impl PassNode for ShadowPrepass {
         global_context: &mut GlobalContext,
     ) {
         let depth_attachment = wgpu::RenderPassDepthStencilAttachment {
-            view: &global_context.shadow_map_depth_texture,
+            view: global_context.texture_view_resources.get_or_unwrap(TextureViewKind::ShadowMapDepth),
             depth_ops: Some(wgpu::Operations {
                 load: wgpu::LoadOp::Clear(1.0),
                 store: wgpu::StoreOp::Store,

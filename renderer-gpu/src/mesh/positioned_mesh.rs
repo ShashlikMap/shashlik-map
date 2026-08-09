@@ -19,8 +19,8 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
     original_instance_positions_alpha: Vec<(DVec3, f32)>,
-    pub instances_args_buffer: Option<Buffer>,
-    instances_args_buffer_data: Vec<u8>,
+
+    instances_args_buffer: Option<Buffer>,
     pub instances_bind_group: Option<BindGroup>,
     pub instances_compute_bind_group: Option<BindGroup>,
     pub instances_args_bind_group: Option<BindGroup>,
@@ -55,7 +55,6 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             original_instance_positions_alpha: instance_positions_alpha
                 .unwrap_or(vec![(DVec3::new(0.0, 0.0, 0.0), 1f32)]),
             instances_args_buffer: None,
-            instances_args_buffer_data: vec![],
             instances_bind_group: None,
             instances_compute_bind_group: None,
             instances_args_bind_group: None
@@ -147,7 +146,6 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                             label: Some("instances_bind_args_group"),
                         }),
                 );
-                self.instances_args_buffer_data = indirect_args_struct.as_bytes().to_vec();
                 self.instances_args_buffer = Some(indirect_args);
             } else {
                 self.instances_bind_group = None;
