@@ -8,6 +8,7 @@ pub(crate) struct TextureViewResources {
     pub non_msaa_texture_view_normals: Option<TextureView>,
     pub non_msaa_depth_texture_view: Option<TextureView>,
     pub shadow_map_depth_texture: TextureView,
+    pub ssao_texture: Option<TextureView>,
 }
 
 impl TextureViewResources {
@@ -25,6 +26,7 @@ impl TextureViewResources {
             non_msaa_texture_view_normals: None,
             non_msaa_depth_texture_view: None,
             shadow_map_depth_texture,
+            ssao_texture: None,
         }
     }
 }

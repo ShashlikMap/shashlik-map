@@ -194,10 +194,6 @@ impl GpuRenderer {
     }
 
     fn config_pass_nodes(&mut self) {
-        self.layers
-            .post_process_layer
-            .set_texture(&self.global_context.ssao_texture, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
-
         let pre_pass_node = PrepassNode::new();
         self.pass_nodes = vec![Box::new(pre_pass_node)];
 
@@ -216,6 +212,13 @@ impl GpuRenderer {
 
             let ssao_node = SsaoPassNode::new(&mut self.global_context);
             self.pass_nodes.push(Box::new(ssao_node));
+
+            self.layers
+                .post_process_layer
+                .set_texture(self.global_context.texture_view_resources.ssao_texture
+                                 .as_ref()
+                                 .expect("SSAO texture is expected to be created"),
+                             (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
         }
 
         self.preview_textures.clear();
@@ -226,7 +229,9 @@ impl GpuRenderer {
                 if let Some(texture_view) = match preview_type {
                     PreviewType::None => None,
                     PreviewType::Camera => Some(rt_node.rt_texture_view.clone()),
-                    PreviewType::SSAO => Some(self.global_context.ssao_texture.clone()),
+                    PreviewType::SSAO => {
+                        self.global_context.texture_view_resources.ssao_texture.clone()
+                    },
                     PreviewType::SSAOPositions => {
                         self.global_context.texture_view_resources.non_msaa_texture_view_positions.clone()
                     }

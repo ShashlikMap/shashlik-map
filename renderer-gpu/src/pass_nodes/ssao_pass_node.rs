@@ -1,7 +1,7 @@
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::PassNode;
-use crate::textures::{TextureData, create_simple_texture_with_data};
+use crate::textures::{create_simple_texture, create_simple_texture_with_data, TextureData};
 use glam::Vec4;
 use rand::prelude::ThreadRng;
 use rand::{RngExt, rng};
@@ -20,8 +20,24 @@ pub(crate) struct SsaoPassNode {
 }
 
 impl SsaoPassNode {
-    pub fn new(global_context: &GlobalContext) -> Self {
+    pub fn new(global_context: &mut GlobalContext) -> Self {
         let device = global_context.device();
+        let canvas = &global_context.canvas;
+
+        #[cfg(target_os = "macos")]
+        let ssao_size = (canvas.config().width, canvas.config().height);
+        #[cfg(not(target_os = "macos"))]
+        let mut ssao_size = (canvas.config().width / 2, canvas.config().height / 2);
+
+        let ssao_texture = create_simple_texture(
+            TextureData {
+                sample_count: 1,
+                size: ssao_size,
+                usage: TextureUsages::TEXTURE_BINDING | TextureUsages::STORAGE_BINDING,
+                format: TextureFormat::Rgba16Float,
+            },
+            device,
+        );
 
         // TODO Remove the third Vec4 value from the texture data generators.
         let noise_texture = create_simple_texture_with_data(
@@ -138,7 +154,7 @@ impl SsaoPassNode {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&global_context.ssao_texture),
+                    resource: wgpu::BindingResource::TextureView(&ssao_texture),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -200,6 +216,8 @@ impl SsaoPassNode {
             cache: None,
         });
 
+        global_context.texture_view_resources.ssao_texture = Some(ssao_texture);
+
         Self {
             ssao_bind_group,
             camera_ssao_bind_group,
@@ -257,17 +275,19 @@ impl PassNode for SsaoPassNode {
         _layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {
-        let ssao_texture = global_context.ssao_texture.texture();
-        encoder.clear_texture(ssao_texture, &ImageSubresourceRange::default());
-        let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-            label: Some("SSAO Compute Pass"),
-            timestamp_writes: None,
-        });
-        compute_pass.set_pipeline(&self.ssao_compute_pipeline);
-        compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
-        compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
-        let wg_x = (ssao_texture.size().width as f32 / 8.0).ceil() as u32;
-        let wg_y = (ssao_texture.size().height as f32 / 8.0).ceil() as u32;
-        compute_pass.dispatch_workgroups(wg_x, wg_y, 1);
+        if let Some(ssao_texture_view) = global_context.texture_view_resources.ssao_texture.as_ref() {
+            let ssao_texture = ssao_texture_view.texture();
+            encoder.clear_texture(ssao_texture, &ImageSubresourceRange::default());
+            let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("SSAO Compute Pass"),
+                timestamp_writes: None,
+            });
+            compute_pass.set_pipeline(&self.ssao_compute_pipeline);
+            compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
+            compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
+            let wg_x = (ssao_texture.size().width as f32 / 8.0).ceil() as u32;
+            let wg_y = (ssao_texture.size().height as f32 / 8.0).ceil() as u32;
+            compute_pass.dispatch_workgroups(wg_x, wg_y, 1);
+        }
     }
 }
