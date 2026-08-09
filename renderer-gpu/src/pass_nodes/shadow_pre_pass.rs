@@ -21,7 +21,7 @@ impl PassNode for ShadowPrepass {
         global_context: &mut GlobalContext,
     ) {
         let depth_attachment = wgpu::RenderPassDepthStencilAttachment {
-            view: &global_context.texture_view_resources.shadow_map_depth_texture,
+            view: &global_context.texture_view_resources.texture_view_shadow_map_depth,
             depth_ops: Some(wgpu::Operations {
                 load: wgpu::LoadOp::Clear(1.0),
                 store: wgpu::StoreOp::Store,

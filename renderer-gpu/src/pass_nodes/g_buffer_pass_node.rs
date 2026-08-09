@@ -24,7 +24,7 @@ impl GBufferPassNode {
         );
         global_context
             .texture_view_resources
-            .non_msaa_texture_view_positions = Some(non_msaa_texture_view_positions);
+            .texture_view_g_buf_positions = Some(non_msaa_texture_view_positions);
 
         let non_msaa_texture_view_normals = create_simple_texture(
             TextureData {
@@ -37,7 +37,7 @@ impl GBufferPassNode {
         );
         global_context
             .texture_view_resources
-            .non_msaa_texture_view_normals = Some(non_msaa_texture_view_normals);
+            .texture_view_g_buf_normals = Some(non_msaa_texture_view_normals);
 
         let non_msaa_depth_texture_view = create_depth_texture(
             non_msaa_size,
@@ -48,7 +48,7 @@ impl GBufferPassNode {
 
         global_context
             .texture_view_resources
-            .non_msaa_depth_texture_view = Some(non_msaa_depth_texture_view);
+            .texture_view_g_buf_depth = Some(non_msaa_depth_texture_view);
 
         Self
     }
@@ -64,7 +64,7 @@ impl PassNode for GBufferPassNode {
         let non_msaa_color_attachment_positions = wgpu::RenderPassColorAttachment {
             view: global_context
                 .texture_view_resources
-                .non_msaa_texture_view_positions
+                .texture_view_g_buf_positions
                 .as_ref()
                 .expect("non_msaa_texture_view_positions is expected"),
             resolve_target: None,
@@ -82,7 +82,7 @@ impl PassNode for GBufferPassNode {
         let non_msaa_color_attachment_normals = wgpu::RenderPassColorAttachment {
             view: global_context
                 .texture_view_resources
-                .non_msaa_texture_view_normals
+                .texture_view_g_buf_normals
                 .as_ref()
                 .expect("non_msaa_texture_view_normals is expected"),
             resolve_target: None,
@@ -101,7 +101,7 @@ impl PassNode for GBufferPassNode {
         let non_msaa_depth_attachment = wgpu::RenderPassDepthStencilAttachment {
             view: global_context
                 .texture_view_resources
-                .non_msaa_depth_texture_view
+                .texture_view_g_buf_depth
                 .as_ref()
                 .expect("non_msaa_depth_texture_view is expected"),
             depth_ops: Some(wgpu::Operations {

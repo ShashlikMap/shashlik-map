@@ -2,13 +2,12 @@ use crate::render_config::RenderConfig;
 use crate::textures::create_depth_texture;
 use wgpu::{Device, TextureFormat, TextureView};
 
-// TODO Draft to support separate passes for gbuf and ssao
 pub(crate) struct TextureViewResources {
-    pub non_msaa_texture_view_positions: Option<TextureView>,
-    pub non_msaa_texture_view_normals: Option<TextureView>,
-    pub non_msaa_depth_texture_view: Option<TextureView>,
-    pub shadow_map_depth_texture: TextureView,
-    pub ssao_texture: Option<TextureView>,
+    pub texture_view_g_buf_positions: Option<TextureView>,
+    pub texture_view_g_buf_normals: Option<TextureView>,
+    pub texture_view_g_buf_depth: Option<TextureView>,
+    pub texture_view_shadow_map_depth: TextureView,
+    pub texture_view_ssao: Option<TextureView>,
 }
 
 impl TextureViewResources {
@@ -22,11 +21,11 @@ impl TextureViewResources {
             device,
         );
         Self {
-            non_msaa_texture_view_positions: None,
-            non_msaa_texture_view_normals: None,
-            non_msaa_depth_texture_view: None,
-            shadow_map_depth_texture,
-            ssao_texture: None,
+            texture_view_g_buf_positions: None,
+            texture_view_g_buf_normals: None,
+            texture_view_g_buf_depth: None,
+            texture_view_shadow_map_depth: shadow_map_depth_texture,
+            texture_view_ssao: None,
         }
     }
 }

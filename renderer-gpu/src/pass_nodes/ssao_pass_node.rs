@@ -161,7 +161,7 @@ impl SsaoPassNode {
                     resource: wgpu::BindingResource::TextureView(
                         global_context
                             .texture_view_resources
-                            .non_msaa_texture_view_positions
+                            .texture_view_g_buf_positions
                             .as_ref()
                             .unwrap(),
                     ),
@@ -171,7 +171,7 @@ impl SsaoPassNode {
                     resource: wgpu::BindingResource::TextureView(
                         global_context
                             .texture_view_resources
-                            .non_msaa_texture_view_normals
+                            .texture_view_g_buf_normals
                             .as_ref()
                             .unwrap(),
                     ),
@@ -216,7 +216,7 @@ impl SsaoPassNode {
             cache: None,
         });
 
-        global_context.texture_view_resources.ssao_texture = Some(ssao_texture);
+        global_context.texture_view_resources.texture_view_ssao = Some(ssao_texture);
 
         Self {
             ssao_bind_group,
@@ -275,7 +275,7 @@ impl PassNode for SsaoPassNode {
         _layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {
-        if let Some(ssao_texture_view) = global_context.texture_view_resources.ssao_texture.as_ref() {
+        if let Some(ssao_texture_view) = global_context.texture_view_resources.texture_view_ssao.as_ref() {
             let ssao_texture = ssao_texture_view.texture();
             encoder.clear_texture(ssao_texture, &ImageSubresourceRange::default());
             let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {

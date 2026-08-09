@@ -200,7 +200,7 @@ impl GpuRenderer {
 
             self.layers
                 .shadow_map_layer
-                .set_texture(&self.global_context.texture_view_resources.shadow_map_depth_texture, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
+                .set_texture(&self.global_context.texture_view_resources.texture_view_shadow_map_depth, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
         }
 
         if self.render_config.ssao_enabled {
@@ -212,7 +212,7 @@ impl GpuRenderer {
 
             self.layers
                 .post_process_layer
-                .set_texture(self.global_context.texture_view_resources.ssao_texture
+                .set_texture(self.global_context.texture_view_resources.texture_view_ssao
                                  .as_ref()
                                  .expect("SSAO texture is expected to be created"),
                              (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
@@ -227,18 +227,18 @@ impl GpuRenderer {
                     PreviewType::None => None,
                     PreviewType::Camera => Some(rt_node.rt_texture_view.clone()),
                     PreviewType::SSAO => {
-                        self.global_context.texture_view_resources.ssao_texture.clone()
+                        self.global_context.texture_view_resources.texture_view_ssao.clone()
                     },
-                    PreviewType::SSAOPositions => {
-                        self.global_context.texture_view_resources.non_msaa_texture_view_positions.clone()
+                    PreviewType::GBufPositions => {
+                        self.global_context.texture_view_resources.texture_view_g_buf_positions.clone()
                     }
-                    PreviewType::SSAONormals => {
-                        self.global_context.texture_view_resources.non_msaa_texture_view_normals.clone()
-                    },
-                    PreviewType::SSAODepth => {
-                        self.global_context.texture_view_resources.non_msaa_depth_texture_view.clone()
-                    },
-                    PreviewType::ShadowMap => Some(self.global_context.texture_view_resources.shadow_map_depth_texture.clone()),
+                    PreviewType::GBufNormals => {
+                        self.global_context.texture_view_resources.texture_view_g_buf_normals.clone()
+                    }
+                    PreviewType::GBufDepth => {
+                        self.global_context.texture_view_resources.texture_view_g_buf_depth.clone()
+                    }
+                    PreviewType::ShadowMap => Some(self.global_context.texture_view_resources.texture_view_shadow_map_depth.clone()),
                 } {
                     self.preview_textures.insert(preview_type, texture_view);
                 }
