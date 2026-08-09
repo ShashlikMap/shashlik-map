@@ -93,7 +93,7 @@ impl MeshPipeline {
             wgpu::BindGroupEntry {
                 binding: 0,
                 resource: wgpu::BindingResource::TextureView(
-                    &global_context.shadow_map_depth_texture,
+                    &global_context.texture_view_resources.shadow_map_depth_texture,
                 ),
             },
             wgpu::BindGroupEntry {

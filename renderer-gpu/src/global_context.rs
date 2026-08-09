@@ -29,7 +29,6 @@ pub struct GlobalContext {
     ssao_enabled: bool,
     pub(crate) texture_view_resources: TextureViewResources,
     pub ssao_texture: TextureView,
-    pub shadow_map_depth_texture: TextureView,
     preview_type: PreviewType,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[[f32; 4]; 4]>>,
 }
@@ -55,10 +54,7 @@ impl GlobalContext {
             },
             device,
         );
-        let shadow_map_depth_texture = create_depth_texture(render_config.shadow_texture_size(),
-                                                            1,
-                                                            TextureFormat::Depth32Float,
-                                                            device);
+        let texture_view_resources = TextureViewResources::new(render_config, device);
         GlobalContext {
             canvas,
             view_projection,
@@ -67,9 +63,8 @@ impl GlobalContext {
             style_bind_group: None,
             render_step: GlobalRenderStep::MainStep,
             ssao_enabled: render_config.ssao_enabled,
-            texture_view_resources: TextureViewResources::default(),
+            texture_view_resources,
             ssao_texture,
-            shadow_map_depth_texture,
             preview_type: render_config.preview_type,
             style_uniform_rx: style_store.subscribe(),
         }

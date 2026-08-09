@@ -195,10 +195,6 @@ impl GpuRenderer {
 
     fn config_pass_nodes(&mut self) {
         self.layers
-            .shadow_map_layer
-            .set_texture(&self.global_context.shadow_map_depth_texture, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
-
-        self.layers
             .post_process_layer
             .set_texture(&self.global_context.ssao_texture, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
 
@@ -208,6 +204,10 @@ impl GpuRenderer {
         if self.render_config.shadow_enabled {
             let shadow_pass_node = ShadowPrepass::new();
             self.pass_nodes.push(Box::new(shadow_pass_node));
+
+            self.layers
+                .shadow_map_layer
+                .set_texture(&self.global_context.texture_view_resources.shadow_map_depth_texture, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
         }
 
         if self.render_config.ssao_enabled {
@@ -236,7 +236,7 @@ impl GpuRenderer {
                     PreviewType::SSAODepth => {
                         self.global_context.texture_view_resources.non_msaa_depth_texture_view.clone()
                     },
-                    PreviewType::ShadowMap => Some(self.global_context.shadow_map_depth_texture.clone()),
+                    PreviewType::ShadowMap => Some(self.global_context.texture_view_resources.shadow_map_depth_texture.clone()),
                 } {
                     self.preview_textures.insert(preview_type, texture_view);
                 }
