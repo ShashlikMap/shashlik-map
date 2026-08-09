@@ -69,7 +69,6 @@ pub struct GpuRenderer {
     global_context: GlobalContext,
     buffer_pool: BufferPool,
     preview_textures: HashMap<PreviewType, TextureView>,
-    current_preview_type: PreviewType
 }
 
 impl GpuRenderer {
@@ -117,7 +116,6 @@ impl GpuRenderer {
             global_context,
             buffer_pool: BufferPool::new(),
             preview_textures: HashMap::new(),
-            current_preview_type: PreviewType::None
         })
     }
 
@@ -182,14 +180,13 @@ impl GpuRenderer {
 
     pub fn update_config(&mut self, action: impl Fn(&mut RenderConfig)) {
         action(&mut self.render_config);
+
         self.config_pass_nodes();
-        if self.current_preview_type != self.render_config.preview_type {
-            self.current_preview_type = self.render_config.preview_type;
-            if let Some(texture_view) = self.preview_textures.get(&self.current_preview_type) {
-                self.layers
-                    .preview_mesh_layer
-                    .set_texture(texture_view, (-100.0, -100.0), &self.global_context, &mut self.buffer_pool);
-            }
+
+        if let Some(texture_view) = self.preview_textures.get(&self.render_config.preview_type) {
+            self.layers
+                .preview_mesh_layer
+                .set_texture(texture_view, (-100.0, -100.0), &self.global_context, &mut self.buffer_pool);
         }
     }
 
