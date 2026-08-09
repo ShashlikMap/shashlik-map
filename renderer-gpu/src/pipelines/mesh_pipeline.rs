@@ -7,6 +7,7 @@ use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, ComputePass, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, TextureFormat, TextureUsages};
 use renderer_common::geometry_data::MeshVertex;
 use crate::global_context::GlobalRenderStep::{MainStep, ShadowStep};
+use crate::texture_view_resources::TextureViewKind;
 
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,
@@ -93,7 +94,7 @@ impl MeshPipeline {
             wgpu::BindGroupEntry {
                 binding: 0,
                 resource: wgpu::BindingResource::TextureView(
-                    &global_context.texture_view_resources.texture_view_shadow_map_depth,
+                    &global_context.texture_view_resources.get_or_unwrap(TextureViewKind::ShadowMapDepth),
                 ),
             },
             wgpu::BindGroupEntry {

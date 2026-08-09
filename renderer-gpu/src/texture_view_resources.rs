@@ -1,17 +1,23 @@
 use crate::render_config::RenderConfig;
 use crate::textures::create_depth_texture;
+use rustc_hash::FxHashMap;
 use wgpu::{Device, TextureFormat, TextureView};
 
+#[derive(Eq, PartialEq, Hash)]
+pub(crate) enum TextureViewKind {
+    GBufPositions,
+    GBufNormals,
+    GBufDepth,
+    ShadowMapDepth,
+    SSAO,
+}
+
 pub(crate) struct TextureViewResources {
-    pub texture_view_g_buf_positions: Option<TextureView>,
-    pub texture_view_g_buf_normals: Option<TextureView>,
-    pub texture_view_g_buf_depth: Option<TextureView>,
-    pub texture_view_shadow_map_depth: TextureView,
-    pub texture_view_ssao: Option<TextureView>,
+    textures: FxHashMap<TextureViewKind, TextureView>,
 }
 
 impl TextureViewResources {
-    pub(crate) fn new(render_config: &RenderConfig, device: &Device) -> Self {
+    pub fn new(render_config: &RenderConfig, device: &Device) -> Self {
         // TODO Currently, mesh pipeline expects it to be created from beginning.
         //  It's going be handled later during layers/pipeline redesign.
         let shadow_map_depth_texture = create_depth_texture(
@@ -20,12 +26,20 @@ impl TextureViewResources {
             TextureFormat::Depth32Float,
             device,
         );
-        Self {
-            texture_view_g_buf_positions: None,
-            texture_view_g_buf_normals: None,
-            texture_view_g_buf_depth: None,
-            texture_view_shadow_map_depth: shadow_map_depth_texture,
-            texture_view_ssao: None,
-        }
+        let mut textures = FxHashMap::default();
+        textures.insert(TextureViewKind::ShadowMapDepth, shadow_map_depth_texture);
+        Self { textures }
+    }
+
+    pub fn insert(&mut self, texture_view_kind: TextureViewKind, texture: TextureView) {
+        self.textures.insert(texture_view_kind, texture);
+    }
+
+    pub fn get(&self, texture_view_kind: TextureViewKind) -> Option<&TextureView> {
+        self.textures.get(&texture_view_kind)
+    }
+
+    pub fn get_or_unwrap(&self, texture_view_kind: TextureViewKind) -> &TextureView {
+        self.textures.get(&texture_view_kind).unwrap()
     }
 }

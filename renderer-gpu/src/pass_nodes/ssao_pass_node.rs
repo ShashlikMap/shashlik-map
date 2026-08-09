@@ -12,6 +12,7 @@ use wgpu::{
     ImageSubresourceRange, ShaderModuleDescriptor, ShaderSource, StorageTextureAccess,
     TextureFormat, TextureUsages, TextureViewDimension,
 };
+use crate::texture_view_resources::TextureViewKind;
 
 pub(crate) struct SsaoPassNode {
     ssao_bind_group: BindGroup,
@@ -161,9 +162,7 @@ impl SsaoPassNode {
                     resource: wgpu::BindingResource::TextureView(
                         global_context
                             .texture_view_resources
-                            .texture_view_g_buf_positions
-                            .as_ref()
-                            .unwrap(),
+                            .get_or_unwrap(TextureViewKind::GBufPositions),
                     ),
                 },
                 wgpu::BindGroupEntry {
@@ -171,9 +170,7 @@ impl SsaoPassNode {
                     resource: wgpu::BindingResource::TextureView(
                         global_context
                             .texture_view_resources
-                            .texture_view_g_buf_normals
-                            .as_ref()
-                            .unwrap(),
+                            .get_or_unwrap(TextureViewKind::GBufNormals),
                     ),
                 },
                 wgpu::BindGroupEntry {
@@ -216,7 +213,7 @@ impl SsaoPassNode {
             cache: None,
         });
 
-        global_context.texture_view_resources.texture_view_ssao = Some(ssao_texture);
+        global_context.texture_view_resources.insert(TextureViewKind::SSAO, ssao_texture);
 
         Self {
             ssao_bind_group,
@@ -275,7 +272,7 @@ impl PassNode for SsaoPassNode {
         _layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {
-        if let Some(ssao_texture_view) = global_context.texture_view_resources.texture_view_ssao.as_ref() {
+        if let Some(ssao_texture_view) = global_context.texture_view_resources.get(TextureViewKind::SSAO) {
             let ssao_texture = ssao_texture_view.texture();
             encoder.clear_texture(ssao_texture, &ImageSubresourceRange::default());
             let mut compute_pass = encoder.begin_compute_pass(&ComputePassDescriptor {
