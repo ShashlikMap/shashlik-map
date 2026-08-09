@@ -326,7 +326,17 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
         self.renderer
             .api()
-            .update_spatial_data("route".to_string(), move |spatial_data| {
+            .update_spatial_data("route0".to_string(), move |spatial_data| {
+                spatial_data.normal_scale = cam_zoom.max(0.25);
+            });
+        self.renderer
+            .api()
+            .update_spatial_data("route1".to_string(), move |spatial_data| {
+                spatial_data.normal_scale = cam_zoom.max(0.25);
+            });
+        self.renderer
+            .api()
+            .update_spatial_data("route2".to_string(), move |spatial_data| {
                 spatial_data.normal_scale = cam_zoom.max(0.25);
             });
 

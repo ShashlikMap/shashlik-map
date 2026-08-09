@@ -75,10 +75,7 @@ impl OwnedRenderPipelineDescriptor<'_> {
                 }
             }),
             primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                front_face: wgpu::FrontFace::Ccw,
                 cull_mode: descriptor.primitive.cull_mode,
-                polygon_mode: wgpu::PolygonMode::Fill,
                 ..Default::default()
             },
             depth_stencil: descriptor.depth_stencil,
