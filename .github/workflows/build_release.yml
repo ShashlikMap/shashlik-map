@@ -47,6 +47,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -57,8 +62,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Prebuild rustls-platform-verifier-android
-        run: |
-          run: cargo build -p rustls-platform-verifier --release --target aarch64-linux-android || true
+        run: cargo build -p rustls-platform-verifier --release --target aarch64-linux-android || true
 
       - name: Build Release APK
         run: ./gradlew assembleRelease
