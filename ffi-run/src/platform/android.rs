@@ -92,6 +92,7 @@ pub fn initRustlsPlatformVerifier<'a>(
     }).resolve::<ThrowRuntimeExAndDefault>()
 }
 
+// TODO Use jni_mangle and EnvUnowned
 #[unsafe(no_mangle)]
 #[jni_fn("com.shashlik.kmp.WGPUTextureView")] // TODO How to pass as a build param?
 pub fn createShashlikMapApi(

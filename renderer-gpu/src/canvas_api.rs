@@ -42,6 +42,7 @@ pub struct GpuCanvasApi {
     indices_by_layers: BTreeMap<i8, Vec<StyledRange>>,
     geometry3d: VertexBuffers<MeshVertex, u32>,
     text_vec: Vec<TextData>,
+    // consider to add more fields to the cache key
     mesh_info_cache:
         HashMap<(&'static str, Option<StyleId>), (VertexBuffers<ShapeVertex, u32>, MeshInfo)>,
     feature_layer_tag: Option<String>,

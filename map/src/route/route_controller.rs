@@ -47,7 +47,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         #[cfg(target_os = "linux")]
         {
             let route: Vec<Point> = vec![point!(x:0.0, y:0.0), point!(x: 1.0, y:0.0)];
-            let route = Box::new(RouteGroup::new(route, RouteCosting::Auto));
+            let route = Box::new(RouteGroup::new(route, false, RouteCosting::Auto));
             let spatial_data = SpatialData::transform(route.first_route_point());
             self.api
                 .add_render_group("route".to_string(), spatial_data, route);
@@ -85,6 +85,8 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                     match valhalla.route_with_alternatives(manifest) {
                         Ok(trips) => {
                             let alternates = trips.1.len() as u8;
+                            // just apply all routes, even though some might not be created(rare)
+                            active_routes.store(alternates + 1, Ordering::Relaxed);
                             Self::handle_trips(trips, |index, trip: &Trip| {
                                 if let Some(leg) = trip.legs.first() {
                                     let route: Vec<Point> = leg
@@ -104,7 +106,6 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                     let spatial_data =
                                         SpatialData::transform(route.first_route_point());
 
-                                    active_routes.store(index, Ordering::Relaxed);
                                     api.add_render_group(
                                         Self::create_route_id(index),
                                         spatial_data,
