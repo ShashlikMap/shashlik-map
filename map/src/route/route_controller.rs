@@ -11,14 +11,14 @@ use std::thread::{sleep, spawn};
 use std::time::Duration;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
-use valhalla_client::{Error};
 use valhalla_client::route::{DirectionsType, Location, Manifest, Trip};
 
 pub struct RouteController<RAPI: RendererApi + 'static> {
     api: Arc<RAPI>,
     current_lon_lat: Option<(f64, f64)>,
     valhalla: Arc<Valhalla>,
-    active_routes: Arc<AtomicU8>
+    active_routes: Arc<AtomicU8>,
+    active_routes_ids: Vec<String>
 }
 
 impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
@@ -27,7 +27,8 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
             api,
             current_lon_lat: None,
             valhalla: Arc::new(Valhalla::default()),
-            active_routes: Arc::new(AtomicU8::new(0))
+            active_routes: Arc::new(AtomicU8::new(0)),
+            active_routes_ids: Vec::new()
         };
         route_controller.warm_up();
         route_controller
@@ -147,8 +148,20 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
     }
 
     pub fn clear_routes(&mut self, api: Arc<RAPI>) {
-        let active_routes = self.active_routes.swap(0, Ordering::Relaxed);
-        api.clear_render_groups(HashSet::from_iter((0..=active_routes).map(Self::create_route_id)));
+        let active_routes = self.get_active_route_ids().clone();
+        self.active_routes.store(0, Ordering::Relaxed);
+        self.active_routes_ids.clear();
+        api.clear_render_groups(HashSet::from_iter(active_routes));
+    }
+
+    pub fn get_active_route_ids(&mut self) -> &Vec<String> {
+        if self.active_routes_ids.is_empty() {
+            let active_routes = self.active_routes.load(Ordering::Relaxed);
+            if active_routes > 0 {
+                self.active_routes_ids.extend((0..=active_routes).map(Self::create_route_id));
+            }
+        }
+        &self.active_routes_ids
     }
 
     fn create_route_id(index: u8) -> String {
