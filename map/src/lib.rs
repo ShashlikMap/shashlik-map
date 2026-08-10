@@ -450,13 +450,13 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         prev_bearing + rot_diff % 360.0
     }
 
-    pub fn create_route_to_from_screen_center(&self, route_costing: RouteCosting) {
+    pub fn create_route_to_from_screen_center(&mut self, route_costing: RouteCosting) {
         let center = self.clip_to_lon_lat(&coord! {x: 0.0, y: 0.0}).unwrap();
         self.create_route_to(center.into(), route_costing);
     }
 
     pub fn create_route_to_screen_point(
-        &self,
+        &mut self,
         point_x: f32,
         point_y: f32,
         route_costing: RouteCosting,
@@ -468,7 +468,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         self.create_route_to(center.into(), route_costing);
     }
 
-    pub fn create_route_to(&self, to_lon_lat: (f64, f64), route_costing: RouteCosting) {
+    pub fn create_route_to(&mut self, to_lon_lat: (f64, f64), route_costing: RouteCosting) {
         self.route_controller.calc_route(
             to_lon_lat,
             route_costing,
@@ -531,7 +531,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         );
     }
 
-    pub fn clear_routes(&self) {
+    pub fn clear_routes(&mut self) {
         self.route_controller
             .clear_routes(self.renderer.api());
     }

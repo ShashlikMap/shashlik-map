@@ -6,10 +6,12 @@ use renderer_common::RendererApi;
 use renderer_common::render_modifier::SpatialData;
 use std::collections::HashSet;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
+use valhalla_client::{Error};
 use valhalla_client::route::{DirectionsType, Location, Manifest, Trip};
 
 #[cfg(target_os = "android")]
@@ -19,6 +21,7 @@ pub struct RouteController<RAPI: RendererApi + 'static> {
     api: Arc<RAPI>,
     current_lon_lat: Option<(f64, f64)>,
     valhalla: Arc<Valhalla>,
+    active_routes: Arc<AtomicU8>
 }
 
 impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
@@ -27,6 +30,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
             api,
             current_lon_lat: None,
             valhalla: Arc::new(Valhalla::default()),
+            active_routes: Arc::new(AtomicU8::new(0))
         };
         route_controller.warm_up();
         route_controller
@@ -53,14 +57,16 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
     }
 
     pub fn calc_route(
-        &self,
+        &mut self,
         to_lon_lat: (f64, f64),
         route_costing: RouteCosting,
         converter: Box<dyn (Fn(&Point) -> Point) + Send>,
     ) {
+        self.clear_routes(Arc::clone(&self.api));
         if let Some((lon, lat)) = self.current_lon_lat {
             let valhalla = Arc::clone(&self.valhalla);
             let api = Arc::clone(&self.api);
+            let active_routes = Arc::clone(&self.active_routes);
             spawn(move || {
                 let source_loc = Location::new(lon as f32, lat as f32);
                 let destination_loc = Location::new(to_lon_lat.0 as f32, to_lon_lat.1 as f32);
@@ -70,8 +76,6 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                     RouteCosting::Auto => Costing::Auto(Default::default()),
                 };
 
-                Self::clear_routes_internal(api.clone());
-
                 let max_attempts = 2;
                 for attempt in 1..=max_attempts {
                     let manifest = Manifest::builder()
@@ -80,48 +84,38 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                         .directions_type(DirectionsType::None)
                         .costing(costing.clone());
 
-                    match valhalla.route_with_alternatives(manifest).as_mut() {
+                    match Self::get_trips(&*valhalla, manifest) {
                         Ok(trips) => {
-                            let main_trip = &trips.0;
-                            let alternates: Vec<Trip> = trips.1.clone();
-                            println!("Route calculated!, alternates = {:?}", alternates.len());
+                            let alternates = trips.1.len() as u8;
+                            Self::handle_trips(trips, |index, trip: &Trip| {
+                                if let Some(leg) = trip.legs.first() {
+                                    let route: Vec<Point> = leg
+                                        .shape
+                                        .iter()
+                                        .map(|p| {
+                                            point! { x: p.lon, y: p.lat }
+                                        })
+                                        .collect();
+                                    let route: Vec<Point> =
+                                        route.iter().map(|p| converter(p)).collect();
+                                    let route = Box::new(RouteGroup::new(
+                                        route,
+                                        index < alternates,
+                                        route_costing.clone(),
+                                    ));
+                                    let spatial_data =
+                                        SpatialData::transform(route.first_route_point());
 
-                            vec![main_trip]
-                                .into_iter()
-                                .chain(alternates.iter())
-                                .rev()
-                                .enumerate()
-                                .for_each(|(index, trip)| {
-                                    if let Some(leg) = trip.legs.first() {
-                                        let route: Vec<Point> = leg
-                                            .shape
-                                            .iter()
-                                            .map(|p| {
-                                                point! { x: p.lon, y: p.lat }
-                                            })
-                                            .collect();
-                                        let route: Vec<Point> =
-                                            route.iter().map(|p| converter(p)).collect();
-                                        println!("Route len: {:?}", route.len());
-
-                                        let route = Box::new(RouteGroup::new(
-                                            route,
-                                            index < alternates.len(),
-                                            route_costing.clone(),
-                                        ));
-                                        let spatial_data =
-                                            SpatialData::transform(route.first_route_point());
-
-                                        api.add_render_group(
-                                            format!("route{index}").to_string(),
-                                            spatial_data,
-                                            route,
-                                        );
-                                    } else {
-                                        error!("No legs found in route!");
-                                    }
-                                });
-
+                                    active_routes.store(index, Ordering::Relaxed);
+                                    api.add_render_group(
+                                        Self::create_route_id(index),
+                                        spatial_data,
+                                        route,
+                                    );
+                                } else {
+                                    error!("No legs found in route!");
+                                }
+                            });
                             break;
                         }
                         Err(err) => {
@@ -141,11 +135,37 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         }
     }
 
-    pub fn clear_routes(&self, api: Arc<RAPI>) {
-        Self::clear_routes_internal(api);
+    fn get_trips(valhalla: &Valhalla, manifest: Manifest) -> Result<(Trip, Vec<Trip>), Error> {
+        // there is still an issue with reqwest and we can't use the latest valhalla client
+        #[cfg(target_os = "android")] {
+            let single_route = valhalla.route(manifest);
+            return single_route.map(|trip| (trip, vec![]));
+        }
+
+        #[cfg(not(target_os = "android"))]
+        valhalla.route_with_alternatives(manifest)
     }
 
-    fn clear_routes_internal(api: Arc<RAPI>) {
-        api.clear_render_groups(HashSet::from_iter(vec!["route".to_string()]));
+    pub fn handle_trips(trips: (Trip, Vec<Trip>), action: impl Fn(u8, &Trip) -> ()) {
+        let main_trip = &trips.0;
+        let alternates: Vec<Trip> = trips.1.clone();
+        println!("Route calculated!, alternates = {:?}", alternates.len());
+        vec![main_trip]
+            .into_iter()
+            .chain(alternates.iter())
+            .rev()
+            .enumerate()
+            .for_each(|(index, trip)| {
+                action(index as u8, trip);
+            });
+    }
+
+    pub fn clear_routes(&mut self, api: Arc<RAPI>) {
+        let active_routes = self.active_routes.swap(0, Ordering::Relaxed);
+        api.clear_render_groups(HashSet::from_iter((0..=active_routes).map(Self::create_route_id)));
+    }
+
+    fn create_route_id(index: u8) -> String {
+        format!("route{index}").to_string()
     }
 }

@@ -98,13 +98,13 @@ impl ShashlikMapApi {
     }
 
     fn calculate_route_to_lat_lon(&self, lat: f64, lon: f64, route_costing: RouteCosting) {
-        let shashlik_map = self.shashlik_map.read().unwrap();
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
         // swap lat/lon to lon/lat
         shashlik_map.create_route_to((lon, lat), route_costing.into());
     }
 
     fn calculate_route(&self, point_x: f32, point_y: f32, route_costing: RouteCosting) {
-        let shashlik_map = self.shashlik_map.read().unwrap();
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
         shashlik_map.create_route_to_screen_point(point_x, point_y, route_costing.into());
     }
 }
