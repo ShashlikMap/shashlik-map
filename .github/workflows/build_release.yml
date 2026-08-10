@@ -24,7 +24,7 @@ jobs:
 
       - name: Build production release
         run: |
-          cargo build --release --target aarch64-apple-darwin --package winit-run --bin winit-run
+          cargo build --release --target aarch64-apple-darwin --package winit-run --bin winit-run --no-default-features --features linux-gpu
           mkdir -p dist
           cp target/aarch64-apple-darwin/release/winit-run dist/shashlik-map-mac
           cd dist && zip shashlik-map-mac.zip shashlik-map-mac
