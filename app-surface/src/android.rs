@@ -1,6 +1,6 @@
 use core::ffi::c_void;
 use jni::sys::jobject;
-use jni::JNIEnv;
+use jni::{Env};
 use raw_window_handle::{
     AndroidDisplayHandle, AndroidNdkWindowHandle, DisplayHandle, HandleError, HasDisplayHandle,
     HasWindowHandle, RawDisplayHandle, RawWindowHandle, WindowHandle,
@@ -22,7 +22,7 @@ impl std::fmt::Debug for NativeWindow {
 }
 
 impl AppSurface {
-    pub async fn new(env: *mut JNIEnv<'_>, surface: jobject, is_emulator: bool) -> Self {
+    pub async fn new(env: *mut Env<'_>, surface: jobject, is_emulator: bool) -> Self {
         let native_window = Arc::new(NativeWindow::new(env, surface));
         let init_backend = if is_emulator { wgpu::Backends::GL } else { wgpu::Backends::VULKAN };
 
@@ -70,10 +70,8 @@ pub struct NativeWindow {
 }
 
 impl NativeWindow {
-    fn new(env: *mut JNIEnv, surface: jobject) -> Self {
+    fn new(env: *mut Env<'_>, surface: jobject) -> Self {
         let a_native_window = unsafe {
-            // 获取与安卓端 surface 对象关联的 ANativeWindow，以便能通过 Rust 与之交互。
-            // 此函数在返回 ANativeWindow 的同时会自动将其引用计数 +1，以防止该对象在安卓端被意外释放。
             ndk_sys::ANativeWindow_fromSurface(env as *mut _, surface as *mut _)
         };
         Self {

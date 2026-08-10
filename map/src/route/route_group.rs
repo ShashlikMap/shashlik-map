@@ -12,6 +12,7 @@ use renderer_common::CanvasApi;
 
 pub struct RouteGroup {
     route: Vec<Point>,
+    alternative: bool,
     route_costing: RouteCosting,
 }
 
@@ -19,10 +20,12 @@ impl RouteGroup {
     pub const SQUARE_SVG: &'static [u8] = include_bytes!("../../svg/just_square.svg");
     pub fn new(
         route: Vec<Point>,
+        alternative: bool,
         route_costing: RouteCosting,
     ) -> RouteGroup {
         RouteGroup {
             route,
+            alternative,
             route_costing,
         }
     }
@@ -38,8 +41,20 @@ impl <T: CanvasApi> RenderGroup<T> for RouteGroup {
         let first_route_point = self.route[0];
 
         let style_id = match self.route_costing {
-            RouteCosting::Pedestrian => StyleId::new("route_pedestrian"),
-            RouteCosting::Auto | RouteCosting::Motorbike => StyleId::new("route_motorbike"),
+            RouteCosting::Pedestrian => {
+                if self.alternative {
+                    StyleId::new("route_pedestrian_alternative")
+                } else {
+                    StyleId::new("route_pedestrian")
+                }
+            },
+            RouteCosting::Auto | RouteCosting::Motorbike => {
+                if self.alternative {
+                    StyleId::new("route_alternative")
+                } else {
+                    StyleId::new("route")
+                }
+            },
         };
 
         if matches!(self.route_costing, RouteCosting::Pedestrian) {

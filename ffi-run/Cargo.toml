@@ -22,6 +22,7 @@ app-surface = { workspace = true, features = [] }
 android_logger.workspace = true
 jni.workspace = true
 jni_fn.workspace = true
+rustls-platform-verifier = "0.7.0"
 log-panics = "*"
 
 [target.'cfg(target_os = "ios")'.dependencies]

@@ -14,6 +14,9 @@ import uniffi.ffi_run.toPointer
 
 @SuppressLint("ClickableViewAccessibility")
 class WGPUTextureView : TextureView {
+    companion object {
+        @JvmStatic external fun initRustlsPlatformVerifier(context: Context)
+    }
 
     init {
         System.loadLibrary("ffi_run")
@@ -34,6 +37,8 @@ class WGPUTextureView : TextureView {
     )
 
     init {
+        // fyi, ideally it should be called during App launch only once
+        initRustlsPlatformVerifier(context = context.applicationContext)
         Timber.d("WGPUTextureView created")
 
         surfaceTextureListener = object : SurfaceTextureListener {
@@ -43,6 +48,7 @@ class WGPUTextureView : TextureView {
                 height: Int
             ) {
                 val surface = Surface(st)
+
                 val ptr = createShashlikMapApi(
                     surface,
                     Build.FINGERPRINT.contains("generic") ||

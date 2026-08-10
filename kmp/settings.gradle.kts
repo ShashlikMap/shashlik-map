@@ -25,6 +25,14 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+
+        // TODO so far works for rustlsPlatformVerifier, but it will likely cause issues with maven publishing
+        maven {
+            name = "rustlsPlatformVerifier"
+            url = uri(File(System.getProperty("user.home"),
+                ".cargo/registry/src").walkTopDown()
+                .first { it.name == "maven" && it.path.contains("rustls-platform-verifier-android-") })
+        }
     }
 }
 

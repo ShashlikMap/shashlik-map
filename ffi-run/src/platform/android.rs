@@ -1,26 +1,30 @@
 use crate::ShashlikMapApi;
 use app_surface::AppSurface;
 use app_surface::SurfaceFrame;
-use jni::JNIEnv;
-use jni::objects::JClass;
+use jni::objects::{JClass, JObject};
 use jni::objects::JString;
 use jni::sys::jfloat;
 use jni::sys::{jboolean, jlong, jobject};
 use jni_fn::jni_fn;
-use map::{ShashlikMap, DEFAULT_FONT_DATA};
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
+use map::{DEFAULT_FONT_DATA, ShashlikMap};
 use osm::source::reqwest_source::ReqwestSource;
-use pollster::FutureExt;
-use std::mem;
-use std::sync::{Arc, RwLock};
 use osm::tiles::TileStore;
-use wgpu::{
-    Device, Queue, CurrentSurfaceTexture, SurfaceConfiguration, SurfaceTexture, Texture, TextureView,
-};
+use pollster::FutureExt;
+use renderer_common::feature_layer_tags;
 use renderer_gpu::GpuRenderer;
 use renderer_gpu::wgpu_canvas::WgpuCanvas;
-use renderer_common::{feature_layer_tags, PreviewType};
+use std::mem;
+use std::panic::catch_unwind;
+use std::sync::{Arc, RwLock};
+use jni::{jni_mangle, Env, EnvUnowned};
+use jni::errors::ThrowRuntimeExAndDefault;
+use jni::strings::JNIStr;
+use log::error;
+use wgpu::{CurrentSurfaceTexture,
+           Device, Queue, SurfaceConfiguration, SurfaceTexture, Texture, TextureView,
+};
 
 //FIXME https://github.com/gobley/gobley/issues/20
 #[uniffi::export]
@@ -76,10 +80,23 @@ impl WgpuCanvas for AndroidSurfaceAppSurface {
     }
 }
 
+#[jni_mangle("com.shashlik.kmp.WGPUTextureView")]// TODO How to pass as a build param?
+pub fn initRustlsPlatformVerifier<'a>(
+    mut unowned_env: EnvUnowned<'a>,
+    _class: JClass<'a>,
+    context: JObject<'a>
+) {
+    init_logger();
+    unowned_env.with_env(|env| {
+        rustls_platform_verifier::android::init_with_env(env, context)
+    }).resolve::<ThrowRuntimeExAndDefault>()
+}
+
+// TODO Use jni_mangle and EnvUnowned
 #[unsafe(no_mangle)]
 #[jni_fn("com.shashlik.kmp.WGPUTextureView")] // TODO How to pass as a build param?
 pub fn createShashlikMapApi(
-    env: *mut JNIEnv<'_>,
+    env: *mut Env<'_>,
     _: JClass,
     surface: jobject,
     emulator: jboolean,
@@ -87,7 +104,7 @@ pub fn createShashlikMapApi(
     dpi_scale: jfloat,
 ) -> jlong {
     init_logger();
-    let app_surface = AppSurface::new(env, surface, emulator != 0).block_on();
+    let app_surface = AppSurface::new(env, surface, emulator).block_on();
     let surface = AndroidSurfaceAppSurface { app_surface, surface_texture: None };
     // let mut env = unsafe { JNIEnv::from_raw(env as *mut *const _).unwrap() };
     // let tiles_db: String = env.get_string(&tiles_db).unwrap().into();

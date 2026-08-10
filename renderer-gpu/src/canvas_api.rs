@@ -2,22 +2,28 @@ use crate::draw_commands::mesh2d_draw_command::{Mesh2dCommandBatch, Mesh2dDrawCo
 use crate::draw_commands::mesh3d_draw_command::Mesh3dDrawCommand;
 use crate::draw_commands::text_draw_command::TextDrawCommand;
 use crate::draw_commands::{DrawCommand, DrawCommands};
-use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, MeshVertex, PolylineOptions, ShapeData, StyledRangeInfo, SvgData, TextData};
-use crate::mesh::mesh::{StyledRange};
-use renderer_common::render_modifier::SpatialData;
-use renderer_common::render_style::RenderStyle;
-use renderer_common::style_id::StyleId;
+use crate::mesh::mesh::StyledRange;
 use crate::styles::style_store::StyleStore;
 use crate::svg::svg_parser::svg_parse;
 use crate::vertex_attrs::ShapeVertex;
 use glam::{DVec3, Vec3};
-use lyon::geom::euclid::{point2, Box2D};
-use lyon::lyon_tessellation::{BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator, StrokeVertex, VertexBuffers};
+use lyon::geom::euclid::{Box2D, point2};
+use lyon::lyon_tessellation::{
+    BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator,
+    StrokeVertex, VertexBuffers,
+};
 use lyon::path::builder::BorderRadii;
 use lyon::path::{Path, Winding};
+use renderer_common::CanvasApi;
+use renderer_common::geometry_data::{
+    ExtrudedPolygonData, GeometryData, GeometryType, MeshVertex, PolylineOptions, ShapeData,
+    StyledRangeInfo, SvgData, TextData,
+};
+use renderer_common::render_modifier::SpatialData;
+use renderer_common::render_style::RenderStyle;
+use renderer_common::style_id::StyleId;
 use std::collections::{BTreeMap, HashMap};
 use std::mem;
-use renderer_common::CanvasApi;
 
 #[derive(Clone)]
 pub struct MeshInfo {
@@ -36,7 +42,9 @@ pub struct GpuCanvasApi {
     indices_by_layers: BTreeMap<i8, Vec<StyledRange>>,
     geometry3d: VertexBuffers<MeshVertex, u32>,
     text_vec: Vec<TextData>,
-    mesh_info_cache: HashMap<&'static str, (VertexBuffers<ShapeVertex, u32>, MeshInfo)>,
+    // consider to add more fields to the cache key
+    mesh_info_cache:
+        HashMap<(&'static str, Option<StyleId>), (VertexBuffers<ShapeVertex, u32>, MeshInfo)>,
     feature_layer_tag: Option<String>,
 }
 
@@ -51,7 +59,6 @@ impl CanvasApi for GpuCanvasApi {
 }
 
 impl GpuCanvasApi {
-
     pub fn new(style_store: StyleStore) -> GpuCanvasApi {
         GpuCanvasApi {
             style_store,
@@ -253,23 +260,25 @@ impl GpuCanvasApi {
                     return;
                 }
                 self.tessellate_stroke_path(&data.path, options, |vertex| {
-                    ShapeVertex::new([vertex.position().x, vertex.position().y],
-                                     [vertex.normal().x, vertex.normal().y],
-                                     [0.0, 0.0],
-                                     vertex.advancement(),
-                                     style_index as u8,
+                    ShapeVertex::new(
+                        [vertex.position().x, vertex.position().y],
+                        [vertex.normal().x, vertex.normal().y],
+                        [0.0, 0.0],
+                        vertex.advancement(),
+                        style_index as u8,
                     )
                 });
             }
             GeometryType::Polygon => {
-                Self::tessellate_fill_path(&data.path, &mut self.geometry, |vertex|
-                    ShapeVertex::new([vertex.position().x, vertex.position().y],
-                                     [0.0, 0.0],
-                                     [0.0, 0.0],
-                                     0.0,
-                                     style_index as u8,
-                    ),
-                );
+                Self::tessellate_fill_path(&data.path, &mut self.geometry, |vertex| {
+                    ShapeVertex::new(
+                        [vertex.position().x, vertex.position().y],
+                        [0.0, 0.0],
+                        [0.0, 0.0],
+                        0.0,
+                        style_index as u8,
+                    )
+                });
             }
         }
         let last_index = self.geometry.indices.len();
@@ -292,7 +301,7 @@ impl GpuCanvasApi {
 
     fn svg(&mut self, data: SvgData) {
         self.mesh_info_cache
-            .entry(data.icon.0)
+            .entry((data.icon.0, data.style_id.clone()))
             .and_modify(|(_, mesh_info)| {
                 mesh_info
                     .instance_positions
@@ -305,26 +314,41 @@ impl GpuCanvasApi {
                 let mut mesh_size = data.size;
                 if let Some(svg_background) = data.background {
                     mesh_size += 2.0 * svg_background.padding;
-                    let background_style_index = self.style_store.get_index(&svg_background.style_id);
+                    let background_style_index =
+                        self.style_store.get_index(&svg_background.style_id);
 
                     let mut builder = Path::builder();
                     let half_size = svg_background.padding + data.size / 2.0;
-                    let rect = Box2D::new(point2(-half_size, -half_size), point2(half_size, half_size));
-                    builder.add_rounded_rectangle(&rect, &BorderRadii::new(10.0), Winding::Positive);
+                    let rect =
+                        Box2D::new(point2(-half_size, -half_size), point2(half_size, half_size));
+                    builder.add_rounded_rectangle(
+                        &rect,
+                        &BorderRadii::new(10.0),
+                        Winding::Positive,
+                    );
                     let path = builder.build();
 
-                    Self::tessellate_fill_path(&path, &mut mesh, |vertex|
-                        ShapeVertex::new([vertex.position().x, vertex.position().y],
-                                         [0.0, 0.0],
-                                         [0.0, 0.0],
-                                         0.0,
-                                         background_style_index as u8,
+                    Self::tessellate_fill_path(&path, &mut mesh, |vertex| {
+                        ShapeVertex::new(
+                            [vertex.position().x, vertex.position().y],
+                            [0.0, 0.0],
+                            [0.0, 0.0],
+                            0.0,
+                            background_style_index as u8,
                         )
-                    );
+                    });
                 }
-                
-                let style_index = data.style_id.map(|id| self.style_store.get_index(&id) as u32);
-                svg_parse(data.icon.1, &mut mesh, data.size, &mut self.style_store, style_index);
+
+                let style_index = data
+                    .style_id
+                    .map(|id| self.style_store.get_index(&id) as u32);
+                svg_parse(
+                    data.icon.1,
+                    &mut mesh,
+                    data.size,
+                    &mut self.style_store,
+                    style_index,
+                );
 
                 (
                     mesh,
