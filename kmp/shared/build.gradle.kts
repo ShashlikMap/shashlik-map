@@ -58,6 +58,7 @@ kotlin {
             implementation(libs.androidx.material3)
             implementation(libs.accompanist)
             implementation(libs.play.services.location)
+            implementation(libs.rustls.platform.verifier)
             implementation("net.java.dev.jna:jna:5.18.1@aar")
             implementation("com.jakewharton.timber:timber:5.0.1")
         }

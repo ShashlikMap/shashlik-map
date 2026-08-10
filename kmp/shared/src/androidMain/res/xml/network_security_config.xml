@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+<!--    https://github.com/rustls/rustls-platform-verifier/issues/221-->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">lencr.org</domain>
+    </domain-config>
+</network-security-config>

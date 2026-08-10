@@ -14,9 +14,6 @@ use valhalla_client::costing::Costing;
 use valhalla_client::{Error};
 use valhalla_client::route::{DirectionsType, Location, Manifest, Trip};
 
-#[cfg(target_os = "android")]
-extern crate valhalla_client_android as valhalla_client;
-
 pub struct RouteController<RAPI: RendererApi + 'static> {
     api: Arc<RAPI>,
     current_lon_lat: Option<(f64, f64)>,
@@ -84,7 +81,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                         .directions_type(DirectionsType::None)
                         .costing(costing.clone());
 
-                    match Self::get_trips(&*valhalla, manifest) {
+                    match valhalla.route_with_alternatives(manifest) {
                         Ok(trips) => {
                             let alternates = trips.1.len() as u8;
                             Self::handle_trips(trips, |index, trip: &Trip| {
@@ -133,17 +130,6 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                 }
             });
         }
-    }
-
-    fn get_trips(valhalla: &Valhalla, manifest: Manifest) -> Result<(Trip, Vec<Trip>), Error> {
-        // there is still an issue with reqwest and we can't use the latest valhalla client
-        #[cfg(target_os = "android")] {
-            let single_route = valhalla.route(manifest);
-            return single_route.map(|trip| (trip, vec![]));
-        }
-
-        #[cfg(not(target_os = "android"))]
-        valhalla.route_with_alternatives(manifest)
     }
 
     pub fn handle_trips(trips: (Trip, Vec<Trip>), action: impl Fn(u8, &Trip) -> ()) {

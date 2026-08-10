@@ -44,7 +44,7 @@ core-graphics-types = "0.2"
 
 # android target
 android_logger = "0.15"
-jni = "0.21.1"
+jni = "0.22.4"
 jni_fn = "0.1.2"
 ndk-sys = "0.6"
 
