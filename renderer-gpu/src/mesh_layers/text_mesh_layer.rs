@@ -71,7 +71,7 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
         if let Some(render_pipeline) = self.pipeline.as_ref() {
             render_pass.set_pipeline(render_pipeline);
 
-            self.render_pipeline.render(render_pass, global_context);
+            self.render_pipeline.setup_render(render_pass, global_context);
             self.text_renderer.render(render_pass, global_context);
         }
     }

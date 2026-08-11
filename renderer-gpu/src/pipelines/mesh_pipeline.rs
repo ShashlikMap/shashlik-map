@@ -134,7 +134,7 @@ impl MeshPipeline {
 impl RenderPipeline for MeshPipeline {
     type InstanceInputType = GeneralInstanceInput;
 
-    fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+    fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         let mut mask = global_context.check_render_step(ShadowStep) as u32;
         if global_context.is_shadow_mapping_enabled() {
             mask |= 2;

@@ -193,8 +193,8 @@ impl RenderPipeline for ShapePipeline {
         }
     }
 
-    fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
-        self.mesh_pipeline.render(render_pass, global_context);
+    fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        self.mesh_pipeline.setup_render(render_pass, global_context);
         if let Some(bind_group) = global_context.style_bind_group.as_ref() {
             render_pass.set_bind_group(Self::SHADER_STYLE_GROUP_INDEX, bind_group, &[]);
         }

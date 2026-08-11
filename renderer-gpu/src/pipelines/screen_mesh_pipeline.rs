@@ -76,8 +76,8 @@ impl ScreenMeshPipeline {
 impl RenderPipeline for ScreenMeshPipeline {
     type InstanceInputType = ShapeInstanceInput;
     
-    fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
-        self.mesh_pipeline.render(render_pass, global_context);
+    fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        self.mesh_pipeline.setup_render(render_pass, global_context);
     }
 
     fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {

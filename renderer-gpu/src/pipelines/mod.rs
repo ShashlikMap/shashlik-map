@@ -21,10 +21,10 @@ pub trait RenderPipeline {
         mesh.to_positioned::<Self::InstanceInputType>(spatial_rx, double_style, instance_positions_alpha)
     }
 
-    fn compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {}
+    fn setup_compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {}
     fn compute_mesh(&mut self, _compute_pass: &mut ComputePass,
                     _mesh: &MeshBuffers, _global_context: &GlobalContext) {}
-    fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext);
+    fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext);
     fn render_mesh(&mut self, render_pass: &mut RenderPass, mesh_buffers: &MeshBuffers, _global_context: &GlobalContext) {
         if let Some(buffer) = mesh_buffers.instance_buffer.as_ref() {
             render_pass.set_vertex_buffer(1, buffer.slice(..));

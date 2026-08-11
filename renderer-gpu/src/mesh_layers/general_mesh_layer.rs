@@ -162,7 +162,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
                 }
             }
 
-            self.render_pipeline.render(render_pass, global_context);
+            self.render_pipeline.setup_render(render_pass, global_context);
 
             self.render_data_holder.run_mut_action(|mesh| {
                 self.render_pipeline.render_mesh(render_pass, mesh.get_mesh_buffers(), global_context);

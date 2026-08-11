@@ -136,7 +136,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
         if let Some(render_pipeline) = self.pipeline.as_ref() {
             render_pass.set_pipeline(render_pipeline);
 
-            self.render_pipeline.render(render_pass, global_context);
+            self.render_pipeline.setup_render(render_pass, global_context);
 
             self.meshes.iter().for_each(|(_, (mesh, instance_buf))| {
                 let mesh_buffers = MeshBuffers {
