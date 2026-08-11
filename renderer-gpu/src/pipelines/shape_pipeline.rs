@@ -1,10 +1,10 @@
 use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
-use crate::pipelines::{IndirectInstancesLayout, OwnedRenderPipelineDescriptor, RenderPipeline};
+use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex, VertexAttrib};
 use std::borrow::Cow;
 use wesl::include_wesl;
-use wgpu::{BindGroup, BindGroupLayout, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
+use wgpu::{BindGroup, BindGroupLayout, Buffer, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
 
 pub struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
@@ -57,7 +57,8 @@ impl ShapePipeline {
 
         let reset_culling_pipeline_layout = global_context.device().create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shape Compute Reset Pipeline Layout"),
-            bind_group_layouts: &[None, None,
+            bind_group_layouts: &[None,
+                Some(&indirect_compute_instances_layout),
                 Some(&indirect_instances_args_layout)],
             ..Default::default()
         });
@@ -128,12 +129,55 @@ impl ShapePipeline {
             label: Some(label),
         })
     }
+
+    fn create_instance_bind_group(&self, global_context: &GlobalContext,
+                                  bind_group_layout: &BindGroupLayout,
+                                  instance_buffer: &Buffer,
+                                  culled_buffer: &Buffer,
+                                  label: &'static str) -> BindGroup {
+        global_context
+            .device()
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: bind_group_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: instance_buffer
+                        .as_entire_binding(),
+                },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: culled_buffer.as_entire_binding(),
+                    }],
+                label: Some(label),
+            })
+    }
 }
 
 impl RenderPipeline for ShapePipeline {
     type InstanceInputType = ShapeInstanceInput;
 
-    fn compute(&mut self, compute_pass: &mut ComputePass, _global_context: &GlobalContext) {
+    fn compute(&mut self, compute_pass: &mut ComputePass, global_context: &GlobalContext) {
+        if self.indirect && let Some(indirect_buffers) = global_context.texture_view_resources.last_indirect_buffers() {
+            let instances_args_bind_group = Some(
+                global_context
+                    .device()
+                    .create_bind_group(&wgpu::BindGroupDescriptor {
+                        layout: &self.indirect_instances_args_layout,
+                        entries: &[wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: indirect_buffers.instance_args_buffer.as_entire_binding(),
+                        }],
+                        label: Some("instances_bind_args_group"),
+                    }),
+            );
+            let instance_bind_group = self.create_instance_bind_group(global_context, &self.indirect_compute_instances_layout,
+                                                                      &indirect_buffers.instance_buffer,
+                                                                      &indirect_buffers.culled_buffer, "kiol1");
+
+            compute_pass.set_bind_group(1, &instance_bind_group, &[]);
+            compute_pass.set_bind_group(2, &instances_args_bind_group, &[]);
+        }
+
         compute_pass.set_pipeline(&self.reset_culling_compute_pipeline);
         compute_pass.dispatch_workgroups(1, 1, 1);
 
@@ -145,6 +189,14 @@ impl RenderPipeline for ShapePipeline {
         self.mesh_pipeline.render(render_pass, global_context);
         if let Some(bind_group) = global_context.style_bind_group.as_ref() {
             render_pass.set_bind_group(Self::SHADER_STYLE_GROUP_INDEX, bind_group, &[]);
+            if self.indirect && let Some(indirect_buffers)
+                = global_context.texture_view_resources.last_indirect_buffers() {
+                let instance_bind_group = self.
+                    create_instance_bind_group(global_context, &self.indirect_instances_layout,
+                                               &indirect_buffers.instance_buffer,
+                                               &indirect_buffers.culled_buffer, "kiol2");
+                render_pass.set_bind_group(2, &instance_bind_group, &[]);
+            }
         }
     }
 
@@ -165,6 +217,7 @@ impl RenderPipeline for ShapePipeline {
         });
 
         let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context);
+        mesh_descriptor.label = Some("Shape Pipeline");
         let mut stencil = mesh_descriptor.depth_stencil.unwrap();
         stencil.depth_compare = Some(CompareFunction::Always);
         stencil.depth_write_enabled = Some(false);
@@ -198,28 +251,6 @@ impl RenderPipeline for ShapePipeline {
         mesh_descriptor.primitive.cull_mode = None;
 
         mesh_descriptor
-    }
-
-    fn set_instance_bind_group_compute(&mut self, compute_pass: &mut ComputePass, instance_bind_group: &BindGroup, instance_args_bind_group: &BindGroup) {
-        compute_pass.set_bind_group(1, instance_bind_group, &[]);
-        compute_pass.set_bind_group(2, instance_args_bind_group, &[]);
-    }
-
-    fn set_instance_bind_group_render(&mut self, render_pass: &mut RenderPass, instance_bind_group: &BindGroup) {
-        // index 2 in shape pipeline for renderer-gpu!
-        render_pass.set_bind_group(2, instance_bind_group, &[]);
-    }
-
-    fn get_instances_layouts(&self) -> Option<IndirectInstancesLayout<'_>> {
-        if self.indirect {
-            Some(IndirectInstancesLayout {
-                vertex_layout: &self.indirect_instances_layout,
-                compute_layout: &self.indirect_compute_instances_layout,
-                common_args_layout: &self.indirect_instances_args_layout,
-            })
-        } else {
-            None
-        }
     }
 
     fn is_indirect(&self) -> bool {

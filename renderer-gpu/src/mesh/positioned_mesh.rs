@@ -1,14 +1,14 @@
 use crate::global_context::GlobalContext;
+use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
-use crate::mesh::InstanceBuffer;
-use renderer_common::render_modifier::SpatialData;
-use crate::pipelines::IndirectInstancesLayout;
+use crate::texture_view_resources::IndirectInstanceBuffers;
 use crate::utils::ReceiverExt;
 use glam::DVec3;
+use renderer_common::render_modifier::SpatialData;
 use tokio::sync::broadcast::Receiver;
 use wgpu::util::{DeviceExt, DrawIndexedIndirectArgs};
-use wgpu::{BindGroup, BindGroupLayout, Buffer, ComputePass, RenderPass};
+use wgpu::{ComputePass, RenderPass};
 
 pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
@@ -20,10 +20,7 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     original_spatial_data: SpatialData,
     original_instance_positions_alpha: Vec<(DVec3, f32)>,
 
-    instances_args_buffer: Option<Buffer>,
-    pub instances_bind_group: Option<BindGroup>,
-    pub instances_compute_bind_group: Option<BindGroup>,
-    pub instances_args_bind_group: Option<BindGroup>,
+    indirect_instance_buffers: Option<IndirectInstanceBuffers>
 }
 
 impl Mesh {
@@ -54,17 +51,14 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             original_spatial_data: SpatialData::new(),
             original_instance_positions_alpha: instance_positions_alpha
                 .unwrap_or(vec![(DVec3::new(0.0, 0.0, 0.0), 1f32)]),
-            instances_args_buffer: None,
-            instances_bind_group: None,
-            instances_compute_bind_group: None,
-            instances_args_bind_group: None
+            indirect_instance_buffers: None,
         }
     }
 
     pub fn update(
         &mut self,
         global_context: &mut GlobalContext,
-        instances_bind_group_layout: Option<IndirectInstancesLayout>,
+        indirect: bool,
     ) {
         let cs_offset_updated = global_context.view_projection.cs_offset != self.cs_offset;
         self.cs_offset = global_context.view_projection.cs_offset;
@@ -88,26 +82,13 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 &self.attrs,
             );
 
-            if let Some(instances_bind_group_layout) = instances_bind_group_layout {
+            if indirect {
                 let instance_buffer_length = self.get_instance_buffer_length();
                 let culled_buffer = global_context.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Culled Buffer"),
                     contents: bytemuck::cast_slice(&vec![0; instance_buffer_length]),
                     usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
                 });
-
-
-                self.instances_bind_group = Some(self.create_instance_bind_group(global_context, 
-                                                                                 instances_bind_group_layout.vertex_layout,
-                                                                                 &culled_buffer,
-                                                                                 "instances_bind_group",
-                ));
-
-                self.instances_compute_bind_group = Some(self.create_instance_bind_group(global_context,
-                                                                                 instances_bind_group_layout.compute_layout,
-                                                                                 &culled_buffer,
-                                                                                 "instances_compute_bind_group",
-                ));
                 
                 let instance_count = if self.attrs.len() <= 2 {
                     self.attrs.len() * instance_buffer_length
@@ -133,57 +114,31 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                     usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT |wgpu::BufferUsages::COPY_DST,
                 });
 
-                self.instances_args_bind_group = Some(
-                    global_context
-                        .device()
-                        .create_bind_group(&wgpu::BindGroupDescriptor {
-                            layout: instances_bind_group_layout.common_args_layout,
-                            entries: &[wgpu::BindGroupEntry {
-                                binding: 0,
-                                resource: indirect_args
-                                    .as_entire_binding(),
-                            }],
-                            label: Some("instances_bind_args_group"),
-                        }),
-                );
-                self.instances_args_buffer = Some(indirect_args);
+                if let Some(instance_buffer) = self.instance_buffer.buffer.as_ref() {
+                    self.indirect_instance_buffers = Some(IndirectInstanceBuffers {
+                        instance_buffer: instance_buffer.clone(),
+                        culled_buffer,
+                        instance_args_buffer: indirect_args,
+                    });
+                }
+
             } else {
-                self.instances_bind_group = None;
-                self.instances_args_bind_group = None;
+                self.indirect_instance_buffers = None;
             }
         }
-    }
 
-    fn create_instance_bind_group(&mut self, global_context: &mut GlobalContext,
-                                  instance_layout: &BindGroupLayout,
-                                  culled_buffer: &Buffer,
-                                  label: &'static str) -> BindGroup {
-        global_context
-            .device()
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: instance_layout,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self
-                        .instance_buffer
-                        .buffer
-                        .as_ref()
-                        .expect("Buffer should exist")
-                        .as_entire_binding(),
-                },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: culled_buffer.as_entire_binding(),
-                    }],
-                label: Some(label),
-            })
+        if indirect {
+            if let Some(indirect_instance_buffers) = self.indirect_instance_buffers.as_ref() {
+                global_context.texture_view_resources.insert_indirect_buffers(indirect_instance_buffers.clone());
+            }
+        }
     }
 
     pub fn compute_instanced(
         &mut self,
         compute_pass: &mut ComputePass,
     ) {
-        if self.instances_args_buffer.is_some() {
+        if self.indirect_instance_buffers.is_some() {
             // workgroups are batches by 64/128
             let instance_buffer_length = self.get_instance_buffer_length() as u32;
             let mut x = instance_buffer_length / 64;
@@ -204,18 +159,21 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         render_pass: &mut RenderPass,
         disable_skip_mesh_feature: bool,
     ) {
-        let instances_vertex_slot = if self.instances_bind_group.is_some() {
+
+        let instances_vertex_slot = if self.indirect_instance_buffers.is_some() {
             None
         } else {
             Some(1)
         };
+
+        let instances_args_buffer = self.indirect_instance_buffers.as_ref().map(|item| &item.instance_args_buffer);
         self.mesh.render_instanced(
             instances_vertex_slot,
             render_pass,
             self.double_style,
             &self.instance_buffer,
             disable_skip_mesh_feature,
-            self.instances_args_buffer.as_ref()
+            instances_args_buffer
         );
     }
 }

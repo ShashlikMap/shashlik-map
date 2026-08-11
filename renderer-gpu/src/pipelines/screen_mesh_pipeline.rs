@@ -1,7 +1,7 @@
 use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
-use crate::pipelines::{IndirectInstancesLayout, OwnedRenderPipelineDescriptor, RenderPipeline, WithTexture};
-use crate::textures::{create_simple_texture, TextureData};
+use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline, WithTexture};
+use crate::textures::{TextureData, create_simple_texture};
 use crate::vertex_attrs::{MeshVertexWithUV, ShapeInstanceInput, TextInstanceInput, VertexAttrib};
 use std::borrow::Cow;
 use wesl::include_wesl;
@@ -85,7 +85,7 @@ impl RenderPipeline for ScreenMeshPipeline {
 
     fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
         let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context);
-
+        mesh_descriptor.label = Some("Screen Mesh Pipeline");
         let device = global_context.device();
 
         if self.texture_info.use_texture {
@@ -126,16 +126,6 @@ impl RenderPipeline for ScreenMeshPipeline {
         mesh_descriptor.primitive.cull_mode = None;
 
         mesh_descriptor
-    }
-
-    fn set_instance_bind_group_compute(&mut self, _compute_pass: &mut ComputePass, _instance_bind_group: &BindGroup, _instance_args_bind_group: &BindGroup) {
-    }
-
-    fn set_instance_bind_group_render(&mut self, _render_pass: &mut RenderPass, _instance_bind_group: &BindGroup) {
-    }
-
-    fn get_instances_layouts(&self) -> Option<IndirectInstancesLayout<'_>> {
-        None
     }
 
     fn is_indirect(&self) -> bool {
