@@ -17,6 +17,7 @@ use rstar::primitives::Rectangle;
 use std::collections::HashMap;
 use std::mem;
 use wgpu::{CommandEncoder, RenderPass};
+use crate::texture_view_resources::MeshBuffers;
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
 pub(crate) struct ScreenShapeLayer<P: RenderPipeline> {
@@ -138,7 +139,13 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
             self.render_pipeline.render(render_pass, global_context);
 
             self.meshes.iter().for_each(|(_, (mesh, instance_buf))| {
-                mesh.render_instanced(Some(1), render_pass, false, instance_buf, false, None);
+                let mesh_buffers = MeshBuffers {
+                    instance_buffer: instance_buf.buffer.clone(),
+                    culled_buffer: None,
+                    instance_args_buffer: None,
+                };
+                self.render_pipeline.render_mesh(render_pass, &mesh_buffers, global_context);
+                mesh.render_instanced(render_pass, false, instance_buf, false, None);
             });
         }
     }

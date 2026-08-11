@@ -12,17 +12,16 @@ pub(crate) enum TextureViewKind {
     SSAO,
 }
 
-#[derive(Clone)]
-pub(crate) struct IndirectInstanceBuffers {
-    pub instance_buffer: Buffer,
-    pub culled_buffer: Buffer,
-    pub instance_args_buffer: Buffer,
+#[derive(Clone, Default)]
+pub struct MeshBuffers {
+    pub instance_buffer: Option<Buffer>,
+    pub culled_buffer: Option<Buffer>,
+    pub instance_args_buffer: Option<Buffer>,
 }
 
 
 pub(crate) struct TextureViewResources {
     textures: FxHashMap<TextureViewKind, TextureView>,
-    last_indirect_buffers: Option<IndirectInstanceBuffers>
 }
 
 impl TextureViewResources {
@@ -39,7 +38,6 @@ impl TextureViewResources {
         textures.insert(TextureViewKind::ShadowMapDepth, shadow_map_depth_texture);
         Self {
             textures,
-            last_indirect_buffers: None,
         }
     }
 
@@ -53,13 +51,5 @@ impl TextureViewResources {
 
     pub fn get_or_unwrap(&self, texture_view_kind: TextureViewKind) -> &TextureView {
         self.textures.get(&texture_view_kind).unwrap()
-    }
-
-    pub fn insert_indirect_buffers(&mut self, indirect_instance_buffers: IndirectInstanceBuffers) {
-        self.last_indirect_buffers = Some(indirect_instance_buffers);
-    }
-
-    pub fn last_indirect_buffers(&self) -> Option<&IndirectInstanceBuffers> {
-        self.last_indirect_buffers.as_ref()
     }
 }

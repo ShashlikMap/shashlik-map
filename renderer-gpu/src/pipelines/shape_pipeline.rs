@@ -1,8 +1,10 @@
 use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
+use crate::texture_view_resources::MeshBuffers;
 use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex, VertexAttrib};
 use std::borrow::Cow;
+use log::error;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
 
@@ -156,46 +158,61 @@ impl ShapePipeline {
 impl RenderPipeline for ShapePipeline {
     type InstanceInputType = ShapeInstanceInput;
 
-    fn compute(&mut self, compute_pass: &mut ComputePass, global_context: &GlobalContext) {
-        if self.indirect && let Some(indirect_buffers) = global_context.texture_view_resources.last_indirect_buffers() {
-            let instances_args_bind_group = Some(
-                global_context
-                    .device()
-                    .create_bind_group(&wgpu::BindGroupDescriptor {
-                        layout: &self.indirect_instances_args_layout,
-                        entries: &[wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: indirect_buffers.instance_args_buffer.as_entire_binding(),
-                        }],
-                        label: Some("instances_bind_args_group"),
-                    }),
-            );
-            let instance_bind_group = self.create_instance_bind_group(global_context, &self.indirect_compute_instances_layout,
-                                                                      &indirect_buffers.instance_buffer,
-                                                                      &indirect_buffers.culled_buffer, "kiol1");
+    fn compute_mesh(&mut self,
+                    compute_pass: &mut ComputePass,
+                    mesh_buffers: &MeshBuffers,
+                    global_context: &GlobalContext) {
+        if self.indirect {
+            if let Some(instance_args_buffer) = mesh_buffers.instance_args_buffer.as_ref() &&
+                let Some(culled_buffer) = mesh_buffers.culled_buffer.as_ref() &&
+                let Some(instance_buffer) = mesh_buffers.instance_buffer.as_ref() {
+                let instances_args_bind_group = Some(
+                    global_context
+                        .device()
+                        .create_bind_group(&wgpu::BindGroupDescriptor {
+                            layout: &self.indirect_instances_args_layout,
+                            entries: &[wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: instance_args_buffer.as_entire_binding(),
+                            }],
+                            label: Some("instances_bind_args_group"),
+                        }),
+                );
+                let instance_bind_group = self.create_instance_bind_group(global_context, &self.indirect_compute_instances_layout,
+                                                                          &instance_buffer,
+                                                                          &culled_buffer, "kiol1");
 
-            compute_pass.set_bind_group(1, &instance_bind_group, &[]);
-            compute_pass.set_bind_group(2, &instances_args_bind_group, &[]);
+                compute_pass.set_bind_group(1, &instance_bind_group, &[]);
+                compute_pass.set_bind_group(2, &instances_args_bind_group, &[]);
+                compute_pass.set_pipeline(&self.reset_culling_compute_pipeline);
+                compute_pass.dispatch_workgroups(1, 1, 1);
+
+                compute_pass.set_pipeline(&self.culling_compute_pipeline);
+                compute_pass.set_bind_group(0, &self.mesh_pipeline.bind_group, &[]);
+            }
         }
-
-        compute_pass.set_pipeline(&self.reset_culling_compute_pipeline);
-        compute_pass.dispatch_workgroups(1, 1, 1);
-
-        compute_pass.set_pipeline(&self.culling_compute_pipeline);
-        compute_pass.set_bind_group(0, &self.mesh_pipeline.bind_group, &[]);
     }
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         self.mesh_pipeline.render(render_pass, global_context);
         if let Some(bind_group) = global_context.style_bind_group.as_ref() {
             render_pass.set_bind_group(Self::SHADER_STYLE_GROUP_INDEX, bind_group, &[]);
-            if self.indirect && let Some(indirect_buffers)
-                = global_context.texture_view_resources.last_indirect_buffers() {
-                let instance_bind_group = self.
-                    create_instance_bind_group(global_context, &self.indirect_instances_layout,
-                                               &indirect_buffers.instance_buffer,
-                                               &indirect_buffers.culled_buffer, "kiol2");
-                render_pass.set_bind_group(2, &instance_bind_group, &[]);
+        }
+    }
+
+    fn render_mesh(&mut self, render_pass: &mut RenderPass, mesh_buffers: &MeshBuffers, global_context: &GlobalContext) {
+        if self.indirect && let Some(instance_buffer) = mesh_buffers.instance_buffer.as_ref()
+            && let Some(culled_buffer) = mesh_buffers.culled_buffer.as_ref() {
+            let instance_bind_group = self.
+                create_instance_bind_group(global_context, &self.indirect_instances_layout,
+                                           instance_buffer,
+                                           culled_buffer, "kiol2");
+            render_pass.set_bind_group(2, &instance_bind_group, &[]);
+        } else if let Some(buffer) = mesh_buffers.instance_buffer.as_ref() {
+            if buffer.size() > 0 {
+                render_pass.set_vertex_buffer(1, buffer.slice(..));
+            } else {
+                error!("Buffer is empty!");
             }
         }
     }

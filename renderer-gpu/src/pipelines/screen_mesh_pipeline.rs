@@ -5,7 +5,7 @@ use crate::textures::{TextureData, create_simple_texture};
 use crate::vertex_attrs::{MeshVertexWithUV, ShapeInstanceInput, TextInstanceInput, VertexAttrib};
 use std::borrow::Cow;
 use wesl::include_wesl;
-use wgpu::{BindGroup, BindGroupLayout, CompareFunction, ComputePass, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, TextureFormat, TextureUsages, TextureView};
+use wgpu::{BindGroup, BindGroupLayout, CompareFunction, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, TextureFormat, TextureUsages, TextureView};
 
 pub struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
@@ -75,10 +75,7 @@ impl ScreenMeshPipeline {
 
 impl RenderPipeline for ScreenMeshPipeline {
     type InstanceInputType = ShapeInstanceInput;
-
-    fn compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {
-    }
-
+    
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         self.mesh_pipeline.render(render_pass, global_context);
     }

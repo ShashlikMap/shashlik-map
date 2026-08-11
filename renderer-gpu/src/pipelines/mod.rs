@@ -5,6 +5,7 @@ use crate::mesh::positioned_mesh::PositionedMesh;
 use glam::DVec3;
 use renderer_common::render_modifier::SpatialData;
 use wgpu::{BindGroup, ColorTargetState, ComputePass, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, TextureView, VertexBufferLayout};
+use crate::texture_view_resources::MeshBuffers;
 
 pub mod mesh_pipeline;
 pub mod shape_pipeline;
@@ -20,8 +21,15 @@ pub trait RenderPipeline {
         mesh.to_positioned::<Self::InstanceInputType>(spatial_rx, double_style, instance_positions_alpha)
     }
 
-    fn compute(&mut self, compute_pass: &mut ComputePass, global_context: &GlobalContext);
+    fn compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {}
+    fn compute_mesh(&mut self, _compute_pass: &mut ComputePass,
+                    _mesh: &MeshBuffers, _global_context: &GlobalContext) {}
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext);
+    fn render_mesh(&mut self, render_pass: &mut RenderPass, mesh_buffers: &MeshBuffers, _global_context: &GlobalContext) {
+        if let Some(buffer) = mesh_buffers.instance_buffer.as_ref() {
+            render_pass.set_vertex_buffer(1, buffer.slice(..));
+        }
+    }
     fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_>;
     fn is_indirect(&self) -> bool;
     fn support_g_buf(&self) -> bool;

@@ -85,19 +85,13 @@ impl Mesh {
 
     pub fn render_instanced<T: Pod>(
         &self,
-        slot: Option<u32>,
         render_pass: &mut RenderPass,
         double_style: bool,
         instance_buffer: &InstanceBuffer<T>,
         disable_skip_mesh_feature: bool,
         indirect_args: Option<&Buffer>
     ) {
-        if instance_buffer.length > 0
-            && let Some(buffer) = instance_buffer.buffer.as_ref()
-        {
-            if let Some(slot) = slot {
-                render_pass.set_vertex_buffer(slot, buffer.slice(..));
-            }
+        if instance_buffer.length > 0 {
             let factor = if double_style { 2 } else { 1 };
             let range = 0..(instance_buffer.length as u32 * factor);
             self.render(render_pass, &range, disable_skip_mesh_feature, indirect_args);

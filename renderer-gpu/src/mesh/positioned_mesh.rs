@@ -2,7 +2,7 @@ use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
-use crate::texture_view_resources::IndirectInstanceBuffers;
+use crate::texture_view_resources::MeshBuffers;
 use crate::utils::ReceiverExt;
 use glam::DVec3;
 use renderer_common::render_modifier::SpatialData;
@@ -19,8 +19,7 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
     original_instance_positions_alpha: Vec<(DVec3, f32)>,
-
-    indirect_instance_buffers: Option<IndirectInstanceBuffers>
+    mesh_buffers: MeshBuffers
 }
 
 impl Mesh {
@@ -51,7 +50,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             original_spatial_data: SpatialData::new(),
             original_instance_positions_alpha: instance_positions_alpha
                 .unwrap_or(vec![(DVec3::new(0.0, 0.0, 0.0), 1f32)]),
-            indirect_instance_buffers: None,
+            mesh_buffers: MeshBuffers::default(),
         }
     }
 
@@ -115,30 +114,26 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 });
 
                 if let Some(instance_buffer) = self.instance_buffer.buffer.as_ref() {
-                    self.indirect_instance_buffers = Some(IndirectInstanceBuffers {
-                        instance_buffer: instance_buffer.clone(),
-                        culled_buffer,
-                        instance_args_buffer: indirect_args,
-                    });
+                    self.mesh_buffers = MeshBuffers {
+                        instance_buffer: Some(instance_buffer.clone()),
+                        culled_buffer: Some(culled_buffer),
+                        instance_args_buffer: Some(indirect_args),
+                    };
                 }
 
             } else {
-                self.indirect_instance_buffers = None;
-            }
-        }
-
-        if indirect {
-            if let Some(indirect_instance_buffers) = self.indirect_instance_buffers.as_ref() {
-                global_context.texture_view_resources.insert_indirect_buffers(indirect_instance_buffers.clone());
+                self.mesh_buffers.instance_buffer = self.instance_buffer.buffer.clone();
+                self.mesh_buffers.culled_buffer = None;
+                self.mesh_buffers.instance_args_buffer = None;
             }
         }
     }
 
     pub fn compute_instanced(
-        &mut self,
+        &self,
         compute_pass: &mut ComputePass,
     ) {
-        if self.indirect_instance_buffers.is_some() {
+        if self.mesh_buffers.instance_buffer.is_some() {
             // workgroups are batches by 64/128
             let instance_buffer_length = self.get_instance_buffer_length() as u32;
             let mut x = instance_buffer_length / 64;
@@ -154,21 +149,17 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         self.instance_buffer.length * factor
     }
 
+    pub fn get_mesh_buffers(&self) -> &MeshBuffers {
+        &self.mesh_buffers
+    }
+
     pub fn render_instanced(
         &mut self,
         render_pass: &mut RenderPass,
         disable_skip_mesh_feature: bool,
     ) {
-
-        let instances_vertex_slot = if self.indirect_instance_buffers.is_some() {
-            None
-        } else {
-            Some(1)
-        };
-
-        let instances_args_buffer = self.indirect_instance_buffers.as_ref().map(|item| &item.instance_args_buffer);
+        let instances_args_buffer = self.mesh_buffers.instance_args_buffer.as_ref();
         self.mesh.render_instanced(
-            instances_vertex_slot,
             render_pass,
             self.double_style,
             &self.instance_buffer,
