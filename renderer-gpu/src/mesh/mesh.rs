@@ -1,6 +1,5 @@
-use crate::mesh::InstanceBuffer;
 use crate::vertex_attrs::MeshVertexWithUV;
-use bytemuck::{NoUninit, Pod};
+use bytemuck::{NoUninit};
 use log::error;
 use lyon::lyon_tessellation::VertexBuffers;
 use std::ops::Range;
@@ -83,17 +82,15 @@ impl Mesh {
         )
     }
 
-    pub fn render_instanced<T: Pod>(
+    pub fn render_instanced(
         &self,
         render_pass: &mut RenderPass,
-        double_style: bool,
-        instance_buffer: &InstanceBuffer<T>,
+        instance_count: usize,
         disable_skip_mesh_feature: bool,
         indirect_args: Option<&Buffer>
     ) {
-        if instance_buffer.length > 0 {
-            let factor = if double_style { 2 } else { 1 };
-            let range = 0..(instance_buffer.length as u32 * factor);
+        if instance_count > 0 {
+            let range = 0..(instance_count as u32);
             self.render(render_pass, &range, disable_skip_mesh_feature, indirect_args);
         }
     }

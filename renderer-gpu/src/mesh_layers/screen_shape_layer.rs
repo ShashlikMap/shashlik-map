@@ -103,9 +103,6 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
     }
 
-    fn compute(&mut self, _encoder: &mut CommandEncoder,_global_context: &mut GlobalContext) {}
-
-
     fn update(&mut self, global_context: &mut GlobalContext) {
         let Ok(hm) = self.collision_task_controller.receiver.try_recv() else {
             return;
@@ -132,6 +129,9 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
             });
     }
 
+
+    fn compute(&mut self, _encoder: &mut CommandEncoder,_global_context: &mut GlobalContext) {}
+
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         if let Some(render_pipeline) = self.pipeline.as_ref() {
             render_pass.set_pipeline(render_pipeline);
@@ -145,7 +145,8 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
                     instance_args_buffer: None,
                 };
                 self.render_pipeline.render_mesh(render_pass, &mesh_buffers, global_context);
-                mesh.render_instanced(render_pass, false, instance_buf, false, None);
+                let instance_count = instance_buf.length;
+                mesh.render_instanced(render_pass, instance_count, false, None);
             });
         }
     }

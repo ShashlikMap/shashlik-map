@@ -159,10 +159,10 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         disable_skip_mesh_feature: bool,
     ) {
         let instances_args_buffer = self.mesh_buffers.instance_args_buffer.as_ref();
+        let instance_count = self.get_instance_buffer_length();
         self.mesh.render_instanced(
             render_pass,
-            self.double_style,
-            &self.instance_buffer,
+            instance_count,
             disable_skip_mesh_feature,
             instances_args_buffer
         );
