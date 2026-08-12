@@ -23,7 +23,7 @@ use crate::texture_view_resources::MeshBuffers;
 pub(crate) struct ScreenShapeLayer<P: RenderPipeline> {
     render_pipeline: P,
     pipeline: Option<wgpu::RenderPipeline>,
-    meshes: HashMap<String, (Mesh, InstanceBuffer<P::InstanceInputType>)>,
+    meshes: HashMap<String, (Mesh, InstanceBuffer<P::InstanceInputType>, MeshBuffers)>,
     collision_task_controller: CollisionTaskController<
         (ShapeInfo, f32, String),
         HashMap<String, Vec<(DVec3, f32)>>,
@@ -70,6 +70,7 @@ impl<P: RenderPipeline> ScreenShapeLayer<P> {
                         mem::take(&mut batch.layers_indices),
                     ),
                     InstanceBuffer::default(),
+                    MeshBuffers::default()
                 )
             });
 
@@ -110,7 +111,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
         let cs_offset = global_context.view_projection.cs_offset;
         self.meshes
             .iter_mut()
-            .for_each(|(key, (_, instance_buffer))| {
+            .for_each(|(key, (_, instance_buffer, mesh_buffers))| {
                 let mut attrs = Vec::new();
                 if let Some(pos_alpha) = hm.get(key) {
                     P::InstanceInputType::fill_attrs(
@@ -125,7 +126,8 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
                     "ScreenInstanceBuffer",
                     global_context,
                     &attrs,
-                )
+                );
+                *mesh_buffers = MeshBuffers::with_instance_buffer(instance_buffer.buffer.clone());
             });
     }
 
@@ -138,13 +140,8 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
 
             self.render_pipeline.setup_render(render_pass, global_context);
 
-            self.meshes.iter().for_each(|(_, (mesh, instance_buf))| {
-                let mesh_buffers = MeshBuffers {
-                    instance_buffer: instance_buf.buffer.clone(),
-                    culled_buffer: None,
-                    instance_args_buffer: None,
-                };
-                self.render_pipeline.render_mesh(render_pass, &mesh_buffers, global_context);
+            self.meshes.iter().for_each(|(_, (mesh, instance_buf, mesh_buffers))| {
+                self.render_pipeline.render_mesh(render_pass, mesh_buffers, global_context);
                 let instance_count = instance_buf.length;
                 mesh.render_instanced(render_pass, instance_count, false, None);
             });
