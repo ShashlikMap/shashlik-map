@@ -2,7 +2,7 @@ use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
-use crate::texture_view_resources::MeshBuffers;
+use crate::mesh_buffers::MeshBuffers;
 use crate::utils::ReceiverExt;
 use glam::DVec3;
 use renderer_common::render_modifier::SpatialData;

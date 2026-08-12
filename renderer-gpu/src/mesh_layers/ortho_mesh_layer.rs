@@ -1,14 +1,14 @@
-use glam::Mat4;
-use crate::global_context::{GlobalContext};
+use crate::buffer_pool::BufferPool;
+use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
+use crate::mesh_buffers::MeshBuffers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pipelines::{RenderPipeline, WithTexture};
 use crate::vertex_attrs::TextInstanceInput;
+use glam::Mat4;
 use log::error;
 use wgpu::{BindGroup, CommandEncoder, RenderPass, StencilFaceState, TextureFormat, TextureUsages, TextureView};
-use crate::buffer_pool::BufferPool;
-use crate::texture_view_resources::MeshBuffers;
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone)]

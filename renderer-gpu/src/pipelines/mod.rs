@@ -2,10 +2,10 @@ use crate::global_context::GlobalContext;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::mesh::positioned_mesh::PositionedMesh;
+use crate::mesh_buffers::MeshBuffers;
 use glam::DVec3;
 use renderer_common::render_modifier::SpatialData;
 use wgpu::{BindGroup, ColorTargetState, ComputePass, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, TextureView, VertexBufferLayout};
-use crate::texture_view_resources::MeshBuffers;
 
 pub mod mesh_pipeline;
 pub mod shape_pipeline;

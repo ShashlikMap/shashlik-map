@@ -1,7 +1,7 @@
 use crate::render_config::RenderConfig;
 use crate::textures::create_depth_texture;
 use rustc_hash::FxHashMap;
-use wgpu::{Buffer, Device, TextureFormat, TextureView};
+use wgpu::{Device, TextureFormat, TextureView};
 
 #[derive(Eq, PartialEq, Hash)]
 pub(crate) enum TextureViewKind {
@@ -10,22 +10,6 @@ pub(crate) enum TextureViewKind {
     GBufDepth,
     ShadowMapDepth,
     SSAO,
-}
-
-#[derive(Clone, Default)]
-pub struct MeshBuffers {
-    pub instance_buffer: Option<Buffer>,
-    pub culled_buffer: Option<Buffer>,
-    pub instance_args_buffer: Option<Buffer>,
-}
-
-impl MeshBuffers {
-    pub fn with_instance_buffer(buffer: Option<Buffer>) -> Self {
-        Self {
-            instance_buffer: buffer,
-            ..Default::default()
-        }
-    }
 }
 
 pub(crate) struct TextureViewResources {

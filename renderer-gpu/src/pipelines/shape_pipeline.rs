@@ -1,10 +1,10 @@
 use crate::global_context::GlobalContext;
+use crate::mesh_buffers::MeshBuffers;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
-use crate::texture_view_resources::MeshBuffers;
 use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex, VertexAttrib};
-use std::borrow::Cow;
 use log::error;
+use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
 

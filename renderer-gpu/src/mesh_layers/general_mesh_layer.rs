@@ -142,6 +142,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
                 timestamp_writes: None,
             });
 
+            self.render_pipeline.setup_compute(&mut compute_pass, global_context);
             self.render_data_holder.run_mut_action(|mesh| {
                 self.render_pipeline.compute_mesh(&mut compute_pass, mesh.get_mesh_buffers(), global_context);
                 mesh.compute_instanced(&mut compute_pass);

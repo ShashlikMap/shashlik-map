@@ -5,6 +5,7 @@ use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh_buffers::MeshBuffers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pipelines::RenderPipeline;
 use crate::view_projection::ViewProjection;
@@ -17,7 +18,6 @@ use rstar::primitives::Rectangle;
 use std::collections::HashMap;
 use std::mem;
 use wgpu::{CommandEncoder, RenderPass};
-use crate::texture_view_resources::MeshBuffers;
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
 pub(crate) struct ScreenShapeLayer<P: RenderPipeline> {
