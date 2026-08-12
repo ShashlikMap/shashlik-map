@@ -1,13 +1,13 @@
 use crate::global_context::GlobalContext;
-use crate::pipelines::{IndirectInstancesLayout, OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline};
-use crate::textures::{create_simple_texture, TextureData, SAMPLE_COUNT};
+use crate::global_context::GlobalRenderStep::{MainStep, ShadowStep};
+use crate::pipelines::{OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline};
+use crate::texture_view_resources::TextureViewKind;
+use crate::textures::{SAMPLE_COUNT, TextureData, create_simple_texture};
 use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
+use renderer_common::geometry_data::MeshVertex;
 use std::borrow::Cow;
 use wesl::include_wesl;
-use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, ComputePass, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, TextureFormat, TextureUsages};
-use renderer_common::geometry_data::MeshVertex;
-use crate::global_context::GlobalRenderStep::{MainStep, ShadowStep};
-use crate::texture_view_resources::TextureViewKind;
+use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, TextureFormat, TextureUsages};
 
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,
@@ -134,10 +134,7 @@ impl MeshPipeline {
 impl RenderPipeline for MeshPipeline {
     type InstanceInputType = GeneralInstanceInput;
 
-    fn compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {
-    }
-
-    fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+    fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         let mut mask = global_context.check_render_step(ShadowStep) as u32;
         if global_context.is_shadow_mapping_enabled() {
             mask |= 2;
@@ -211,16 +208,6 @@ impl RenderPipeline for MeshPipeline {
                 alpha_to_coverage_enabled: false,
             },
         }
-    }
-
-    fn set_instance_bind_group_compute(&mut self, _compute_pass: &mut ComputePass, _instance_bind_group: &BindGroup, _instance_args_bind_group: &BindGroup) {
-    }
-    
-    fn set_instance_bind_group_render(&mut self, _render_pass: &mut RenderPass, _instance_bind_group: &BindGroup) {
-    }
-
-    fn get_instances_layouts(&self) -> Option<IndirectInstancesLayout<'_>> {
-        None
     }
 
     fn is_indirect(&self) -> bool {

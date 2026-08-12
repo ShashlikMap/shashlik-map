@@ -28,7 +28,9 @@ impl TextureViewResources {
         );
         let mut textures = FxHashMap::default();
         textures.insert(TextureViewKind::ShadowMapDepth, shadow_map_depth_texture);
-        Self { textures }
+        Self {
+            textures,
+        }
     }
 
     pub fn insert(&mut self, texture_view_kind: TextureViewKind, texture: TextureView) {

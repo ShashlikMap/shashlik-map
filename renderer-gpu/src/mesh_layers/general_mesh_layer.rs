@@ -131,7 +131,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
 
     fn update(&mut self, global_context: &mut GlobalContext) {
         self.render_data_holder.run_mut_action(|mesh| {
-            mesh.update(global_context, self.render_pipeline.get_instances_layouts());
+            mesh.update(global_context, self.render_pipeline.is_indirect());
         });
     }
 
@@ -142,16 +142,10 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
                 timestamp_writes: None,
             });
 
+            self.render_pipeline.setup_compute(&mut compute_pass, global_context);
             self.render_data_holder.run_mut_action(|mesh| {
-                if let (Some(instances_compute_bind_group),
-                    Some(instance_args_bind_group)) = (mesh.instances_compute_bind_group.as_ref(),
-                                                       mesh.instances_args_bind_group.as_ref()) {
-                    self.render_pipeline.set_instance_bind_group_compute(&mut compute_pass,
-                                                                         instances_compute_bind_group,
-                                                                         instance_args_bind_group);
-                    self.render_pipeline.compute(&mut compute_pass, global_context);
-                    mesh.compute_instanced(&mut compute_pass);
-                }
+                self.render_pipeline.compute_mesh(&mut compute_pass, mesh.get_mesh_buffers(), global_context);
+                mesh.compute_instanced(&mut compute_pass);
             });
         }
     }
@@ -169,13 +163,10 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
                 }
             }
 
-            self.render_pipeline.render(render_pass, global_context);
+            self.render_pipeline.setup_render(render_pass, global_context);
 
             self.render_data_holder.run_mut_action(|mesh| {
-                if self.render_pipeline.is_indirect()
-                    && let Some(instance_bind_group) = mesh.instances_bind_group.as_ref() {
-                    self.render_pipeline.set_instance_bind_group_render(render_pass, instance_bind_group);
-                }
+                self.render_pipeline.render_mesh(render_pass, mesh.get_mesh_buffers(), global_context);
                 mesh.render_instanced(render_pass, self.disable_skip_mesh_feature);
             });
         }

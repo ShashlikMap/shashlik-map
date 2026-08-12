@@ -59,6 +59,7 @@ pub mod wgpu_canvas;
 pub mod render_config;
 
 pub(crate) mod texture_view_resources;
+mod mesh_buffers;
 
 pub struct GpuRenderer {
     render_config: RenderConfig,

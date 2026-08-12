@@ -5,6 +5,7 @@ use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh_buffers::MeshBuffers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pipelines::RenderPipeline;
 use crate::view_projection::ViewProjection;
@@ -22,7 +23,7 @@ use wgpu::{CommandEncoder, RenderPass};
 pub(crate) struct ScreenShapeLayer<P: RenderPipeline> {
     render_pipeline: P,
     pipeline: Option<wgpu::RenderPipeline>,
-    meshes: HashMap<String, (Mesh, InstanceBuffer<P::InstanceInputType>)>,
+    meshes: HashMap<String, (Mesh, InstanceBuffer<P::InstanceInputType>, MeshBuffers)>,
     collision_task_controller: CollisionTaskController<
         (ShapeInfo, f32, String),
         HashMap<String, Vec<(DVec3, f32)>>,
@@ -69,6 +70,7 @@ impl<P: RenderPipeline> ScreenShapeLayer<P> {
                         mem::take(&mut batch.layers_indices),
                     ),
                     InstanceBuffer::default(),
+                    MeshBuffers::default()
                 )
             });
 
@@ -102,9 +104,6 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
     }
 
-    fn compute(&mut self, _encoder: &mut CommandEncoder,_global_context: &mut GlobalContext) {}
-
-
     fn update(&mut self, global_context: &mut GlobalContext) {
         let Ok(hm) = self.collision_task_controller.receiver.try_recv() else {
             return;
@@ -112,7 +111,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
         let cs_offset = global_context.view_projection.cs_offset;
         self.meshes
             .iter_mut()
-            .for_each(|(key, (_, instance_buffer))| {
+            .for_each(|(key, (_, instance_buffer, mesh_buffers))| {
                 let mut attrs = Vec::new();
                 if let Some(pos_alpha) = hm.get(key) {
                     P::InstanceInputType::fill_attrs(
@@ -127,18 +126,24 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
                     "ScreenInstanceBuffer",
                     global_context,
                     &attrs,
-                )
+                );
+                *mesh_buffers = MeshBuffers::with_instance_buffer(instance_buffer.buffer.clone());
             });
     }
+
+
+    fn compute(&mut self, _encoder: &mut CommandEncoder,_global_context: &mut GlobalContext) {}
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         if let Some(render_pipeline) = self.pipeline.as_ref() {
             render_pass.set_pipeline(render_pipeline);
 
-            self.render_pipeline.render(render_pass, global_context);
+            self.render_pipeline.setup_render(render_pass, global_context);
 
-            self.meshes.iter().for_each(|(_, (mesh, instance_buf))| {
-                mesh.render_instanced(Some(1), render_pass, false, instance_buf, false, None);
+            self.meshes.iter().for_each(|(_, (mesh, instance_buf, mesh_buffers))| {
+                self.render_pipeline.render_mesh(render_pass, mesh_buffers, global_context);
+                let instance_count = instance_buf.length;
+                mesh.render_instanced(render_pass, instance_count, false, None);
             });
         }
     }

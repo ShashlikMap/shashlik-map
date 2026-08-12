@@ -1,13 +1,14 @@
-use glam::Mat4;
-use crate::global_context::{GlobalContext};
+use crate::buffer_pool::BufferPool;
+use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
+use crate::mesh_buffers::MeshBuffers;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::pipelines::{RenderPipeline, WithTexture};
 use crate::vertex_attrs::TextInstanceInput;
+use glam::Mat4;
 use log::error;
 use wgpu::{BindGroup, CommandEncoder, RenderPass, StencilFaceState, TextureFormat, TextureUsages, TextureView};
-use crate::buffer_pool::BufferPool;
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone)]
@@ -22,6 +23,7 @@ pub struct OrthoMeshLayer<P: RenderPipeline + WithTexture> {
     pipeline: Option<wgpu::RenderPipeline>,
     mesh: Option<Mesh>,
     instance_buffer: InstanceBuffer<TextInstanceInput>,
+    mesh_buffers: MeshBuffers,
     texture_bind_group: Option<BindGroup>,
     full_screen_mesh: bool,
     is_bottom_right: bool,
@@ -39,6 +41,7 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
             pipeline: None,
             mesh: None,
             instance_buffer: InstanceBuffer::default(),
+            mesh_buffers: MeshBuffers::default(),
             texture_bind_group: None,
             full_screen_mesh,
             is_bottom_right,
@@ -117,9 +120,14 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
             matrix: Mat4::IDENTITY.to_cols_array_2d(),
             screen_space: 1,
         };
-        
+
         self.instance_buffer
             .update("quad_instance_buffer", global_context, &vec![attr]);
+        self.mesh_buffers = MeshBuffers {
+            instance_buffer: self.instance_buffer.buffer.clone(),
+            culled_buffer: None,
+            instance_args_buffer: None,
+        }
     }
 }
 
@@ -155,7 +163,7 @@ impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
                 render_pass.set_stencil_reference(1);
             }
 
-            self.render_pipeline.render(render_pass, global_context);
+            self.render_pipeline.setup_render(render_pass, global_context);
 
             // override params
             render_pass.set_immediates(
@@ -166,7 +174,9 @@ impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
                 render_pass.set_bind_group(1, texture_bind_group, &[]);
             }
 
-            mesh.render_instanced(Some(1), render_pass, false, &self.instance_buffer, false, None);
+            self.render_pipeline.render_mesh(render_pass, &self.mesh_buffers, global_context);
+            let instance_count = self.instance_buffer.length;
+            mesh.render_instanced(render_pass, instance_count, false, None);
         }
     }
 
