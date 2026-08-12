@@ -166,6 +166,8 @@ impl RenderPipeline for ShapePipeline {
             if let Some(instance_args_buffer) = mesh_buffers.instance_args_buffer.as_ref() &&
                 let Some(culled_buffer) = mesh_buffers.culled_buffer.as_ref() &&
                 let Some(instance_buffer) = mesh_buffers.instance_buffer.as_ref() {
+
+                // TODO Cache BindGroups to prevent creating every time
                 let instances_args_bind_group = Some(
                     global_context
                         .device()
@@ -180,7 +182,7 @@ impl RenderPipeline for ShapePipeline {
                 );
                 let instance_bind_group = self.create_instance_bind_group(global_context, &self.indirect_compute_instances_layout,
                                                                           &instance_buffer,
-                                                                          &culled_buffer, "kiol1");
+                                                                          &culled_buffer, "Indirect compute BindGroup");
 
                 compute_pass.set_bind_group(1, &instance_bind_group, &[]);
                 compute_pass.set_bind_group(2, &instances_args_bind_group, &[]);
@@ -203,10 +205,11 @@ impl RenderPipeline for ShapePipeline {
     fn render_mesh(&mut self, render_pass: &mut RenderPass, mesh_buffers: &MeshBuffers, global_context: &GlobalContext) {
         if self.indirect && let Some(instance_buffer) = mesh_buffers.instance_buffer.as_ref()
             && let Some(culled_buffer) = mesh_buffers.culled_buffer.as_ref() {
+            // TODO Cache BindGroup to prevent creating every time
             let instance_bind_group = self.
                 create_instance_bind_group(global_context, &self.indirect_instances_layout,
                                            instance_buffer,
-                                           culled_buffer, "kiol2");
+                                           culled_buffer, "Indirect render BindGroup");
             render_pass.set_bind_group(2, &instance_bind_group, &[]);
         } else if let Some(buffer) = mesh_buffers.instance_buffer.as_ref() {
             if buffer.size() > 0 {
