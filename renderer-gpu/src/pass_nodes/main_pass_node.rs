@@ -72,6 +72,20 @@ impl PassNode for MainPassNode {
         let mut render_pass = encoder.begin_render_pass(&descriptor);
 
         global_context.render_step = GlobalRenderStep::MainStep;
-        layers.render(&mut render_pass, global_context);
+        layers.shape_layer.disable_skip_mesh_feature = false;
+        layers.shape_layer.render(&mut render_pass, global_context);
+        layers.mesh_layer.render(&mut render_pass, global_context);
+        if global_context.is_shadow_mapping_enabled() {
+            layers.shadow_map_layer.render(&mut render_pass, global_context);
+        }
+        if global_context.is_ssao_enabled() {
+            layers.post_process_layer.render(&mut render_pass, global_context);
+        }
+        layers.screen_shape_layer.render(&mut render_pass, global_context);
+        layers.text_feature_layers.render(&mut render_pass, global_context);
+        layers.feature_layers.render(&mut render_pass, global_context);
+        if global_context.preview_type().is_enabled() {
+            layers.preview_mesh_layer.render(&mut render_pass, global_context);
+        }
     }
 }

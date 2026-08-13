@@ -39,7 +39,6 @@ pub mod canvas_api;
 pub mod draw_commands;
 pub mod mesh;
 pub mod messages;
-pub mod modifier;
 pub mod styles;
 mod svg;
 mod text;

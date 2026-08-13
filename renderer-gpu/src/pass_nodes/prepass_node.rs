@@ -19,6 +19,7 @@ impl PassNode for PrepassNode {
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {
-        layers.compute(encoder, global_context);
+        // only feature layers for now
+        layers.feature_layers.compute(encoder, global_context);
     }
 }
