@@ -127,7 +127,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
                     global_context,
                     &attrs,
                 );
-                *mesh_buffers = MeshBuffers::with_instance_buffer(instance_buffer.buffer.clone());
+                *mesh_buffers = MeshBuffers::builder().with_instance_buffer(instance_buffer.buffer.clone());
             });
     }
 

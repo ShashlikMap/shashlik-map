@@ -163,9 +163,9 @@ impl RenderPipeline for ShapePipeline {
                     mesh_buffers: &MeshBuffers,
                     global_context: &GlobalContext) {
         if self.indirect {
-            if let Some(instance_args_buffer) = mesh_buffers.instance_args_buffer.as_ref() &&
-                let Some(culled_buffer) = mesh_buffers.culled_buffer.as_ref() &&
-                let Some(instance_buffer) = mesh_buffers.instance_buffer.as_ref() {
+            if let Some(instance_args_buffer) = mesh_buffers.args_buffer() &&
+                let Some(culled_buffer) = mesh_buffers.culled_buffer() &&
+                let Some(instance_buffer) = mesh_buffers.instance_buffer() {
 
                 // TODO Cache BindGroups to prevent creating every time
                 let instances_args_bind_group = Some(
@@ -203,15 +203,15 @@ impl RenderPipeline for ShapePipeline {
     }
 
     fn render_mesh(&mut self, render_pass: &mut RenderPass, mesh_buffers: &MeshBuffers, global_context: &GlobalContext) {
-        if self.indirect && let Some(instance_buffer) = mesh_buffers.instance_buffer.as_ref()
-            && let Some(culled_buffer) = mesh_buffers.culled_buffer.as_ref() {
+        if self.indirect && let Some(instance_buffer) = mesh_buffers.instance_buffer()
+            && let Some(culled_buffer) = mesh_buffers.culled_buffer() {
             // TODO Cache BindGroup to prevent creating every time
             let instance_bind_group = self.
                 create_instance_bind_group(global_context, &self.indirect_instances_layout,
                                            instance_buffer,
                                            culled_buffer, "Indirect render BindGroup");
             render_pass.set_bind_group(2, &instance_bind_group, &[]);
-        } else if let Some(buffer) = mesh_buffers.instance_buffer.as_ref() {
+        } else if let Some(buffer) = mesh_buffers.instance_buffer() {
             if buffer.size() > 0 {
                 render_pass.set_vertex_buffer(1, buffer.slice(..));
             } else {

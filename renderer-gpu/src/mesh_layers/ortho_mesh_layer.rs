@@ -123,11 +123,8 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
 
         self.instance_buffer
             .update("quad_instance_buffer", global_context, &vec![attr]);
-        self.mesh_buffers = MeshBuffers {
-            instance_buffer: self.instance_buffer.buffer.clone(),
-            culled_buffer: None,
-            instance_args_buffer: None,
-        }
+        self.mesh_buffers = MeshBuffers::builder()
+            .with_instance_buffer(self.instance_buffer.buffer.clone())
     }
 }
 
