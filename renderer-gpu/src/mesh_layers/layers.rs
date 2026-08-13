@@ -1,4 +1,4 @@
-use crate::global_context::{GlobalContext, GlobalRenderStep};
+use crate::global_context::GlobalContext;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::feature_layers::{FeatureLayerTag, FeatureLayers, NameLayerTag};
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
@@ -10,7 +10,6 @@ use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use renderer_common::WorldShapeFeatureLayerTag;
 use rustybuzz::ttf_parser;
-use wgpu::{CommandEncoder, RenderPass};
 
 pub(crate) const WORLD_TEXT_LAYER: &'static str = "world_text_layer";
 pub(crate) const SCREEN_TEXT_LAYER: &'static str = "screen_text_layer";
@@ -128,6 +127,24 @@ impl Layers {
         }
     }
 
+    pub fn prepare(&mut self, global_context: &GlobalContext) {
+        self.all_layers()
+            .iter_mut()
+            .for_each(|layer| layer.prepare(global_context));
+    }
+
+    pub fn update(&mut self, global_context: &mut GlobalContext) {
+        self.all_layers()
+            .iter_mut()
+            .for_each(|layer| layer.update(global_context));
+    }
+
+    pub fn clear_by_key(&mut self, key: &str) {
+        self.all_layers()
+            .iter_mut()
+            .for_each(|layer| layer.clear_by_key(key));
+    }
+
     pub fn feature_layers(&mut self, tag: &str) -> Option<&mut GeneralMeshLayer<ShapePipeline>> {
         self.feature_layers.get_layer(tag)
     }
@@ -143,32 +160,5 @@ impl Layers {
             &mut self.feature_layers,
             &mut self.preview_mesh_layer,
         ]
-    }
-}
-
-// TODO Refactor
-impl BaseMeshLayer for Layers {
-    fn prepare(&mut self, global_context: &GlobalContext) {
-        self.all_layers()
-            .iter_mut()
-            .for_each(|layer| layer.prepare(global_context));
-    }
-
-    fn update(&mut self, global_context: &mut GlobalContext) {
-        self.all_layers()
-            .iter_mut()
-            .for_each(|layer| layer.update(global_context));
-    }
-
-    fn compute(&mut self, encoder: &mut CommandEncoder, global_context: &mut GlobalContext) {
-    }
-
-    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-    }
-
-    fn clear_by_key(&mut self, key: &str) {
-        self.all_layers()
-            .iter_mut()
-            .for_each(|layer| layer.clear_by_key(key));
     }
 }
