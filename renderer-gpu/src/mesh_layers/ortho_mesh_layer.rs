@@ -123,11 +123,8 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
 
         self.instance_buffer
             .update("quad_instance_buffer", global_context, &vec![attr]);
-        self.mesh_buffers = MeshBuffers {
-            instance_buffer: self.instance_buffer.buffer.clone(),
-            culled_buffer: None,
-            instance_args_buffer: None,
-        }
+        self.mesh_buffers = MeshBuffers::builder()
+            .with_instance_buffer(self.instance_buffer.buffer.clone())
     }
 }
 
@@ -174,7 +171,7 @@ impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
                 render_pass.set_bind_group(1, texture_bind_group, &[]);
             }
 
-            self.render_pipeline.render_mesh(render_pass, &self.mesh_buffers, global_context);
+            self.render_pipeline.render_mesh(render_pass, &self.mesh_buffers);
             let instance_count = self.instance_buffer.length;
             mesh.render_instanced(render_pass, instance_count, false, None);
         }

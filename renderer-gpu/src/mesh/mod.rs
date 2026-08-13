@@ -1,8 +1,8 @@
 use crate::global_context::GlobalContext;
 use bytemuck::Pod;
 use std::marker::PhantomData;
-use wgpu::util::DeviceExt;
 use wgpu::Buffer;
+use wgpu::util::DeviceExt;
 
 pub mod mesh;
 pub mod mesh_instance_input;
@@ -34,12 +34,15 @@ impl<T: Pod> InstanceBuffer<T> {
         if data_len <= self.max_length
             && let Some(buffer) = self.buffer.as_ref()
         {
-            let queue = global_context.queue();
-            queue.write_buffer(buffer, 0, bytemuck::cast_slice(data.as_slice()));
-            // FIXME write_buffer_with doesn't work as expected, why?
-            // if let Some(mut buf_view) = queue.write_buffer_with(buffer, 0, data_size) {
-            //     buf_view.copy_from_slice(data);
-            // }
+            // write only non-zero data, if zero then only write once
+            if data_len != 0 || data_len != self.length {
+                let queue = global_context.queue();
+                queue.write_buffer(buffer, 0, bytemuck::cast_slice(data.as_slice()));
+                // FIXME write_buffer_with doesn't work as expected, why?
+                // if let Some(mut buf_view) = queue.write_buffer_with(buffer, 0, data_size) {
+                //     buf_view.copy_from_slice(data);
+                // }
+            }
         } else {
             let device = global_context.device();
             self.buffer = Some(

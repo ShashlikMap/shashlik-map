@@ -60,6 +60,7 @@ pub mod render_config;
 
 pub(crate) mod texture_view_resources;
 mod mesh_buffers;
+pub(crate) mod bind_group_cache;
 
 pub struct GpuRenderer {
     render_config: RenderConfig,

@@ -127,7 +127,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
                     global_context,
                     &attrs,
                 );
-                *mesh_buffers = MeshBuffers::with_instance_buffer(instance_buffer.buffer.clone());
+                *mesh_buffers = MeshBuffers::builder().with_instance_buffer(instance_buffer.buffer.clone());
             });
     }
 
@@ -141,9 +141,11 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
             self.render_pipeline.setup_render(render_pass, global_context);
 
             self.meshes.iter().for_each(|(_, (mesh, instance_buf, mesh_buffers))| {
-                self.render_pipeline.render_mesh(render_pass, mesh_buffers, global_context);
                 let instance_count = instance_buf.length;
-                mesh.render_instanced(render_pass, instance_count, false, None);
+                if instance_count > 0 {
+                    self.render_pipeline.render_mesh(render_pass, mesh_buffers);
+                    mesh.render_instanced(render_pass, instance_count, false, None);
+                }
             });
         }
     }

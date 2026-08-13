@@ -114,17 +114,14 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 });
 
                 if let Some(instance_buffer) = self.instance_buffer.buffer.as_ref() {
-                    self.mesh_buffers = MeshBuffers {
-                        instance_buffer: Some(instance_buffer.clone()),
-                        culled_buffer: Some(culled_buffer),
-                        instance_args_buffer: Some(indirect_args),
-                    };
+                    self.mesh_buffers = MeshBuffers::builder()
+                        .with_instance_buffer(Some(instance_buffer.clone()))
+                        .with_culled_and_args_buffer(Some(culled_buffer), Some(indirect_args))
                 }
 
             } else {
-                self.mesh_buffers.instance_buffer = self.instance_buffer.buffer.clone();
-                self.mesh_buffers.culled_buffer = None;
-                self.mesh_buffers.instance_args_buffer = None;
+                self.mesh_buffers = MeshBuffers::builder()
+                    .with_instance_buffer(self.instance_buffer.buffer.clone())
             }
         }
     }
@@ -133,7 +130,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         &self,
         compute_pass: &mut ComputePass,
     ) {
-        if self.mesh_buffers.instance_buffer.is_some() {
+        if self.mesh_buffers.instance_buffer().is_some() {
             // workgroups are batches by 64/128
             let instance_buffer_length = self.get_instance_buffer_length() as u32;
             let mut x = instance_buffer_length / 64;
@@ -158,7 +155,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         render_pass: &mut RenderPass,
         disable_skip_mesh_feature: bool,
     ) {
-        let instances_args_buffer = self.mesh_buffers.instance_args_buffer.as_ref();
+        let instances_args_buffer = self.mesh_buffers.args_buffer();
         let instance_count = self.get_instance_buffer_length();
         self.mesh.render_instanced(
             render_pass,
