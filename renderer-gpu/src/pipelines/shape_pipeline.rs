@@ -164,6 +164,14 @@ impl ShapePipeline {
 impl RenderPipeline for ShapePipeline {
     type InstanceInputType = ShapeInstanceInput;
 
+    fn setup_compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {
+        // we call it every frame to clear internal bind group cache for indirect buffers
+        if self.indirect {
+            self.bind_group_cache.clear_if_needed();
+        }
+    }
+
+
     fn compute_mesh(&mut self,
                     compute_pass: &mut ComputePass,
                     mesh_buffers: &MeshBuffers) {

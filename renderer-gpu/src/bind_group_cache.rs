@@ -19,6 +19,7 @@ impl BindGroupKey {
 pub(crate) struct BindGroupCache {
     device: Device,
     bind_groups: FxHashMap<BindGroupKey, BindGroup>,
+    accessed: bool
 }
 
 impl BindGroupCache {
@@ -26,6 +27,7 @@ impl BindGroupCache {
         Self {
             bind_groups: FxHashMap::default(),
             device: device.clone(),
+            accessed: false
         }
     }
 
@@ -34,8 +36,17 @@ impl BindGroupCache {
         bind_group_key: BindGroupKey,
         action: impl FnOnce(&Device) -> BindGroup,
     ) -> &BindGroup {
+        self.accessed = true;
         self.bind_groups
             .entry(bind_group_key)
             .or_insert_with(|| action(&self.device))
+    }
+
+    /// If the cache hasn't been accessed between frames, clear it!
+    pub fn clear_if_needed(&mut self) {
+        if !self.accessed && !self.bind_groups.is_empty() {
+            self.bind_groups.clear();
+        }
+        self.accessed = false;
     }
 }
