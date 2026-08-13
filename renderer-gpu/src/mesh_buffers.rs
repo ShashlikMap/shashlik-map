@@ -50,24 +50,24 @@ impl MeshBuffers {
 }
 
 static BUFFER_ID: AtomicUsize = AtomicUsize::new(0);
+pub(crate) type UniqueBufferId = usize;
 
 #[derive(Clone)]
 pub struct BufferWithId {
-    id: usize,
+    id: UniqueBufferId,
     buffer: Buffer,
 }
 
 impl BufferWithId {
     pub fn new(buffer: Buffer) -> Self {
         let id = BUFFER_ID.fetch_add(1, Ordering::Relaxed);
-        // println!("buf id = {id}");
         Self {
             id,
             buffer,
         }
     }
 
-    pub fn id(&self) -> usize {
+    pub fn id(&self) -> UniqueBufferId {
         self.id
     }
     pub fn buffer(&self) -> &Buffer {

@@ -144,7 +144,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
 
             self.render_pipeline.setup_compute(&mut compute_pass, global_context);
             self.render_data_holder.run_mut_action(|mesh| {
-                self.render_pipeline.compute_mesh(&mut compute_pass, mesh.get_mesh_buffers(), global_context);
+                self.render_pipeline.compute_mesh(&mut compute_pass, mesh.get_mesh_buffers());
                 mesh.compute_instanced(&mut compute_pass);
             });
         }
@@ -166,7 +166,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
             self.render_pipeline.setup_render(render_pass, global_context);
 
             self.render_data_holder.run_mut_action(|mesh| {
-                self.render_pipeline.render_mesh(render_pass, mesh.get_mesh_buffers(), global_context);
+                self.render_pipeline.render_mesh(render_pass, mesh.get_mesh_buffers());
                 mesh.render_instanced(render_pass, self.disable_skip_mesh_feature);
             });
         }

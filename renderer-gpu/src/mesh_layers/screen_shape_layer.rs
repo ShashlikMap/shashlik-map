@@ -141,7 +141,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
             self.render_pipeline.setup_render(render_pass, global_context);
 
             self.meshes.iter().for_each(|(_, (mesh, instance_buf, mesh_buffers))| {
-                self.render_pipeline.render_mesh(render_pass, mesh_buffers, global_context);
+                self.render_pipeline.render_mesh(render_pass, mesh_buffers);
                 let instance_count = instance_buf.length;
                 mesh.render_instanced(render_pass, instance_count, false, None);
             });

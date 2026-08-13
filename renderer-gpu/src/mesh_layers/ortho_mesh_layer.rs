@@ -171,7 +171,7 @@ impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
                 render_pass.set_bind_group(1, texture_bind_group, &[]);
             }
 
-            self.render_pipeline.render_mesh(render_pass, &self.mesh_buffers, global_context);
+            self.render_pipeline.render_mesh(render_pass, &self.mesh_buffers);
             let instance_count = self.instance_buffer.length;
             mesh.render_instanced(render_pass, instance_count, false, None);
         }

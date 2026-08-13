@@ -166,8 +166,7 @@ impl RenderPipeline for ShapePipeline {
 
     fn compute_mesh(&mut self,
                     compute_pass: &mut ComputePass,
-                    mesh_buffers: &MeshBuffers,
-                    global_context: &mut GlobalContext) {
+                    mesh_buffers: &MeshBuffers) {
         if self.indirect {
             if let Some(instance_args_buffer) = mesh_buffers.args_buffer_with_id() &&
                 let Some(culled_buffer) = mesh_buffers.culled_buffer_with_id() &&
@@ -217,7 +216,7 @@ impl RenderPipeline for ShapePipeline {
         }
     }
 
-    fn render_mesh(&mut self, render_pass: &mut RenderPass, mesh_buffers: &MeshBuffers, global_context: &mut GlobalContext) {
+    fn render_mesh(&mut self, render_pass: &mut RenderPass, mesh_buffers: &MeshBuffers) {
         if self.indirect && let Some(instance_buffer) = mesh_buffers.instance_buffer_with_id()
             && let Some(culled_buffer) = mesh_buffers.culled_buffer_with_id() {
             let instance_bind_group = self.bind_group_cache.get_bind_group_or_create(
