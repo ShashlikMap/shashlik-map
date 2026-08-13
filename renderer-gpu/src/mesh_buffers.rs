@@ -60,6 +60,7 @@ pub struct BufferWithId {
 impl BufferWithId {
     pub fn new(buffer: Buffer) -> Self {
         let id = BUFFER_ID.fetch_add(1, Ordering::Relaxed);
+        // println!("buf id = {id}");
         Self {
             id,
             buffer,
