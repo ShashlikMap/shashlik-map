@@ -5,17 +5,21 @@ use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
 use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
 use wgpu::{CommandEncoder, TextureFormat, TextureView};
+use renderer_common::WorldShapeFeatureLayerTag;
+use crate::pipelines::shape_pipeline::ShapePipeline;
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
     depth_texture_view: TextureView,
+    feature_shape_pipelines: Vec<(String, ShapePipeline)>,
     preview_screen_mesh_pipeline: ScreenMeshPipeline,
     shadow_map_screen_mesh_pipeline: ScreenMeshPipeline,
     post_process_screen_mesh_pipeline: ScreenMeshPipeline,
 }
 
 impl MainPassNode {
-    pub fn new(global_context: &GlobalContext) -> Self {
+    pub fn new(global_context: &GlobalContext,
+               world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>) -> Self {
         let size = (
             global_context.config().width,
             global_context.config().height,
@@ -54,6 +58,19 @@ impl MainPassNode {
             false
         );
 
+        let feature_shape_pipelines = world_shape_feature_layer_tag
+            .iter()
+            .map(|tag| {
+                let pipeline = ShapePipeline::new(
+                    global_context,
+                    tag.vertex_shader,
+                    tag.indirect,
+                    tag.single_instance_step,
+                );
+                (tag.name.to_string(), pipeline)
+            })
+            .collect();
+
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
             depth_texture_view: create_depth_texture(
@@ -62,6 +79,7 @@ impl MainPassNode {
                 TextureFormat::Depth24PlusStencil8,
                 global_context.device(),
             ),
+            feature_shape_pipelines,
             preview_screen_mesh_pipeline,
             shadow_map_screen_mesh_pipeline,
             post_process_screen_mesh_pipeline
@@ -135,9 +153,13 @@ impl PassNode for MainPassNode {
             .text_feature_layers
             .render(&mut render_pass, global_context);
 
-        layers
-            .feature_layers
-            .render(&mut render_pass, global_context);
+        self.feature_shape_pipelines
+            .iter_mut()
+            .for_each(|(feature_tag, shape_pipeline)| {
+                if let Some(layer) = layers.feature_layers.get_layer(feature_tag) {
+                    layer.render_new(&mut render_pass, shape_pipeline, global_context)
+                }
+            });
 
         if global_context.preview_type().is_enabled() {
             layers.preview_mesh_layer.render_new(
