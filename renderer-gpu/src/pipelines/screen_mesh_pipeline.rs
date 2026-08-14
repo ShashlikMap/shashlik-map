@@ -128,10 +128,6 @@ impl RenderPipeline for ScreenMeshPipeline {
     fn is_indirect(&self) -> bool {
         false
     }
-    fn support_g_buf(&self) -> bool {
-        false
-    }
-    
 }
 
 impl WithTexture for ScreenMeshPipeline {

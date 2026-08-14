@@ -310,8 +310,4 @@ impl RenderPipeline for ShapePipeline {
     fn is_indirect(&self) -> bool {
         self.indirect
     }
-
-    fn support_g_buf(&self) -> bool {
-        false
-    }
 }

@@ -35,7 +35,6 @@ pub trait RenderPipeline {
     }
     fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_>;
     fn is_indirect(&self) -> bool;
-    fn support_g_buf(&self) -> bool;
 }
 
 pub trait WithTexture {

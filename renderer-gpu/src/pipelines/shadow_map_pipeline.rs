@@ -57,8 +57,4 @@ impl RenderPipeline for ShadowMapPipeline {
     fn is_indirect(&self) -> bool {
         false
     }
-
-    fn support_g_buf(&self) -> bool {
-        false
-    }
 }
