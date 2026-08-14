@@ -152,7 +152,8 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         if let Some(render_pipeline) = self.pipeline.as_ref() {
-            if global_context.check_render_step(GlobalRenderStep::GBufferStep) && let Some(g_buffer_pipeline) = self.g_buffer_pipeline.as_ref() {
+            if global_context.check_render_step(GlobalRenderStep::GBufferStep)
+                && let Some(g_buffer_pipeline) = self.g_buffer_pipeline.as_ref() {
                 render_pass.set_pipeline(g_buffer_pipeline);
             } else if global_context.check_render_step(GlobalRenderStep::ShadowStep) {
                 render_pass.set_pipeline(self.shadow_pipeline.as_ref().unwrap());

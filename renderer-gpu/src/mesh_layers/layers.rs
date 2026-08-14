@@ -1,4 +1,4 @@
-use crate::global_context::{GlobalContext, GlobalRenderStep};
+use crate::global_context::GlobalContext;
 use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::feature_layers::{FeatureLayerTag, FeatureLayers, NameLayerTag};
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
@@ -10,7 +10,6 @@ use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use renderer_common::WorldShapeFeatureLayerTag;
 use rustybuzz::ttf_parser;
-use wgpu::{CommandEncoder, RenderPass};
 
 pub(crate) const WORLD_TEXT_LAYER: &'static str = "world_text_layer";
 pub(crate) const SCREEN_TEXT_LAYER: &'static str = "screen_text_layer";
@@ -22,7 +21,7 @@ impl FeatureLayerTag for WorldShapeFeatureLayerTag {
 }
 
 pub(crate) struct Layers {
-    feature_layers: FeatureLayers<GeneralMeshLayer<ShapePipeline>>,
+    pub feature_layers: FeatureLayers<GeneralMeshLayer<ShapePipeline>>,
     pub shape_layer: GeneralMeshLayer<ShapePipeline>,
     pub mesh_layer: GeneralMeshLayer<MeshPipeline>,
     pub shadow_map_layer: OrthoMeshLayer<ScreenMeshPipeline>,
@@ -128,6 +127,24 @@ impl Layers {
         }
     }
 
+    pub fn prepare(&mut self, global_context: &GlobalContext) {
+        self.all_layers()
+            .iter_mut()
+            .for_each(|layer| layer.prepare(global_context));
+    }
+
+    pub fn update(&mut self, global_context: &mut GlobalContext) {
+        self.all_layers()
+            .iter_mut()
+            .for_each(|layer| layer.update(global_context));
+    }
+
+    pub fn clear_by_key(&mut self, key: &str) {
+        self.all_layers()
+            .iter_mut()
+            .for_each(|layer| layer.clear_by_key(key));
+    }
+
     pub fn feature_layers(&mut self, tag: &str) -> Option<&mut GeneralMeshLayer<ShapePipeline>> {
         self.feature_layers.get_layer(tag)
     }
@@ -143,61 +160,5 @@ impl Layers {
             &mut self.feature_layers,
             &mut self.preview_mesh_layer,
         ]
-    }
-}
-
-// TODO Refactor
-impl BaseMeshLayer for Layers {
-    fn prepare(&mut self, global_context: &GlobalContext) {
-        self.all_layers()
-            .iter_mut()
-            .for_each(|layer| layer.prepare(global_context));
-    }
-
-    fn update(&mut self, global_context: &mut GlobalContext) {
-        self.all_layers()
-            .iter_mut()
-            .for_each(|layer| layer.update(global_context));
-    }
-
-    fn compute(&mut self, encoder: &mut CommandEncoder, global_context: &mut GlobalContext) {
-        // only feature layer for now
-        self.feature_layers.compute(encoder, global_context);
-    }
-
-    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        match global_context.render_step {
-            GlobalRenderStep::MainStep => {
-                self.shape_layer.disable_skip_mesh_feature = false;
-                self.shape_layer.render(render_pass, global_context);
-                self.mesh_layer.render(render_pass, global_context);
-                if global_context.is_shadow_mapping_enabled() {
-                    self.shadow_map_layer.render(render_pass, global_context);
-                }
-                if global_context.is_ssao_enabled() {
-                    self.post_process_layer.render(render_pass, global_context);
-                }
-                self.screen_shape_layer.render(render_pass, global_context);
-                self.text_feature_layers.render(render_pass, global_context);
-                self.feature_layers.render(render_pass, global_context);
-                if global_context.preview_type().is_enabled() {
-                    self.preview_mesh_layer.render(render_pass, global_context);
-                }
-            }
-            GlobalRenderStep::ShadowStep | GlobalRenderStep::GBufferStep => {
-                self.mesh_layer.render(render_pass, global_context);
-            }
-            GlobalRenderStep::PreviewStep => {
-                self.shape_layer.disable_skip_mesh_feature = true;
-                self.shape_layer.render(render_pass, global_context);
-                self.feature_layers.render(render_pass, global_context);
-            }
-        }
-    }
-
-    fn clear_by_key(&mut self, key: &str) {
-        self.all_layers()
-            .iter_mut()
-            .for_each(|layer| layer.clear_by_key(key));
     }
 }

@@ -118,6 +118,6 @@ impl PassNode for GBufferPassNode {
         let mut render_pass = encoder.begin_render_pass(&descriptor);
 
         global_context.render_step = GlobalRenderStep::GBufferStep;
-        layers.render(&mut render_pass, global_context);
+        layers.mesh_layer.render(&mut render_pass, global_context);
     }
 }

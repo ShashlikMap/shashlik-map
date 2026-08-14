@@ -1,7 +1,6 @@
 extern crate core;
 
 use crate::buffer_pool::BufferPool;
-use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::layers::SCREEN_TEXT_LAYER;
 use crate::messages::RendererMessage;
 use crate::pass_nodes::PassNode;
@@ -39,7 +38,6 @@ pub mod canvas_api;
 pub mod draw_commands;
 pub mod mesh;
 pub mod messages;
-pub mod modifier;
 pub mod styles;
 mod svg;
 mod text;

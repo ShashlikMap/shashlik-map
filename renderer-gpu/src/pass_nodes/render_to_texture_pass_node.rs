@@ -60,6 +60,8 @@ impl PassNode for RenderToTexturePassNode {
         });
 
         global_context.render_step = GlobalRenderStep::PreviewStep;
-        layers.render(&mut render_pass, global_context);
+        layers.shape_layer.disable_skip_mesh_feature = true;
+        layers.shape_layer.render(&mut render_pass, global_context);
+        layers.feature_layers.render(&mut render_pass, global_context);
     }
 }
