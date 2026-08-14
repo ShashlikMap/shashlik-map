@@ -11,6 +11,7 @@ use crate::pipelines::shape_pipeline::ShapePipeline;
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
     depth_texture_view: TextureView,
+    default_shape_pipeline: ShapePipeline,
     feature_shape_pipelines: Vec<(String, ShapePipeline)>,
     preview_screen_mesh_pipeline: ScreenMeshPipeline,
     shadow_map_screen_mesh_pipeline: ScreenMeshPipeline,
@@ -24,6 +25,8 @@ impl MainPassNode {
             global_context.config().width,
             global_context.config().height,
         );
+
+        let default_shape_pipeline = ShapePipeline::new(global_context, None, false, true);
 
         let preview_screen_mesh_pipeline = ScreenMeshPipeline::new(
             global_context,
@@ -79,6 +82,7 @@ impl MainPassNode {
                 TextureFormat::Depth24PlusStencil8,
                 global_context.device(),
             ),
+            default_shape_pipeline,
             feature_shape_pipelines,
             preview_screen_mesh_pipeline,
             shadow_map_screen_mesh_pipeline,
@@ -130,9 +134,13 @@ impl PassNode for MainPassNode {
         let mut render_pass = encoder.begin_render_pass(&descriptor);
 
         global_context.render_step = GlobalRenderStep::MainStep;
+
+        // TODO Can it go to pipeline?
         layers.shape_layer.disable_skip_mesh_feature = false;
-        layers.shape_layer.render(&mut render_pass, global_context);
+        layers.shape_layer.render_new(&mut render_pass, &mut self.default_shape_pipeline, global_context);
+
         layers.mesh_layer.render(&mut render_pass, global_context);
+
         if global_context.is_shadow_mapping_enabled() {
             // FIXME Something wrong with stencil
             layers.shadow_map_layer.render_new(
