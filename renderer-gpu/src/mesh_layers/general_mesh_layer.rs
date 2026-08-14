@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use crate::draw_commands::mesh2d_draw_command::Mesh2dCommandBatch;
 use crate::global_context::{GlobalContext, GlobalRenderStep};
 use crate::mesh::mesh::Mesh;
@@ -5,11 +6,14 @@ use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::mesh_layers::BaseMeshLayer;
 use renderer_common::render_modifier::SpatialData;
-use crate::pipelines::RenderPipeline;
+use crate::pipelines::{OwnedVertexState, RenderPipeline};
 use std::mem;
+use wesl::include_wesl;
 use wgpu::TextureFormat::Rgba16Float;
-use wgpu::{CommandEncoder, ComputePassDescriptor, Face, RenderPass, TextureFormat};
+use wgpu::{CommandEncoder, ComputePassDescriptor, Face, RenderPass, ShaderModuleDescriptor, ShaderSource, TextureFormat};
+use renderer_common::geometry_data::MeshVertex;
 use crate::buffer_pool::BufferPool;
+use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
 
 pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
@@ -103,8 +107,14 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
 
         if self.render_pipeline.support_g_buf() {
+            let g_buf_frag_shader_module = global_context.device().create_shader_module(ShaderModuleDescriptor {
+                label: Some("g_buf_frag_shader"),
+                source: ShaderSource::Wgsl(Cow::from(include_wesl!("g_buf_frag_shader"))),
+            });
+
             g_buffer_descriptor.label = Some("g_buffer_pipeline");
             let fragment = g_buffer_descriptor.fragment.as_mut().unwrap();
+            fragment.module = g_buf_frag_shader_module;
             fragment.targets = vec![Some(wgpu::ColorTargetState {
                 format: Rgba16Float,
                 blend: None,
@@ -121,7 +131,17 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
             self.g_buffer_pipeline = Some(g_buffer_descriptor.to_render_pipeline(global_context.device()));
         }
 
+        let shadow_map_shader_module = global_context.device().create_shader_module(ShaderModuleDescriptor {
+            label: Some("shadow_map"),
+            source: ShaderSource::Wgsl(Cow::from(include_wesl!("shadow_map"))),
+        });
         shadow_descriptor.label = Some("shadow_pipeline");
+        shadow_descriptor.vertex = OwnedVertexState {
+            module: shadow_map_shader_module,
+            entry_point: Some("vs_main"),
+            compilation_options: Default::default(),
+            buffers: vec![MeshVertex::desc(), GeneralInstanceInput::desc()],
+        };
         shadow_descriptor.fragment = None;
         shadow_descriptor.primitive.cull_mode = Some(Face::Front);
         shadow_descriptor.multisample.count = 1;
