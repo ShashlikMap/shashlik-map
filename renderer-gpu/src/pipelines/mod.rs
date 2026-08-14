@@ -27,7 +27,7 @@ pub trait RenderPipeline {
     fn compute_mesh(&mut self, _compute_pass: &mut ComputePass,
                     _mesh: &MeshBuffers) {}
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext);
-    fn render_mesh(&mut self, render_pass: &mut RenderPass, mesh_buffers: &MeshBuffers) {
+    fn setup_mesh_buffers(&mut self, render_pass: &mut RenderPass, mesh_buffers: &MeshBuffers) {
         // by default all instances go to vertex buffer slot 1
         if let Some(buffer) = mesh_buffers.instance_buffer() {
             render_pass.set_vertex_buffer(1, buffer.slice(..));

@@ -63,6 +63,7 @@ impl Layers {
                             vs_shader: None,
                             fs_shader: "",
                         },
+                        false
                     ),
                     global_context,
                     font.clone(),
@@ -90,10 +91,10 @@ impl Layers {
                         vs_shader: Some("vs_main_sm"),
                         fs_shader: "fs_main_sm",
                     },
+                    true
                 ),
                 true,
                 false,
-                true,
             ),
             text_feature_layers,
             preview_mesh_layer: OrthoMeshLayer::new(
@@ -105,10 +106,10 @@ impl Layers {
                         vs_shader: None,
                         fs_shader: "fs_main_textured",
                     },
+                    false
                 ),
                 false,
                 true,
-                false,
             ),
             post_process_layer: OrthoMeshLayer::new(
                 ScreenMeshPipeline::new(
@@ -119,9 +120,9 @@ impl Layers {
                         vs_shader: None,
                         fs_shader: "fs_main_tex_storage",
                     },
+                    false
                 ),
                 true,
-                false,
                 false,
             ),
         }

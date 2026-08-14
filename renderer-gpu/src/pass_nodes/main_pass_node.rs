@@ -1,13 +1,17 @@
 use crate::global_context::{GlobalContext, GlobalRenderStep};
-use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::layers::Layers;
+use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
 use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
+use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
 use wgpu::{CommandEncoder, TextureFormat, TextureView};
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
     depth_texture_view: TextureView,
+    preview_screen_mesh_pipeline: ScreenMeshPipeline,
+    shadow_map_screen_mesh_pipeline: ScreenMeshPipeline,
+    post_process_screen_mesh_pipeline: ScreenMeshPipeline,
 }
 
 impl MainPassNode {
@@ -15,6 +19,39 @@ impl MainPassNode {
         let size = (
             global_context.config().width,
             global_context.config().height,
+        );
+
+        let preview_screen_mesh_pipeline = ScreenMeshPipeline::new(
+            global_context,
+            TextureInfo {
+                use_texture: true,
+                filterable: true,
+                vs_shader: None,
+                fs_shader: "fs_main_textured",
+            },
+            false
+        );
+
+        let shadow_map_screen_mesh_pipeline = ScreenMeshPipeline::new(
+            global_context,
+            TextureInfo {
+                use_texture: true,
+                filterable: false,
+                vs_shader: Some("vs_main_sm"),
+                fs_shader: "fs_main_sm",
+            },
+            true
+        );
+
+        let post_process_screen_mesh_pipeline = ScreenMeshPipeline::new(
+            global_context,
+            TextureInfo {
+                use_texture: true,
+                filterable: true,
+                vs_shader: None,
+                fs_shader: "fs_main_tex_storage",
+            },
+            false
         );
 
         Self {
@@ -25,6 +62,9 @@ impl MainPassNode {
                 TextureFormat::Depth24PlusStencil8,
                 global_context.device(),
             ),
+            preview_screen_mesh_pipeline,
+            shadow_map_screen_mesh_pipeline,
+            post_process_screen_mesh_pipeline
         }
     }
 }
@@ -76,16 +116,35 @@ impl PassNode for MainPassNode {
         layers.shape_layer.render(&mut render_pass, global_context);
         layers.mesh_layer.render(&mut render_pass, global_context);
         if global_context.is_shadow_mapping_enabled() {
-            layers.shadow_map_layer.render(&mut render_pass, global_context);
+            // FIXME Something wrong with stencil
+            layers.shadow_map_layer.render_new(
+                &mut render_pass,
+                &mut self.shadow_map_screen_mesh_pipeline,
+                global_context,
+            );
         }
         if global_context.is_ssao_enabled() {
-            layers.post_process_layer.render(&mut render_pass, global_context);
+            layers
+                .post_process_layer
+                .render_new(&mut render_pass, &mut self.post_process_screen_mesh_pipeline, global_context);
         }
-        layers.screen_shape_layer.render(&mut render_pass, global_context);
-        layers.text_feature_layers.render(&mut render_pass, global_context);
-        layers.feature_layers.render(&mut render_pass, global_context);
+        layers
+            .screen_shape_layer
+            .render(&mut render_pass, global_context);
+        layers
+            .text_feature_layers
+            .render(&mut render_pass, global_context);
+
+        layers
+            .feature_layers
+            .render(&mut render_pass, global_context);
+
         if global_context.preview_type().is_enabled() {
-            layers.preview_mesh_layer.render(&mut render_pass, global_context);
+            layers.preview_mesh_layer.render_new(
+                &mut render_pass,
+                &mut self.preview_screen_mesh_pipeline,
+                global_context,
+            );
         }
     }
 }

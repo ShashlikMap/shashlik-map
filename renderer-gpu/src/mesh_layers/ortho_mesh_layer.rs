@@ -3,12 +3,12 @@ use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh_buffers::MeshBuffers;
-use crate::mesh_layers::BaseMeshLayer;
+use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
 use crate::pipelines::{RenderPipeline, WithTexture};
 use crate::vertex_attrs::TextInstanceInput;
 use glam::Mat4;
 use log::error;
-use wgpu::{BindGroup, CommandEncoder, RenderPass, StencilFaceState, TextureFormat, TextureUsages, TextureView};
+use wgpu::{BindGroup, CommandEncoder, RenderPass, TextureFormat, TextureUsages, TextureView};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone)]
@@ -28,14 +28,12 @@ pub struct OrthoMeshLayer<P: RenderPipeline + WithTexture> {
     full_screen_mesh: bool,
     is_bottom_right: bool,
     texture_type: TextureType,
-    read_stencil: bool
 }
 
 impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
     pub fn new(render_pipeline: P,
                full_screen_mesh: bool,
-               is_bottom_right: bool,
-               read_stencil: bool) -> Self {
+               is_bottom_right: bool) -> Self {
         Self {
             render_pipeline,
             pipeline: None,
@@ -46,7 +44,6 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
             full_screen_mesh,
             is_bottom_right,
             texture_type: TextureType::GeneralRgba,
-            read_stencil
         }
     }
 
@@ -130,21 +127,7 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
 
 impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
     fn prepare(&mut self, global_context: &GlobalContext) {
-        let mut descriptor = self.render_pipeline.prepare(global_context);
-        if self.read_stencil {
-            descriptor.depth_stencil.as_mut().unwrap().stencil = wgpu::StencilState {
-                front: StencilFaceState::IGNORE,
-                back: wgpu::StencilFaceState {
-                    compare: wgpu::CompareFunction::NotEqual,
-                    fail_op: wgpu::StencilOperation::Keep,
-                    depth_fail_op: wgpu::StencilOperation::Keep,
-                    pass_op: wgpu::StencilOperation::Keep,
-                },
-                read_mask: 0xFF,
-                write_mask: 0x00,
-            };
-        }
-
+        let descriptor = self.render_pipeline.prepare(global_context);
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
     }
 
@@ -156,10 +139,6 @@ impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         if let (Some(render_pipeline), Some(mesh)) = (self.pipeline.as_ref(), self.mesh.as_ref()) {
             render_pass.set_pipeline(render_pipeline);
-            if self.read_stencil {
-                render_pass.set_stencil_reference(1);
-            }
-
             self.render_pipeline.setup_render(render_pass, global_context);
 
             // override params
@@ -171,11 +150,32 @@ impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
                 render_pass.set_bind_group(1, texture_bind_group, &[]);
             }
 
-            self.render_pipeline.render_mesh(render_pass, &self.mesh_buffers);
+            self.render_pipeline.setup_mesh_buffers(render_pass, &self.mesh_buffers);
             let instance_count = self.instance_buffer.length;
             mesh.render_instanced(render_pass, instance_count, false, None);
         }
     }
 
     fn clear_by_key(&mut self, _key: &str) {}
+}
+
+impl<P: RenderPipeline + WithTexture> BaseMeshLayerNew for OrthoMeshLayer<P> {
+    fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline, global_context: &mut GlobalContext) {
+        if let Some(mesh) = self.mesh.as_ref() {
+            render_pipeline.setup_render(render_pass, global_context);
+            // override params
+            // TODO Should it be here or inside pipeline?
+            render_pass.set_immediates(
+                0,
+                bytemuck::bytes_of(&(self.texture_type as u32)),
+            );
+            if let Some(texture_bind_group) = self.texture_bind_group.as_ref() {
+                render_pass.set_bind_group(1, texture_bind_group, &[]);
+            }
+
+            render_pipeline.setup_mesh_buffers(render_pass, &self.mesh_buffers);
+            let instance_count = self.instance_buffer.length;
+            mesh.render_instanced(render_pass, instance_count, false, None);
+        }
+    }
 }

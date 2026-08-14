@@ -10,7 +10,9 @@ use wgpu::{BindGroup, BindGroupLayout, CompareFunction, RenderPass, SamplerDescr
 pub struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
     texture_bind_group_layout: BindGroupLayout,
-    texture_info: TextureInfo
+    texture_info: TextureInfo,
+    read_stencil: bool,
+    pipeline: Option<wgpu::RenderPipeline>,
 }
 
 pub struct TextureInfo {
@@ -21,7 +23,7 @@ pub struct TextureInfo {
 }
 
 impl ScreenMeshPipeline {
-    pub fn new(global_context: &GlobalContext, texture_info: TextureInfo) -> Self {
+    pub fn new(global_context: &GlobalContext, texture_info: TextureInfo, read_stencil: bool) -> Self {
         let device = global_context.device();
 
         let texture_bind_group_layout =
@@ -65,11 +67,16 @@ impl ScreenMeshPipeline {
                 label: Some("texture_bind_group_layout"),
             });
 
-        Self {
+        let mut result = Self {
             mesh_pipeline: MeshPipeline::new(global_context, false, false),
             texture_bind_group_layout,
             texture_info,
-        }
+            read_stencil,
+            pipeline: None,
+        };
+
+        result.pipeline = Some(result.prepare(global_context).to_render_pipeline(global_context.device()));
+        result
     }
 }
 
@@ -77,6 +84,13 @@ impl RenderPipeline for ScreenMeshPipeline {
     type InstanceInputType = ShapeInstanceInput;
     
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        if let Some(pipeline) = self.pipeline.as_ref() {
+            render_pass.set_pipeline(pipeline);
+            if self.read_stencil {
+                render_pass.set_stencil_reference(1);
+            }
+        }
+
         self.mesh_pipeline.setup_render(render_pass, global_context);
     }
 
