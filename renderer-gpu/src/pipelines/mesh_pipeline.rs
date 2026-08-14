@@ -7,7 +7,7 @@ use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
 use renderer_common::geometry_data::MeshVertex;
 use std::borrow::Cow;
 use wesl::include_wesl;
-use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, TextureFormat, TextureUsages};
+use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilState, TextureFormat, TextureUsages};
 
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,
@@ -15,10 +15,11 @@ pub struct MeshPipeline {
     pub bind_group: BindGroup,
     depth_bind_group: BindGroup,
     depth_dummy_bind_group: BindGroup,
+    write_to_stencil: bool,
 }
 
 impl MeshPipeline {
-    pub fn new(global_context: &GlobalContext, enable_depth_group: bool) -> Self {
+    pub fn new(global_context: &GlobalContext, enable_depth_group: bool, write_to_stencil: bool) -> Self {
         let device = global_context.device();
         let entries = vec![wgpu::BindGroupLayoutEntry {
             binding: 0,
@@ -127,6 +128,7 @@ impl MeshPipeline {
             bind_group,
             depth_bind_group,
             depth_dummy_bind_group,
+            write_to_stencil,
         }
     }
 }
@@ -135,6 +137,10 @@ impl RenderPipeline for MeshPipeline {
     type InstanceInputType = GeneralInstanceInput;
 
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        if self.write_to_stencil {
+            render_pass.set_stencil_reference(1);
+        }
+        
         let mut mask = 0;
         if global_context.is_shadow_mapping_enabled() {
             mask |= 2;
@@ -170,6 +176,21 @@ impl RenderPipeline for MeshPipeline {
             label: Some("mesh_shader"),
             source: ShaderSource::Wgsl(Cow::from(include_wesl!("mesh_shader"))),
         });
+        let stencil = if self.write_to_stencil {
+            wgpu::StencilState {
+                front: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::Always,
+                    fail_op: wgpu::StencilOperation::Keep,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Replace,
+                },
+                back: wgpu::StencilFaceState::default(),
+                read_mask: 0xFF,
+                write_mask: 0xFF,
+            }
+        } else {
+            StencilState::default()
+        };
         OwnedRenderPipelineDescriptor {
             label: Some("Mesh Render Pipeline"),
             layout: Some(pipeline_layout),
@@ -198,7 +219,7 @@ impl RenderPipeline for MeshPipeline {
                     format: TextureFormat::Depth24PlusStencil8,
                     depth_write_enabled: Some(true),
                     depth_compare: Some(CompareFunction::Less),
-                    stencil: Default::default(),
+                    stencil,
                     bias: Default::default(),
                 }
             }),

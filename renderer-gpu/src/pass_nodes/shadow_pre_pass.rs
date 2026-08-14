@@ -45,9 +45,6 @@ impl PassNode for ShadowPrepass {
         };
 
         let mut render_pass = encoder.begin_render_pass(&descriptor);
-
-        // global_context.render_step = GlobalRenderStep::ShadowStep;
         layers.mesh_layer.render_new(&mut render_pass, &mut self.shadow_map_pipeline, global_context)
-        // layers.mesh_layer.render(&mut render_pass, global_context);
     }
 }

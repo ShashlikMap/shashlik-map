@@ -15,17 +15,15 @@ pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
     pipeline: Option<wgpu::RenderPipeline>,
     render_data_holder: RenderDataHolder<PositionedMesh<P::InstanceInputType>>,
     pub disable_skip_mesh_feature: bool,
-    write_to_stencil: bool,
 }
 
 impl<P: RenderPipeline> GeneralMeshLayer<P> {
-    pub fn new(render_pipeline: P, write_to_stencil: bool) -> Self {
+    pub fn new(render_pipeline: P) -> Self {
         GeneralMeshLayer {
             render_pipeline,
             pipeline: None,
             render_data_holder: RenderDataHolder::new(),
             disable_skip_mesh_feature: false,
-            write_to_stencil
         }
     }
     pub fn add(
@@ -78,21 +76,7 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
 
 impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
     fn prepare(&mut self, global_context: &GlobalContext) {
-        let mut descriptor = self.render_pipeline.prepare(global_context);
-        if self.write_to_stencil {
-            descriptor.depth_stencil.as_mut().unwrap().stencil = wgpu::StencilState {
-                front: wgpu::StencilFaceState {
-                    compare: wgpu::CompareFunction::Always,
-                    fail_op: wgpu::StencilOperation::Keep,
-                    depth_fail_op: wgpu::StencilOperation::Keep,
-                    pass_op: wgpu::StencilOperation::Replace,
-                },
-                back: wgpu::StencilFaceState::default(),
-                read_mask: 0xFF,
-                write_mask: 0xFF,
-            };
-        }
-
+        let descriptor = self.render_pipeline.prepare(global_context);
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
     }
 
@@ -120,9 +104,6 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         if let Some(render_pipeline) = self.pipeline.as_ref() {
             render_pass.set_pipeline(render_pipeline);
-            if self.write_to_stencil {
-                render_pass.set_stencil_reference(1);
-            }
 
             self.render_pipeline.setup_render(render_pass, global_context);
 

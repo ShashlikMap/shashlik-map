@@ -13,7 +13,7 @@ pub struct GBufPipeline {
 
 impl GBufPipeline {
     pub fn new(global_context: &GlobalContext) -> Self {
-        let mesh_pipeline = MeshPipeline::new(global_context, false);
+        let mesh_pipeline = MeshPipeline::new(global_context, false, false);
         let mut root_descriptor = mesh_pipeline.prepare(global_context);
 
         let g_buf_frag_shader_module =

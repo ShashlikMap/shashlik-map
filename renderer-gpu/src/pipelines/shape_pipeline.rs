@@ -11,6 +11,7 @@ use crate::bind_group_cache::{BindGroupCache, BindGroupKey};
 
 pub struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
+    pipeline: Option<wgpu::RenderPipeline>,
     vs_func_name: Option<&'static str>,
     bind_group_cache: BindGroupCache,
     indirect_render_instances_layout: BindGroupLayout,
@@ -48,7 +49,7 @@ impl ShapePipeline {
             label: Some("shape_indirect_args_layout"),
         });
 
-        let mesh_pipeline = MeshPipeline::new(global_context, false);
+        let mesh_pipeline = MeshPipeline::new(global_context, false, false);
         let compute_cull_shader = global_context.device().create_shader_module(ShaderModuleDescriptor {
             label: Some("shape_culling"),
             source: ShaderSource::Wgsl(Cow::from(include_wesl!("shape_culling"))),
@@ -89,8 +90,9 @@ impl ShapePipeline {
             cache: None,
         });
 
-        Self {
+        let mut result = Self {
             mesh_pipeline,
+            pipeline: None,
             vs_func_name,
             bind_group_cache: BindGroupCache::new(global_context.device()),
             indirect_render_instances_layout,
@@ -99,8 +101,12 @@ impl ShapePipeline {
             culling_compute_pipeline,
             reset_culling_compute_pipeline,
             indirect,
-            single_instance_step
-        }
+            single_instance_step,
+        };
+        let descriptor = result.prepare(global_context);
+        result.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
+
+        result
     }
 
     fn create_indirect_layout(global_context: &GlobalContext, is_compute_pipeline: bool) -> BindGroupLayout {
@@ -218,6 +224,10 @@ impl RenderPipeline for ShapePipeline {
     }
 
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        if let Some(pipeline) = self.pipeline.as_ref() {
+            render_pass.set_pipeline(pipeline);
+        }
+
         self.mesh_pipeline.setup_render(render_pass, global_context);
         if let Some(bind_group) = global_context.style_bind_group.as_ref() {
             render_pass.set_bind_group(Self::SHADER_STYLE_GROUP_INDEX, bind_group, &[]);

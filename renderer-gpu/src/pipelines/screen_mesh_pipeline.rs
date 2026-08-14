@@ -66,7 +66,7 @@ impl ScreenMeshPipeline {
             });
 
         Self {
-            mesh_pipeline: MeshPipeline::new(global_context, false),
+            mesh_pipeline: MeshPipeline::new(global_context, false, false),
             texture_bind_group_layout,
             texture_info,
         }

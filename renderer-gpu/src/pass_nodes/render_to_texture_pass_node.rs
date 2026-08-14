@@ -1,14 +1,16 @@
-use crate::global_context::{GlobalContext, GlobalRenderStep};
+use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
-use crate::mesh_layers::BaseMeshLayer;
-use crate::pass_nodes::{PassNode, BACKGROUND_ATTACHMENT_COLOR};
-use crate::textures::{create_color_binding_texture, create_common_texture, create_depth_texture, SAMPLE_COUNT};
+use crate::mesh_layers::BaseMeshLayerNew;
+use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
+use crate::pipelines::shape_pipeline::ShapePipeline;
+use crate::textures::{SAMPLE_COUNT, create_color_binding_texture, create_common_texture, create_depth_texture};
 use wgpu::{CommandEncoder, TextureFormat, TextureView};
 
 pub(crate) struct RenderToTexturePassNode {
     msaa_texture_view: TextureView,
     depth_texture_view: TextureView,
     pub rt_texture_view: TextureView,
+    shape_pipeline: ShapePipeline
 }
 
 impl RenderToTexturePassNode {
@@ -23,6 +25,7 @@ impl RenderToTexturePassNode {
                                                      TextureFormat::Depth24PlusStencil8,
                                                      global_context.device()),
             rt_texture_view: create_color_binding_texture(size, global_context),
+            shape_pipeline: ShapePipeline::new(global_context, None, false, true)
         }
     }
 }
@@ -59,9 +62,8 @@ impl PassNode for RenderToTexturePassNode {
             multiview_mask: None,
         });
 
-        global_context.render_step = GlobalRenderStep::PreviewStep;
         layers.shape_layer.disable_skip_mesh_feature = true;
-        layers.shape_layer.render(&mut render_pass, global_context);
-        layers.feature_layers.render(&mut render_pass, global_context);
+        layers.shape_layer.render_new(&mut render_pass, &mut self.shape_pipeline, global_context);
+        // layers.feature_layers.render(&mut render_pass, global_context);
     }
 }
