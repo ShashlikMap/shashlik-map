@@ -50,7 +50,7 @@ impl ShapePipeline {
             label: Some("shape_indirect_args_layout"),
         });
 
-        let mesh_pipeline = MeshPipeline::new(global_context, false, false);
+        let mesh_pipeline = MeshPipeline::new(global_context, false, false, false);
         let compute_cull_shader = global_context.device().create_shader_module(ShaderModuleDescriptor {
             label: Some("shape_culling"),
             source: ShaderSource::Wgsl(Cow::from(include_wesl!("shape_culling"))),

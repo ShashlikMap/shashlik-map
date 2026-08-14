@@ -14,7 +14,7 @@ pub struct ShadowMapPipeline {
 
 impl ShadowMapPipeline {
     pub fn new(global_context: &GlobalContext) -> Self {
-        let mesh_pipeline = MeshPipeline::new(global_context, false, false);
+        let mesh_pipeline = MeshPipeline::new(global_context, false, false, false);
         let mut root_descriptor = mesh_pipeline.prepare(global_context);
         let shadow_map_shader_module =
             global_context

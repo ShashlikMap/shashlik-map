@@ -68,7 +68,7 @@ impl ScreenMeshPipeline {
             });
 
         let mut result = Self {
-            mesh_pipeline: MeshPipeline::new(global_context, false, false),
+            mesh_pipeline: MeshPipeline::new(global_context, false, false, false),
             texture_bind_group_layout,
             texture_info,
             read_stencil,

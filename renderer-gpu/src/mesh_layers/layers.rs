@@ -74,7 +74,7 @@ impl Layers {
         Layers {
             world_shapes_feature_tags,
             feature_layers,
-            mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context, true, true)),
+            mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context, true, true, false)),
             shape_layer: GeneralMeshLayer::new(
                 ShapePipeline::new(global_context, None, false, true),
             ),

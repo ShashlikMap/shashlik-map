@@ -10,6 +10,7 @@ use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilState, TextureFormat, TextureUsages};
 
 pub struct MeshPipeline {
+    pipeline: Option<wgpu::RenderPipeline>,
     pub bind_group_layout: BindGroupLayout,
     depth_bind_group_layout: Option<BindGroupLayout>,
     pub bind_group: BindGroup,
@@ -19,7 +20,7 @@ pub struct MeshPipeline {
 }
 
 impl MeshPipeline {
-    pub fn new(global_context: &GlobalContext, enable_depth_group: bool, write_to_stencil: bool) -> Self {
+    pub fn new(global_context: &GlobalContext, enable_depth_group: bool, write_to_stencil: bool, main_pipeline: bool) -> Self {
         let device = global_context.device();
         let entries = vec![wgpu::BindGroupLayoutEntry {
             binding: 0,
@@ -122,14 +123,19 @@ impl MeshPipeline {
             label: Some("mesh_pipeline_dummy_depth_bind_group"),
         });
         let depth_bind_group_layout= if enable_depth_group { Some(depth_bind_group_layout) } else { None };
-        MeshPipeline {
+        let mut result = MeshPipeline {
+            pipeline: None,
             bind_group_layout,
             depth_bind_group_layout,
             bind_group,
             depth_bind_group,
             depth_dummy_bind_group,
             write_to_stencil,
+        };
+        if main_pipeline {
+            result.pipeline = Some(result.prepare(global_context).to_render_pipeline(global_context.device()));
         }
+        result
     }
 }
 
@@ -137,6 +143,9 @@ impl RenderPipeline for MeshPipeline {
     type InstanceInputType = GeneralInstanceInput;
 
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        if let Some(pipeline) = self.pipeline.as_mut() {
+            render_pass.set_pipeline(pipeline);
+        }
         if self.write_to_stencil {
             render_pass.set_stencil_reference(1);
         }
