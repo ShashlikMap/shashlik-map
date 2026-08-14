@@ -1,25 +1,18 @@
-use std::borrow::Cow;
+use crate::buffer_pool::BufferPool;
 use crate::draw_commands::mesh2d_draw_command::Mesh2dCommandBatch;
-use crate::global_context::{GlobalContext, GlobalRenderStep};
+use crate::global_context::GlobalContext;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
+use crate::pipelines::RenderPipeline;
 use renderer_common::render_modifier::SpatialData;
-use crate::pipelines::{OwnedVertexState, RenderPipeline};
 use std::mem;
-use wesl::include_wesl;
-use wgpu::TextureFormat::Rgba16Float;
-use wgpu::{CommandEncoder, ComputePassDescriptor, Face, RenderPass, ShaderModuleDescriptor, ShaderSource, TextureFormat};
-use renderer_common::geometry_data::MeshVertex;
-use crate::buffer_pool::BufferPool;
-use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
+use wgpu::{CommandEncoder, ComputePassDescriptor, RenderPass};
 
 pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
     pipeline: Option<wgpu::RenderPipeline>,
-    g_buffer_pipeline: Option<wgpu::RenderPipeline>,
-    shadow_pipeline: Option<wgpu::RenderPipeline>,
     render_data_holder: RenderDataHolder<PositionedMesh<P::InstanceInputType>>,
     pub disable_skip_mesh_feature: bool,
     write_to_stencil: bool,
@@ -30,8 +23,6 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
         GeneralMeshLayer {
             render_pipeline,
             pipeline: None,
-            g_buffer_pipeline: None,
-            shadow_pipeline: None,
             render_data_holder: RenderDataHolder::new(),
             disable_skip_mesh_feature: false,
             write_to_stencil
@@ -88,8 +79,6 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
 impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
     fn prepare(&mut self, global_context: &GlobalContext) {
         let mut descriptor = self.render_pipeline.prepare(global_context);
-        let mut g_buffer_descriptor = descriptor.clone();
-        let mut shadow_descriptor = descriptor.clone();
         if self.write_to_stencil {
             descriptor.depth_stencil.as_mut().unwrap().stencil = wgpu::StencilState {
                 front: wgpu::StencilFaceState {
@@ -105,48 +94,6 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
         }
 
         self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
-
-        if self.render_pipeline.support_g_buf() {
-            let g_buf_frag_shader_module = global_context.device().create_shader_module(ShaderModuleDescriptor {
-                label: Some("g_buf_frag_shader"),
-                source: ShaderSource::Wgsl(Cow::from(include_wesl!("g_buf_frag_shader"))),
-            });
-
-            g_buffer_descriptor.label = Some("g_buffer_pipeline");
-            let fragment = g_buffer_descriptor.fragment.as_mut().unwrap();
-            fragment.module = g_buf_frag_shader_module;
-            fragment.targets = vec![Some(wgpu::ColorTargetState {
-                format: Rgba16Float,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            }), Some(wgpu::ColorTargetState {
-                format: Rgba16Float,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            })];
-            fragment.entry_point = Some("fs_main_g_buf");
-            g_buffer_descriptor.multisample.count = 1;
-            // render pass for g buffer uses Depth24Plus but original descriptor Depth24PlusStencil8
-            g_buffer_descriptor.depth_stencil.as_mut().unwrap().format = TextureFormat::Depth24Plus;
-            self.g_buffer_pipeline = Some(g_buffer_descriptor.to_render_pipeline(global_context.device()));
-        }
-
-        let shadow_map_shader_module = global_context.device().create_shader_module(ShaderModuleDescriptor {
-            label: Some("shadow_map"),
-            source: ShaderSource::Wgsl(Cow::from(include_wesl!("shadow_map"))),
-        });
-        shadow_descriptor.label = Some("shadow_pipeline");
-        shadow_descriptor.vertex = OwnedVertexState {
-            module: shadow_map_shader_module,
-            entry_point: Some("vs_main"),
-            compilation_options: Default::default(),
-            buffers: vec![MeshVertex::desc(), GeneralInstanceInput::desc()],
-        };
-        shadow_descriptor.fragment = None;
-        shadow_descriptor.primitive.cull_mode = Some(Face::Front);
-        shadow_descriptor.multisample.count = 1;
-        shadow_descriptor.depth_stencil.as_mut().unwrap().format = wgpu::TextureFormat::Depth32Float;
-        self.shadow_pipeline = Some(shadow_descriptor.to_render_pipeline(global_context.device()));
     }
 
     fn update(&mut self, global_context: &mut GlobalContext) {
@@ -172,14 +119,9 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
 
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
         if let Some(render_pipeline) = self.pipeline.as_ref() {
-            if global_context.check_render_step(GlobalRenderStep::GBufferStep)
-                && let Some(g_buffer_pipeline) = self.g_buffer_pipeline.as_ref() {
-                render_pass.set_pipeline(g_buffer_pipeline);
-            } else {
-                render_pass.set_pipeline(render_pipeline);
-                if self.write_to_stencil {
-                    render_pass.set_stencil_reference(1);
-                }
+            render_pass.set_pipeline(render_pipeline);
+            if self.write_to_stencil {
+                render_pass.set_stencil_reference(1);
             }
 
             self.render_pipeline.setup_render(render_pass, global_context);

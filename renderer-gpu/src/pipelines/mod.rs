@@ -11,6 +11,7 @@ pub mod mesh_pipeline;
 pub mod shape_pipeline;
 pub mod screen_mesh_pipeline;
 pub mod shadow_map_pipeline;
+pub mod g_buf_pipeline;
 
 pub trait RenderPipeline {
     type InstanceInputType: MeshInstanceInput;
