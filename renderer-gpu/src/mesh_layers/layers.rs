@@ -21,6 +21,7 @@ impl FeatureLayerTag for WorldShapeFeatureLayerTag {
 }
 
 pub(crate) struct Layers {
+    pub world_shapes_feature_tags: Vec<WorldShapeFeatureLayerTag>,
     pub feature_layers: FeatureLayers<GeneralMeshLayer<ShapePipeline>>,
     pub shape_layer: GeneralMeshLayer<ShapePipeline>,
     pub mesh_layer: GeneralMeshLayer<MeshPipeline>,
@@ -37,7 +38,7 @@ impl Layers {
         global_context: &mut GlobalContext,
         font: ttf_parser::Face<'static>,
     ) -> Layers {
-        let feature_layers = FeatureLayers::new(world_shapes_feature_tags, |tag| {
+        let feature_layers = FeatureLayers::new(world_shapes_feature_tags.clone(), |tag| {
             GeneralMeshLayer::new(
                 ShapePipeline::new(
                     global_context,
@@ -70,6 +71,7 @@ impl Layers {
         );
 
         Layers {
+            world_shapes_feature_tags,
             feature_layers,
             mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context, true, true)),
             shape_layer: GeneralMeshLayer::new(

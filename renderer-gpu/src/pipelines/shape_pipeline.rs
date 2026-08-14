@@ -30,7 +30,8 @@ impl ShapePipeline {
     const RENDER_LAYOUT_ID: usize = 1;
 
 
-    pub fn new(global_context: &GlobalContext, vs_func_name: Option<&'static str>,
+    pub fn new(global_context: &GlobalContext,
+               vs_func_name: Option<&'static str>,
                indirect: bool,
                single_instance_step: bool) -> Self {
         let indirect_render_instances_layout = Self::create_indirect_layout(global_context, false);

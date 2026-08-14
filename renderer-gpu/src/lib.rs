@@ -219,7 +219,8 @@ impl GpuRenderer {
 
         self.preview_textures.clear();
         if self.render_config.preview_type != PreviewType::None {
-            let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
+            let rt_node = RenderToTexturePassNode::new(&mut self.global_context,
+                                                       self.layers.world_shapes_feature_tags.clone());
 
             let texture_view_resources = &self.global_context.texture_view_resources;
             PreviewType::iter().for_each(|preview_type| {

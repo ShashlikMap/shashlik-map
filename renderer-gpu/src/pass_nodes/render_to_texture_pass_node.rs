@@ -1,37 +1,59 @@
 use crate::global_context::GlobalContext;
-use crate::mesh_layers::layers::Layers;
 use crate::mesh_layers::BaseMeshLayerNew;
+use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
 use crate::pipelines::shape_pipeline::ShapePipeline;
-use crate::textures::{SAMPLE_COUNT, create_color_binding_texture, create_common_texture, create_depth_texture};
+use crate::textures::{
+    SAMPLE_COUNT, create_color_binding_texture, create_common_texture, create_depth_texture,
+};
+use renderer_common::WorldShapeFeatureLayerTag;
 use wgpu::{CommandEncoder, TextureFormat, TextureView};
 
 pub(crate) struct RenderToTexturePassNode {
     msaa_texture_view: TextureView,
     depth_texture_view: TextureView,
     pub rt_texture_view: TextureView,
-    shape_pipeline: ShapePipeline
+    shape_pipeline: ShapePipeline,
+    feature_shape_pipelines: Vec<(String, ShapePipeline)>,
 }
 
 impl RenderToTexturePassNode {
-    pub fn new(global_context: &GlobalContext) -> Self {
+    pub fn new(
+        global_context: &GlobalContext,
+        world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>,
+    ) -> Self {
         let size = (
             global_context.config().width / 4,
             global_context.config().height / 4,
         );
+        let feature_shape_pipelines = world_shape_feature_layer_tag
+            .iter()
+            .map(|tag| {
+                let pipeline = ShapePipeline::new(
+                    global_context,
+                    tag.vertex_shader,
+                    tag.indirect,
+                    tag.single_instance_step,
+                );
+                (tag.name.to_string(), pipeline)
+            })
+            .collect();
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
-            depth_texture_view: create_depth_texture(size, SAMPLE_COUNT,
-                                                     TextureFormat::Depth24PlusStencil8,
-                                                     global_context.device()),
+            depth_texture_view: create_depth_texture(
+                size,
+                SAMPLE_COUNT,
+                TextureFormat::Depth24PlusStencil8,
+                global_context.device(),
+            ),
             rt_texture_view: create_color_binding_texture(size, global_context),
-            shape_pipeline: ShapePipeline::new(global_context, None, false, true)
+            shape_pipeline: ShapePipeline::new(global_context, None, false, true),
+            feature_shape_pipelines,
         }
     }
 }
 
 impl PassNode for RenderToTexturePassNode {
- 
     fn run(
         &mut self,
         encoder: &mut CommandEncoder,
@@ -63,7 +85,15 @@ impl PassNode for RenderToTexturePassNode {
         });
 
         layers.shape_layer.disable_skip_mesh_feature = true;
-        layers.shape_layer.render_new(&mut render_pass, &mut self.shape_pipeline, global_context);
-        // layers.feature_layers.render(&mut render_pass, global_context);
+        layers
+            .shape_layer
+            .render_new(&mut render_pass, &mut self.shape_pipeline, global_context);
+        self.feature_shape_pipelines
+            .iter_mut()
+            .for_each(|(feature_tag, shape_pipeline)| {
+                if let Some(layer) = layers.feature_layers.get_layer(feature_tag) {
+                    layer.render_new(&mut render_pass, shape_pipeline, global_context)
+                }
+            });
     }
 }
