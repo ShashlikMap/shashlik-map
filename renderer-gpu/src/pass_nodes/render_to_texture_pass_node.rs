@@ -30,7 +30,7 @@ impl RenderToTexturePassNode {
 impl PassNode for RenderToTexturePassNode {
  
     fn run(
-        &self,
+        &mut self,
         encoder: &mut CommandEncoder,
         layers: &mut Layers,
         global_context: &mut GlobalContext,

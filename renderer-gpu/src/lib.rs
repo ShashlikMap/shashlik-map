@@ -196,7 +196,7 @@ impl GpuRenderer {
         self.pass_nodes = vec![Box::new(pre_pass_node)];
 
         if self.render_config.shadow_enabled {
-            let shadow_pass_node = ShadowPrepass::new();
+            let shadow_pass_node = ShadowPrepass::new(&self.global_context);
             self.pass_nodes.push(Box::new(shadow_pass_node));
 
             self.layers
@@ -289,7 +289,7 @@ impl GpuRenderer {
                 item.update_text(fps.as_str(), 1.0);
             });
 
-        self.pass_nodes.iter().for_each(|node| {
+        self.pass_nodes.iter_mut().for_each(|node| {
             node.run(
                 &mut encoder,
                 &mut self.layers,

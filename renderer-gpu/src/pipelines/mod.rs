@@ -10,6 +10,7 @@ use wgpu::{BindGroup, ColorTargetState, ComputePass, DepthStencilState, Device, 
 pub mod mesh_pipeline;
 pub mod shape_pipeline;
 pub mod screen_mesh_pipeline;
+pub mod shadow_map_pipeline;
 
 pub trait RenderPipeline {
     type InstanceInputType: MeshInstanceInput;

@@ -4,7 +4,7 @@ use crate::global_context::{GlobalContext, GlobalRenderStep};
 use crate::mesh::mesh::Mesh;
 use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
-use crate::mesh_layers::BaseMeshLayer;
+use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
 use renderer_common::render_modifier::SpatialData;
 use crate::pipelines::{OwnedVertexState, RenderPipeline};
 use std::mem;
@@ -175,8 +175,6 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
             if global_context.check_render_step(GlobalRenderStep::GBufferStep)
                 && let Some(g_buffer_pipeline) = self.g_buffer_pipeline.as_ref() {
                 render_pass.set_pipeline(g_buffer_pipeline);
-            } else if global_context.check_render_step(GlobalRenderStep::ShadowStep) {
-                render_pass.set_pipeline(self.shadow_pipeline.as_ref().unwrap());
             } else {
                 render_pass.set_pipeline(render_pipeline);
                 if self.write_to_stencil {
@@ -195,5 +193,15 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
 
     fn clear_by_key(&mut self, key: &str) {
         self.render_data_holder.remove(key);
+    }
+}
+
+impl<P: RenderPipeline> BaseMeshLayerNew for GeneralMeshLayer<P> {
+    fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline, global_context: &mut GlobalContext) {
+        render_pipeline.setup_render(render_pass, global_context);
+        self.render_data_holder.run_mut_action(|mesh| {
+            render_pipeline.render_mesh(render_pass, mesh.get_mesh_buffers());
+            mesh.render_instanced(render_pass, self.disable_skip_mesh_feature);
+        });
     }
 }

@@ -54,7 +54,7 @@ impl GBufferPassNode {
 
 impl PassNode for GBufferPassNode {
     fn run(
-        &self,
+        &mut self,
         encoder: &mut CommandEncoder,
         layers: &mut Layers,
         global_context: &mut GlobalContext,

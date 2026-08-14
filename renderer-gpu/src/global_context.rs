@@ -13,7 +13,6 @@ use wgpu::{BindGroup, BindGroupLayout, Device};
 #[derive(Eq, PartialEq)]
 pub(crate) enum GlobalRenderStep {
     MainStep,
-    ShadowStep,
     GBufferStep,
     PreviewStep,
 }

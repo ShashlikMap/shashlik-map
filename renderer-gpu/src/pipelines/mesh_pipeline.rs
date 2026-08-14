@@ -1,5 +1,5 @@
 use crate::global_context::GlobalContext;
-use crate::global_context::GlobalRenderStep::{MainStep, ShadowStep};
+use crate::global_context::GlobalRenderStep::{MainStep};
 use crate::pipelines::{OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline};
 use crate::texture_view_resources::TextureViewKind;
 use crate::textures::{SAMPLE_COUNT, TextureData, create_simple_texture};
@@ -135,7 +135,7 @@ impl RenderPipeline for MeshPipeline {
     type InstanceInputType = GeneralInstanceInput;
 
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
-        let mut mask = global_context.check_render_step(ShadowStep) as u32;
+        let mut mask = 0;
         if global_context.is_shadow_mapping_enabled() {
             mask |= 2;
         }

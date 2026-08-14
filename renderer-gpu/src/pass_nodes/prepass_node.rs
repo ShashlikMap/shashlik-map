@@ -14,7 +14,7 @@ impl PrepassNode {
 
 impl PassNode for PrepassNode {
     fn run(
-        &self,
+        &mut self,
         encoder: &mut CommandEncoder,
         layers: &mut Layers,
         global_context: &mut GlobalContext,

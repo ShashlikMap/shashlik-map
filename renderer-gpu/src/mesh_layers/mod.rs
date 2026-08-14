@@ -1,5 +1,6 @@
 use crate::global_context::GlobalContext;
 use wgpu::{CommandEncoder, RenderPass};
+use crate::pipelines::RenderPipeline;
 
 pub mod general_mesh_layer;
 pub mod text_mesh_layer;
@@ -18,4 +19,8 @@ pub trait BaseMeshLayer {
     fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext);
 
     fn clear_by_key(&mut self, key: &str);
+}
+
+pub trait BaseMeshLayerNew {
+    fn render_new(&mut self, _render_pass: &mut RenderPass, _render_pipeline: &mut impl RenderPipeline, _global_context: &mut GlobalContext) {}
 }
