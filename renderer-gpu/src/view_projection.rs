@@ -100,6 +100,9 @@ impl ViewProjection {
             .to_cols_array_2d();
         let view_proj = FLIP_Y * data.view_proj_matrix;
 
+        self.shadow_texture_size = render_config.shadow_texture_size();
+        self.is_shadow_enabled = render_config.shadow_enabled;
+        self.scale_2d_3d = data.scale_2d_3d;
 
         self.ortho_for_shadow_map(&mut data.view_light_matrix, data.scale);
 
@@ -120,15 +123,12 @@ impl ViewProjection {
             .as_mat4()
             .to_cols_array_2d();
         self.uniform.scale = data.scale;
-        self.scale_2d_3d = data.scale_2d_3d;
+
         self.uniform.p2_scale = self.p2_scale(data.scale);
         self.uniform.scale_2d_3d = data.scale_2d_3d;
         self.cs_offset = data.cs_offset;
         self.inv_view_proj_matrix = data.view_proj_matrix.inverse();
         self.screen_size = (config.width as f64, config.height as f64);
-
-        self.is_shadow_enabled = render_config.shadow_enabled;
-        self.shadow_texture_size = render_config.shadow_texture_size();
 
         queue.write_buffer(
             &self.uniform_buffer,
