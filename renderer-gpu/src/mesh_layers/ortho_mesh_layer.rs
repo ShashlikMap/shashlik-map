@@ -8,7 +8,7 @@ use crate::pipelines::{RenderPipeline};
 use crate::vertex_attrs::TextInstanceInput;
 use glam::Mat4;
 use log::error;
-use wgpu::{CommandEncoder, RenderPass, TextureFormat, TextureUsages, TextureView};
+use wgpu::{RenderPass, TextureFormat, TextureUsages, TextureView};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone)]
@@ -131,9 +131,7 @@ impl OrthoMeshLayer {
 
 impl BaseMeshLayer for OrthoMeshLayer {
     fn update(&mut self, _global_context: &mut GlobalContext) {}
-
-    fn compute(&mut self, _encoder: &mut CommandEncoder, _global_context: &mut GlobalContext) {}
-
+    
     fn clear_by_key(&mut self, _key: &str) {}
 }
 

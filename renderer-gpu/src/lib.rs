@@ -184,7 +184,8 @@ impl GpuRenderer {
     }
 
     fn config_pass_nodes_and_textures(&mut self) {
-        let pre_pass_node = PrepassNode::new();
+        let pre_pass_node = PrepassNode::new(&self.global_context,
+                                             self.layers.world_shapes_feature_tags.clone());
         self.pass_nodes = vec![Box::new(pre_pass_node)];
 
         if self.render_config.shadow_enabled {

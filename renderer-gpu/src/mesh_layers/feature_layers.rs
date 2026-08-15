@@ -1,7 +1,6 @@
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::BaseMeshLayer;
 use indexmap::IndexMap;
-use wgpu::CommandEncoder;
 
 pub struct FeatureLayers<ML: BaseMeshLayer> {
     feature_shape_layers: IndexMap<&'static str, ML>,
@@ -51,12 +50,6 @@ impl<ML: BaseMeshLayer> BaseMeshLayer for FeatureLayers<ML> {
     fn update(&mut self, global_context: &mut GlobalContext) {
         self.feature_shape_layers.iter_mut().for_each(|(_, layer)| {
             layer.update(global_context);
-        });
-    }
-
-    fn compute(&mut self, encoder: &mut CommandEncoder, global_context: &mut GlobalContext) {
-        self.feature_shape_layers.iter_mut().for_each(|(_, layer)| {
-            layer.compute(encoder, global_context);
         });
     }
     

@@ -4,7 +4,7 @@ use crate::pipelines::RenderPipeline;
 use crate::text::text_renderer::TextRenderer;
 use renderer_common::geometry_data::{LineData, TextData};
 use renderer_common::render_modifier::SpatialData;
-use wgpu::{CommandEncoder, RenderPass};
+use wgpu::RenderPass;
 
 pub struct TextMeshLayer {
     text_renderer: TextRenderer,
@@ -55,8 +55,6 @@ impl BaseMeshLayer for TextMeshLayer {
         self.text_renderer.update(global_context);
     }
 
-    fn compute(&mut self, _encoder: &mut CommandEncoder, _global_context: &mut GlobalContext) {}
-    
     fn clear_by_key(&mut self, key: &str) {
         let key = key.to_string();
         self.text_renderer.update_data(move |holder| {

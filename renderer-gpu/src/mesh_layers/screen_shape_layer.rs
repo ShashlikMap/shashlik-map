@@ -17,7 +17,7 @@ use renderer_common::render_modifier::SpatialData;
 use rstar::primitives::Rectangle;
 use std::collections::HashMap;
 use std::mem;
-use wgpu::{CommandEncoder, RenderPass};
+use wgpu::RenderPass;
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
 pub(crate) struct ScreenShapeLayer<I: MeshInstanceInput> {
@@ -121,10 +121,7 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
                 *mesh_buffers = MeshBuffers::builder().with_instance_buffer(instance_buffer.buffer.clone());
             });
     }
-
-
-    fn compute(&mut self, _encoder: &mut CommandEncoder,_global_context: &mut GlobalContext) {}
-
+    
     fn clear_by_key(&mut self, key: &str) {
         self.collision_task_controller.clear_by_key(key);
     }
