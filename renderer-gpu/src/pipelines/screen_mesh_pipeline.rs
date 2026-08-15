@@ -5,10 +5,7 @@ use crate::textures::{TextureData, create_simple_texture};
 use crate::vertex_attrs::{MeshVertexWithUV, ShapeInstanceInput, TextInstanceInput, VertexAttrib};
 use std::borrow::Cow;
 use wesl::include_wesl;
-use wgpu::{
-    BindGroup, BindGroupLayout, CompareFunction, RenderPass, SamplerDescriptor,
-    ShaderModuleDescriptor, ShaderSource, TextureFormat, TextureUsages, TextureView,
-};
+use wgpu::{BindGroup, BindGroupLayout, CompareFunction, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
 
 pub struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
@@ -213,10 +210,24 @@ impl RenderPipeline<ShapeInstanceInput> for ScreenMeshPipeline {
             ));
         }
 
-        let mut stencil = mesh_descriptor.depth_stencil.unwrap();
-        stencil.depth_compare = Some(CompareFunction::Always);
-        stencil.depth_write_enabled = Some(false);
-        mesh_descriptor.depth_stencil = Some(stencil);
+        let mut depth_stencil = mesh_descriptor.depth_stencil.unwrap();
+        if self.read_stencil {
+           depth_stencil.stencil = wgpu::StencilState {
+                front: StencilFaceState::IGNORE,
+                back: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::NotEqual,
+                    fail_op: wgpu::StencilOperation::Keep,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Keep,
+                },
+                read_mask: 0xFF,
+                write_mask: 0x00,
+            };
+        } else {
+            depth_stencil.depth_compare = Some(CompareFunction::Always);
+            depth_stencil.depth_write_enabled = Some(false);
+        }
+        mesh_descriptor.depth_stencil = Some(depth_stencil);
 
         let shader_module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("screen_mesh_shader"),

@@ -2,7 +2,7 @@ use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
 use crate::mesh_layers::BaseMeshLayerNew;
 use crate::pass_nodes::PassNode;
-use crate::pipelines::shadow_map_pipeline::FillShadowMapPipeline;
+use crate::pipelines::fill_shadow_map_pipeline::FillShadowMapPipeline;
 use crate::texture_view_resources::TextureViewKind;
 use wgpu::CommandEncoder;
 
