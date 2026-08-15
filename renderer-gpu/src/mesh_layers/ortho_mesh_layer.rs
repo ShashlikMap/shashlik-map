@@ -20,7 +20,6 @@ enum TextureType {
 
 pub struct OrthoMeshLayer<P: RenderPipeline + WithTexture> {
     render_pipeline: P,
-    pipeline: Option<wgpu::RenderPipeline>,
     mesh: Option<Mesh>,
     instance_buffer: InstanceBuffer<TextInstanceInput>,
     mesh_buffers: MeshBuffers,
@@ -36,7 +35,6 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
                is_bottom_right: bool) -> Self {
         Self {
             render_pipeline,
-            pipeline: None,
             mesh: None,
             instance_buffer: InstanceBuffer::default(),
             mesh_buffers: MeshBuffers::default(),
@@ -126,34 +124,15 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
 }
 
 impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
-    fn prepare(&mut self, global_context: &GlobalContext) {
-        let descriptor = self.render_pipeline.prepare(global_context);
-        self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
+    fn prepare(&mut self, _global_context: &GlobalContext) {
     }
 
     fn update(&mut self, _global_context: &mut GlobalContext) {}
 
     fn compute(&mut self, _encoder: &mut CommandEncoder, _global_context: &mut GlobalContext) {}
 
-
-    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        if let (Some(render_pipeline), Some(mesh)) = (self.pipeline.as_ref(), self.mesh.as_ref()) {
-            render_pass.set_pipeline(render_pipeline);
-            self.render_pipeline.setup_render(render_pass, global_context);
-
-            // override params
-            render_pass.set_immediates(
-                0,
-                bytemuck::bytes_of(&(self.texture_type as u32)),
-            );
-            if let Some(texture_bind_group) = self.texture_bind_group.as_ref() {
-                render_pass.set_bind_group(1, texture_bind_group, &[]);
-            }
-
-            self.render_pipeline.setup_mesh_buffers(render_pass, &self.mesh_buffers);
-            let instance_count = self.instance_buffer.length;
-            mesh.render_instanced(render_pass, instance_count, false, None);
-        }
+    fn render(&mut self, _render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
+        panic!("should not be called");
     }
 
     fn clear_by_key(&mut self, _key: &str) {}
