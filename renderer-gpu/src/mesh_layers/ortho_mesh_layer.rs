@@ -88,10 +88,8 @@ impl<I: MeshInstanceInput> OrthoMeshLayer<I> {
             0.0,
         ];
 
-        let attr = I::create_instance_struct(position,
-                                             1.0,
-                                             Mat4::IDENTITY.to_cols_array_2d(),
-                                             [0.0; 4], 0.0, 1);
+        let attr = I::builder(position, 1.0, Mat4::IDENTITY.to_cols_array_2d())
+            .with_screen_space(1).build();
 
         self.instance_buffer
             .update("quad_instance_buffer", global_context, &vec![attr]);

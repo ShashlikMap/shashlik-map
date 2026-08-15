@@ -80,13 +80,10 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
                 if !glyph_data.screen_space {
                     position -= dvec3(cs_offset.x, cs_offset.y, 0.0)
                 }
-                let instance_input = I::create_instance_struct(position.as_vec3().into(),
-                                          glyph_data.alpha,
-                                          glyph_data.matrix.to_cols_array_2d(),[0.0; 4],
-                                          0.0,
-                                          glyph_data.screen_space.into()
-
-                );
+                let instance_input = I::builder(position.as_vec3().into(),
+                                                glyph_data.alpha,
+                                                glyph_data.matrix.to_cols_array_2d(),
+                ).with_screen_space(glyph_data.screen_space.into()).build();
                 attrs.push(instance_input);
             });
 
