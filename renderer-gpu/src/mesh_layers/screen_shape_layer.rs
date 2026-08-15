@@ -20,9 +20,8 @@ use std::mem;
 use wgpu::{CommandEncoder, RenderPass};
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
-pub(crate) struct ScreenShapeLayer<P: RenderPipeline> {
-    render_pipeline: P,
-    meshes: HashMap<String, (Mesh, InstanceBuffer<P::InstanceInputType>, MeshBuffers)>,
+pub(crate) struct ScreenShapeLayer<I: MeshInstanceInput> {
+    meshes: HashMap<String, (Mesh, InstanceBuffer<I>, MeshBuffers)>,
     collision_task_controller: CollisionTaskController<
         (ShapeInfo, f32, String),
         HashMap<String, Vec<(DVec3, f32)>>,
@@ -34,13 +33,12 @@ struct ShapeInfo {
     pub size: f32,
 }
 
-impl<P: RenderPipeline> ScreenShapeLayer<P> {
-    pub fn new(render_pipeline: P, global_context: &mut GlobalContext) -> Self {
+impl<I: MeshInstanceInput> ScreenShapeLayer<I> {
+    pub fn new(global_context: &mut GlobalContext) -> Self {
         let (task_wrapper, collision_task_controller) = CollisionTaskWrapper::new();
         let task = ScreenMeshCollisionHandler::new(task_wrapper);
         global_context.collider.register_task(Box::new(task));
         ScreenShapeLayer {
-            render_pipeline,
             meshes: HashMap::new(),
             collision_task_controller,
         }
@@ -96,7 +94,7 @@ impl<P: RenderPipeline> ScreenShapeLayer<P> {
     }
 }
 
-impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
+impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
     fn update(&mut self, global_context: &mut GlobalContext) {
         let Ok(hm) = self.collision_task_controller.receiver.try_recv() else {
             return;
@@ -107,7 +105,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
             .for_each(|(key, (_, instance_buffer, mesh_buffers))| {
                 let mut attrs = Vec::new();
                 if let Some(pos_alpha) = hm.get(key) {
-                    P::InstanceInputType::fill_attrs(
+                    I::fill_attrs(
                         &mut attrs,
                         &cs_offset,
                         pos_alpha,
@@ -132,7 +130,7 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
     }
 }
 
-impl<P: RenderPipeline> BaseMeshLayerNew for ScreenShapeLayer<P> {
+impl<I: MeshInstanceInput> BaseMeshLayerNew for ScreenShapeLayer<I> {
     fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline, global_context: &mut GlobalContext) {
         render_pipeline.setup_render(render_pass, global_context);
         self.meshes.iter().for_each(|(_, (mesh, instance_buf, mesh_buffers))| {

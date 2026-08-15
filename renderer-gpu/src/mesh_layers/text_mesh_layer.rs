@@ -6,19 +6,16 @@ use renderer_common::geometry_data::{LineData, TextData};
 use renderer_common::render_modifier::SpatialData;
 use wgpu::{CommandEncoder, RenderPass};
 
-pub struct TextMeshLayer<P: RenderPipeline> {
-    render_pipeline: P,
+pub struct TextMeshLayer {
     text_renderer: TextRenderer,
 }
 
-impl<P: RenderPipeline> TextMeshLayer<P> {
+impl TextMeshLayer {
     pub fn new(
-        render_pipeline: P,
         global_context: &mut GlobalContext,
         font: rustybuzz::ttf_parser::Face<'static>,
     ) -> Self {
         Self {
-            render_pipeline,
             text_renderer: TextRenderer::new(global_context, font),
         }
     }
@@ -52,7 +49,7 @@ impl<P: RenderPipeline> TextMeshLayer<P> {
     }
 }
 
-impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
+impl BaseMeshLayer for TextMeshLayer {
 
     fn update(&mut self, global_context: &mut GlobalContext) {
         self.text_renderer.update(global_context);
@@ -68,7 +65,7 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
     }
 }
 
-impl<P: RenderPipeline> BaseMeshLayerNew for TextMeshLayer<P> {
+impl BaseMeshLayerNew for TextMeshLayer {
     fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline, global_context: &mut GlobalContext) {
         render_pipeline.setup_render(render_pass, global_context);
         self.text_renderer.render(render_pass, global_context);

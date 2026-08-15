@@ -10,6 +10,7 @@ use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use renderer_common::WorldShapeFeatureLayerTag;
 use rustybuzz::ttf_parser;
+use crate::vertex_attrs::ShapeInstanceInput;
 
 pub(crate) const WORLD_TEXT_LAYER: &'static str = "world_text_layer";
 pub(crate) const SCREEN_TEXT_LAYER: &'static str = "screen_text_layer";
@@ -26,8 +27,8 @@ pub(crate) struct Layers {
     pub shape_layer: GeneralMeshLayer<ShapePipeline>,
     pub mesh_layer: GeneralMeshLayer<MeshPipeline>,
     pub shadow_map_layer: OrthoMeshLayer<ScreenMeshPipeline>,
-    pub screen_shape_layer: ScreenShapeLayer<ShapePipeline>,
-    pub text_feature_layers: FeatureLayers<TextMeshLayer<ScreenMeshPipeline>>,
+    pub screen_shape_layer: ScreenShapeLayer<ShapeInstanceInput>, // TODO Do we need it?
+    pub text_feature_layers: FeatureLayers<TextMeshLayer>,
     pub preview_mesh_layer: OrthoMeshLayer<ScreenMeshPipeline>,
     pub post_process_layer: OrthoMeshLayer<ScreenMeshPipeline>,
 }
@@ -55,16 +56,6 @@ impl Layers {
             ],
             |_| {
                 TextMeshLayer::new(
-                    ScreenMeshPipeline::new(
-                        global_context,
-                        TextureInfo {
-                            use_texture: false,
-                            filterable: false,
-                            vs_shader: None,
-                            fs_shader: "",
-                        },
-                        false
-                    ),
                     global_context,
                     font.clone(),
                 )
@@ -79,7 +70,6 @@ impl Layers {
                 ShapePipeline::new(global_context, None, false, true),
             ),
             screen_shape_layer: ScreenShapeLayer::new(
-                ShapePipeline::new(global_context, Some("vs_main_screen"), false, false),
                 global_context,
             ),
             shadow_map_layer: OrthoMeshLayer::new(
@@ -127,7 +117,7 @@ impl Layers {
             ),
         }
     }
-    
+
     pub fn update(&mut self, global_context: &mut GlobalContext) {
         self.all_layers()
             .iter_mut()
