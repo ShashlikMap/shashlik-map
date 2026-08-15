@@ -2,7 +2,7 @@ use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::textures::{TextureData, create_simple_texture};
-use crate::vertex_attrs::{MeshVertexWithUV, ShapeInstanceInput, TextInstanceInput, VertexAttrib};
+use crate::vertex_attrs::{MeshVertexWithUV, ScreenShapeInstanceInput, VertexAttrib};
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, CompareFunction, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
@@ -144,7 +144,7 @@ impl ScreenMeshPipeline {
 
         let vertex = &mut mesh_descriptor.vertex;
         vertex.module = shader_module.to_owned();
-        vertex.buffers = vec![MeshVertexWithUV::desc(), TextInstanceInput::desc()];
+        vertex.buffers = vec![MeshVertexWithUV::desc(), ScreenShapeInstanceInput::desc()];
 
         let fragment = mesh_descriptor.fragment.as_mut().unwrap();
         fragment.module = shader_module;
@@ -263,7 +263,7 @@ impl ScreenMeshPipeline {
     }
 }
 
-impl RenderPipeline<ShapeInstanceInput> for ScreenMeshPipeline {
+impl RenderPipeline<ScreenShapeInstanceInput> for ScreenMeshPipeline {
 
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         self.mesh_pipeline.setup_render(render_pass, global_context);

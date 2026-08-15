@@ -2,10 +2,10 @@ use crate::buffer_pool::BufferPool;
 use crate::collider::{ColliderTask, CollisionTaskController, CollisionTaskWrapper};
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
+use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::text::glyph_cache::GlyphCache;
-use crate::vertex_attrs::TextInstanceInput;
 use crate::view_projection::ViewProjection;
 use geo_types::{coord, point};
 use glam::{DVec3, Mat4, Vec2, Vec3, dvec3, vec3};
@@ -31,27 +31,27 @@ pub struct GlyphData {
     pub screen_space: bool,
 }
 
-pub struct TextRenderer {
+pub struct TextRenderer<I: MeshInstanceInput> {
     collision_task_controller:
         CollisionTaskController<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
-    instance_buffer_map: FxHashMap<GlyphId, InstanceBuffer<TextInstanceInput>>,
+    instance_buffer_map: FxHashMap<GlyphId, InstanceBuffer<I>>,
     glyph_cache: GlyphCache,
     glyph_data: FxHashMap<GlyphId, Vec<GlyphData>>,
     buffer_pool: BufferPool // Just a convenient stub to create buffers for text
 }
 
-impl TextRenderer {
+impl<I: MeshInstanceInput> TextRenderer<I> {
     pub fn new(
         global_context: &mut GlobalContext,
         font: rustybuzz::ttf_parser::Face<'static>,
-    ) -> TextRenderer {
+    ) -> Self {
         let default_face = Arc::new(DefaultFaceWrapper::new(font));
         let (task_wrapper, collision_task_controller) = CollisionTaskWrapper::new();
 
         let glyph_cache = GlyphCache::new(Arc::clone(&default_face));
         let task = TextRendererCollisionHandler::new(Arc::clone(&default_face), task_wrapper);
         global_context.collider.register_task(Box::new(task));
-        TextRenderer {
+        Self {
             collision_task_controller,
             instance_buffer_map: FxHashMap::default(),
             glyph_cache,
@@ -80,12 +80,13 @@ impl TextRenderer {
                 if !glyph_data.screen_space {
                     position -= dvec3(cs_offset.x, cs_offset.y, 0.0)
                 }
-                let instance_input = TextInstanceInput {
-                    position: position.as_vec3().into(),
-                    color_alpha: glyph_data.alpha,
-                    matrix: glyph_data.matrix.to_cols_array_2d(),
-                    screen_space: glyph_data.screen_space.into(),
-                };
+                let instance_input = I::create_instance_struct(position.as_vec3().into(),
+                                          glyph_data.alpha,
+                                          glyph_data.matrix.to_cols_array_2d(),[0.0; 4],
+                                          0.0,
+                                          glyph_data.screen_space.into()
+
+                );
                 attrs.push(instance_input);
             });
 

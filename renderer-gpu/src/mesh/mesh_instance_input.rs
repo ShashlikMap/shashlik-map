@@ -1,5 +1,5 @@
 use renderer_common::render_modifier::SpatialData;
-use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput};
+use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput, ScreenShapeInstanceInput};
 use bytemuck::Pod;
 use glam::DVec3;
 use crate::mesh::mesh::Mesh;
@@ -41,7 +41,8 @@ pub trait MeshInstanceInput: Sized + Pod {
                     spatial_data.bbox.width() as f32,
                     spatial_data.bbox.height() as f32,
                 ],
-                spatial_data.normal_scale as f32
+                spatial_data.normal_scale as f32,
+                0
             );
             attrs.push(instance_input);
         }
@@ -52,7 +53,8 @@ pub trait MeshInstanceInput: Sized + Pod {
         color_alpha: f32,
         matrix: [[f32; 4]; 4],
         bbox: [f32; 4],
-        normal_scale: f32
+        normal_scale: f32,
+        screen_space: u32
     ) -> Self;
 }
 
@@ -62,7 +64,8 @@ impl MeshInstanceInput for GeneralInstanceInput {
         color_alpha: f32,
         matrix: [[f32; 4]; 4],
         _bbox: [f32; 4],
-        _normal_scale: f32
+        _normal_scale: f32,
+        _screen_space: u32
     ) -> Self {
         GeneralInstanceInput {
             position,
@@ -78,7 +81,8 @@ impl MeshInstanceInput for ShapeInstanceInput {
         color_alpha: f32,
         matrix: [[f32; 4]; 4],
         bbox: [f32; 4],
-        normal_scale: f32
+        normal_scale: f32,
+        _screen_space: u32
     ) -> Self {
         ShapeInstanceInput {
             position,
@@ -87,6 +91,24 @@ impl MeshInstanceInput for ShapeInstanceInput {
             bbox,
             normal_scale,
             _padding: [0; 3]
+        }
+    }
+}
+
+impl MeshInstanceInput for ScreenShapeInstanceInput {
+    fn create_instance_struct(
+        position: [f32; 3],
+        color_alpha: f32,
+        matrix: [[f32; 4]; 4],
+        _bbox: [f32; 4],
+        _normal_scale: f32,
+        screen_space: u32
+    ) -> Self {
+        ScreenShapeInstanceInput {
+            position,
+            color_alpha,
+            matrix,
+            screen_space,
         }
     }
 }

@@ -6,21 +6,20 @@ use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::mesh_buffers::MeshBuffers;
 use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
 use crate::pipelines::RenderPipeline;
-use crate::vertex_attrs::TextInstanceInput;
 use glam::Mat4;
 use log::error;
 use wgpu::{RenderPass, TextureView};
 
-pub struct OrthoMeshLayer {
+pub struct OrthoMeshLayer<I: MeshInstanceInput> {
     mesh: Option<Mesh>,
-    instance_buffer: InstanceBuffer<TextInstanceInput>,
+    instance_buffer: InstanceBuffer<I>,
     mesh_buffers: MeshBuffers,
     full_screen_mesh: bool,
     is_bottom_right: bool,
     texture_view: Option<TextureView>,
 }
 
-impl OrthoMeshLayer {
+impl<I: MeshInstanceInput> OrthoMeshLayer<I> {
     pub fn new(full_screen_mesh: bool, is_bottom_right: bool) -> Self {
         Self {
             mesh: None,
@@ -88,12 +87,11 @@ impl OrthoMeshLayer {
             screen_size.1 as f32 + offset.1,
             0.0,
         ];
-        let attr = TextInstanceInput {
-            position,
-            color_alpha: 1.0,
-            matrix: Mat4::IDENTITY.to_cols_array_2d(),
-            screen_space: 1,
-        };
+
+        let attr = I::create_instance_struct(position,
+                                             1.0,
+                                             Mat4::IDENTITY.to_cols_array_2d(),
+                                             [0.0; 4], 0.0, 1);
 
         self.instance_buffer
             .update("quad_instance_buffer", global_context, &vec![attr]);
@@ -102,13 +100,13 @@ impl OrthoMeshLayer {
     }
 }
 
-impl BaseMeshLayer for OrthoMeshLayer {
+impl <I: MeshInstanceInput> BaseMeshLayer for OrthoMeshLayer<I> {
     fn update(&mut self, _global_context: &mut GlobalContext) {}
 
     fn clear_by_key(&mut self, _key: &str) {}
 }
 
-impl<I: MeshInstanceInput> BaseMeshLayerNew<I> for OrthoMeshLayer {
+impl<I: MeshInstanceInput> BaseMeshLayerNew<I> for OrthoMeshLayer<I> {
     fn render_new(
         &mut self,
         render_pass: &mut RenderPass,

@@ -1,17 +1,17 @@
 use crate::global_context::GlobalContext;
+use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
 use crate::pipelines::RenderPipeline;
 use crate::text::text_renderer::TextRenderer;
 use renderer_common::geometry_data::{LineData, TextData};
 use renderer_common::render_modifier::SpatialData;
 use wgpu::RenderPass;
-use crate::mesh::mesh_instance_input::MeshInstanceInput;
 
-pub struct TextMeshLayer {
-    text_renderer: TextRenderer,
+pub struct TextMeshLayer<I: MeshInstanceInput> {
+    text_renderer: TextRenderer<I>,
 }
 
-impl TextMeshLayer {
+impl<I: MeshInstanceInput> TextMeshLayer<I> {
     pub fn new(
         global_context: &mut GlobalContext,
         font: rustybuzz::ttf_parser::Face<'static>,
@@ -50,7 +50,7 @@ impl TextMeshLayer {
     }
 }
 
-impl BaseMeshLayer for TextMeshLayer {
+impl<I: MeshInstanceInput> BaseMeshLayer for TextMeshLayer<I> {
 
     fn update(&mut self, global_context: &mut GlobalContext) {
         self.text_renderer.update(global_context);
@@ -64,7 +64,7 @@ impl BaseMeshLayer for TextMeshLayer {
     }
 }
 
-impl <I: MeshInstanceInput> BaseMeshLayerNew<I> for TextMeshLayer {
+impl <I: MeshInstanceInput> BaseMeshLayerNew<I> for TextMeshLayer<I> {
     fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
         render_pipeline.setup_render(render_pass, global_context);
         self.text_renderer.render(render_pass, global_context);

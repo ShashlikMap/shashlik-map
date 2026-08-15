@@ -5,7 +5,7 @@ use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
 use crate::mesh_layers::ortho_mesh_layer::OrthoMeshLayer;
 use crate::mesh_layers::screen_shape_layer::ScreenShapeLayer;
 use crate::mesh_layers::text_mesh_layer::TextMeshLayer;
-use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput};
+use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput, ScreenShapeInstanceInput};
 use renderer_common::WorldShapeFeatureLayerTag;
 use rustybuzz::ttf_parser;
 
@@ -23,11 +23,11 @@ pub(crate) struct Layers {
     pub feature_layers: FeatureLayers<GeneralMeshLayer<ShapeInstanceInput>>,
     pub shape_layer: GeneralMeshLayer<ShapeInstanceInput>,
     pub mesh_layer: GeneralMeshLayer<GeneralInstanceInput>,
-    pub shadow_map_layer: OrthoMeshLayer,
-    pub screen_shape_layer: ScreenShapeLayer<ShapeInstanceInput>, // TODO Do we need it?
-    pub text_feature_layers: FeatureLayers<TextMeshLayer>,
-    pub preview_mesh_layer: OrthoMeshLayer,
-    pub post_process_layer: OrthoMeshLayer,
+    pub shadow_map_layer: OrthoMeshLayer<ScreenShapeInstanceInput>,
+    pub screen_shape_layer: ScreenShapeLayer<ShapeInstanceInput>,
+    pub text_feature_layers: FeatureLayers<TextMeshLayer<ScreenShapeInstanceInput>>,
+    pub preview_mesh_layer: OrthoMeshLayer<ScreenShapeInstanceInput>,
+    pub post_process_layer: OrthoMeshLayer<ScreenShapeInstanceInput>,
 }
 
 impl Layers {
