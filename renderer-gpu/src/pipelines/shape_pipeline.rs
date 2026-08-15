@@ -306,8 +306,4 @@ impl RenderPipeline<ShapeInstanceInput> for ShapePipeline {
 
         mesh_descriptor
     }
-
-    fn is_indirect(&self) -> bool {
-        self.indirect
-    }
 }

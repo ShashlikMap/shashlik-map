@@ -61,8 +61,4 @@ impl RenderPipeline<GeneralInstanceInput> for GBufPipeline {
     fn prepare(&self, _global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
         todo!("BLABAB")
     }
-
-    fn is_indirect(&self) -> bool {
-        false
-    }
 }

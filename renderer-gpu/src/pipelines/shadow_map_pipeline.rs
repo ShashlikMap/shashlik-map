@@ -53,7 +53,4 @@ impl RenderPipeline<GeneralInstanceInput> for ShadowMapPipeline {
         todo!("BLABAB")
     }
 
-    fn is_indirect(&self) -> bool {
-        false
-    }
 }

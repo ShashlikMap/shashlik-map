@@ -236,8 +236,4 @@ impl RenderPipeline<GeneralInstanceInput> for MeshPipeline {
             },
         }
     }
-
-    fn is_indirect(&self) -> bool {
-        false
-    }
 }

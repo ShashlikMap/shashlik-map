@@ -238,8 +238,4 @@ impl RenderPipeline<ShapeInstanceInput> for ScreenMeshPipeline {
 
         mesh_descriptor
     }
-
-    fn is_indirect(&self) -> bool {
-        false
-    }
 }

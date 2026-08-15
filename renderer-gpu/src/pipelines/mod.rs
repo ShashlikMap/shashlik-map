@@ -21,7 +21,6 @@ pub trait RenderPipeline<InstanceInputType: MeshInstanceInput> {
         }
     }
     fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_>;
-    fn is_indirect(&self) -> bool;
 }
 
 #[derive(Clone, Debug)]
