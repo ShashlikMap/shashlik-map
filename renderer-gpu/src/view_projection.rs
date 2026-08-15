@@ -148,7 +148,7 @@ impl ViewProjection {
         let c4 = self.clip_to_world(&coord! {x: 1.0, y: 1.0});
         if let (Some(c1), Some(c2), Some(c3), Some(c4)) = (c1, c2, c3, c4) {
             let center = ((c1 + c2 + c3 + c4) / 4.0).extend(0.0);
-            let light_view = DMat4::look_at_rh(center + 1.0 * LIGHT_POS, center, DVec3::Z);
+            let light_view = DMat4::look_at_rh(center + LIGHT_POS, center, DVec3::Z);
 
             let p1 = light_view.transform_point3(c1.extend(0.0));
             let p2 = light_view.transform_point3(c2.extend(0.0));
