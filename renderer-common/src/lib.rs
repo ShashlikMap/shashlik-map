@@ -146,11 +146,11 @@ pub trait RendererApi: Send + Sync {
 pub enum PreviewType {
     None,
     Camera,
+    ShadowMap,
     SSAO,
     GBufPositions,
     GBufNormals,
     GBufDepth,
-    ShadowMap,
 }
 
 impl PreviewType {

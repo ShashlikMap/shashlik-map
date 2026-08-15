@@ -30,7 +30,10 @@ num = { workspace = true}
 valhalla-client = { git = "https://github.com/jelmer/valhalla-client-rs", rev = "19b7f70" }
 
 capitalize = "0.3"
-reqwest = { version = "0.13.4", features = ["blocking"] }
+# Don't use the latest version. MapTiles won't work on Android. rustls-platform-verifier still has issues.
+# It's just easier not migrate yet to the latest one.
+# https://github.com/rustls/rustls-platform-verifier/issues/221
+reqwest = { version = "0.12.28", features = ["blocking"] }
 
 [build-dependencies]
 anyhow = "1.0"
