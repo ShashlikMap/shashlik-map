@@ -1,4 +1,4 @@
-use crate::global_context::{GlobalContext, GlobalRenderStep};
+use crate::global_context::{GlobalContext};
 use crate::mesh_layers::BaseMeshLayerNew;
 use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
@@ -169,9 +169,7 @@ impl PassNode for MainPassNode {
         };
 
         let mut render_pass = encoder.begin_render_pass(&descriptor);
-
-        global_context.render_step = GlobalRenderStep::MainStep;
-
+        
         // TODO Can it go to pipeline?
         layers.shape_layer.disable_skip_mesh_feature = false;
         layers.shape_layer.render_new(

@@ -1,5 +1,4 @@
 use crate::global_context::GlobalContext;
-use crate::global_context::GlobalRenderStep::{MainStep};
 use crate::pipelines::{OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline};
 use crate::texture_view_resources::TextureViewKind;
 use crate::textures::{SAMPLE_COUNT, TextureData, create_simple_texture};
@@ -161,8 +160,7 @@ impl RenderPipeline<GeneralInstanceInput> for MeshPipeline {
 
 
         if self.depth_bind_group_layout.is_some() {
-            if !global_context.is_shadow_mapping_enabled() ||
-                !global_context.check_render_step(MainStep) {
+            if !global_context.is_shadow_mapping_enabled() {
                 render_pass.set_bind_group(1, &self.depth_dummy_bind_group, &[]);
             } else {
                 render_pass.set_bind_group(1, &self.depth_bind_group, &[]);

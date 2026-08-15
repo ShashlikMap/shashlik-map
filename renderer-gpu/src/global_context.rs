@@ -10,18 +10,12 @@ use renderer_common::PreviewType;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Device};
 
-#[derive(Eq, PartialEq)]
-pub(crate) enum GlobalRenderStep {
-    MainStep,
-}
-
 pub struct GlobalContext {
     pub canvas: Box<dyn WgpuCanvas>,
     pub view_projection: ViewProjection,
     pub collider: Collider,
     pub styles_bind_group_layout: BindGroupLayout,
     pub style_bind_group: Option<BindGroup>,
-    pub(crate) render_step: GlobalRenderStep,
     ssao_enabled: bool,
     pub(crate) texture_view_resources: TextureViewResources,
     preview_type: PreviewType,
@@ -42,7 +36,6 @@ impl GlobalContext {
             collider,
             styles_bind_group_layout,
             style_bind_group: None,
-            render_step: GlobalRenderStep::MainStep,
             ssao_enabled: render_config.ssao_enabled,
             texture_view_resources,
             preview_type: render_config.preview_type,
@@ -133,9 +126,5 @@ impl GlobalContext {
 
     pub fn preview_type(&self) -> PreviewType {
         self.preview_type
-    }
-
-    pub(crate) fn check_render_step(&self, step: GlobalRenderStep) -> bool {
-        self.render_step == step
     }
 }
