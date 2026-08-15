@@ -124,17 +124,10 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
 }
 
 impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
-    fn prepare(&mut self, _global_context: &GlobalContext) {
-    }
-
     fn update(&mut self, _global_context: &mut GlobalContext) {}
 
     fn compute(&mut self, _encoder: &mut CommandEncoder, _global_context: &mut GlobalContext) {}
-
-    fn render(&mut self, _render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
-        panic!("should not be called");
-    }
-
+    
     fn clear_by_key(&mut self, _key: &str) {}
 }
 

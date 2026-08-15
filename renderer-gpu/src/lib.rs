@@ -104,9 +104,7 @@ impl GpuRenderer {
         Self::run_background(style_store, renderer_tx.clone(), renderer_api_rx);
 
         let api = Arc::new(CommonRendererApi::new(renderer_api_tx));
-
-        layers.prepare(&mut global_context);
-
+        
         Ok(Self {
             render_config,
             layers,
@@ -251,8 +249,7 @@ impl GpuRenderer {
         }
 
         let main_node = MainPassNode::new(&mut self.global_context,
-                                          self.layers.world_shapes_feature_tags.clone(),
-                                          Layers::text_layer_tags());
+                                          self.layers.world_shapes_feature_tags.clone());
         self.pass_nodes.push(Box::new(main_node));
     }
 

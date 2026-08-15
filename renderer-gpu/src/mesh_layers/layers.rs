@@ -33,13 +33,6 @@ pub(crate) struct Layers {
 }
 
 impl Layers {
-    pub fn text_layer_tags() -> Vec<NameLayerTag> {
-        vec![
-            NameLayerTag(WORLD_TEXT_LAYER),
-            NameLayerTag(SCREEN_TEXT_LAYER),
-        ]
-    }
-
     pub fn new(
         world_shapes_feature_tags: Vec<WorldShapeFeatureLayerTag>,
         global_context: &mut GlobalContext,
@@ -134,13 +127,7 @@ impl Layers {
             ),
         }
     }
-
-    pub fn prepare(&mut self, global_context: &GlobalContext) {
-        self.all_layers()
-            .iter_mut()
-            .for_each(|layer| layer.prepare(global_context));
-    }
-
+    
     pub fn update(&mut self, global_context: &mut GlobalContext) {
         self.all_layers()
             .iter_mut()

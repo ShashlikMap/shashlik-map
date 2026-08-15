@@ -73,8 +73,6 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
 }
 
 impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
-    fn prepare(&mut self, _global_context: &GlobalContext) {
-    }
 
     fn update(&mut self, global_context: &mut GlobalContext) {
         self.render_data_holder.run_mut_action(|mesh| {
@@ -96,11 +94,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
             });
         }
     }
-
-    fn render(&mut self, _render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
-        panic!("should not be called")
-    }
-
+    
     fn clear_by_key(&mut self, key: &str) {
         self.render_data_holder.remove(key);
     }

@@ -1,14 +1,14 @@
 use crate::global_context::{GlobalContext, GlobalRenderStep};
-use crate::mesh_layers::layers::{Layers, SCREEN_TEXT_LAYER, WORLD_TEXT_LAYER};
-use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
-use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
-use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
-use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
-use wgpu::{CommandEncoder, TextureFormat, TextureView};
-use renderer_common::WorldShapeFeatureLayerTag;
 use crate::mesh_layers::feature_layers::NameLayerTag;
+use crate::mesh_layers::layers::Layers;
+use crate::mesh_layers::BaseMeshLayerNew;
+use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
 use crate::pipelines::mesh_pipeline::MeshPipeline;
+use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
+use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
+use renderer_common::WorldShapeFeatureLayerTag;
+use wgpu::{CommandEncoder, TextureFormat, TextureView};
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
@@ -26,7 +26,6 @@ pub(crate) struct MainPassNode {
 impl MainPassNode {
     pub fn new(global_context: &GlobalContext,
                world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>,
-               text_layer_tags: Vec<NameLayerTag>,
     ) -> Self {
         let size = (
             global_context.config().width,

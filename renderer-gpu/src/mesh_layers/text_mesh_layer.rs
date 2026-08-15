@@ -53,20 +53,13 @@ impl<P: RenderPipeline> TextMeshLayer<P> {
 }
 
 impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
-    fn prepare(&mut self, _global_context: &GlobalContext) {
-    }
 
     fn update(&mut self, global_context: &mut GlobalContext) {
         self.text_renderer.update(global_context);
     }
 
     fn compute(&mut self, _encoder: &mut CommandEncoder, _global_context: &mut GlobalContext) {}
-
-
-    fn render(&mut self, _render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
-        panic!("Should not be called");
-    }
-
+    
     fn clear_by_key(&mut self, key: &str) {
         let key = key.to_string();
         self.text_renderer.update_data(move |holder| {

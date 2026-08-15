@@ -97,9 +97,6 @@ impl<P: RenderPipeline> ScreenShapeLayer<P> {
 }
 
 impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
-    fn prepare(&mut self, _global_context: &GlobalContext) {
-    }
-
     fn update(&mut self, global_context: &mut GlobalContext) {
         let Ok(hm) = self.collision_task_controller.receiver.try_recv() else {
             return;
@@ -129,10 +126,6 @@ impl<P: RenderPipeline> BaseMeshLayer for ScreenShapeLayer<P> {
 
 
     fn compute(&mut self, _encoder: &mut CommandEncoder,_global_context: &mut GlobalContext) {}
-
-    fn render(&mut self, _render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
-        panic!("Should not be called");
-    }
 
     fn clear_by_key(&mut self, key: &str) {
         self.collision_task_controller.clear_by_key(key);
