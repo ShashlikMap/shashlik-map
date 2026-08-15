@@ -2,22 +2,14 @@ use crate::buffer_pool::BufferPool;
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
+use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::mesh_buffers::MeshBuffers;
 use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
-use crate::pipelines::{RenderPipeline};
+use crate::pipelines::RenderPipeline;
 use crate::vertex_attrs::TextInstanceInput;
 use glam::Mat4;
 use log::error;
-use wgpu::{RenderPass, TextureFormat, TextureUsages, TextureView};
-use crate::mesh::mesh_instance_input::MeshInstanceInput;
-
-#[repr(u8)]
-#[derive(Debug, Copy, Clone)]
-enum TextureType {
-    GeneralRgba,
-    GeneralRFloat,
-    Depth,
-}
+use wgpu::{RenderPass, TextureUsages, TextureView};
 
 pub struct OrthoMeshLayer {
     mesh: Option<Mesh>,
@@ -26,7 +18,6 @@ pub struct OrthoMeshLayer {
     full_screen_mesh: bool,
     is_bottom_right: bool,
     texture_view: Option<TextureView>,
-    texture_type: TextureType,
 }
 
 impl OrthoMeshLayer {
@@ -38,7 +29,6 @@ impl OrthoMeshLayer {
             full_screen_mesh,
             is_bottom_right,
             texture_view: None,
-            texture_type: TextureType::GeneralRgba,
         }
     }
 
@@ -64,24 +54,6 @@ impl OrthoMeshLayer {
             );
             return;
         }
-
-        let texture_format = texture_view.texture().format();
-        let texture_usage = texture_view.texture().usage();
-        self.texture_type = if texture_format.is_depth_stencil_format() {
-            TextureType::Depth
-        } else if texture_format == TextureFormat::R16Float
-            || texture_format == TextureFormat::R32Float
-        {
-            TextureType::GeneralRFloat
-        } else if texture_format == TextureFormat::Rgba16Float {
-            if texture_usage.contains(TextureUsages::STORAGE_BINDING) {
-                TextureType::GeneralRFloat
-            } else {
-                TextureType::GeneralRgba
-            }
-        } else {
-            TextureType::GeneralRgba
-        };
 
         let mesh_size;
         if self.full_screen_mesh {
@@ -145,9 +117,6 @@ impl<I: MeshInstanceInput> BaseMeshLayerNew<I> for OrthoMeshLayer {
     ) {
         if let Some(mesh) = self.mesh.as_ref() {
             render_pipeline.setup_render(render_pass, global_context);
-            // override params
-            // TODO Should it be here or inside pipeline?
-            render_pass.set_immediates(0, bytemuck::bytes_of(&(self.texture_type as u32)));
 
             render_pipeline.setup_mesh_buffers(render_pass, &self.mesh_buffers);
             let instance_count = self.instance_buffer.length;

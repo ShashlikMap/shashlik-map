@@ -185,7 +185,6 @@ impl PassNode for MainPassNode {
         );
 
         if global_context.is_shadow_mapping_enabled() {
-            // FIXME Something wrong with stencil
             layers.shadow_map_layer.render_new(
                 &mut render_pass,
                 &mut self.shadow_map_screen_mesh_pipeline,

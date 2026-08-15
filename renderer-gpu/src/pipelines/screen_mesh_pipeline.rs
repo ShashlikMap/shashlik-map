@@ -10,10 +10,18 @@ use wgpu::{BindGroup, BindGroupLayout, CompareFunction, RenderPass, SamplerDescr
 pub struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
     texture_bind_group_layout: BindGroupLayout,
-    texture_bind_group: Option<BindGroup>,
+    texture_type_and_bind_group: Option<(TextureType, BindGroup)>,
     texture_info: TextureInfo,
     read_stencil: bool,
     pipeline: Option<wgpu::RenderPipeline>,
+}
+
+#[repr(u8)]
+#[derive(Debug, Copy, Clone)]
+enum TextureType {
+    GeneralRgba,
+    GeneralRFloat,
+    Depth,
 }
 
 pub struct TextureInfo {
@@ -77,7 +85,7 @@ impl ScreenMeshPipeline {
         let mut result = Self {
             mesh_pipeline: MeshPipeline::new(global_context, false, false, false),
             texture_bind_group_layout,
-            texture_bind_group: None,
+            texture_type_and_bind_group: None,
             texture_info,
             read_stencil,
             pipeline: None,
@@ -92,14 +100,36 @@ impl ScreenMeshPipeline {
     }
 
     pub fn set_texture_view(&mut self, texture_view: Option<&TextureView>, device: &wgpu::Device) {
-        if let Some(texture_info) = texture_view {
+        if let Some(texture_view) = texture_view {
             // fyi, in future we may need to cache bind group here for more dynamic behavior
-            // now, it'll be called only in MainPassNode constructor
+            // now, it'll be called only in MainPassNode constructor for new render configuration
             println!(
                 "Created texture view: {:?} for ScreenMeshPipeline",
-                texture_info
+                texture_view
             );
-            self.texture_bind_group = Some(self.create_texture_bind_group(texture_info, device));
+            let texture_type = Self::get_texture_type(texture_view);
+            self.texture_type_and_bind_group = Some((texture_type, self.create_texture_bind_group(texture_view, device)));
+        }
+    }
+
+    fn get_texture_type(texture_view: &TextureView) -> TextureType {
+        let texture = texture_view.texture();
+        let texture_format = texture.format();
+        let texture_usage = texture.usage();
+        if texture_format.is_depth_stencil_format() {
+            TextureType::Depth
+        } else if texture_format == TextureFormat::R16Float
+            || texture_format == TextureFormat::R32Float
+        {
+            TextureType::GeneralRFloat
+        } else if texture_format == TextureFormat::Rgba16Float {
+            if texture_usage.contains(TextureUsages::STORAGE_BINDING) {
+                TextureType::GeneralRFloat
+            } else {
+                TextureType::GeneralRgba
+            }
+        } else {
+            TextureType::GeneralRgba
         }
     }
 
@@ -177,18 +207,18 @@ impl ScreenMeshPipeline {
 impl RenderPipeline<ShapeInstanceInput> for ScreenMeshPipeline {
 
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        self.mesh_pipeline.setup_render(render_pass, global_context);
+
         if let Some(pipeline) = self.pipeline.as_ref() {
             render_pass.set_pipeline(pipeline);
             if self.read_stencil {
                 render_pass.set_stencil_reference(1);
             }
         }
-
-        if let Some(texture_bind_group) = self.texture_bind_group.as_ref() {
+        if let Some((texture_type, texture_bind_group)) = self.texture_type_and_bind_group.as_ref() {
+            render_pass.set_immediates(0, bytemuck::bytes_of(&(*texture_type as u32)));
             render_pass.set_bind_group(1, texture_bind_group, &[]);
         }
-
-        self.mesh_pipeline.setup_render(render_pass, global_context);
     }
 
     fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
