@@ -15,6 +15,7 @@ impl PrepassNode {
         global_context: &GlobalContext,
         world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>,
     ) -> PrepassNode {
+
         let feature_indirect_shape_pipelines = world_shape_feature_layer_tag
             .iter()
             .filter(|layer_tag| layer_tag.indirect)

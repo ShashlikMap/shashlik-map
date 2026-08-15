@@ -26,18 +26,8 @@ impl RenderToTexturePassNode {
             global_context.config().width / 4,
             global_context.config().height / 4,
         );
-        let feature_shape_pipelines = world_shape_feature_layer_tag
-            .iter()
-            .map(|tag| {
-                let pipeline = ShapePipeline::new(
-                    global_context,
-                    tag.vertex_shader,
-                    tag.indirect,
-                    tag.single_instance_step,
-                );
-                (tag.name.to_string(), pipeline)
-            })
-            .collect();
+        let feature_shape_pipelines = ShapePipeline::from_world_shape_tags(global_context,
+                                                                           world_shape_feature_layer_tag);
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
             depth_texture_view: create_depth_texture(

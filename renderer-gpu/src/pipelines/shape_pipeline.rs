@@ -7,6 +7,7 @@ use log::error;
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, Device, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
+use renderer_common::WorldShapeFeatureLayerTag;
 use crate::bind_group_cache::{BindGroupCache, BindGroupKey};
 
 pub struct ShapePipeline {
@@ -29,6 +30,21 @@ impl ShapePipeline {
     const COMPUTE_LAYOUT_ID: usize = 0;
     const RENDER_LAYOUT_ID: usize = 1;
 
+    pub fn from_world_shape_tags(global_context: &GlobalContext,
+                                 world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>) -> Vec<(String, Self)> {
+        world_shape_feature_layer_tag
+            .into_iter()
+            .map(|tag| {
+                let pipeline = ShapePipeline::new(
+                    global_context,
+                    tag.vertex_shader,
+                    tag.indirect,
+                    tag.single_instance_step,
+                );
+                (tag.name.to_string(), pipeline)
+            })
+            .collect()
+    }
 
     pub fn new(global_context: &GlobalContext,
                vs_func_name: Option<&'static str>,
@@ -229,7 +245,7 @@ impl RenderPipeline<ShapeInstanceInput> for ShapePipeline {
             self.bind_group_cache.clear_if_needed();
         }
     }
-    
+
     fn compute_mesh(&mut self,
                     compute_pass: &mut ComputePass,
                     mesh_buffers: &MeshBuffers) {
