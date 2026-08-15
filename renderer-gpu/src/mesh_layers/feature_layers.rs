@@ -1,4 +1,5 @@
 use indexmap::IndexMap;
+use indexmap::map::Values;
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::BaseMeshLayer;
 use wgpu::{CommandEncoder, RenderPass};
@@ -38,6 +39,12 @@ impl<ML: BaseMeshLayer> FeatureLayers<ML> {
 
     pub(crate) fn get_layer(&mut self, tag: &str) -> Option<&mut ML> {
         self.feature_shape_layers.get_mut(tag)
+    }
+
+    pub(crate) fn with_layer(&mut self, mut action: impl FnMut(&mut ML) -> ()) {
+        self.feature_shape_layers.values_mut().for_each(|layer| {
+            action(layer);
+        })
     }
 }
 

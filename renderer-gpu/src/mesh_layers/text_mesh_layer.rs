@@ -1,5 +1,5 @@
 use crate::global_context::GlobalContext;
-use crate::mesh_layers::BaseMeshLayer;
+use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
 use crate::pipelines::RenderPipeline;
 use crate::text::text_renderer::TextRenderer;
 use renderer_common::geometry_data::{LineData, TextData};
@@ -9,7 +9,6 @@ use wgpu::{CommandEncoder, RenderPass};
 pub struct TextMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
     text_renderer: TextRenderer,
-    pipeline: Option<wgpu::RenderPipeline>,
 }
 
 impl<P: RenderPipeline> TextMeshLayer<P> {
@@ -21,7 +20,6 @@ impl<P: RenderPipeline> TextMeshLayer<P> {
         Self {
             render_pipeline,
             text_renderer: TextRenderer::new(global_context, font),
-            pipeline: None,
         }
     }
 
@@ -55,9 +53,7 @@ impl<P: RenderPipeline> TextMeshLayer<P> {
 }
 
 impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
-    fn prepare(&mut self, global_context: &GlobalContext) {
-        let descriptor = self.render_pipeline.prepare(global_context);
-        self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
+    fn prepare(&mut self, _global_context: &GlobalContext) {
     }
 
     fn update(&mut self, global_context: &mut GlobalContext) {
@@ -67,13 +63,8 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
     fn compute(&mut self, _encoder: &mut CommandEncoder, _global_context: &mut GlobalContext) {}
 
 
-    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        if let Some(render_pipeline) = self.pipeline.as_ref() {
-            render_pass.set_pipeline(render_pipeline);
-
-            self.render_pipeline.setup_render(render_pass, global_context);
-            self.text_renderer.render(render_pass, global_context);
-        }
+    fn render(&mut self, _render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
+        panic!("Should not be called");
     }
 
     fn clear_by_key(&mut self, key: &str) {
@@ -81,5 +72,12 @@ impl<P: RenderPipeline> BaseMeshLayer for TextMeshLayer<P> {
         self.text_renderer.update_data(move |holder| {
             holder.remove(key.as_str());
         });
+    }
+}
+
+impl<P: RenderPipeline> BaseMeshLayerNew for TextMeshLayer<P> {
+    fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline, global_context: &mut GlobalContext) {
+        render_pipeline.setup_render(render_pass, global_context);
+        self.text_renderer.render(render_pass, global_context);
     }
 }

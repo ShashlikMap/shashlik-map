@@ -33,6 +33,13 @@ pub(crate) struct Layers {
 }
 
 impl Layers {
+    pub fn text_layer_tags() -> Vec<NameLayerTag> {
+        vec![
+            NameLayerTag(WORLD_TEXT_LAYER),
+            NameLayerTag(SCREEN_TEXT_LAYER),
+        ]
+    }
+
     pub fn new(
         world_shapes_feature_tags: Vec<WorldShapeFeatureLayerTag>,
         global_context: &mut GlobalContext,

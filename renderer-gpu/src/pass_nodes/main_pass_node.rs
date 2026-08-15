@@ -1,11 +1,12 @@
 use crate::global_context::{GlobalContext, GlobalRenderStep};
-use crate::mesh_layers::layers::Layers;
+use crate::mesh_layers::layers::{Layers, SCREEN_TEXT_LAYER, WORLD_TEXT_LAYER};
 use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
 use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
 use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
 use wgpu::{CommandEncoder, TextureFormat, TextureView};
 use renderer_common::WorldShapeFeatureLayerTag;
+use crate::mesh_layers::feature_layers::NameLayerTag;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::shape_pipeline::ShapePipeline;
 
@@ -17,13 +18,16 @@ pub(crate) struct MainPassNode {
     screen_shape_layer: ShapePipeline,
     feature_shape_pipelines: Vec<(String, ShapePipeline)>,
     preview_screen_mesh_pipeline: ScreenMeshPipeline,
+    text_screen_mesh_pipeline: ScreenMeshPipeline,
     shadow_map_screen_mesh_pipeline: ScreenMeshPipeline,
     post_process_screen_mesh_pipeline: ScreenMeshPipeline,
 }
 
 impl MainPassNode {
     pub fn new(global_context: &GlobalContext,
-               world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>) -> Self {
+               world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>,
+               text_layer_tags: Vec<NameLayerTag>,
+    ) -> Self {
         let size = (
             global_context.config().width,
             global_context.config().height,
@@ -80,6 +84,17 @@ impl MainPassNode {
             })
             .collect();
 
+        let text_screen_mesh_pipeline = ScreenMeshPipeline::new(
+            global_context,
+            TextureInfo {
+                use_texture: false,
+                filterable: false,
+                vs_shader: None,
+                fs_shader: "",
+            },
+            false
+        );
+
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
             depth_texture_view: create_depth_texture(
@@ -91,6 +106,7 @@ impl MainPassNode {
             default_mesh_pipeline,
             default_shape_pipeline,
             screen_shape_layer,
+            text_screen_mesh_pipeline,
             feature_shape_pipelines,
             preview_screen_mesh_pipeline,
             shadow_map_screen_mesh_pipeline,
@@ -165,9 +181,11 @@ impl PassNode for MainPassNode {
         layers
             .screen_shape_layer
             .render_new(&mut render_pass, &mut self.screen_shape_layer, global_context);
+
         layers
-            .text_feature_layers
-            .render(&mut render_pass, global_context);
+            .text_feature_layers.with_layer(|layer| {
+            layer.render_new(&mut render_pass, &mut self.text_screen_mesh_pipeline, global_context)
+        });
 
         self.feature_shape_pipelines
             .iter_mut()
