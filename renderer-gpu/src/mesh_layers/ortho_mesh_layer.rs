@@ -4,11 +4,11 @@ use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh_buffers::MeshBuffers;
 use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
-use crate::pipelines::{RenderPipeline, WithTexture};
+use crate::pipelines::{RenderPipeline};
 use crate::vertex_attrs::TextInstanceInput;
 use glam::Mat4;
 use log::error;
-use wgpu::{BindGroup, CommandEncoder, RenderPass, TextureFormat, TextureUsages, TextureView};
+use wgpu::{CommandEncoder, RenderPass, TextureFormat, TextureUsages, TextureView};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone)]
@@ -18,35 +18,42 @@ enum TextureType {
     Depth,
 }
 
-pub struct OrthoMeshLayer<P: RenderPipeline + WithTexture> {
-    render_pipeline: P,
+pub struct OrthoMeshLayer {
     mesh: Option<Mesh>,
     instance_buffer: InstanceBuffer<TextInstanceInput>,
     mesh_buffers: MeshBuffers,
-    texture_bind_group: Option<BindGroup>,
     full_screen_mesh: bool,
     is_bottom_right: bool,
+    texture_view: Option<TextureView>,
     texture_type: TextureType,
 }
 
-impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
-    pub fn new(render_pipeline: P,
-               full_screen_mesh: bool,
-               is_bottom_right: bool) -> Self {
+impl OrthoMeshLayer {
+    pub fn new(full_screen_mesh: bool, is_bottom_right: bool) -> Self {
         Self {
-            render_pipeline,
             mesh: None,
             instance_buffer: InstanceBuffer::default(),
             mesh_buffers: MeshBuffers::default(),
-            texture_bind_group: None,
             full_screen_mesh,
             is_bottom_right,
+            texture_view: None,
             texture_type: TextureType::GeneralRgba,
         }
     }
 
+    pub fn texture_view(&self) -> Option<&TextureView> {
+        self.texture_view.as_ref()
+    }
+
     // FIXME Positioning should not be here
-    pub fn set_texture(&mut self, texture_view: &TextureView, offset: (f32, f32), global_context: &GlobalContext, buffer_pool: &mut BufferPool) {
+    pub fn set_texture(
+        &mut self,
+        texture_view: &TextureView,
+        offset: (f32, f32),
+        global_context: &GlobalContext,
+        buffer_pool: &mut BufferPool,
+    ) {
+        self.texture_view = Some(texture_view.clone());
         let screen_size = global_context.view_projection.screen_size;
 
         if screen_size.0 == 0.0 || screen_size.1 == 0.0 {
@@ -56,17 +63,14 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
             );
             return;
         }
-        self.texture_bind_group = Some(
-            self.render_pipeline
-                .create_texture_bind_group(texture_view, global_context),
-        );
 
         let texture_format = texture_view.texture().format();
         let texture_usage = texture_view.texture().usage();
         self.texture_type = if texture_format.is_depth_stencil_format() {
             TextureType::Depth
         } else if texture_format == TextureFormat::R16Float
-            || texture_format == TextureFormat::R32Float {
+            || texture_format == TextureFormat::R32Float
+        {
             TextureType::GeneralRFloat
         } else if texture_format == TextureFormat::Rgba16Float {
             if texture_usage.contains(TextureUsages::STORAGE_BINDING) {
@@ -77,7 +81,6 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
         } else {
             TextureType::GeneralRgba
         };
-
 
         let mesh_size;
         if self.full_screen_mesh {
@@ -99,13 +102,16 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
                 global_context,
                 buffer_pool,
                 mesh_size.0,
-                mesh_size.1
+                mesh_size.1,
             ));
-
         }
 
         let position = [
-            if self.is_bottom_right { screen_size.0 as f32 - mesh_size.0 } else { 0.0 } + offset.0,
+            if self.is_bottom_right {
+                screen_size.0 as f32 - mesh_size.0
+            } else {
+                0.0
+            } + offset.0,
             screen_size.1 as f32 + offset.1,
             0.0,
         ];
@@ -118,32 +124,31 @@ impl<P: RenderPipeline + WithTexture> OrthoMeshLayer<P> {
 
         self.instance_buffer
             .update("quad_instance_buffer", global_context, &vec![attr]);
-        self.mesh_buffers = MeshBuffers::builder()
-            .with_instance_buffer(self.instance_buffer.buffer.clone())
+        self.mesh_buffers =
+            MeshBuffers::builder().with_instance_buffer(self.instance_buffer.buffer.clone())
     }
 }
 
-impl<P: RenderPipeline + WithTexture> BaseMeshLayer for OrthoMeshLayer<P> {
+impl BaseMeshLayer for OrthoMeshLayer {
     fn update(&mut self, _global_context: &mut GlobalContext) {}
 
     fn compute(&mut self, _encoder: &mut CommandEncoder, _global_context: &mut GlobalContext) {}
-    
+
     fn clear_by_key(&mut self, _key: &str) {}
 }
 
-impl<P: RenderPipeline + WithTexture> BaseMeshLayerNew for OrthoMeshLayer<P> {
-    fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline, global_context: &mut GlobalContext) {
+impl BaseMeshLayerNew for OrthoMeshLayer {
+    fn render_new(
+        &mut self,
+        render_pass: &mut RenderPass,
+        render_pipeline: &mut impl RenderPipeline,
+        global_context: &mut GlobalContext,
+    ) {
         if let Some(mesh) = self.mesh.as_ref() {
             render_pipeline.setup_render(render_pass, global_context);
             // override params
             // TODO Should it be here or inside pipeline?
-            render_pass.set_immediates(
-                0,
-                bytemuck::bytes_of(&(self.texture_type as u32)),
-            );
-            if let Some(texture_bind_group) = self.texture_bind_group.as_ref() {
-                render_pass.set_bind_group(1, texture_bind_group, &[]);
-            }
+            render_pass.set_immediates(0, bytemuck::bytes_of(&(self.texture_type as u32)));
 
             render_pipeline.setup_mesh_buffers(render_pass, &self.mesh_buffers);
             let instance_count = self.instance_buffer.length;

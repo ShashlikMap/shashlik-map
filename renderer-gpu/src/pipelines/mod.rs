@@ -5,7 +5,7 @@ use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::mesh_buffers::MeshBuffers;
 use glam::DVec3;
 use renderer_common::render_modifier::SpatialData;
-use wgpu::{BindGroup, ColorTargetState, ComputePass, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, TextureView, VertexBufferLayout};
+use wgpu::{ColorTargetState, ComputePass, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, VertexBufferLayout};
 
 pub mod mesh_pipeline;
 pub mod shape_pipeline;
@@ -35,10 +35,6 @@ pub trait RenderPipeline {
     }
     fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_>;
     fn is_indirect(&self) -> bool;
-}
-
-pub trait WithTexture {
-    fn create_texture_bind_group(&mut self, texture_view: &TextureView, global_context: &GlobalContext) -> BindGroup;
 }
 
 #[derive(Clone, Debug)]

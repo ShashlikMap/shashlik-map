@@ -6,11 +6,10 @@ use crate::mesh_layers::ortho_mesh_layer::OrthoMeshLayer;
 use crate::mesh_layers::screen_shape_layer::ScreenShapeLayer;
 use crate::mesh_layers::text_mesh_layer::TextMeshLayer;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
-use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
+use crate::vertex_attrs::ShapeInstanceInput;
 use renderer_common::WorldShapeFeatureLayerTag;
 use rustybuzz::ttf_parser;
-use crate::vertex_attrs::ShapeInstanceInput;
 
 pub(crate) const WORLD_TEXT_LAYER: &'static str = "world_text_layer";
 pub(crate) const SCREEN_TEXT_LAYER: &'static str = "screen_text_layer";
@@ -26,11 +25,11 @@ pub(crate) struct Layers {
     pub feature_layers: FeatureLayers<GeneralMeshLayer<ShapePipeline>>,
     pub shape_layer: GeneralMeshLayer<ShapePipeline>,
     pub mesh_layer: GeneralMeshLayer<MeshPipeline>,
-    pub shadow_map_layer: OrthoMeshLayer<ScreenMeshPipeline>,
+    pub shadow_map_layer: OrthoMeshLayer,
     pub screen_shape_layer: ScreenShapeLayer<ShapeInstanceInput>, // TODO Do we need it?
     pub text_feature_layers: FeatureLayers<TextMeshLayer>,
-    pub preview_mesh_layer: OrthoMeshLayer<ScreenMeshPipeline>,
-    pub post_process_layer: OrthoMeshLayer<ScreenMeshPipeline>,
+    pub preview_mesh_layer: OrthoMeshLayer,
+    pub post_process_layer: OrthoMeshLayer,
 }
 
 impl Layers {
@@ -73,45 +72,15 @@ impl Layers {
                 global_context,
             ),
             shadow_map_layer: OrthoMeshLayer::new(
-                ScreenMeshPipeline::new(
-                    global_context,
-                    TextureInfo {
-                        use_texture: true,
-                        filterable: false,
-                        vs_shader: Some("vs_main_sm"),
-                        fs_shader: "fs_main_sm",
-                    },
-                    true
-                ),
                 true,
                 false,
             ),
             text_feature_layers,
             preview_mesh_layer: OrthoMeshLayer::new(
-                ScreenMeshPipeline::new(
-                    global_context,
-                    TextureInfo {
-                        use_texture: true,
-                        filterable: true,
-                        vs_shader: None,
-                        fs_shader: "fs_main_textured",
-                    },
-                    false
-                ),
                 false,
                 true,
             ),
             post_process_layer: OrthoMeshLayer::new(
-                ScreenMeshPipeline::new(
-                    global_context,
-                    TextureInfo {
-                        use_texture: true,
-                        filterable: true,
-                        vs_shader: None,
-                        fs_shader: "fs_main_tex_storage",
-                    },
-                    false
-                ),
                 true,
                 false,
             ),

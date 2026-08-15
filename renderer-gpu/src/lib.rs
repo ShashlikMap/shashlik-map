@@ -173,23 +173,17 @@ impl GpuRenderer {
         if width > 0 && height > 0 {
             self.global_context.resize(width, height);
 
-            self.config_pass_nodes();
+            self.config_pass_nodes_and_textures();
         }
     }
 
     pub fn update_config(&mut self, action: impl Fn(&mut RenderConfig)) {
         action(&mut self.render_config);
 
-        self.config_pass_nodes();
-
-        if let Some(texture_view) = self.preview_textures.get(&self.render_config.preview_type) {
-            self.layers
-                .preview_mesh_layer
-                .set_texture(texture_view, (-100.0, -100.0), &self.global_context, &mut self.buffer_pool);
-        }
+        self.config_pass_nodes_and_textures();
     }
 
-    fn config_pass_nodes(&mut self) {
+    fn config_pass_nodes_and_textures(&mut self) {
         let pre_pass_node = PrepassNode::new();
         self.pass_nodes = vec![Box::new(pre_pass_node)];
 
@@ -248,7 +242,14 @@ impl GpuRenderer {
             self.pass_nodes.push(Box::new(rt_node));
         }
 
+        if let Some(texture_view) = self.preview_textures.get(&self.render_config.preview_type) {
+            self.layers
+                .preview_mesh_layer
+                .set_texture(texture_view, (-100.0, -100.0), &self.global_context, &mut self.buffer_pool);
+        }
+
         let main_node = MainPassNode::new(&mut self.global_context,
+                                          &self.layers,
                                           self.layers.world_shapes_feature_tags.clone());
         self.pass_nodes.push(Box::new(main_node));
     }

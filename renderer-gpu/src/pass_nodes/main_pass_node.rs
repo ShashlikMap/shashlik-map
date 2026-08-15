@@ -23,8 +23,10 @@ pub(crate) struct MainPassNode {
 }
 
 impl MainPassNode {
-    pub fn new(global_context: &GlobalContext,
-               world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>,
+    pub fn new(
+        global_context: &GlobalContext,
+        layers: &Layers,
+        world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>,
     ) -> Self {
         let size = (
             global_context.config().width,
@@ -34,9 +36,10 @@ impl MainPassNode {
         let default_mesh_pipeline = MeshPipeline::new(global_context, true, true, true);
         let default_shape_pipeline = ShapePipeline::new(global_context, None, false, true);
 
-        let screen_shape_layer = ShapePipeline::new(global_context, Some("vs_main_screen"), false, false);
+        let screen_shape_layer =
+            ShapePipeline::new(global_context, Some("vs_main_screen"), false, false);
 
-        let preview_screen_mesh_pipeline = ScreenMeshPipeline::new(
+        let mut preview_screen_mesh_pipeline = ScreenMeshPipeline::new(
             global_context,
             TextureInfo {
                 use_texture: true,
@@ -44,10 +47,14 @@ impl MainPassNode {
                 vs_shader: None,
                 fs_shader: "fs_main_textured",
             },
-            false
+            false,
+        );
+        preview_screen_mesh_pipeline.set_texture_view(
+            layers.preview_mesh_layer.texture_view(),
+            global_context.device(),
         );
 
-        let shadow_map_screen_mesh_pipeline = ScreenMeshPipeline::new(
+        let mut shadow_map_screen_mesh_pipeline = ScreenMeshPipeline::new(
             global_context,
             TextureInfo {
                 use_texture: true,
@@ -55,10 +62,14 @@ impl MainPassNode {
                 vs_shader: Some("vs_main_sm"),
                 fs_shader: "fs_main_sm",
             },
-            true
+            true,
+        );
+        shadow_map_screen_mesh_pipeline.set_texture_view(
+            layers.shadow_map_layer.texture_view(),
+            global_context.device(),
         );
 
-        let post_process_screen_mesh_pipeline = ScreenMeshPipeline::new(
+        let mut post_process_screen_mesh_pipeline = ScreenMeshPipeline::new(
             global_context,
             TextureInfo {
                 use_texture: true,
@@ -66,7 +77,11 @@ impl MainPassNode {
                 vs_shader: None,
                 fs_shader: "fs_main_tex_storage",
             },
-            false
+            false,
+        );
+        post_process_screen_mesh_pipeline.set_texture_view(
+            layers.post_process_layer.texture_view(),
+            global_context.device(),
         );
 
         let feature_shape_pipelines = world_shape_feature_layer_tag
@@ -90,7 +105,7 @@ impl MainPassNode {
                 vs_shader: None,
                 fs_shader: "",
             },
-            false
+            false,
         );
 
         Self {
@@ -108,7 +123,7 @@ impl MainPassNode {
             feature_shape_pipelines,
             preview_screen_mesh_pipeline,
             shadow_map_screen_mesh_pipeline,
-            post_process_screen_mesh_pipeline
+            post_process_screen_mesh_pipeline,
         }
     }
 }
@@ -159,9 +174,17 @@ impl PassNode for MainPassNode {
 
         // TODO Can it go to pipeline?
         layers.shape_layer.disable_skip_mesh_feature = false;
-        layers.shape_layer.render_new(&mut render_pass, &mut self.default_shape_pipeline, global_context);
+        layers.shape_layer.render_new(
+            &mut render_pass,
+            &mut self.default_shape_pipeline,
+            global_context,
+        );
 
-        layers.mesh_layer.render_new(&mut render_pass, &mut self.default_mesh_pipeline, global_context);
+        layers.mesh_layer.render_new(
+            &mut render_pass,
+            &mut self.default_mesh_pipeline,
+            global_context,
+        );
 
         if global_context.is_shadow_mapping_enabled() {
             // FIXME Something wrong with stencil
@@ -172,17 +195,24 @@ impl PassNode for MainPassNode {
             );
         }
         if global_context.is_ssao_enabled() {
-            layers
-                .post_process_layer
-                .render_new(&mut render_pass, &mut self.post_process_screen_mesh_pipeline, global_context);
+            layers.post_process_layer.render_new(
+                &mut render_pass,
+                &mut self.post_process_screen_mesh_pipeline,
+                global_context,
+            );
         }
-        layers
-            .screen_shape_layer
-            .render_new(&mut render_pass, &mut self.screen_shape_layer, global_context);
+        layers.screen_shape_layer.render_new(
+            &mut render_pass,
+            &mut self.screen_shape_layer,
+            global_context,
+        );
 
-        layers
-            .text_feature_layers.with_layer(|layer| {
-            layer.render_new(&mut render_pass, &mut self.text_screen_mesh_pipeline, global_context)
+        layers.text_feature_layers.with_layer(|layer| {
+            layer.render_new(
+                &mut render_pass,
+                &mut self.text_screen_mesh_pipeline,
+                global_context,
+            )
         });
 
         self.feature_shape_pipelines
