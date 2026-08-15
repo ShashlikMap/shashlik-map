@@ -1,7 +1,6 @@
-use indexmap::IndexMap;
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::BaseMeshLayer;
-use wgpu::{CommandEncoder, RenderPass};
+use indexmap::IndexMap;
 
 pub struct FeatureLayers<ML: BaseMeshLayer> {
     feature_shape_layers: IndexMap<&'static str, ML>,
@@ -39,33 +38,21 @@ impl<ML: BaseMeshLayer> FeatureLayers<ML> {
     pub(crate) fn get_layer(&mut self, tag: &str) -> Option<&mut ML> {
         self.feature_shape_layers.get_mut(tag)
     }
+
+    pub(crate) fn with_layer(&mut self, mut action: impl FnMut(&mut ML) -> ()) {
+        self.feature_shape_layers.values_mut().for_each(|layer| {
+            action(layer);
+        })
+    }
 }
 
 impl<ML: BaseMeshLayer> BaseMeshLayer for FeatureLayers<ML> {
-    fn prepare(&mut self, global_context: &GlobalContext) {
-        self.feature_shape_layers.iter_mut().for_each(|(_, layer)| {
-            layer.prepare(global_context);
-        });
-    }
-
     fn update(&mut self, global_context: &mut GlobalContext) {
         self.feature_shape_layers.iter_mut().for_each(|(_, layer)| {
             layer.update(global_context);
         });
     }
-
-    fn compute(&mut self, encoder: &mut CommandEncoder, global_context: &mut GlobalContext) {
-        self.feature_shape_layers.iter_mut().for_each(|(_, layer)| {
-            layer.compute(encoder, global_context);
-        });
-    }
-
-    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        self.feature_shape_layers.iter_mut().for_each(|(_, layer)| {
-            layer.render(render_pass, global_context);
-        });
-    }
-
+    
     fn clear_by_key(&mut self, key: &str) {
         self.feature_shape_layers
             .iter_mut()

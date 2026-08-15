@@ -139,13 +139,13 @@ impl VertexAttrib for ShapeInstanceInput {
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct TextInstanceInput {
+pub struct ScreenShapeInstanceInput {
     pub(crate) position: [f32; 3],
     pub(crate) color_alpha: f32,
     pub(crate) matrix: [[f32; 4]; 4],
     pub(crate) screen_space: u32,
 }
-impl VertexAttrib for TextInstanceInput {
+impl VertexAttrib for ScreenShapeInstanceInput {
     const ATTRIBUTES: &[VertexAttribute] = &wgpu::vertex_attr_array![
         4 => Float32x3,
         5 => Float32,

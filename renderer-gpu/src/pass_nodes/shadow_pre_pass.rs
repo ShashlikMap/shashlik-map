@@ -1,22 +1,27 @@
-use crate::global_context::{GlobalContext, GlobalRenderStep};
-use crate::mesh_layers::BaseMeshLayer;
+use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
+use crate::mesh_layers::BaseMeshLayerNew;
 use crate::pass_nodes::PassNode;
-use wgpu::CommandEncoder;
+use crate::pipelines::fill_shadow_map_pipeline::FillShadowMapPipeline;
 use crate::texture_view_resources::TextureViewKind;
+use wgpu::CommandEncoder;
 
-pub(crate) struct ShadowPrepass {}
+pub(crate) struct ShadowPrepass {
+    fill_shadow_map_pipeline: FillShadowMapPipeline,
+}
 
 impl ShadowPrepass {
-    pub fn new() -> ShadowPrepass {
-        ShadowPrepass {}
+    pub fn new(global_context: &GlobalContext) -> ShadowPrepass {
+        ShadowPrepass {
+            fill_shadow_map_pipeline: FillShadowMapPipeline::new(global_context),
+        }
     }
 }
 
 impl PassNode for ShadowPrepass {
 
     fn run(
-        &self,
+        &mut self,
         encoder: &mut CommandEncoder,
         layers: &mut Layers,
         global_context: &mut GlobalContext,
@@ -40,8 +45,6 @@ impl PassNode for ShadowPrepass {
         };
 
         let mut render_pass = encoder.begin_render_pass(&descriptor);
-
-        global_context.render_step = GlobalRenderStep::ShadowStep;
-        layers.mesh_layer.render(&mut render_pass, global_context);
+        layers.mesh_layer.render_new(&mut render_pass, &mut self.fill_shadow_map_pipeline, global_context)
     }
 }

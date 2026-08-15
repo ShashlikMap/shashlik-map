@@ -1,5 +1,4 @@
 use crate::global_context::GlobalContext;
-use crate::global_context::GlobalRenderStep::{MainStep, ShadowStep};
 use crate::pipelines::{OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline};
 use crate::texture_view_resources::TextureViewKind;
 use crate::textures::{SAMPLE_COUNT, TextureData, create_simple_texture};
@@ -7,18 +6,20 @@ use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
 use renderer_common::geometry_data::MeshVertex;
 use std::borrow::Cow;
 use wesl::include_wesl;
-use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, TextureFormat, TextureUsages};
+use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilState, TextureFormat, TextureUsages};
 
 pub struct MeshPipeline {
+    pipeline: Option<wgpu::RenderPipeline>,
     pub bind_group_layout: BindGroupLayout,
     depth_bind_group_layout: Option<BindGroupLayout>,
     pub bind_group: BindGroup,
     depth_bind_group: BindGroup,
     depth_dummy_bind_group: BindGroup,
+    write_to_stencil: bool,
 }
 
 impl MeshPipeline {
-    pub fn new(global_context: &GlobalContext, enable_depth_group: bool) -> Self {
+    pub fn new(global_context: &GlobalContext, enable_depth_group: bool, write_to_stencil: bool, main_pipeline: bool) -> Self {
         let device = global_context.device();
         let entries = vec![wgpu::BindGroupLayoutEntry {
             binding: 0,
@@ -121,42 +122,22 @@ impl MeshPipeline {
             label: Some("mesh_pipeline_dummy_depth_bind_group"),
         });
         let depth_bind_group_layout= if enable_depth_group { Some(depth_bind_group_layout) } else { None };
-        MeshPipeline {
+        let mut result = MeshPipeline {
+            pipeline: None,
             bind_group_layout,
             depth_bind_group_layout,
             bind_group,
             depth_bind_group,
             depth_dummy_bind_group,
+            write_to_stencil,
+        };
+        if main_pipeline {
+            result.pipeline = Some(result.prepare(global_context).to_render_pipeline(global_context.device()));
         }
-    }
-}
-
-impl RenderPipeline for MeshPipeline {
-    type InstanceInputType = GeneralInstanceInput;
-
-    fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
-        let mut mask = global_context.check_render_step(ShadowStep) as u32;
-        if global_context.is_shadow_mapping_enabled() {
-            mask |= 2;
-        }
-        render_pass.set_immediates(
-            0,
-            bytemuck::bytes_of(&mask),
-        );
-        render_pass.set_bind_group(0, &self.bind_group, &[]);
-
-
-        if self.depth_bind_group_layout.is_some() {
-            if !global_context.is_shadow_mapping_enabled() ||
-                !global_context.check_render_step(MainStep) {
-                render_pass.set_bind_group(1, &self.depth_dummy_bind_group, &[]);
-            } else {
-                render_pass.set_bind_group(1, &self.depth_bind_group, &[]);
-            }
-        }
+        result
     }
 
-    fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
+    pub(super) fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
         let device = global_context.device();
         let config = global_context.config();
 
@@ -170,6 +151,21 @@ impl RenderPipeline for MeshPipeline {
             label: Some("mesh_shader"),
             source: ShaderSource::Wgsl(Cow::from(include_wesl!("mesh_shader"))),
         });
+        let stencil = if self.write_to_stencil {
+            wgpu::StencilState {
+                front: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::Always,
+                    fail_op: wgpu::StencilOperation::Keep,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Replace,
+                },
+                back: wgpu::StencilFaceState::default(),
+                read_mask: 0xFF,
+                write_mask: 0xFF,
+            }
+        } else {
+            StencilState::default()
+        };
         OwnedRenderPipelineDescriptor {
             label: Some("Mesh Render Pipeline"),
             layout: Some(pipeline_layout),
@@ -198,7 +194,7 @@ impl RenderPipeline for MeshPipeline {
                     format: TextureFormat::Depth24PlusStencil8,
                     depth_write_enabled: Some(true),
                     depth_compare: Some(CompareFunction::Less),
-                    stencil: Default::default(),
+                    stencil,
                     bias: Default::default(),
                 }
             }),
@@ -209,12 +205,35 @@ impl RenderPipeline for MeshPipeline {
             },
         }
     }
+}
 
-    fn is_indirect(&self) -> bool {
-        false
-    }
+impl RenderPipeline<GeneralInstanceInput> for MeshPipeline {
 
-    fn support_g_buf(&self) -> bool {
-        true
+    fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        if let Some(pipeline) = self.pipeline.as_mut() {
+            render_pass.set_pipeline(pipeline);
+        }
+        if self.write_to_stencil {
+            render_pass.set_stencil_reference(1);
+        }
+        
+        let mut mask = 0;
+        if global_context.is_shadow_mapping_enabled() {
+            mask |= 2;
+        }
+        render_pass.set_immediates(
+            0,
+            bytemuck::bytes_of(&mask),
+        );
+        render_pass.set_bind_group(0, &self.bind_group, &[]);
+
+
+        if self.depth_bind_group_layout.is_some() {
+            if !global_context.is_shadow_mapping_enabled() {
+                render_pass.set_bind_group(1, &self.depth_dummy_bind_group, &[]);
+            } else {
+                render_pass.set_bind_group(1, &self.depth_bind_group, &[]);
+            }
+        }
     }
 }

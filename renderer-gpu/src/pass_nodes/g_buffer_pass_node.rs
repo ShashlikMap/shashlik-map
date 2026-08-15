@@ -1,12 +1,15 @@
-use crate::global_context::{GlobalContext, GlobalRenderStep};
-use crate::mesh_layers::BaseMeshLayer;
+use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
+use crate::mesh_layers::BaseMeshLayerNew;
 use crate::pass_nodes::PassNode;
+use crate::pipelines::g_buf_pipeline::GBufPipeline;
+use crate::texture_view_resources::TextureViewKind;
 use crate::textures::{TextureData, create_depth_texture, create_simple_texture};
 use wgpu::{CommandEncoder, TextureFormat, TextureUsages};
-use crate::texture_view_resources::TextureViewKind;
 
-pub(crate) struct GBufferPassNode;
+pub(crate) struct GBufferPassNode {
+    g_buf_pipeline: GBufPipeline,
+}
 
 impl GBufferPassNode {
     pub fn new(global_context: &mut GlobalContext) -> Self {
@@ -48,13 +51,15 @@ impl GBufferPassNode {
         global_context
             .texture_view_resources.insert(TextureViewKind::GBufDepth, non_msaa_depth_texture_view);
 
-        Self
+        Self {
+            g_buf_pipeline: GBufPipeline::new(global_context)
+        }
     }
 }
 
 impl PassNode for GBufferPassNode {
     fn run(
-        &self,
+        &mut self,
         encoder: &mut CommandEncoder,
         layers: &mut Layers,
         global_context: &mut GlobalContext,
@@ -117,7 +122,6 @@ impl PassNode for GBufferPassNode {
 
         let mut render_pass = encoder.begin_render_pass(&descriptor);
 
-        global_context.render_step = GlobalRenderStep::GBufferStep;
-        layers.mesh_layer.render(&mut render_pass, global_context);
+        layers.mesh_layer.render_new(&mut render_pass, &mut self.g_buf_pipeline, global_context);
     }
 }

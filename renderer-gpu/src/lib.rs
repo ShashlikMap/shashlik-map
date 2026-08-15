@@ -104,9 +104,7 @@ impl GpuRenderer {
         Self::run_background(style_store, renderer_tx.clone(), renderer_api_rx);
 
         let api = Arc::new(CommonRendererApi::new(renderer_api_tx));
-
-        layers.prepare(&mut global_context);
-
+        
         Ok(Self {
             render_config,
             layers,
@@ -175,28 +173,23 @@ impl GpuRenderer {
         if width > 0 && height > 0 {
             self.global_context.resize(width, height);
 
-            self.config_pass_nodes();
+            self.config_pass_nodes_and_textures();
         }
     }
 
     pub fn update_config(&mut self, action: impl Fn(&mut RenderConfig)) {
         action(&mut self.render_config);
 
-        self.config_pass_nodes();
-
-        if let Some(texture_view) = self.preview_textures.get(&self.render_config.preview_type) {
-            self.layers
-                .preview_mesh_layer
-                .set_texture(texture_view, (-100.0, -100.0), &self.global_context, &mut self.buffer_pool);
-        }
+        self.config_pass_nodes_and_textures();
     }
 
-    fn config_pass_nodes(&mut self) {
-        let pre_pass_node = PrepassNode::new();
+    fn config_pass_nodes_and_textures(&mut self) {
+        let pre_pass_node = PrepassNode::new(&self.global_context,
+                                             self.layers.world_shapes_feature_tags.clone());
         self.pass_nodes = vec![Box::new(pre_pass_node)];
 
         if self.render_config.shadow_enabled {
-            let shadow_pass_node = ShadowPrepass::new();
+            let shadow_pass_node = ShadowPrepass::new(&self.global_context);
             self.pass_nodes.push(Box::new(shadow_pass_node));
 
             self.layers
@@ -219,7 +212,8 @@ impl GpuRenderer {
 
         self.preview_textures.clear();
         if self.render_config.preview_type != PreviewType::None {
-            let rt_node = RenderToTexturePassNode::new(&mut self.global_context);
+            let rt_node = RenderToTexturePassNode::new(&mut self.global_context,
+                                                       self.layers.world_shapes_feature_tags.clone());
 
             let texture_view_resources = &self.global_context.texture_view_resources;
             PreviewType::iter().for_each(|preview_type| {
@@ -249,7 +243,15 @@ impl GpuRenderer {
             self.pass_nodes.push(Box::new(rt_node));
         }
 
-        let main_node = MainPassNode::new(&mut self.global_context);
+        if let Some(texture_view) = self.preview_textures.get(&self.render_config.preview_type) {
+            self.layers
+                .preview_mesh_layer
+                .set_texture(texture_view, (-100.0, -100.0), &self.global_context, &mut self.buffer_pool);
+        }
+
+        let main_node = MainPassNode::new(&mut self.global_context,
+                                          &self.layers,
+                                          self.layers.world_shapes_feature_tags.clone());
         self.pass_nodes.push(Box::new(main_node));
     }
 
@@ -289,7 +291,7 @@ impl GpuRenderer {
                 item.update_text(fps.as_str(), 1.0);
             });
 
-        self.pass_nodes.iter().for_each(|node| {
+        self.pass_nodes.iter_mut().for_each(|node| {
             node.run(
                 &mut encoder,
                 &mut self.layers,

@@ -44,7 +44,7 @@ pub fn feature_layer_tags() -> Vec<WorldShapeFeatureLayerTag> {
     ]
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct WorldShapeFeatureLayerTag {
     pub name: &'static str,
     pub vertex_shader: Option<&'static str>,

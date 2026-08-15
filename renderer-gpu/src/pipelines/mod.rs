@@ -1,43 +1,25 @@
 use crate::global_context::GlobalContext;
-use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
-use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::mesh_buffers::MeshBuffers;
-use glam::DVec3;
-use renderer_common::render_modifier::SpatialData;
-use wgpu::{BindGroup, ColorTargetState, ComputePass, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, TextureView, VertexBufferLayout};
+use wgpu::{ColorTargetState, ComputePass, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, VertexBufferLayout};
 
 pub mod mesh_pipeline;
 pub mod shape_pipeline;
 pub mod screen_mesh_pipeline;
+pub mod fill_shadow_map_pipeline;
+pub mod g_buf_pipeline;
 
-pub trait RenderPipeline {
-    type InstanceInputType: MeshInstanceInput;
-
-    fn create_positioned_mesh(spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-                              double_style: bool,
-                              instance_positions_alpha: Option<Vec<(DVec3, f32)>>,
-                              mesh: Mesh) -> PositionedMesh<Self::InstanceInputType> {
-        mesh.to_positioned::<Self::InstanceInputType>(spatial_rx, double_style, instance_positions_alpha)
-    }
-
+pub trait RenderPipeline<InstanceInputType: MeshInstanceInput> {
     fn setup_compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {}
     fn compute_mesh(&mut self, _compute_pass: &mut ComputePass,
                     _mesh: &MeshBuffers) {}
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext);
-    fn render_mesh(&mut self, render_pass: &mut RenderPass, mesh_buffers: &MeshBuffers) {
+    fn setup_mesh_buffers(&mut self, render_pass: &mut RenderPass, mesh_buffers: &MeshBuffers) {
         // by default all instances go to vertex buffer slot 1
         if let Some(buffer) = mesh_buffers.instance_buffer() {
             render_pass.set_vertex_buffer(1, buffer.slice(..));
         }
     }
-    fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_>;
-    fn is_indirect(&self) -> bool;
-    fn support_g_buf(&self) -> bool;
-}
-
-pub trait WithTexture {
-    fn create_texture_bind_group(&mut self, texture_view: &TextureView, global_context: &GlobalContext) -> BindGroup;
 }
 
 #[derive(Clone, Debug)]

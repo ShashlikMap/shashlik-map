@@ -5,9 +5,7 @@ use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
 use crate::mesh_layers::ortho_mesh_layer::OrthoMeshLayer;
 use crate::mesh_layers::screen_shape_layer::ScreenShapeLayer;
 use crate::mesh_layers::text_mesh_layer::TextMeshLayer;
-use crate::pipelines::mesh_pipeline::MeshPipeline;
-use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
-use crate::pipelines::shape_pipeline::ShapePipeline;
+use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput, ScreenShapeInstanceInput};
 use renderer_common::WorldShapeFeatureLayerTag;
 use rustybuzz::ttf_parser;
 
@@ -21,14 +19,15 @@ impl FeatureLayerTag for WorldShapeFeatureLayerTag {
 }
 
 pub(crate) struct Layers {
-    pub feature_layers: FeatureLayers<GeneralMeshLayer<ShapePipeline>>,
-    pub shape_layer: GeneralMeshLayer<ShapePipeline>,
-    pub mesh_layer: GeneralMeshLayer<MeshPipeline>,
-    pub shadow_map_layer: OrthoMeshLayer<ScreenMeshPipeline>,
-    pub screen_shape_layer: ScreenShapeLayer<ShapePipeline>,
-    pub text_feature_layers: FeatureLayers<TextMeshLayer<ScreenMeshPipeline>>,
-    pub preview_mesh_layer: OrthoMeshLayer<ScreenMeshPipeline>,
-    pub post_process_layer: OrthoMeshLayer<ScreenMeshPipeline>,
+    pub world_shapes_feature_tags: Vec<WorldShapeFeatureLayerTag>,
+    pub feature_layers: FeatureLayers<GeneralMeshLayer<ShapeInstanceInput>>,
+    pub shape_layer: GeneralMeshLayer<ShapeInstanceInput>,
+    pub mesh_layer: GeneralMeshLayer<GeneralInstanceInput>,
+    pub shadow_map_layer: OrthoMeshLayer<ScreenShapeInstanceInput>,
+    pub screen_shape_layer: ScreenShapeLayer<ShapeInstanceInput>,
+    pub text_feature_layers: FeatureLayers<TextMeshLayer<ScreenShapeInstanceInput>>,
+    pub preview_mesh_layer: OrthoMeshLayer<ScreenShapeInstanceInput>,
+    pub post_process_layer: OrthoMeshLayer<ScreenShapeInstanceInput>,
 }
 
 impl Layers {
@@ -37,15 +36,9 @@ impl Layers {
         global_context: &mut GlobalContext,
         font: ttf_parser::Face<'static>,
     ) -> Layers {
-        let feature_layers = FeatureLayers::new(world_shapes_feature_tags, |tag| {
+        let feature_layers = FeatureLayers::new(world_shapes_feature_tags.clone(), |tag| {
             GeneralMeshLayer::new(
-                ShapePipeline::new(
-                    global_context,
-                    tag.vertex_shader,
-                    tag.indirect,
-                    tag.single_instance_step,
-                ),
-                false,
+                tag.indirect
             )
         });
         let text_feature_layers = FeatureLayers::new(
@@ -55,15 +48,6 @@ impl Layers {
             ],
             |_| {
                 TextMeshLayer::new(
-                    ScreenMeshPipeline::new(
-                        global_context,
-                        TextureInfo {
-                            use_texture: false,
-                            filterable: false,
-                            vs_shader: None,
-                            fs_shader: "",
-                        },
-                    ),
                     global_context,
                     font.clone(),
                 )
@@ -71,66 +55,16 @@ impl Layers {
         );
 
         Layers {
+            world_shapes_feature_tags,
             feature_layers,
-            mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context, true), true),
-            shape_layer: GeneralMeshLayer::new(
-                ShapePipeline::new(global_context, None, false, true),
-                false,
-            ),
-            screen_shape_layer: ScreenShapeLayer::new(
-                ShapePipeline::new(global_context, Some("vs_main_screen"), false, false),
-                global_context,
-            ),
-            shadow_map_layer: OrthoMeshLayer::new(
-                ScreenMeshPipeline::new(
-                    global_context,
-                    TextureInfo {
-                        use_texture: true,
-                        filterable: false,
-                        vs_shader: Some("vs_main_sm"),
-                        fs_shader: "fs_main_sm",
-                    },
-                ),
-                true,
-                false,
-                true,
-            ),
+            mesh_layer: GeneralMeshLayer::new(false),
+            shape_layer: GeneralMeshLayer::new(false),
+            screen_shape_layer: ScreenShapeLayer::new(global_context),
+            shadow_map_layer: OrthoMeshLayer::new(true, false),
             text_feature_layers,
-            preview_mesh_layer: OrthoMeshLayer::new(
-                ScreenMeshPipeline::new(
-                    global_context,
-                    TextureInfo {
-                        use_texture: true,
-                        filterable: true,
-                        vs_shader: None,
-                        fs_shader: "fs_main_textured",
-                    },
-                ),
-                false,
-                true,
-                false,
-            ),
-            post_process_layer: OrthoMeshLayer::new(
-                ScreenMeshPipeline::new(
-                    global_context,
-                    TextureInfo {
-                        use_texture: true,
-                        filterable: true,
-                        vs_shader: None,
-                        fs_shader: "fs_main_tex_storage",
-                    },
-                ),
-                true,
-                false,
-                false,
-            ),
+            preview_mesh_layer: OrthoMeshLayer::new(false, true),
+            post_process_layer: OrthoMeshLayer::new(true, false),
         }
-    }
-
-    pub fn prepare(&mut self, global_context: &GlobalContext) {
-        self.all_layers()
-            .iter_mut()
-            .for_each(|layer| layer.prepare(global_context));
     }
 
     pub fn update(&mut self, global_context: &mut GlobalContext) {
@@ -145,7 +79,7 @@ impl Layers {
             .for_each(|layer| layer.clear_by_key(key));
     }
 
-    pub fn feature_layers(&mut self, tag: &str) -> Option<&mut GeneralMeshLayer<ShapePipeline>> {
+    pub fn feature_layers(&mut self, tag: &str) -> Option<&mut GeneralMeshLayer<ShapeInstanceInput>> {
         self.feature_layers.get_layer(tag)
     }
 

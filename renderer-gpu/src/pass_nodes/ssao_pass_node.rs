@@ -267,7 +267,7 @@ impl SsaoPassNode {
 
 impl PassNode for SsaoPassNode {
     fn run(
-        &self,
+        &mut self,
         encoder: &mut CommandEncoder,
         _layers: &mut Layers,
         global_context: &mut GlobalContext,
