@@ -110,6 +110,59 @@ impl ShapePipeline {
         result
     }
 
+    fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
+        let device = global_context.device();
+        let mut layouts = vec![
+            Some(&self.mesh_pipeline.bind_group_layout),
+            Some(&global_context.styles_bind_group_layout),
+        ];
+        if self.indirect {
+            layouts.push(Some(&self.indirect_render_instances_layout))
+        }
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Shape Render Pipeline Layout"),
+            bind_group_layouts: &layouts,
+            immediate_size: 4,
+            ..Default::default()
+        });
+
+        let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context);
+        mesh_descriptor.label = Some("Shape Pipeline");
+        let mut stencil = mesh_descriptor.depth_stencil.unwrap();
+        stencil.depth_compare = Some(CompareFunction::Always);
+        stencil.depth_write_enabled = Some(false);
+        mesh_descriptor.depth_stencil = Some(stencil);
+
+
+        mesh_descriptor.layout = Some(pipeline_layout);
+
+
+        let shader_module = device.create_shader_module(ShaderModuleDescriptor {
+            label: Some("shape_shader"),
+            source: ShaderSource::Wgsl(Cow::from(include_wesl!("shape_shader"))),
+        });
+        let vertex = &mut mesh_descriptor.vertex;
+        vertex.entry_point = self.vs_func_name.or(vertex.entry_point);
+
+        vertex.module = shader_module.to_owned();
+        vertex.buffers = if self.indirect {
+            vec![ShapeVertex::desc()]
+        } else {
+            let layout = if self.single_instance_step {
+                ShapeInstanceInput::desc_no_stride()
+            } else {
+                ShapeInstanceInput::desc()
+            };
+            vec![ShapeVertex::desc(), layout]
+        };
+        let fragment = &mut mesh_descriptor.fragment.as_mut().unwrap();
+        fragment.module = shader_module;
+
+        mesh_descriptor.primitive.cull_mode = None;
+
+        mesh_descriptor
+    }
+
     fn create_indirect_layout(global_context: &GlobalContext, is_compute_pipeline: bool) -> BindGroupLayout {
         let visibility = if is_compute_pipeline {
             ShaderStages::COMPUTE
@@ -176,8 +229,7 @@ impl RenderPipeline<ShapeInstanceInput> for ShapePipeline {
             self.bind_group_cache.clear_if_needed();
         }
     }
-
-
+    
     fn compute_mesh(&mut self,
                     compute_pass: &mut ComputePass,
                     mesh_buffers: &MeshBuffers) {
@@ -252,58 +304,5 @@ impl RenderPipeline<ShapeInstanceInput> for ShapePipeline {
                 error!("Buffer is empty!");
             }
         }
-    }
-
-    fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
-        let device = global_context.device();
-        let mut layouts = vec![
-            Some(&self.mesh_pipeline.bind_group_layout),
-            Some(&global_context.styles_bind_group_layout),
-        ];
-        if self.indirect {
-            layouts.push(Some(&self.indirect_render_instances_layout))
-        }
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Shape Render Pipeline Layout"),
-            bind_group_layouts: &layouts,
-            immediate_size: 4,
-            ..Default::default()
-        });
-
-        let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context);
-        mesh_descriptor.label = Some("Shape Pipeline");
-        let mut stencil = mesh_descriptor.depth_stencil.unwrap();
-        stencil.depth_compare = Some(CompareFunction::Always);
-        stencil.depth_write_enabled = Some(false);
-        mesh_descriptor.depth_stencil = Some(stencil);
-
-
-        mesh_descriptor.layout = Some(pipeline_layout);
-
-
-        let shader_module = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("shape_shader"),
-            source: ShaderSource::Wgsl(Cow::from(include_wesl!("shape_shader"))),
-        });
-        let vertex = &mut mesh_descriptor.vertex;
-        vertex.entry_point = self.vs_func_name.or(vertex.entry_point);
-        
-        vertex.module = shader_module.to_owned();
-        vertex.buffers = if self.indirect {
-            vec![ShapeVertex::desc()]
-        } else {
-            let layout = if self.single_instance_step {
-                ShapeInstanceInput::desc_no_stride()
-            } else {
-                ShapeInstanceInput::desc()
-            };
-            vec![ShapeVertex::desc(), layout]
-        };
-        let fragment = &mut mesh_descriptor.fragment.as_mut().unwrap();
-        fragment.module = shader_module;
-
-        mesh_descriptor.primitive.cull_mode = None;
-
-        mesh_descriptor
     }
 }

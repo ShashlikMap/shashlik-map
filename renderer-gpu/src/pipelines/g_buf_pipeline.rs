@@ -1,11 +1,11 @@
 use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
-use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
+use crate::pipelines::RenderPipeline;
+use crate::vertex_attrs::GeneralInstanceInput;
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::TextureFormat::Rgba16Float;
 use wgpu::{RenderPass, ShaderModuleDescriptor, ShaderSource, TextureFormat};
-use crate::vertex_attrs::GeneralInstanceInput;
 
 pub struct GBufPipeline {
     mesh_pipeline: MeshPipeline,
@@ -56,9 +56,5 @@ impl RenderPipeline<GeneralInstanceInput> for GBufPipeline {
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         render_pass.set_pipeline(&self.render_pipeline);
         self.mesh_pipeline.setup_render(render_pass, global_context);
-    }
-
-    fn prepare(&self, _global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
-        todo!("BLABAB")
     }
 }

@@ -99,6 +99,65 @@ impl ScreenMeshPipeline {
         result
     }
 
+    fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
+        let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context);
+        mesh_descriptor.label = Some("Screen Mesh Pipeline");
+        let device = global_context.device();
+
+        if self.texture_info.use_texture {
+            mesh_descriptor.layout = Some(device.create_pipeline_layout(
+                &wgpu::PipelineLayoutDescriptor {
+                    label: Some("Texture Render Pipeline Layout"),
+                    bind_group_layouts: &[
+                        Some(&self.mesh_pipeline.bind_group_layout),
+                        Some(&self.texture_bind_group_layout),
+                    ],
+                    immediate_size: 4,
+                    ..Default::default()
+                },
+            ));
+        }
+
+        let mut depth_stencil = mesh_descriptor.depth_stencil.unwrap();
+        if self.read_stencil {
+            depth_stencil.stencil = wgpu::StencilState {
+                front: StencilFaceState::IGNORE,
+                back: wgpu::StencilFaceState {
+                    compare: wgpu::CompareFunction::NotEqual,
+                    fail_op: wgpu::StencilOperation::Keep,
+                    depth_fail_op: wgpu::StencilOperation::Keep,
+                    pass_op: wgpu::StencilOperation::Keep,
+                },
+                read_mask: 0xFF,
+                write_mask: 0x00,
+            };
+        } else {
+            depth_stencil.depth_compare = Some(CompareFunction::Always);
+            depth_stencil.depth_write_enabled = Some(false);
+        }
+        mesh_descriptor.depth_stencil = Some(depth_stencil);
+
+        let shader_module = device.create_shader_module(ShaderModuleDescriptor {
+            label: Some("screen_mesh_shader"),
+            source: ShaderSource::Wgsl(Cow::from(include_wesl!("screen_mesh_shader"))),
+        });
+
+        let vertex = &mut mesh_descriptor.vertex;
+        vertex.module = shader_module.to_owned();
+        vertex.buffers = vec![MeshVertexWithUV::desc(), TextInstanceInput::desc()];
+
+        let fragment = mesh_descriptor.fragment.as_mut().unwrap();
+        fragment.module = shader_module;
+        if self.texture_info.use_texture {
+            vertex.entry_point = self.texture_info.vs_shader.or(Some("vs_main"));
+            fragment.entry_point = Some(self.texture_info.fs_shader);
+        }
+
+        mesh_descriptor.primitive.cull_mode = None;
+
+        mesh_descriptor
+    }
+
     pub fn set_texture_view(&mut self, texture_view: Option<&TextureView>, device: &wgpu::Device) {
         if let Some(texture_view) = texture_view {
             // fyi, in future we may need to cache bind group here for more dynamic behavior
@@ -219,64 +278,5 @@ impl RenderPipeline<ShapeInstanceInput> for ScreenMeshPipeline {
             render_pass.set_immediates(0, bytemuck::bytes_of(&(*texture_type as u32)));
             render_pass.set_bind_group(1, texture_bind_group, &[]);
         }
-    }
-
-    fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
-        let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context);
-        mesh_descriptor.label = Some("Screen Mesh Pipeline");
-        let device = global_context.device();
-
-        if self.texture_info.use_texture {
-            mesh_descriptor.layout = Some(device.create_pipeline_layout(
-                &wgpu::PipelineLayoutDescriptor {
-                    label: Some("Texture Render Pipeline Layout"),
-                    bind_group_layouts: &[
-                        Some(&self.mesh_pipeline.bind_group_layout),
-                        Some(&self.texture_bind_group_layout),
-                    ],
-                    immediate_size: 4,
-                    ..Default::default()
-                },
-            ));
-        }
-
-        let mut depth_stencil = mesh_descriptor.depth_stencil.unwrap();
-        if self.read_stencil {
-           depth_stencil.stencil = wgpu::StencilState {
-                front: StencilFaceState::IGNORE,
-                back: wgpu::StencilFaceState {
-                    compare: wgpu::CompareFunction::NotEqual,
-                    fail_op: wgpu::StencilOperation::Keep,
-                    depth_fail_op: wgpu::StencilOperation::Keep,
-                    pass_op: wgpu::StencilOperation::Keep,
-                },
-                read_mask: 0xFF,
-                write_mask: 0x00,
-            };
-        } else {
-            depth_stencil.depth_compare = Some(CompareFunction::Always);
-            depth_stencil.depth_write_enabled = Some(false);
-        }
-        mesh_descriptor.depth_stencil = Some(depth_stencil);
-
-        let shader_module = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("screen_mesh_shader"),
-            source: ShaderSource::Wgsl(Cow::from(include_wesl!("screen_mesh_shader"))),
-        });
-
-        let vertex = &mut mesh_descriptor.vertex;
-        vertex.module = shader_module.to_owned();
-        vertex.buffers = vec![MeshVertexWithUV::desc(), TextInstanceInput::desc()];
-
-        let fragment = mesh_descriptor.fragment.as_mut().unwrap();
-        fragment.module = shader_module;
-        if self.texture_info.use_texture {
-            vertex.entry_point = self.texture_info.vs_shader.or(Some("vs_main"));
-            fragment.entry_point = Some(self.texture_info.fs_shader);
-        }
-
-        mesh_descriptor.primitive.cull_mode = None;
-
-        mesh_descriptor
     }
 }

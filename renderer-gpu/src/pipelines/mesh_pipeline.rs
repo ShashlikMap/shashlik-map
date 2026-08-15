@@ -136,39 +136,8 @@ impl MeshPipeline {
         }
         result
     }
-}
 
-impl RenderPipeline<GeneralInstanceInput> for MeshPipeline {
-
-    fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
-        if let Some(pipeline) = self.pipeline.as_mut() {
-            render_pass.set_pipeline(pipeline);
-        }
-        if self.write_to_stencil {
-            render_pass.set_stencil_reference(1);
-        }
-        
-        let mut mask = 0;
-        if global_context.is_shadow_mapping_enabled() {
-            mask |= 2;
-        }
-        render_pass.set_immediates(
-            0,
-            bytemuck::bytes_of(&mask),
-        );
-        render_pass.set_bind_group(0, &self.bind_group, &[]);
-
-
-        if self.depth_bind_group_layout.is_some() {
-            if !global_context.is_shadow_mapping_enabled() {
-                render_pass.set_bind_group(1, &self.depth_dummy_bind_group, &[]);
-            } else {
-                render_pass.set_bind_group(1, &self.depth_bind_group, &[]);
-            }
-        }
-    }
-
-    fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
+    pub(super) fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
         let device = global_context.device();
         let config = global_context.config();
 
@@ -234,6 +203,37 @@ impl RenderPipeline<GeneralInstanceInput> for MeshPipeline {
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
+        }
+    }
+}
+
+impl RenderPipeline<GeneralInstanceInput> for MeshPipeline {
+
+    fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        if let Some(pipeline) = self.pipeline.as_mut() {
+            render_pass.set_pipeline(pipeline);
+        }
+        if self.write_to_stencil {
+            render_pass.set_stencil_reference(1);
+        }
+        
+        let mut mask = 0;
+        if global_context.is_shadow_mapping_enabled() {
+            mask |= 2;
+        }
+        render_pass.set_immediates(
+            0,
+            bytemuck::bytes_of(&mask),
+        );
+        render_pass.set_bind_group(0, &self.bind_group, &[]);
+
+
+        if self.depth_bind_group_layout.is_some() {
+            if !global_context.is_shadow_mapping_enabled() {
+                render_pass.set_bind_group(1, &self.depth_dummy_bind_group, &[]);
+            } else {
+                render_pass.set_bind_group(1, &self.depth_bind_group, &[]);
+            }
         }
     }
 }

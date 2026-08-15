@@ -20,7 +20,6 @@ pub trait RenderPipeline<InstanceInputType: MeshInstanceInput> {
             render_pass.set_vertex_buffer(1, buffer.slice(..));
         }
     }
-    fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_>;
 }
 
 #[derive(Clone, Debug)]
