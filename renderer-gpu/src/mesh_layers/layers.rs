@@ -5,9 +5,7 @@ use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
 use crate::mesh_layers::ortho_mesh_layer::OrthoMeshLayer;
 use crate::mesh_layers::screen_shape_layer::ScreenShapeLayer;
 use crate::mesh_layers::text_mesh_layer::TextMeshLayer;
-use crate::pipelines::mesh_pipeline::MeshPipeline;
-use crate::pipelines::shape_pipeline::ShapePipeline;
-use crate::vertex_attrs::ShapeInstanceInput;
+use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput};
 use renderer_common::WorldShapeFeatureLayerTag;
 use rustybuzz::ttf_parser;
 
@@ -22,9 +20,9 @@ impl FeatureLayerTag for WorldShapeFeatureLayerTag {
 
 pub(crate) struct Layers {
     pub world_shapes_feature_tags: Vec<WorldShapeFeatureLayerTag>,
-    pub feature_layers: FeatureLayers<GeneralMeshLayer<ShapePipeline>>,
-    pub shape_layer: GeneralMeshLayer<ShapePipeline>,
-    pub mesh_layer: GeneralMeshLayer<MeshPipeline>,
+    pub feature_layers: FeatureLayers<GeneralMeshLayer<ShapeInstanceInput>>,
+    pub shape_layer: GeneralMeshLayer<ShapeInstanceInput>,
+    pub mesh_layer: GeneralMeshLayer<GeneralInstanceInput>,
     pub shadow_map_layer: OrthoMeshLayer,
     pub screen_shape_layer: ScreenShapeLayer<ShapeInstanceInput>, // TODO Do we need it?
     pub text_feature_layers: FeatureLayers<TextMeshLayer>,
@@ -40,12 +38,7 @@ impl Layers {
     ) -> Layers {
         let feature_layers = FeatureLayers::new(world_shapes_feature_tags.clone(), |tag| {
             GeneralMeshLayer::new(
-                ShapePipeline::new(
-                    global_context,
-                    tag.vertex_shader,
-                    tag.indirect,
-                    tag.single_instance_step,
-                ),
+                tag.indirect
             )
         });
         let text_feature_layers = FeatureLayers::new(
@@ -64,10 +57,8 @@ impl Layers {
         Layers {
             world_shapes_feature_tags,
             feature_layers,
-            mesh_layer: GeneralMeshLayer::new(MeshPipeline::new(global_context, true, true, false)),
-            shape_layer: GeneralMeshLayer::new(
-                ShapePipeline::new(global_context, None, false, true),
-            ),
+            mesh_layer: GeneralMeshLayer::new(false),
+            shape_layer: GeneralMeshLayer::new(false),
             screen_shape_layer: ScreenShapeLayer::new(
                 global_context,
             ),
@@ -99,7 +90,7 @@ impl Layers {
             .for_each(|layer| layer.clear_by_key(key));
     }
 
-    pub fn feature_layers(&mut self, tag: &str) -> Option<&mut GeneralMeshLayer<ShapePipeline>> {
+    pub fn feature_layers(&mut self, tag: &str) -> Option<&mut GeneralMeshLayer<ShapeInstanceInput>> {
         self.feature_layers.get_layer(tag)
     }
 

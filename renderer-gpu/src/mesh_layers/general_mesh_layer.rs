@@ -9,18 +9,19 @@ use crate::pipelines::RenderPipeline;
 use renderer_common::render_modifier::SpatialData;
 use std::mem;
 use wgpu::{CommandEncoder, ComputePassDescriptor, RenderPass};
+use crate::mesh::mesh_instance_input::MeshInstanceInput;
 
-pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
-    render_pipeline: P,
-    render_data_holder: RenderDataHolder<PositionedMesh<P::InstanceInputType>>,
+pub(crate) struct GeneralMeshLayer<I: MeshInstanceInput> {
+    render_data_holder: RenderDataHolder<PositionedMesh<I>>,
+    indirect: bool,
     pub disable_skip_mesh_feature: bool,
 }
 
-impl<P: RenderPipeline> GeneralMeshLayer<P> {
-    pub fn new(render_pipeline: P) -> Self {
+impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
+    pub fn new(indirect: bool) -> Self {
         GeneralMeshLayer {
-            render_pipeline,
             render_data_holder: RenderDataHolder::new(),
+            indirect,
             disable_skip_mesh_feature: false,
         }
     }
@@ -32,7 +33,7 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
         mesh: Mesh,
     ) {
 
-        let mesh = P::create_positioned_mesh(
+        let mesh = I::create_positioned_mesh(
             spatial_rx,
             double_style,
             None,
@@ -62,7 +63,7 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
                 (item, 1f32)
             }).collect());
 
-        let mesh = P::create_positioned_mesh(
+        let mesh = I::create_positioned_mesh(
             spatial_rx,
             batch.mesh_info.double_style,
             instance_positions,
@@ -72,11 +73,11 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
     }
 }
 
-impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
+impl<I: MeshInstanceInput> BaseMeshLayer for GeneralMeshLayer<I> {
 
     fn update(&mut self, global_context: &mut GlobalContext) {
         self.render_data_holder.run_mut_action(|mesh| {
-            mesh.update(global_context, self.render_pipeline.is_indirect());
+            mesh.update(global_context, self.indirect);
         });
     }
 
@@ -85,7 +86,7 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
     }
 }
 
-impl<P: RenderPipeline> BaseMeshLayerNew for GeneralMeshLayer<P> {
+impl<I: MeshInstanceInput> BaseMeshLayerNew for GeneralMeshLayer<I> {
     fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline, global_context: &mut GlobalContext) {
         render_pipeline.setup_render(render_pass, global_context);
         self.render_data_holder.run_mut_action(|mesh| {
@@ -95,7 +96,7 @@ impl<P: RenderPipeline> BaseMeshLayerNew for GeneralMeshLayer<P> {
     }
 }
 
-impl<P: RenderPipeline> BaseMeshComputeLayerNew for GeneralMeshLayer<P> {
+impl<I: MeshInstanceInput> BaseMeshComputeLayerNew for GeneralMeshLayer<I> {
     fn compute_new(&mut self, command_encoder: &mut CommandEncoder, render_pipeline: &mut impl RenderPipeline, global_context: &mut GlobalContext) {
         let mut compute_pass = command_encoder.begin_compute_pass(&ComputePassDescriptor {
             label: Some("General Mesh Layer Compute Pass"),
