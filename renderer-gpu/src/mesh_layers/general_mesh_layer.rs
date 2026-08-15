@@ -12,7 +12,6 @@ use wgpu::{CommandEncoder, ComputePassDescriptor, RenderPass};
 
 pub(crate) struct GeneralMeshLayer<P: RenderPipeline> {
     render_pipeline: P,
-    pipeline: Option<wgpu::RenderPipeline>,
     render_data_holder: RenderDataHolder<PositionedMesh<P::InstanceInputType>>,
     pub disable_skip_mesh_feature: bool,
 }
@@ -21,7 +20,6 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
     pub fn new(render_pipeline: P) -> Self {
         GeneralMeshLayer {
             render_pipeline,
-            pipeline: None,
             render_data_holder: RenderDataHolder::new(),
             disable_skip_mesh_feature: false,
         }
@@ -75,9 +73,7 @@ impl<P: RenderPipeline> GeneralMeshLayer<P> {
 }
 
 impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
-    fn prepare(&mut self, global_context: &GlobalContext) {
-        let descriptor = self.render_pipeline.prepare(global_context);
-        self.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
+    fn prepare(&mut self, _global_context: &GlobalContext) {
     }
 
     fn update(&mut self, global_context: &mut GlobalContext) {
@@ -101,17 +97,8 @@ impl<P: RenderPipeline> BaseMeshLayer for GeneralMeshLayer<P> {
         }
     }
 
-    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext) {
-        if let Some(render_pipeline) = self.pipeline.as_ref() {
-            render_pass.set_pipeline(render_pipeline);
-
-            self.render_pipeline.setup_render(render_pass, global_context);
-
-            self.render_data_holder.run_mut_action(|mesh| {
-                self.render_pipeline.setup_mesh_buffers(render_pass, mesh.get_mesh_buffers());
-                mesh.render_instanced(render_pass, self.disable_skip_mesh_feature);
-            });
-        }
+    fn render(&mut self, _render_pass: &mut RenderPass, _global_context: &mut GlobalContext) {
+        panic!("should not be called")
     }
 
     fn clear_by_key(&mut self, key: &str) {
