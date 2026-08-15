@@ -59,22 +59,11 @@ impl Layers {
             feature_layers,
             mesh_layer: GeneralMeshLayer::new(false),
             shape_layer: GeneralMeshLayer::new(false),
-            screen_shape_layer: ScreenShapeLayer::new(
-                global_context,
-            ),
-            shadow_map_layer: OrthoMeshLayer::new(
-                true,
-                false,
-            ),
+            screen_shape_layer: ScreenShapeLayer::new(global_context),
+            shadow_map_layer: OrthoMeshLayer::new(true, false),
             text_feature_layers,
-            preview_mesh_layer: OrthoMeshLayer::new(
-                false,
-                true,
-            ),
-            post_process_layer: OrthoMeshLayer::new(
-                true,
-                false,
-            ),
+            preview_mesh_layer: OrthoMeshLayer::new(false, true),
+            post_process_layer: OrthoMeshLayer::new(true, false),
         }
     }
 
