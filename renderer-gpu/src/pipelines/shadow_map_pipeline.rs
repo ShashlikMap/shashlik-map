@@ -7,12 +7,12 @@ use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{Face, RenderPass, ShaderModuleDescriptor, ShaderSource};
 
-pub struct ShadowMapPipeline {
+pub struct FillShadowMapPipeline {
     mesh_pipeline: MeshPipeline,
     render_pipeline: wgpu::RenderPipeline,
 }
 
-impl ShadowMapPipeline {
+impl FillShadowMapPipeline {
     pub fn new(global_context: &GlobalContext) -> Self {
         let mesh_pipeline = MeshPipeline::new(global_context, false, false, false);
         let mut root_descriptor = mesh_pipeline.prepare(global_context);
@@ -42,7 +42,7 @@ impl ShadowMapPipeline {
     }
 }
 
-impl RenderPipeline<GeneralInstanceInput> for ShadowMapPipeline {
+impl RenderPipeline<GeneralInstanceInput> for FillShadowMapPipeline {
 
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         render_pass.set_pipeline(&self.render_pipeline);
