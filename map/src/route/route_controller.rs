@@ -149,6 +149,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
     }
 
     pub fn clear_routes(&mut self, api: Arc<RAPI>) {
+        // TODO Need to cancel requests too later
         let active_routes = self.get_active_route_ids().clone();
         self.active_routes.store(0, Ordering::Relaxed);
         self.active_routes_ids.clear();

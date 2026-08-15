@@ -179,6 +179,10 @@ pub fn launch_internal(ui: &ShashlikUI) {
                                             Some(0f32),
                                         );
                                     }
+                                    Action::ClearRoute => {
+                                        shashlik_map
+                                            .clear_routes();
+                                    }
                                     Action::Route => {
                                         let route_costing = match cost_index {
                                             0 => RouteCosting::Pedestrian,

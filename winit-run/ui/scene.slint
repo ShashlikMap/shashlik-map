@@ -21,6 +21,7 @@ export enum Feature {
 export enum Action {
     DmOffice,
     Route,
+    ClearRoute,
     KML,
 }
 
@@ -145,6 +146,14 @@ export component ShashlikUI inherits Window {
                 height: 48px;
                 clicked => {
                     btn_click(Action.Route, cost.current-index)
+                }
+            }
+
+            Button {
+                text: "ClearRoute";
+                height: 48px;
+                clicked => {
+                    btn_click(Action.ClearRoute, cost.current-index)
                 }
             }
 
