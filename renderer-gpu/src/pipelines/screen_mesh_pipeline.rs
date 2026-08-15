@@ -177,8 +177,7 @@ impl ScreenMeshPipeline {
     }
 }
 
-impl RenderPipeline for ScreenMeshPipeline {
-    type InstanceInputType = ShapeInstanceInput;
+impl RenderPipeline<ShapeInstanceInput> for ScreenMeshPipeline {
 
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         if let Some(pipeline) = self.pipeline.as_ref() {

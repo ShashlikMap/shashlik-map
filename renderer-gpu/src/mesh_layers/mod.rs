@@ -1,5 +1,6 @@
 use crate::global_context::GlobalContext;
 use wgpu::{CommandEncoder, RenderPass};
+use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::pipelines::RenderPipeline;
 
 pub mod general_mesh_layer;
@@ -16,10 +17,10 @@ pub trait BaseMeshLayer {
     fn clear_by_key(&mut self, key: &str);
 }
 
-pub trait BaseMeshLayerNew {
-    fn render_new(&mut self, _render_pass: &mut RenderPass, _render_pipeline: &mut impl RenderPipeline, _global_context: &mut GlobalContext) {}
+pub trait BaseMeshLayerNew<I: MeshInstanceInput> {
+    fn render_new(&mut self, _render_pass: &mut RenderPass, _render_pipeline: &mut impl RenderPipeline<I>, _global_context: &mut GlobalContext) {}
 }
 
-pub trait BaseMeshComputeLayerNew {
-    fn compute_new(&mut self, _command_encoder: &mut CommandEncoder, _render_pipeline: &mut impl RenderPipeline, _global_context: &mut GlobalContext) {}
+pub trait BaseMeshComputeLayerNew<I: MeshInstanceInput> {
+    fn compute_new(&mut self, _command_encoder: &mut CommandEncoder, _render_pipeline: &mut impl RenderPipeline<I>, _global_context: &mut GlobalContext) {}
 }

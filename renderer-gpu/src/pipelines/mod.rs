@@ -9,9 +9,7 @@ pub mod screen_mesh_pipeline;
 pub mod shadow_map_pipeline;
 pub mod g_buf_pipeline;
 
-pub trait RenderPipeline {
-    type InstanceInputType: MeshInstanceInput;
-
+pub trait RenderPipeline<InstanceInputType: MeshInstanceInput> {
     fn setup_compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {}
     fn compute_mesh(&mut self, _compute_pass: &mut ComputePass,
                     _mesh: &MeshBuffers) {}

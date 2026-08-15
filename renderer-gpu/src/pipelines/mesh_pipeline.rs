@@ -139,8 +139,7 @@ impl MeshPipeline {
     }
 }
 
-impl RenderPipeline for MeshPipeline {
-    type InstanceInputType = GeneralInstanceInput;
+impl RenderPipeline<GeneralInstanceInput> for MeshPipeline {
 
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         if let Some(pipeline) = self.pipeline.as_mut() {

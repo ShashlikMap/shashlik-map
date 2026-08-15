@@ -86,8 +86,8 @@ impl<I: MeshInstanceInput> BaseMeshLayer for GeneralMeshLayer<I> {
     }
 }
 
-impl<I: MeshInstanceInput> BaseMeshLayerNew for GeneralMeshLayer<I> {
-    fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline, global_context: &mut GlobalContext) {
+impl<I: MeshInstanceInput> BaseMeshLayerNew<I> for GeneralMeshLayer<I> {
+    fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
         render_pipeline.setup_render(render_pass, global_context);
         self.render_data_holder.run_mut_action(|mesh| {
             render_pipeline.setup_mesh_buffers(render_pass, mesh.get_mesh_buffers());
@@ -96,8 +96,8 @@ impl<I: MeshInstanceInput> BaseMeshLayerNew for GeneralMeshLayer<I> {
     }
 }
 
-impl<I: MeshInstanceInput> BaseMeshComputeLayerNew for GeneralMeshLayer<I> {
-    fn compute_new(&mut self, command_encoder: &mut CommandEncoder, render_pipeline: &mut impl RenderPipeline, global_context: &mut GlobalContext) {
+impl<I: MeshInstanceInput> BaseMeshComputeLayerNew<I> for GeneralMeshLayer<I> {
+    fn compute_new(&mut self, command_encoder: &mut CommandEncoder, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
         let mut compute_pass = command_encoder.begin_compute_pass(&ComputePassDescriptor {
             label: Some("General Mesh Layer Compute Pass"),
             timestamp_writes: None,

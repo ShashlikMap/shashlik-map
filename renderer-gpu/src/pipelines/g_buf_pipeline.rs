@@ -5,6 +5,7 @@ use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::TextureFormat::Rgba16Float;
 use wgpu::{RenderPass, ShaderModuleDescriptor, ShaderSource, TextureFormat};
+use crate::vertex_attrs::GeneralInstanceInput;
 
 pub struct GBufPipeline {
     mesh_pipeline: MeshPipeline,
@@ -50,8 +51,7 @@ impl GBufPipeline {
     }
 }
 
-impl RenderPipeline for GBufPipeline {
-    type InstanceInputType = <MeshPipeline as RenderPipeline>::InstanceInputType;
+impl RenderPipeline<GeneralInstanceInput> for GBufPipeline {
 
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         render_pass.set_pipeline(&self.render_pipeline);

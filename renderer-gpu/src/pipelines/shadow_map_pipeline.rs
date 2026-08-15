@@ -42,8 +42,7 @@ impl ShadowMapPipeline {
     }
 }
 
-impl RenderPipeline for ShadowMapPipeline {
-    type InstanceInputType = <MeshPipeline as RenderPipeline>::InstanceInputType;
+impl RenderPipeline<GeneralInstanceInput> for ShadowMapPipeline {
 
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         render_pass.set_pipeline(&self.render_pipeline);

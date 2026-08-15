@@ -127,8 +127,8 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
     }
 }
 
-impl<I: MeshInstanceInput> BaseMeshLayerNew for ScreenShapeLayer<I> {
-    fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline, global_context: &mut GlobalContext) {
+impl<I: MeshInstanceInput> BaseMeshLayerNew<I> for ScreenShapeLayer<I> {
+    fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
         render_pipeline.setup_render(render_pass, global_context);
         self.meshes.iter().for_each(|(_, (mesh, instance_buf, mesh_buffers))| {
             let instance_count = instance_buf.length;

@@ -5,6 +5,7 @@ use crate::text::text_renderer::TextRenderer;
 use renderer_common::geometry_data::{LineData, TextData};
 use renderer_common::render_modifier::SpatialData;
 use wgpu::RenderPass;
+use crate::mesh::mesh_instance_input::MeshInstanceInput;
 
 pub struct TextMeshLayer {
     text_renderer: TextRenderer,
@@ -63,8 +64,8 @@ impl BaseMeshLayer for TextMeshLayer {
     }
 }
 
-impl BaseMeshLayerNew for TextMeshLayer {
-    fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline, global_context: &mut GlobalContext) {
+impl <I: MeshInstanceInput> BaseMeshLayerNew<I> for TextMeshLayer {
+    fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
         render_pipeline.setup_render(render_pass, global_context);
         self.text_renderer.render(render_pass, global_context);
     }

@@ -9,6 +9,7 @@ use crate::vertex_attrs::TextInstanceInput;
 use glam::Mat4;
 use log::error;
 use wgpu::{RenderPass, TextureFormat, TextureUsages, TextureView};
+use crate::mesh::mesh_instance_input::MeshInstanceInput;
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone)]
@@ -131,15 +132,15 @@ impl OrthoMeshLayer {
 
 impl BaseMeshLayer for OrthoMeshLayer {
     fn update(&mut self, _global_context: &mut GlobalContext) {}
-    
+
     fn clear_by_key(&mut self, _key: &str) {}
 }
 
-impl BaseMeshLayerNew for OrthoMeshLayer {
+impl<I: MeshInstanceInput> BaseMeshLayerNew<I> for OrthoMeshLayer {
     fn render_new(
         &mut self,
         render_pass: &mut RenderPass,
-        render_pipeline: &mut impl RenderPipeline,
+        render_pipeline: &mut impl RenderPipeline<I>,
         global_context: &mut GlobalContext,
     ) {
         if let Some(mesh) = self.mesh.as_ref() {

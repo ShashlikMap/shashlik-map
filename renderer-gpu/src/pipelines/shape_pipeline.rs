@@ -168,8 +168,7 @@ impl ShapePipeline {
     }
 }
 
-impl RenderPipeline for ShapePipeline {
-    type InstanceInputType = ShapeInstanceInput;
+impl RenderPipeline<ShapeInstanceInput> for ShapePipeline {
 
     fn setup_compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {
         // we call it every frame to clear internal bind group cache for indirect buffers
