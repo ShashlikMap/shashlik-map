@@ -14,6 +14,7 @@ pub(crate) struct MainPassNode {
     depth_texture_view: TextureView,
     default_mesh_pipeline: MeshPipeline,
     default_shape_pipeline: ShapePipeline,
+    screen_shape_layer: ShapePipeline,
     feature_shape_pipelines: Vec<(String, ShapePipeline)>,
     preview_screen_mesh_pipeline: ScreenMeshPipeline,
     shadow_map_screen_mesh_pipeline: ScreenMeshPipeline,
@@ -30,6 +31,8 @@ impl MainPassNode {
 
         let default_mesh_pipeline = MeshPipeline::new(global_context, true, true, true);
         let default_shape_pipeline = ShapePipeline::new(global_context, None, false, true);
+
+        let screen_shape_layer = ShapePipeline::new(global_context, Some("vs_main_screen"), false, false);
 
         let preview_screen_mesh_pipeline = ScreenMeshPipeline::new(
             global_context,
@@ -87,6 +90,7 @@ impl MainPassNode {
             ),
             default_mesh_pipeline,
             default_shape_pipeline,
+            screen_shape_layer,
             feature_shape_pipelines,
             preview_screen_mesh_pipeline,
             shadow_map_screen_mesh_pipeline,
@@ -160,7 +164,7 @@ impl PassNode for MainPassNode {
         }
         layers
             .screen_shape_layer
-            .render(&mut render_pass, global_context);
+            .render_new(&mut render_pass, &mut self.screen_shape_layer, global_context);
         layers
             .text_feature_layers
             .render(&mut render_pass, global_context);
