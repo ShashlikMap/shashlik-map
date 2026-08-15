@@ -1,10 +1,10 @@
-use crate::{GpuRenderer, RendererUpdateData};
 use crate::Renderer;
-use geo_types::{coord, Coord};
-use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec4Swizzles};
-use renderer_common::{min_f64, LIGHT_POS, max_f64};
-use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 use crate::render_config::RenderConfig;
+use crate::{GpuRenderer, RendererUpdateData};
+use geo_types::{Coord, coord};
+use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec4Swizzles};
+use renderer_common::{LIGHT_POS, max_f64, min_f64};
+use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 
 #[rustfmt::skip]
 const FLIP_Y: DMat4 = DMat4::from_cols_array(
@@ -100,7 +100,8 @@ impl ViewProjection {
             .to_cols_array_2d();
         let view_proj = FLIP_Y * data.view_proj_matrix;
 
-        self.ortho_for_shadow_map(&mut data.view_light_matrix);
+
+        self.ortho_for_shadow_map(&mut data.view_light_matrix, data.scale);
 
         self.uniform.light_view_proj = (self.ortho * data.view_light_matrix)
             .as_mat4()
@@ -137,7 +138,7 @@ impl ViewProjection {
     }
 
     /// calculate ortho matrix for shadow mapping
-    fn ortho_for_shadow_map(&mut self, view_light_matrix: &mut DMat4) {
+    fn ortho_for_shadow_map(&mut self, view_light_matrix: &mut DMat4, scale: f32) {
         if !self.is_shadow_mapping_enabled() {
             return;
         }
@@ -147,17 +148,19 @@ impl ViewProjection {
         let c4 = self.clip_to_world(&coord! {x: 1.0, y: 1.0});
         if let (Some(c1), Some(c2), Some(c3), Some(c4)) = (c1, c2, c3, c4) {
             let center = ((c1 + c2 + c3 + c4) / 4.0).extend(0.0);
-            let light_view = DMat4::look_at_rh(center + LIGHT_POS, center, DVec3::Z);
+            let light_view = DMat4::look_at_rh(center + 1.0 * LIGHT_POS, center, DVec3::Z);
 
             let p1 = light_view.transform_point3(c1.extend(0.0));
             let p2 = light_view.transform_point3(c2.extend(0.0));
             let p3 = light_view.transform_point3(c3.extend(0.0));
             let p4 = light_view.transform_point3(c4.extend(0.0));
 
-            let min_x = min_f64!(p1.x, p2.x, p3.x, p4.x) - Self::MAX_MESH_HEIGHT;
-            let min_y = min_f64!(p1.y, p2.y, p3.y, p4.y) - Self::MAX_MESH_HEIGHT;
-            let max_x = max_f64!(p1.x, p2.x, p3.x, p4.x) + Self::MAX_MESH_HEIGHT;
-            let max_y = max_f64!(p1.y, p2.y, p3.y, p4.y) + Self::MAX_MESH_HEIGHT;
+            // dynamically change bounds, so MAX_MESH_HEIGHT won't affect much the matrix size when close to ground
+            let max_mesh_height = (Self::MAX_MESH_HEIGHT * (1.5 * scale as f64)).min(Self::MAX_MESH_HEIGHT);
+            let min_x = min_f64!(p1.x, p2.x, p3.x, p4.x) - max_mesh_height;
+            let min_y = min_f64!(p1.y, p2.y, p3.y, p4.y) - max_mesh_height;
+            let max_x = max_f64!(p1.x, p2.x, p3.x, p4.x) + max_mesh_height;
+            let max_y = max_f64!(p1.y, p2.y, p3.y, p4.y) + max_mesh_height;
 
             let depth_texture_size = self.shadow_texture_size.0 as f64;
             let ortho_width = ((max_x - min_x) / Self::ORTHO_STEP).round() * Self::ORTHO_STEP;
