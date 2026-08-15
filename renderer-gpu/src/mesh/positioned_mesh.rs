@@ -23,7 +23,7 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
 }
 
 impl Mesh {
-    pub fn to_positioned<T: MeshInstanceInput>(
+    pub(crate) fn to_positioned<T: MeshInstanceInput>(
         self,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,

@@ -32,13 +32,9 @@ impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
         double_style: bool,
         mesh: Mesh,
     ) {
-
-        let mesh = I::create_positioned_mesh(
-            spatial_rx,
-            double_style,
-            None,
-            mesh,
-        );
+        let mesh = mesh.to_positioned(spatial_rx,
+                                      double_style,
+                                      None);
         self.render_data_holder.set(key, vec![mesh]);
     }
 
@@ -62,13 +58,10 @@ impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
             mem::take(&mut batch.mesh_info.instance_positions).map(|pos_items| pos_items.into_iter().map(|item| {
                 (item, 1f32)
             }).collect());
-
-        let mesh = I::create_positioned_mesh(
-            spatial_rx,
-            batch.mesh_info.double_style,
-            instance_positions,
-            mesh,
-        );
+        
+        let mesh = mesh.to_positioned(spatial_rx,
+                                      batch.mesh_info.double_style,
+                                      instance_positions);
         self.render_data_holder.set(key.to_string(), vec![mesh]);
     }
 }

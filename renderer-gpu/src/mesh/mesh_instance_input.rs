@@ -1,9 +1,7 @@
-use renderer_common::render_modifier::SpatialData;
-use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput, ScreenShapeInstanceInput};
+use crate::vertex_attrs::{GeneralInstanceInput, ScreenShapeInstanceInput, ShapeInstanceInput};
 use bytemuck::Pod;
 use glam::DVec3;
-use crate::mesh::mesh::Mesh;
-use crate::mesh::positioned_mesh::PositionedMesh;
+use renderer_common::render_modifier::SpatialData;
 
 #[derive(Default)]
 pub struct MeshInstanceInputBuilder {
@@ -70,13 +68,6 @@ pub trait MeshInstanceInput: Sized + Pod {
             matrix,
             ..Default::default()
         }
-    }
-
-    fn create_positioned_mesh(spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
-                              double_style: bool,
-                              instance_positions_alpha: Option<Vec<(DVec3, f32)>>,
-                              mesh: Mesh) -> PositionedMesh<Self> {
-        mesh.to_positioned::<Self>(spatial_rx, double_style, instance_positions_alpha)
     }
 
     fn fill_attrs(
