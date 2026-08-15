@@ -9,7 +9,7 @@ use crate::pipelines::RenderPipeline;
 use crate::vertex_attrs::TextInstanceInput;
 use glam::Mat4;
 use log::error;
-use wgpu::{RenderPass, TextureUsages, TextureView};
+use wgpu::{RenderPass, TextureView};
 
 pub struct OrthoMeshLayer {
     mesh: Option<Mesh>,

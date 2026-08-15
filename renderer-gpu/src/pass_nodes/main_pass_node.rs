@@ -170,7 +170,6 @@ impl PassNode for MainPassNode {
 
         let mut render_pass = encoder.begin_render_pass(&descriptor);
         
-        // TODO Can it go to pipeline?
         layers.shape_layer.disable_skip_mesh_feature = false;
         layers.shape_layer.render_new(
             &mut render_pass,

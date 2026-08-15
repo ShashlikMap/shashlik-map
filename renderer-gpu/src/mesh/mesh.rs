@@ -103,6 +103,7 @@ impl Mesh {
             render_pass.set_index_buffer(i_buf.slice(..), wgpu::IndexFormat::Uint32);
             for range in &self.layers_indices {
                 let styled_range_info = &range.1;
+                // TODO Think how it can be done in more abstract way
                 if disable_skip_mesh_feature && styled_range_info.skip_preview {
                     continue;
                 }
