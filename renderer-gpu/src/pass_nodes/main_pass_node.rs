@@ -1,5 +1,5 @@
 use crate::global_context::{GlobalContext};
-use crate::mesh_layers::BaseMeshLayerNew;
+use crate::mesh_layers::RenderableLayer;
 use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
 use crate::pipelines::mesh_pipeline::MeshPipeline;
@@ -161,40 +161,40 @@ impl PassNode for MainPassNode {
         let mut render_pass = encoder.begin_render_pass(&descriptor);
         
         layers.shape_layer.disable_skip_mesh_feature = false;
-        layers.shape_layer.render_new(
+        layers.shape_layer.render(
             &mut render_pass,
             &mut self.default_shape_pipeline,
             global_context,
         );
 
-        layers.mesh_layer.render_new(
+        layers.mesh_layer.render(
             &mut render_pass,
             &mut self.default_mesh_pipeline,
             global_context,
         );
 
         if global_context.is_shadow_mapping_enabled() {
-            layers.shadow_map_layer.render_new(
+            layers.shadow_map_layer.render(
                 &mut render_pass,
                 &mut self.shadow_map_screen_mesh_pipeline,
                 global_context,
             );
         }
         if global_context.is_ssao_enabled() {
-            layers.post_process_layer.render_new(
+            layers.post_process_layer.render(
                 &mut render_pass,
                 &mut self.post_process_screen_mesh_pipeline,
                 global_context,
             );
         }
-        layers.screen_shape_layer.render_new(
+        layers.screen_shape_layer.render(
             &mut render_pass,
             &mut self.screen_shape_pipeline,
             global_context,
         );
 
         layers.text_feature_layers.with_layer(|layer| {
-            layer.render_new(
+            layer.render(
                 &mut render_pass,
                 &mut self.text_screen_mesh_pipeline,
                 global_context,
@@ -205,12 +205,12 @@ impl PassNode for MainPassNode {
             .iter_mut()
             .for_each(|(feature_tag, shape_pipeline)| {
                 if let Some(layer) = layers.feature_layers.get_layer(feature_tag) {
-                    layer.render_new(&mut render_pass, shape_pipeline, global_context)
+                    layer.render(&mut render_pass, shape_pipeline, global_context)
                 }
             });
 
         if global_context.preview_type().is_enabled() {
-            layers.preview_mesh_layer.render_new(
+            layers.preview_mesh_layer.render(
                 &mut render_pass,
                 &mut self.preview_screen_mesh_pipeline,
                 global_context,

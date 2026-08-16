@@ -1,5 +1,5 @@
 use crate::global_context::GlobalContext;
-use crate::mesh_layers::BaseMeshLayerNew;
+use crate::mesh_layers::RenderableLayer;
 use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
 use crate::pipelines::shape_pipeline::ShapePipeline;
@@ -77,12 +77,12 @@ impl PassNode for RenderToTexturePassNode {
         layers.shape_layer.disable_skip_mesh_feature = true;
         layers
             .shape_layer
-            .render_new(&mut render_pass, &mut self.shape_pipeline, global_context);
+            .render(&mut render_pass, &mut self.shape_pipeline, global_context);
         self.feature_shape_pipelines
             .iter_mut()
             .for_each(|(feature_tag, shape_pipeline)| {
                 if let Some(layer) = layers.feature_layers.get_layer(feature_tag) {
-                    layer.render_new(&mut render_pass, shape_pipeline, global_context)
+                    layer.render(&mut render_pass, shape_pipeline, global_context)
                 }
             });
     }

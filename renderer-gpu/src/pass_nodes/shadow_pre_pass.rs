@@ -1,6 +1,6 @@
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
-use crate::mesh_layers::BaseMeshLayerNew;
+use crate::mesh_layers::RenderableLayer;
 use crate::pass_nodes::PassNode;
 use crate::pipelines::fill_shadow_map_pipeline::FillShadowMapPipeline;
 use crate::texture_view_resources::TextureViewKind;
@@ -46,7 +46,7 @@ impl PassNode for ShadowPrepass {
             };
 
             let mut render_pass = encoder.begin_render_pass(&descriptor);
-            layers.mesh_layer.render_new(&mut render_pass, &mut self.fill_shadow_map_pipeline, global_context)
+            layers.mesh_layer.render(&mut render_pass, &mut self.fill_shadow_map_pipeline, global_context)
         }
     }
 }

@@ -2,7 +2,7 @@ use crate::buffer_pool::BufferPool;
 use crate::collider::{ColliderTask, CollisionTaskController, CollisionTaskWrapper};
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
-use crate::mesh::mesh_instance_input::{AttrMapper, CommonAttributes, MeshInstanceInput};
+use crate::mesh::mesh_instance_input::{MeshInstanceInput};
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::text::glyph_cache::GlyphCache;
@@ -21,6 +21,7 @@ use std::f32::consts::PI;
 use std::mem;
 use std::sync::Arc;
 use wgpu::RenderPass;
+use crate::mesh_layers::{LayerAttrMapper, LayerAttrubute};
 
 #[derive(Clone)]
 pub struct GlyphData {
@@ -32,7 +33,7 @@ pub struct GlyphData {
 }
 
 pub struct TextRenderer<I: MeshInstanceInput> {
-    attr_map: AttrMapper<I>,
+    attr_map: LayerAttrMapper<I>,
     collision_task_controller:
         CollisionTaskController<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
     instance_buffer_map: FxHashMap<GlyphId, InstanceBuffer<I>>,
@@ -45,7 +46,7 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
     pub fn new(
         global_context: &mut GlobalContext,
         font: rustybuzz::ttf_parser::Face<'static>,
-        attr_map: AttrMapper<I>
+        attr_map: LayerAttrMapper<I>
     ) -> Self {
         let default_face = Arc::new(DefaultFaceWrapper::new(font));
         let (task_wrapper, collision_task_controller) = CollisionTaskWrapper::new();
@@ -84,7 +85,7 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
                     position -= dvec3(cs_offset.x, cs_offset.y, 0.0)
                 }
 
-                let instance_input = (self.attr_map)(CommonAttributes {
+                let instance_input = (self.attr_map)(LayerAttrubute {
                     position: position.as_vec3().into(),
                     color_alpha: glyph_data.alpha,
                     matrix: glyph_data.matrix.to_cols_array_2d(),

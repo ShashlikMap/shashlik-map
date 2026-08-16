@@ -1,6 +1,6 @@
 use crate::global_context::GlobalContext;
-use crate::mesh::mesh_instance_input::{AttrMapper, MeshInstanceInput};
-use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
+use crate::mesh::mesh_instance_input::{MeshInstanceInput};
+use crate::mesh_layers::{BaseMeshLayer, LayerAttrMapper, RenderableLayer};
 use crate::pipelines::RenderPipeline;
 use crate::text::text_renderer::TextRenderer;
 use renderer_common::geometry_data::{LineData, TextData};
@@ -15,7 +15,7 @@ impl<I: MeshInstanceInput> TextMeshLayer<I> {
     pub fn new(
         global_context: &mut GlobalContext,
         font: rustybuzz::ttf_parser::Face<'static>,
-        attr_map: AttrMapper<I>
+        attr_map: LayerAttrMapper<I>
     ) -> Self {
         Self {
             text_renderer: TextRenderer::new(global_context, font, attr_map),
@@ -65,8 +65,8 @@ impl<I: MeshInstanceInput> BaseMeshLayer for TextMeshLayer<I> {
     }
 }
 
-impl <I: MeshInstanceInput> BaseMeshLayerNew<I> for TextMeshLayer<I> {
-    fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
+impl <I: MeshInstanceInput> RenderableLayer<I> for TextMeshLayer<I> {
+    fn render(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
         render_pipeline.setup_render(render_pass, global_context);
         self.text_renderer.render(render_pass, global_context);
     }

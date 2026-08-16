@@ -4,22 +4,22 @@ use crate::global_context::GlobalContext;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
-use crate::mesh_layers::{BaseMeshComputeLayerNew, BaseMeshLayer, BaseMeshLayerNew};
+use crate::mesh_layers::{ComputableLayer, BaseMeshLayer, RenderableLayer, LayerAttrMapper};
 use crate::pipelines::RenderPipeline;
 use renderer_common::render_modifier::SpatialData;
 use std::mem;
 use wgpu::{CommandEncoder, ComputePassDescriptor, RenderPass};
-use crate::mesh::mesh_instance_input::{AttrMapper, MeshInstanceInput};
+use crate::mesh::mesh_instance_input::{MeshInstanceInput};
 
 pub(crate) struct GeneralMeshLayer<I: MeshInstanceInput> {
     render_data_holder: RenderDataHolder<PositionedMesh<I>>,
     indirect: bool,
     pub disable_skip_mesh_feature: bool,
-    attr_map: AttrMapper<I>
+    attr_map: LayerAttrMapper<I>
 }
 
 impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
-    pub fn new(indirect: bool, attr_map: AttrMapper<I>) -> Self {
+    pub fn new(indirect: bool, attr_map: LayerAttrMapper<I>) -> Self {
         GeneralMeshLayer {
             render_data_holder: RenderDataHolder::new(),
             indirect,
@@ -82,8 +82,8 @@ impl<I: MeshInstanceInput> BaseMeshLayer for GeneralMeshLayer<I> {
     }
 }
 
-impl<I: MeshInstanceInput> BaseMeshLayerNew<I> for GeneralMeshLayer<I> {
-    fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
+impl<I: MeshInstanceInput> RenderableLayer<I> for GeneralMeshLayer<I> {
+    fn render(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
         render_pipeline.setup_render(render_pass, global_context);
         self.render_data_holder.run_mut_action(|mesh| {
             render_pipeline.setup_mesh_buffers(render_pass, mesh.get_mesh_buffers());
@@ -92,8 +92,8 @@ impl<I: MeshInstanceInput> BaseMeshLayerNew<I> for GeneralMeshLayer<I> {
     }
 }
 
-impl<I: MeshInstanceInput> BaseMeshComputeLayerNew<I> for GeneralMeshLayer<I> {
-    fn compute_new(&mut self, command_encoder: &mut CommandEncoder, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
+impl<I: MeshInstanceInput> ComputableLayer<I> for GeneralMeshLayer<I> {
+    fn compute(&mut self, command_encoder: &mut CommandEncoder, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
         let mut compute_pass = command_encoder.begin_compute_pass(&ComputePassDescriptor {
             label: Some("General Mesh Layer Compute Pass"),
             timestamp_writes: None,

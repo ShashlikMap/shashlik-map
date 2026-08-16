@@ -1,7 +1,7 @@
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
-use crate::mesh::mesh_instance_input::{AttrMapper, CommonAttributes, MeshInstanceInput};
+use crate::mesh::mesh_instance_input::{MeshInstanceInput};
 use crate::mesh_buffers::MeshBuffers;
 use crate::utils::ReceiverExt;
 use glam::DVec3;
@@ -9,10 +9,11 @@ use renderer_common::render_modifier::SpatialData;
 use tokio::sync::broadcast::Receiver;
 use wgpu::util::{DeviceExt, DrawIndexedIndirectArgs};
 use wgpu::{ComputePass, RenderPass};
+use crate::mesh_layers::LayerAttrMapper;
 
 pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
-    attr_map: AttrMapper<T>,
+    attr_map: LayerAttrMapper<T>,
     instance_buffer: InstanceBuffer<T>,
     attrs: Vec<T>,
     cs_offset: DVec3,
@@ -26,7 +27,7 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
 impl Mesh {
     pub(crate) fn to_positioned<T: MeshInstanceInput>(
         self,
-        attr_map: AttrMapper<T>,
+        attr_map: LayerAttrMapper<T>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,
         instance_positions_alpha: Option<Vec<(DVec3, f32)>>,
@@ -38,7 +39,7 @@ impl Mesh {
 impl<T: MeshInstanceInput> PositionedMesh<T> {
     pub fn new(
         mesh: Mesh,
-        attr_map: AttrMapper<T>,
+        attr_map: LayerAttrMapper<T>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,
         instance_positions_alpha: Option<Vec<(DVec3, f32)>>,

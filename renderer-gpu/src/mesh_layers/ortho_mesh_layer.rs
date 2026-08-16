@@ -2,16 +2,16 @@ use crate::buffer_pool::BufferPool;
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
-use crate::mesh::mesh_instance_input::{AttrMapper, CommonAttributes, MeshInstanceInput};
+use crate::mesh::mesh_instance_input::{MeshInstanceInput};
 use crate::mesh_buffers::MeshBuffers;
-use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
+use crate::mesh_layers::{BaseMeshLayer, LayerAttrMapper, LayerAttrubute, RenderableLayer};
 use crate::pipelines::RenderPipeline;
 use glam::Mat4;
 use log::error;
 use wgpu::{RenderPass, TextureView};
 
 pub struct OrthoMeshLayer<I: MeshInstanceInput> {
-    attr_map: AttrMapper<I>,
+    attr_map: LayerAttrMapper<I>,
     mesh: Option<Mesh>,
     instance_buffer: InstanceBuffer<I>,
     mesh_buffers: MeshBuffers,
@@ -21,7 +21,7 @@ pub struct OrthoMeshLayer<I: MeshInstanceInput> {
 }
 
 impl<I: MeshInstanceInput> OrthoMeshLayer<I> {
-    pub fn new(full_screen_mesh: bool, is_bottom_right: bool, attr_map: AttrMapper<I>) -> Self {
+    pub fn new(full_screen_mesh: bool, is_bottom_right: bool, attr_map: LayerAttrMapper<I>) -> Self {
         Self {
             attr_map,
             mesh: None,
@@ -90,7 +90,7 @@ impl<I: MeshInstanceInput> OrthoMeshLayer<I> {
             0.0,
         ];
 
-        let attr = (self.attr_map)(CommonAttributes {
+        let attr = (self.attr_map)(LayerAttrubute {
             position,
             color_alpha: 1.0,
             matrix: Mat4::IDENTITY.to_cols_array_2d(),
@@ -111,8 +111,8 @@ impl <I: MeshInstanceInput> BaseMeshLayer for OrthoMeshLayer<I> {
     fn clear_by_key(&mut self, _key: &str) {}
 }
 
-impl<I: MeshInstanceInput> BaseMeshLayerNew<I> for OrthoMeshLayer<I> {
-    fn render_new(
+impl<I: MeshInstanceInput> RenderableLayer<I> for OrthoMeshLayer<I> {
+    fn render(
         &mut self,
         render_pass: &mut RenderPass,
         render_pipeline: &mut impl RenderPipeline<I>,

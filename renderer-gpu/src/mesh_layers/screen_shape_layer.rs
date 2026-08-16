@@ -4,9 +4,9 @@ use crate::draw_commands::mesh2d_draw_command::Mesh2dDrawCommand;
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
-use crate::mesh::mesh_instance_input::{AttrMapper, CommonAttributes, MeshInstanceInput};
+use crate::mesh::mesh_instance_input::{MeshInstanceInput};
 use crate::mesh_buffers::MeshBuffers;
-use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
+use crate::mesh_layers::{BaseMeshLayer, LayerAttrMapper, RenderableLayer};
 use crate::pipelines::RenderPipeline;
 use crate::view_projection::ViewProjection;
 use geo_types::point;
@@ -21,7 +21,7 @@ use wgpu::RenderPass;
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
 pub(crate) struct ScreenShapeLayer<I: MeshInstanceInput> {
-    attr_map: AttrMapper<I>,
+    attr_map: LayerAttrMapper<I>,
     meshes: HashMap<String, (Mesh, InstanceBuffer<I>, MeshBuffers)>,
     collision_task_controller: CollisionTaskController<
         (ShapeInfo, f32, String),
@@ -35,7 +35,7 @@ struct ShapeInfo {
 }
 
 impl<I: MeshInstanceInput> ScreenShapeLayer<I> {
-    pub fn new(global_context: &mut GlobalContext, attr_map: AttrMapper<I>) -> Self {
+    pub fn new(global_context: &mut GlobalContext, attr_map: LayerAttrMapper<I>) -> Self {
         let (task_wrapper, collision_task_controller) = CollisionTaskWrapper::new();
         let task = ScreenMeshCollisionHandler::new(task_wrapper);
         global_context.collider.register_task(Box::new(task));
@@ -130,8 +130,8 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
     }
 }
 
-impl<I: MeshInstanceInput> BaseMeshLayerNew<I> for ScreenShapeLayer<I> {
-    fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
+impl<I: MeshInstanceInput> RenderableLayer<I> for ScreenShapeLayer<I> {
+    fn render(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
         render_pipeline.setup_render(render_pass, global_context);
         self.meshes.iter().for_each(|(_, (mesh, instance_buf, mesh_buffers))| {
             let instance_count = instance_buf.length;

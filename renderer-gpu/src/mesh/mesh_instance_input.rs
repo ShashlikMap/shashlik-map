@@ -2,23 +2,12 @@ use crate::vertex_attrs::{GeneralInstanceInput, ScreenShapeInstanceInput, ShapeI
 use bytemuck::Pod;
 use glam::DVec3;
 use renderer_common::render_modifier::SpatialData;
+use crate::mesh_layers::{LayerAttrMapper, LayerAttrubute};
 
-#[derive(Default)]
-pub struct CommonAttributes {
-    pub(crate) position: [f32; 3],
-    pub(crate) color_alpha: f32,
-    pub(crate) matrix: [[f32; 4]; 4],
-    pub(crate) bbox: [f32; 4],
-    pub(crate) normal_scale: f32,
-    pub(crate) screen_space: u32,
-}
-
-pub type AttrMapper<I> = fn(CommonAttributes) -> I;
-
-pub trait MeshInstanceInput: Sized + Pod + From<CommonAttributes> {
+pub trait MeshInstanceInput: Sized + Pod + From<LayerAttrubute> {
     fn fill_attrs(
         attrs: &mut Vec<Self>,
-        attr_mapper: AttrMapper<Self>,
+        attr_mapper: LayerAttrMapper<Self>,
         cs_offset: &DVec3,
         original_positions_alpha: &Vec<(DVec3, f32)>,
         spatial_data: &SpatialData,
@@ -36,7 +25,7 @@ pub trait MeshInstanceInput: Sized + Pod + From<CommonAttributes> {
                 + DVec3::new(spatial_data.bbox.min().x, spatial_data.bbox.min().y, 0.0)
                 - cs_offset;
 
-            let instance_input = attr_mapper(CommonAttributes {
+            let instance_input = attr_mapper(LayerAttrubute {
                 position: transform_with_cs_offset.as_vec3().to_array(),
                 color_alpha: item.1,
                 matrix: matrix.as_mat4().to_cols_array_2d(),
@@ -55,14 +44,10 @@ pub trait MeshInstanceInput: Sized + Pod + From<CommonAttributes> {
     }
 }
 
-impl MeshInstanceInput for GeneralInstanceInput {}
+impl<T> MeshInstanceInput for T where T: Sized + Pod + From<LayerAttrubute> {}
 
-impl MeshInstanceInput for ShapeInstanceInput {}
-
-impl MeshInstanceInput for ScreenShapeInstanceInput {}
-
-impl From<CommonAttributes> for GeneralInstanceInput {
-    fn from(value: CommonAttributes) -> Self {
+impl From<LayerAttrubute> for GeneralInstanceInput {
+    fn from(value: LayerAttrubute) -> Self {
         GeneralInstanceInput {
             position: value.position,
             color_alpha: value.color_alpha,
@@ -71,8 +56,8 @@ impl From<CommonAttributes> for GeneralInstanceInput {
     }
 }
 
-impl From<CommonAttributes> for ShapeInstanceInput {
-    fn from(value: CommonAttributes) -> Self {
+impl From<LayerAttrubute> for ShapeInstanceInput {
+    fn from(value: LayerAttrubute) -> Self {
         ShapeInstanceInput {
             position: value.position,
             color_alpha: value.color_alpha,
@@ -84,8 +69,8 @@ impl From<CommonAttributes> for ShapeInstanceInput {
     }
 }
 
-impl From<CommonAttributes> for ScreenShapeInstanceInput {
-    fn from(value: CommonAttributes) -> Self {
+impl From<LayerAttrubute> for ScreenShapeInstanceInput {
+    fn from(value: LayerAttrubute) -> Self {
         ScreenShapeInstanceInput {
             position: value.position,
             color_alpha: value.color_alpha,
