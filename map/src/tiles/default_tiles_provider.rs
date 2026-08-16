@@ -20,6 +20,7 @@ use osm::map::NatureKind::Water;
 use osm::source::reqwest_source::ReqwestSource;
 use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::mvt::mvt_tile_store::MvtTileStore;
+use crate::tiles::shashlik_v1::ShashlikV1TileStore;
 
 pub trait FeatureProcessor: Send + Sync {
     fn process_poi(
@@ -73,7 +74,8 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
 
     pub fn set_mvt_type(&mut self, enabled: bool) {
         let new_store: Box<dyn TilesProviderStore> = if enabled {
-            Box::new(MvtTileStore::new())
+            // Box::new(MvtTileStore::new())
+            Box::new(ShashlikV1TileStore::new())
         } else {
             Box::new(TileStore::new(ReqwestSource::new()))
         };
