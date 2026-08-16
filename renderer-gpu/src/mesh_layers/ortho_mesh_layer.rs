@@ -4,7 +4,7 @@ use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::{MeshInstanceInput};
 use crate::mesh_buffers::MeshBuffers;
-use crate::mesh_layers::{BaseMeshLayer, LayerAttrMapper, LayerAttrubute, RenderableLayer};
+use crate::mesh_layers::{BaseMeshLayer, LayerAttrMapper, LayerAttribute, RenderableLayer};
 use crate::pipelines::RenderPipeline;
 use glam::Mat4;
 use log::error;
@@ -90,7 +90,7 @@ impl<I: MeshInstanceInput> OrthoMeshLayer<I> {
             0.0,
         ];
 
-        let attr = (self.attr_map)(LayerAttrubute {
+        let attr = (self.attr_map)(LayerAttribute {
             position,
             color_alpha: 1.0,
             matrix: Mat4::IDENTITY.to_cols_array_2d(),

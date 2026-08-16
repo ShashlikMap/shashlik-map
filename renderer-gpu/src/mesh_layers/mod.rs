@@ -12,7 +12,7 @@ pub mod ortho_mesh_layer;
 pub mod feature_layers;
 
 #[derive(Default)]
-pub struct LayerAttrubute {
+pub struct LayerAttribute {
     pub(crate) position: [f32; 3],
     pub(crate) color_alpha: f32,
     pub(crate) matrix: [[f32; 4]; 4],
@@ -21,7 +21,7 @@ pub struct LayerAttrubute {
     pub(crate) screen_space: u32,
 }
 
-pub type LayerAttrMapper<I> = fn(LayerAttrubute) -> I;
+pub type LayerAttrMapper<I> = fn(LayerAttribute) -> I;
 
 pub trait BaseMeshLayer {
     fn update(&mut self, global_context: &mut GlobalContext);

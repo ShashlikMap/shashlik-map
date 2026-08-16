@@ -21,7 +21,7 @@ use std::f32::consts::PI;
 use std::mem;
 use std::sync::Arc;
 use wgpu::RenderPass;
-use crate::mesh_layers::{LayerAttrMapper, LayerAttrubute};
+use crate::mesh_layers::{LayerAttrMapper, LayerAttribute};
 
 #[derive(Clone)]
 pub struct GlyphData {
@@ -85,7 +85,7 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
                     position -= dvec3(cs_offset.x, cs_offset.y, 0.0)
                 }
 
-                let instance_input = (self.attr_map)(LayerAttrubute {
+                let instance_input = (self.attr_map)(LayerAttribute {
                     position: position.as_vec3().into(),
                     color_alpha: glyph_data.alpha,
                     matrix: glyph_data.matrix.to_cols_array_2d(),

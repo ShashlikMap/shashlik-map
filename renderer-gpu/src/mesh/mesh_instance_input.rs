@@ -2,9 +2,9 @@ use crate::vertex_attrs::{GeneralInstanceInput, ScreenShapeInstanceInput, ShapeI
 use bytemuck::Pod;
 use glam::DVec3;
 use renderer_common::render_modifier::SpatialData;
-use crate::mesh_layers::{LayerAttrMapper, LayerAttrubute};
+use crate::mesh_layers::{LayerAttrMapper, LayerAttribute};
 
-pub trait MeshInstanceInput: Sized + Pod + From<LayerAttrubute> {
+pub trait MeshInstanceInput: Sized + Pod + From<LayerAttribute> {
     fn fill_attrs(
         attrs: &mut Vec<Self>,
         attr_mapper: LayerAttrMapper<Self>,
@@ -25,7 +25,7 @@ pub trait MeshInstanceInput: Sized + Pod + From<LayerAttrubute> {
                 + DVec3::new(spatial_data.bbox.min().x, spatial_data.bbox.min().y, 0.0)
                 - cs_offset;
 
-            let instance_input = attr_mapper(LayerAttrubute {
+            let instance_input = attr_mapper(LayerAttribute {
                 position: transform_with_cs_offset.as_vec3().to_array(),
                 color_alpha: item.1,
                 matrix: matrix.as_mat4().to_cols_array_2d(),
@@ -44,10 +44,10 @@ pub trait MeshInstanceInput: Sized + Pod + From<LayerAttrubute> {
     }
 }
 
-impl<T> MeshInstanceInput for T where T: Clone + Default + Sized + Pod + From<LayerAttrubute> {}
+impl<T> MeshInstanceInput for T where T: Clone + Default + Sized + Pod + From<LayerAttribute> {}
 
-impl From<LayerAttrubute> for GeneralInstanceInput {
-    fn from(value: LayerAttrubute) -> Self {
+impl From<LayerAttribute> for GeneralInstanceInput {
+    fn from(value: LayerAttribute) -> Self {
         GeneralInstanceInput {
             position: value.position,
             color_alpha: value.color_alpha,
@@ -56,8 +56,8 @@ impl From<LayerAttrubute> for GeneralInstanceInput {
     }
 }
 
-impl From<LayerAttrubute> for ShapeInstanceInput {
-    fn from(value: LayerAttrubute) -> Self {
+impl From<LayerAttribute> for ShapeInstanceInput {
+    fn from(value: LayerAttribute) -> Self {
         ShapeInstanceInput {
             position: value.position,
             color_alpha: value.color_alpha,
@@ -69,8 +69,8 @@ impl From<LayerAttrubute> for ShapeInstanceInput {
     }
 }
 
-impl From<LayerAttrubute> for ScreenShapeInstanceInput {
-    fn from(value: LayerAttrubute) -> Self {
+impl From<LayerAttribute> for ScreenShapeInstanceInput {
+    fn from(value: LayerAttribute) -> Self {
         ScreenShapeInstanceInput {
             position: value.position,
             color_alpha: value.color_alpha,
