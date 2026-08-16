@@ -37,9 +37,7 @@ impl Layers {
         font: ttf_parser::Face<'static>,
     ) -> Layers {
         let feature_layers = FeatureLayers::new(world_shapes_feature_tags.clone(), |tag| {
-            GeneralMeshLayer::new(
-                tag.indirect
-            )
+            GeneralMeshLayer::new(tag.indirect, ShapeInstanceInput::from)
         });
         let text_feature_layers = FeatureLayers::new(
             vec![
@@ -50,6 +48,7 @@ impl Layers {
                 TextMeshLayer::new(
                     global_context,
                     font.clone(),
+                    Into::into
                 )
             },
         );
@@ -57,13 +56,13 @@ impl Layers {
         Layers {
             world_shapes_feature_tags,
             feature_layers,
-            mesh_layer: GeneralMeshLayer::new(false),
-            shape_layer: GeneralMeshLayer::new(false),
-            screen_shape_layer: ScreenShapeLayer::new(global_context),
-            shadow_map_layer: OrthoMeshLayer::new(true, false),
+            mesh_layer: GeneralMeshLayer::new(false, Into::into),
+            shape_layer: GeneralMeshLayer::new(false, Into::into),
+            screen_shape_layer: ScreenShapeLayer::new(global_context, Into::into),
+            shadow_map_layer: OrthoMeshLayer::new(true, false, Into::into),
             text_feature_layers,
-            preview_mesh_layer: OrthoMeshLayer::new(false, true),
-            post_process_layer: OrthoMeshLayer::new(true, false),
+            preview_mesh_layer: OrthoMeshLayer::new(false, true, Into::into),
+            post_process_layer: OrthoMeshLayer::new(true, false, Into::into),
         }
     }
 

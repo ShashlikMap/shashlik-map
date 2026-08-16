@@ -1,7 +1,7 @@
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
-use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh::mesh_instance_input::{MeshInstanceInput};
 use crate::mesh_buffers::MeshBuffers;
 use crate::utils::ReceiverExt;
 use glam::DVec3;
@@ -9,9 +9,11 @@ use renderer_common::render_modifier::SpatialData;
 use tokio::sync::broadcast::Receiver;
 use wgpu::util::{DeviceExt, DrawIndexedIndirectArgs};
 use wgpu::{ComputePass, RenderPass};
+use crate::mesh_layers::LayerAttrMapper;
 
 pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
+    attr_map: LayerAttrMapper<T>,
     instance_buffer: InstanceBuffer<T>,
     attrs: Vec<T>,
     cs_offset: DVec3,
@@ -19,29 +21,32 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
     original_instance_positions_alpha: Vec<(DVec3, f32)>,
-    mesh_buffers: MeshBuffers
+    mesh_buffers: MeshBuffers<T>
 }
 
 impl Mesh {
-    pub fn to_positioned<T: MeshInstanceInput>(
+    pub(crate) fn to_positioned<T: MeshInstanceInput>(
         self,
+        attr_map: LayerAttrMapper<T>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,
         instance_positions_alpha: Option<Vec<(DVec3, f32)>>,
     ) -> PositionedMesh<T> {
-        PositionedMesh::new(self, spatial_rx, double_style, instance_positions_alpha)
+        PositionedMesh::new(self, attr_map, spatial_rx, double_style, instance_positions_alpha)
     }
 }
 
 impl<T: MeshInstanceInput> PositionedMesh<T> {
     pub fn new(
         mesh: Mesh,
+        attr_map: LayerAttrMapper<T>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,
         instance_positions_alpha: Option<Vec<(DVec3, f32)>>,
     ) -> Self {
         Self {
             mesh,
+            attr_map,
             instance_buffer: InstanceBuffer::default(),
             attrs: vec![],
             cs_offset: DVec3::new(0.0, 0.0, 0.0),
@@ -71,6 +76,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         if update_attrs {
             T::fill_attrs(
                 &mut self.attrs,
+                self.attr_map,
                 &self.cs_offset,
                 &self.original_instance_positions_alpha,
                 &self.original_spatial_data,
@@ -113,15 +119,13 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                     usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT |wgpu::BufferUsages::COPY_DST,
                 });
 
-                if let Some(instance_buffer) = self.instance_buffer.buffer.as_ref() {
-                    self.mesh_buffers = MeshBuffers::builder()
-                        .with_instance_buffer(Some(instance_buffer.clone()))
-                        .with_culled_and_args_buffer(Some(culled_buffer), Some(indirect_args))
-                }
+                self.mesh_buffers = MeshBuffers::builder()
+                    .with_instance_buffer(&self.instance_buffer)
+                    .with_culled_and_args_buffer(Some(culled_buffer), Some(indirect_args))
 
             } else {
                 self.mesh_buffers = MeshBuffers::builder()
-                    .with_instance_buffer(self.instance_buffer.buffer.clone())
+                    .with_instance_buffer(&self.instance_buffer)
             }
         }
     }
@@ -146,7 +150,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         self.instance_buffer.length * factor
     }
 
-    pub fn get_mesh_buffers(&self) -> &MeshBuffers {
+    pub fn get_mesh_buffers(&self) -> &MeshBuffers<T> {
         &self.mesh_buffers
     }
 

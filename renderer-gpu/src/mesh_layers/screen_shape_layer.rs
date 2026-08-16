@@ -4,9 +4,9 @@ use crate::draw_commands::mesh2d_draw_command::Mesh2dDrawCommand;
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
-use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh::mesh_instance_input::{MeshInstanceInput};
 use crate::mesh_buffers::MeshBuffers;
-use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
+use crate::mesh_layers::{BaseMeshLayer, LayerAttrMapper, RenderableLayer};
 use crate::pipelines::RenderPipeline;
 use crate::view_projection::ViewProjection;
 use geo_types::point;
@@ -21,7 +21,8 @@ use wgpu::RenderPass;
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
 pub(crate) struct ScreenShapeLayer<I: MeshInstanceInput> {
-    meshes: HashMap<String, (Mesh, InstanceBuffer<I>, MeshBuffers)>,
+    attr_map: LayerAttrMapper<I>,
+    meshes: HashMap<String, (Mesh, InstanceBuffer<I>, MeshBuffers<I>)>,
     collision_task_controller: CollisionTaskController<
         (ShapeInfo, f32, String),
         HashMap<String, Vec<(DVec3, f32)>>,
@@ -34,11 +35,12 @@ struct ShapeInfo {
 }
 
 impl<I: MeshInstanceInput> ScreenShapeLayer<I> {
-    pub fn new(global_context: &mut GlobalContext) -> Self {
+    pub fn new(global_context: &mut GlobalContext, attr_map: LayerAttrMapper<I>) -> Self {
         let (task_wrapper, collision_task_controller) = CollisionTaskWrapper::new();
         let task = ScreenMeshCollisionHandler::new(task_wrapper);
         global_context.collider.register_task(Box::new(task));
         ScreenShapeLayer {
+            attr_map,
             meshes: HashMap::new(),
             collision_task_controller,
         }
@@ -107,6 +109,7 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
                 if let Some(pos_alpha) = hm.get(key) {
                     I::fill_attrs(
                         &mut attrs,
+                        self.attr_map,
                         &cs_offset,
                         pos_alpha,
                         &SpatialData::new(),
@@ -118,7 +121,7 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
                     global_context,
                     &attrs,
                 );
-                *mesh_buffers = MeshBuffers::builder().with_instance_buffer(instance_buffer.buffer.clone());
+                *mesh_buffers = MeshBuffers::builder().with_instance_buffer(instance_buffer);
             });
     }
     
@@ -127,8 +130,8 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
     }
 }
 
-impl<I: MeshInstanceInput> BaseMeshLayerNew<I> for ScreenShapeLayer<I> {
-    fn render_new(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
+impl<I: MeshInstanceInput> RenderableLayer<I> for ScreenShapeLayer<I> {
+    fn render(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
         render_pipeline.setup_render(render_pass, global_context);
         self.meshes.iter().for_each(|(_, (mesh, instance_buf, mesh_buffers))| {
             let instance_count = instance_buf.length;

@@ -1,6 +1,6 @@
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
-use crate::mesh_layers::BaseMeshComputeLayerNew;
+use crate::mesh_layers::ComputableLayer;
 use crate::pass_nodes::PassNode;
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use renderer_common::WorldShapeFeatureLayerTag;
@@ -47,7 +47,7 @@ impl PassNode for PrepassNode {
             .iter_mut()
             .for_each(|(feature_tag, shape_pipeline)| {
                 if let Some(layer) = layers.feature_layers.get_layer(feature_tag) {
-                    layer.compute_new(encoder, shape_pipeline, global_context)
+                    layer.compute(encoder, shape_pipeline, global_context)
                 }
             });
     }

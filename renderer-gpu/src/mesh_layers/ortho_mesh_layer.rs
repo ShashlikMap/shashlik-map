@@ -2,26 +2,28 @@ use crate::buffer_pool::BufferPool;
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
-use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh::mesh_instance_input::{MeshInstanceInput};
 use crate::mesh_buffers::MeshBuffers;
-use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
+use crate::mesh_layers::{BaseMeshLayer, LayerAttrMapper, LayerAttribute, RenderableLayer};
 use crate::pipelines::RenderPipeline;
 use glam::Mat4;
 use log::error;
 use wgpu::{RenderPass, TextureView};
 
 pub struct OrthoMeshLayer<I: MeshInstanceInput> {
+    attr_map: LayerAttrMapper<I>,
     mesh: Option<Mesh>,
     instance_buffer: InstanceBuffer<I>,
-    mesh_buffers: MeshBuffers,
+    mesh_buffers: MeshBuffers<I>,
     full_screen_mesh: bool,
     is_bottom_right: bool,
     texture_view: Option<TextureView>,
 }
 
 impl<I: MeshInstanceInput> OrthoMeshLayer<I> {
-    pub fn new(full_screen_mesh: bool, is_bottom_right: bool) -> Self {
+    pub fn new(full_screen_mesh: bool, is_bottom_right: bool, attr_map: LayerAttrMapper<I>) -> Self {
         Self {
+            attr_map,
             mesh: None,
             instance_buffer: InstanceBuffer::default(),
             mesh_buffers: MeshBuffers::default(),
@@ -88,13 +90,18 @@ impl<I: MeshInstanceInput> OrthoMeshLayer<I> {
             0.0,
         ];
 
-        let attr = I::builder(position, 1.0, Mat4::IDENTITY.to_cols_array_2d())
-            .with_screen_space(1).build();
-
+        let attr = (self.attr_map)(LayerAttribute {
+            position,
+            color_alpha: 1.0,
+            matrix: Mat4::IDENTITY.to_cols_array_2d(),
+            screen_space: 1,
+            ..Default::default()
+        });
+       
         self.instance_buffer
             .update("quad_instance_buffer", global_context, &vec![attr]);
         self.mesh_buffers =
-            MeshBuffers::builder().with_instance_buffer(self.instance_buffer.buffer.clone())
+            MeshBuffers::builder().with_instance_buffer(&self.instance_buffer)
     }
 }
 
@@ -104,8 +111,8 @@ impl <I: MeshInstanceInput> BaseMeshLayer for OrthoMeshLayer<I> {
     fn clear_by_key(&mut self, _key: &str) {}
 }
 
-impl<I: MeshInstanceInput> BaseMeshLayerNew<I> for OrthoMeshLayer<I> {
-    fn render_new(
+impl<I: MeshInstanceInput> RenderableLayer<I> for OrthoMeshLayer<I> {
+    fn render(
         &mut self,
         render_pass: &mut RenderPass,
         render_pipeline: &mut impl RenderPipeline<I>,

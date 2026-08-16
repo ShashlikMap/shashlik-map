@@ -1,5 +1,5 @@
 use crate::global_context::{GlobalContext};
-use crate::mesh_layers::BaseMeshLayerNew;
+use crate::mesh_layers::RenderableLayer;
 use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
 use crate::pipelines::mesh_pipeline::MeshPipeline;
@@ -14,7 +14,7 @@ pub(crate) struct MainPassNode {
     depth_texture_view: TextureView,
     default_mesh_pipeline: MeshPipeline,
     default_shape_pipeline: ShapePipeline,
-    screen_shape_layer: ShapePipeline,
+    screen_shape_pipeline: ShapePipeline,
     feature_shape_pipelines: Vec<(String, ShapePipeline)>,
     preview_screen_mesh_pipeline: ScreenMeshPipeline,
     text_screen_mesh_pipeline: ScreenMeshPipeline,
@@ -36,7 +36,7 @@ impl MainPassNode {
         let default_mesh_pipeline = MeshPipeline::new(global_context, true, true, true);
         let default_shape_pipeline = ShapePipeline::new(global_context, None, false, true);
 
-        let screen_shape_layer =
+        let screen_shape_pipeline =
             ShapePipeline::new(global_context, Some("vs_main_screen"), false, false);
 
         let mut preview_screen_mesh_pipeline = ScreenMeshPipeline::new(
@@ -108,7 +108,7 @@ impl MainPassNode {
             ),
             default_mesh_pipeline,
             default_shape_pipeline,
-            screen_shape_layer,
+            screen_shape_pipeline: screen_shape_pipeline,
             text_screen_mesh_pipeline,
             feature_shape_pipelines,
             preview_screen_mesh_pipeline,
@@ -161,40 +161,40 @@ impl PassNode for MainPassNode {
         let mut render_pass = encoder.begin_render_pass(&descriptor);
         
         layers.shape_layer.disable_skip_mesh_feature = false;
-        layers.shape_layer.render_new(
+        layers.shape_layer.render(
             &mut render_pass,
             &mut self.default_shape_pipeline,
             global_context,
         );
 
-        layers.mesh_layer.render_new(
+        layers.mesh_layer.render(
             &mut render_pass,
             &mut self.default_mesh_pipeline,
             global_context,
         );
 
         if global_context.is_shadow_mapping_enabled() {
-            layers.shadow_map_layer.render_new(
+            layers.shadow_map_layer.render(
                 &mut render_pass,
                 &mut self.shadow_map_screen_mesh_pipeline,
                 global_context,
             );
         }
         if global_context.is_ssao_enabled() {
-            layers.post_process_layer.render_new(
+            layers.post_process_layer.render(
                 &mut render_pass,
                 &mut self.post_process_screen_mesh_pipeline,
                 global_context,
             );
         }
-        layers.screen_shape_layer.render_new(
+        layers.screen_shape_layer.render(
             &mut render_pass,
-            &mut self.screen_shape_layer,
+            &mut self.screen_shape_pipeline,
             global_context,
         );
 
         layers.text_feature_layers.with_layer(|layer| {
-            layer.render_new(
+            layer.render(
                 &mut render_pass,
                 &mut self.text_screen_mesh_pipeline,
                 global_context,
@@ -205,12 +205,12 @@ impl PassNode for MainPassNode {
             .iter_mut()
             .for_each(|(feature_tag, shape_pipeline)| {
                 if let Some(layer) = layers.feature_layers.get_layer(feature_tag) {
-                    layer.render_new(&mut render_pass, shape_pipeline, global_context)
+                    layer.render(&mut render_pass, shape_pipeline, global_context)
                 }
             });
 
         if global_context.preview_type().is_enabled() {
-            layers.preview_mesh_layer.render_new(
+            layers.preview_mesh_layer.render(
                 &mut render_pass,
                 &mut self.preview_screen_mesh_pipeline,
                 global_context,
