@@ -14,7 +14,7 @@ pub struct OrthoMeshLayer<I: MeshInstanceInput> {
     attr_map: LayerAttrMapper<I>,
     mesh: Option<Mesh>,
     instance_buffer: InstanceBuffer<I>,
-    mesh_buffers: MeshBuffers,
+    mesh_buffers: MeshBuffers<I>,
     full_screen_mesh: bool,
     is_bottom_right: bool,
     texture_view: Option<TextureView>,
@@ -101,7 +101,7 @@ impl<I: MeshInstanceInput> OrthoMeshLayer<I> {
         self.instance_buffer
             .update("quad_instance_buffer", global_context, &vec![attr]);
         self.mesh_buffers =
-            MeshBuffers::builder().with_instance_buffer(self.instance_buffer.buffer.clone())
+            MeshBuffers::builder().with_instance_buffer(&self.instance_buffer)
     }
 }
 

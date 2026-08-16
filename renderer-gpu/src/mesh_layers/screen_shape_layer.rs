@@ -22,7 +22,7 @@ use wgpu::RenderPass;
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
 pub(crate) struct ScreenShapeLayer<I: MeshInstanceInput> {
     attr_map: LayerAttrMapper<I>,
-    meshes: HashMap<String, (Mesh, InstanceBuffer<I>, MeshBuffers)>,
+    meshes: HashMap<String, (Mesh, InstanceBuffer<I>, MeshBuffers<I>)>,
     collision_task_controller: CollisionTaskController<
         (ShapeInfo, f32, String),
         HashMap<String, Vec<(DVec3, f32)>>,
@@ -121,7 +121,7 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
                     global_context,
                     &attrs,
                 );
-                *mesh_buffers = MeshBuffers::builder().with_instance_buffer(instance_buffer.buffer.clone());
+                *mesh_buffers = MeshBuffers::builder().with_instance_buffer(instance_buffer);
             });
     }
     

@@ -44,7 +44,7 @@ pub trait MeshInstanceInput: Sized + Pod + From<LayerAttrubute> {
     }
 }
 
-impl<T> MeshInstanceInput for T where T: Sized + Pod + From<LayerAttrubute> {}
+impl<T> MeshInstanceInput for T where T: Clone + Default + Sized + Pod + From<LayerAttrubute> {}
 
 impl From<LayerAttrubute> for GeneralInstanceInput {
     fn from(value: LayerAttrubute) -> Self {

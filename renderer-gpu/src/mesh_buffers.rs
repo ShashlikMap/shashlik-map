@@ -1,20 +1,45 @@
+use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use wgpu::Buffer;
+use crate::mesh::InstanceBuffer;
+use crate::mesh::mesh_instance_input::MeshInstanceInput;
 
-#[derive(Clone, Default)]
-pub struct MeshBuffers {
+pub struct MeshBuffers<I: MeshInstanceInput> {
     instance_buffer: Option<BufferWithId>,
     culled_buffer: Option<BufferWithId>,
     instance_args_buffer: Option<BufferWithId>,
+    _phantom_data: PhantomData<I>,
 }
 
-impl MeshBuffers {
-    pub fn builder() -> MeshBuffers {
+impl<I: MeshInstanceInput> Clone for MeshBuffers<I> {
+    fn clone(&self) -> Self {
+        MeshBuffers::<I> {
+            instance_buffer: self.instance_buffer.clone(),
+            culled_buffer: self.culled_buffer.clone(),
+            instance_args_buffer: self.instance_args_buffer.clone(),
+            _phantom_data: PhantomData,
+        }
+    }
+}
+
+impl<I: MeshInstanceInput> Default for MeshBuffers<I> {
+    fn default() -> Self {
+        MeshBuffers::<I> {
+            instance_buffer: None,
+            culled_buffer: None,
+            instance_args_buffer: None,
+            _phantom_data: PhantomData,
+        }
+    }
+}
+
+impl<I: MeshInstanceInput> MeshBuffers<I> {
+    pub fn builder() -> MeshBuffers<I> {
         Self::default()
     }
 
-    pub fn with_instance_buffer(mut self, buffer: Option<Buffer>) -> Self {
-        self.instance_buffer = buffer.map(Into::into);
+    pub fn with_instance_buffer(mut self, instance_buffer: &InstanceBuffer<I>) -> Self {
+        self.instance_buffer = instance_buffer.buffer.clone().map(Into::into);
         self
     }
 

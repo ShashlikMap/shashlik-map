@@ -21,7 +21,7 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
     original_instance_positions_alpha: Vec<(DVec3, f32)>,
-    mesh_buffers: MeshBuffers
+    mesh_buffers: MeshBuffers<T>
 }
 
 impl Mesh {
@@ -119,15 +119,13 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                     usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT |wgpu::BufferUsages::COPY_DST,
                 });
 
-                if let Some(instance_buffer) = self.instance_buffer.buffer.as_ref() {
-                    self.mesh_buffers = MeshBuffers::builder()
-                        .with_instance_buffer(Some(instance_buffer.clone()))
-                        .with_culled_and_args_buffer(Some(culled_buffer), Some(indirect_args))
-                }
+                self.mesh_buffers = MeshBuffers::builder()
+                    .with_instance_buffer(&self.instance_buffer)
+                    .with_culled_and_args_buffer(Some(culled_buffer), Some(indirect_args))
 
             } else {
                 self.mesh_buffers = MeshBuffers::builder()
-                    .with_instance_buffer(self.instance_buffer.buffer.clone())
+                    .with_instance_buffer(&self.instance_buffer)
             }
         }
     }
@@ -152,7 +150,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         self.instance_buffer.length * factor
     }
 
-    pub fn get_mesh_buffers(&self) -> &MeshBuffers {
+    pub fn get_mesh_buffers(&self) -> &MeshBuffers<T> {
         &self.mesh_buffers
     }
 

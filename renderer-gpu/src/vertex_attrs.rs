@@ -92,7 +92,7 @@ impl VertexAttrib for MeshVertex {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Default, Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GeneralInstanceInput {
     pub(crate) position: [f32; 3],
     pub(crate) color_alpha: f32,
@@ -113,7 +113,7 @@ impl VertexAttrib for GeneralInstanceInput {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Default, Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ShapeInstanceInput {
     pub(crate) position: [f32; 3],
     pub(crate) color_alpha: f32,
@@ -138,7 +138,7 @@ impl VertexAttrib for ShapeInstanceInput {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Default, Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ScreenShapeInstanceInput {
     pub(crate) position: [f32; 3],
     pub(crate) color_alpha: f32,
