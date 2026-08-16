@@ -23,8 +23,15 @@ pub fn prepare() {
     let mut wgpu_settings = WGPUSettings::default();
     wgpu_settings.device_required_features = Features::CLEAR_TEXTURE | Features::IMMEDIATES;
     wgpu_settings.device_required_limits = Limits::downlevel_defaults();
-    wgpu_settings.device_required_limits.max_immediate_size = 4;
 
+    // For MESH_SHADER
+    #[cfg(target_os = "macos")] {
+        wgpu_settings.device_required_features |= Features::EXPERIMENTAL_MESH_SHADER | Features::PASSTHROUGH_SHADERS;
+        wgpu_settings.device_experimental_features = unsafe { wgpu::ExperimentalFeatures::enabled() };
+        wgpu_settings.device_required_limits = Limits::downlevel_defaults().using_recommended_minimum_mesh_shader_values();
+    }
+
+    wgpu_settings.device_required_limits.max_immediate_size = 4;
 
     slint::BackendSelector::new()
         .require_wgpu_30(WGPUConfiguration::Automatic(wgpu_settings))

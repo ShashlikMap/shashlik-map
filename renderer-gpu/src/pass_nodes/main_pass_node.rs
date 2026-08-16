@@ -8,11 +8,13 @@ use crate::pipelines::shape_pipeline::ShapePipeline;
 use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
 use renderer_common::WorldShapeFeatureLayerTag;
 use wgpu::{CommandEncoder, TextureFormat, TextureView};
+use crate::pipelines::x_real_mesh_pipeline::XRealMeshShaderPipeline;
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
     depth_texture_view: TextureView,
     default_mesh_pipeline: MeshPipeline,
+    x_real_mesh_shader_pipeline: XRealMeshShaderPipeline,
     default_shape_pipeline: ShapePipeline,
     screen_shape_pipeline: ShapePipeline,
     feature_shape_pipelines: Vec<(String, ShapePipeline)>,
@@ -34,6 +36,9 @@ impl MainPassNode {
         );
 
         let default_mesh_pipeline = MeshPipeline::new(global_context, true, true, true);
+
+        let x_real_mesh_shader_pipeline = XRealMeshShaderPipeline::new(global_context);
+
         let default_shape_pipeline = ShapePipeline::new(global_context, None, false, true);
 
         let screen_shape_pipeline =
@@ -107,8 +112,9 @@ impl MainPassNode {
                 global_context.device(),
             ),
             default_mesh_pipeline,
+            x_real_mesh_shader_pipeline,
             default_shape_pipeline,
-            screen_shape_pipeline: screen_shape_pipeline,
+            screen_shape_pipeline,
             text_screen_mesh_pipeline,
             feature_shape_pipelines,
             preview_screen_mesh_pipeline,
@@ -166,6 +172,15 @@ impl PassNode for MainPassNode {
             &mut self.default_shape_pipeline,
             global_context,
         );
+
+        // For MESH_SHADER
+        #[cfg(target_os = "macos")] {
+            layers.mesh_layer.render(
+                &mut render_pass,
+                &mut self.x_real_mesh_shader_pipeline,
+                global_context,
+            );
+        }
 
         layers.mesh_layer.render(
             &mut render_pass,

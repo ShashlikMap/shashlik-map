@@ -11,4 +11,5 @@ fn main() {
     wesl.build_artifact(&"package::screen_mesh_shader".parse().unwrap(), "screen_mesh_shader");
     wesl.build_artifact(&"package::shape_culling".parse().unwrap(), "shape_culling");
     wesl.build_artifact(&"package::ssao".parse().unwrap(), "ssao");
+    wesl.build_artifact(&"package::x_real_mesh_shader".parse().unwrap(), "x_real_mesh_shader");
 }
