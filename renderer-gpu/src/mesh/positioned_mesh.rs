@@ -1,7 +1,7 @@
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
-use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh::mesh_instance_input::{AttrMapper, CommonAttributes, MeshInstanceInput};
 use crate::mesh_buffers::MeshBuffers;
 use crate::utils::ReceiverExt;
 use glam::DVec3;
@@ -12,6 +12,7 @@ use wgpu::{ComputePass, RenderPass};
 
 pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
+    attr_map: AttrMapper<T>,
     instance_buffer: InstanceBuffer<T>,
     attrs: Vec<T>,
     cs_offset: DVec3,
@@ -25,23 +26,26 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
 impl Mesh {
     pub(crate) fn to_positioned<T: MeshInstanceInput>(
         self,
+        attr_map: AttrMapper<T>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,
         instance_positions_alpha: Option<Vec<(DVec3, f32)>>,
     ) -> PositionedMesh<T> {
-        PositionedMesh::new(self, spatial_rx, double_style, instance_positions_alpha)
+        PositionedMesh::new(self, attr_map, spatial_rx, double_style, instance_positions_alpha)
     }
 }
 
 impl<T: MeshInstanceInput> PositionedMesh<T> {
     pub fn new(
         mesh: Mesh,
+        attr_map: AttrMapper<T>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,
         instance_positions_alpha: Option<Vec<(DVec3, f32)>>,
     ) -> Self {
         Self {
             mesh,
+            attr_map,
             instance_buffer: InstanceBuffer::default(),
             attrs: vec![],
             cs_offset: DVec3::new(0.0, 0.0, 0.0),
@@ -71,6 +75,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         if update_attrs {
             T::fill_attrs(
                 &mut self.attrs,
+                self.attr_map,
                 &self.cs_offset,
                 &self.original_instance_positions_alpha,
                 &self.original_spatial_data,

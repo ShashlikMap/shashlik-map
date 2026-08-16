@@ -9,20 +9,22 @@ use crate::pipelines::RenderPipeline;
 use renderer_common::render_modifier::SpatialData;
 use std::mem;
 use wgpu::{CommandEncoder, ComputePassDescriptor, RenderPass};
-use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh::mesh_instance_input::{AttrMapper, MeshInstanceInput};
 
 pub(crate) struct GeneralMeshLayer<I: MeshInstanceInput> {
     render_data_holder: RenderDataHolder<PositionedMesh<I>>,
     indirect: bool,
     pub disable_skip_mesh_feature: bool,
+    attr_map: AttrMapper<I>
 }
 
 impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
-    pub fn new(indirect: bool) -> Self {
+    pub fn new(indirect: bool, attr_map: AttrMapper<I>) -> Self {
         GeneralMeshLayer {
             render_data_holder: RenderDataHolder::new(),
             indirect,
             disable_skip_mesh_feature: false,
+            attr_map
         }
     }
     pub fn add(
@@ -32,7 +34,7 @@ impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
         double_style: bool,
         mesh: Mesh,
     ) {
-        let mesh = mesh.to_positioned(spatial_rx,
+        let mesh = mesh.to_positioned(self.attr_map, spatial_rx,
                                       double_style,
                                       None);
         self.render_data_holder.set(key, vec![mesh]);
@@ -58,8 +60,9 @@ impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
             mem::take(&mut batch.mesh_info.instance_positions).map(|pos_items| pos_items.into_iter().map(|item| {
                 (item, 1f32)
             }).collect());
-        
-        let mesh = mesh.to_positioned(spatial_rx,
+
+        let mesh = mesh.to_positioned(self.attr_map,
+                                      spatial_rx,
                                       batch.mesh_info.double_style,
                                       instance_positions);
         self.render_data_holder.set(key.to_string(), vec![mesh]);

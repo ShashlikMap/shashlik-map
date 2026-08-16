@@ -2,7 +2,7 @@ use crate::buffer_pool::BufferPool;
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
-use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh::mesh_instance_input::{AttrMapper, CommonAttributes, MeshInstanceInput};
 use crate::mesh_buffers::MeshBuffers;
 use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
 use crate::pipelines::RenderPipeline;
@@ -11,6 +11,7 @@ use log::error;
 use wgpu::{RenderPass, TextureView};
 
 pub struct OrthoMeshLayer<I: MeshInstanceInput> {
+    attr_map: AttrMapper<I>,
     mesh: Option<Mesh>,
     instance_buffer: InstanceBuffer<I>,
     mesh_buffers: MeshBuffers,
@@ -20,8 +21,9 @@ pub struct OrthoMeshLayer<I: MeshInstanceInput> {
 }
 
 impl<I: MeshInstanceInput> OrthoMeshLayer<I> {
-    pub fn new(full_screen_mesh: bool, is_bottom_right: bool) -> Self {
+    pub fn new(full_screen_mesh: bool, is_bottom_right: bool, attr_map: AttrMapper<I>) -> Self {
         Self {
+            attr_map,
             mesh: None,
             instance_buffer: InstanceBuffer::default(),
             mesh_buffers: MeshBuffers::default(),
@@ -88,9 +90,14 @@ impl<I: MeshInstanceInput> OrthoMeshLayer<I> {
             0.0,
         ];
 
-        let attr = I::builder(position, 1.0, Mat4::IDENTITY.to_cols_array_2d())
-            .with_screen_space(1).build();
-
+        let attr = (self.attr_map)(CommonAttributes {
+            position,
+            color_alpha: 1.0,
+            matrix: Mat4::IDENTITY.to_cols_array_2d(),
+            screen_space: 1,
+            ..Default::default()
+        });
+       
         self.instance_buffer
             .update("quad_instance_buffer", global_context, &vec![attr]);
         self.mesh_buffers =

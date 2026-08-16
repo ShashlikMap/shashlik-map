@@ -2,7 +2,7 @@ use crate::buffer_pool::BufferPool;
 use crate::collider::{ColliderTask, CollisionTaskController, CollisionTaskWrapper};
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
-use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh::mesh_instance_input::{AttrMapper, CommonAttributes, MeshInstanceInput};
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::text::glyph_cache::GlyphCache;
@@ -32,6 +32,7 @@ pub struct GlyphData {
 }
 
 pub struct TextRenderer<I: MeshInstanceInput> {
+    attr_map: AttrMapper<I>,
     collision_task_controller:
         CollisionTaskController<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
     instance_buffer_map: FxHashMap<GlyphId, InstanceBuffer<I>>,
@@ -44,6 +45,7 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
     pub fn new(
         global_context: &mut GlobalContext,
         font: rustybuzz::ttf_parser::Face<'static>,
+        attr_map: AttrMapper<I>
     ) -> Self {
         let default_face = Arc::new(DefaultFaceWrapper::new(font));
         let (task_wrapper, collision_task_controller) = CollisionTaskWrapper::new();
@@ -52,6 +54,7 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
         let task = TextRendererCollisionHandler::new(Arc::clone(&default_face), task_wrapper);
         global_context.collider.register_task(Box::new(task));
         Self {
+            attr_map,
             collision_task_controller,
             instance_buffer_map: FxHashMap::default(),
             glyph_cache,
@@ -80,10 +83,14 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
                 if !glyph_data.screen_space {
                     position -= dvec3(cs_offset.x, cs_offset.y, 0.0)
                 }
-                let instance_input = I::builder(position.as_vec3().into(),
-                                                glyph_data.alpha,
-                                                glyph_data.matrix.to_cols_array_2d(),
-                ).with_screen_space(glyph_data.screen_space.into()).build();
+
+                let instance_input = (self.attr_map)(CommonAttributes {
+                    position: position.as_vec3().into(),
+                    color_alpha: glyph_data.alpha,
+                    matrix: glyph_data.matrix.to_cols_array_2d(),
+                    screen_space: glyph_data.screen_space.into(),
+                    ..Default::default()
+                });
                 attrs.push(instance_input);
             });
 

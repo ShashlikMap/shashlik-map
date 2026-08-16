@@ -1,5 +1,5 @@
 use crate::global_context::GlobalContext;
-use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh::mesh_instance_input::{AttrMapper, MeshInstanceInput};
 use crate::mesh_layers::{BaseMeshLayer, BaseMeshLayerNew};
 use crate::pipelines::RenderPipeline;
 use crate::text::text_renderer::TextRenderer;
@@ -15,9 +15,10 @@ impl<I: MeshInstanceInput> TextMeshLayer<I> {
     pub fn new(
         global_context: &mut GlobalContext,
         font: rustybuzz::ttf_parser::Face<'static>,
+        attr_map: AttrMapper<I>
     ) -> Self {
         Self {
-            text_renderer: TextRenderer::new(global_context, font),
+            text_renderer: TextRenderer::new(global_context, font, attr_map),
         }
     }
 
