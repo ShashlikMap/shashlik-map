@@ -15,6 +15,7 @@ import {
 export enum Feature {
     SSAO,
     Shadows,
+    MeshShader,
     MapTiler
 }
 
@@ -163,6 +164,15 @@ export component ShashlikUI inherits Window {
                 checked: true;
                 toggled => {
                     feature_enabled(Feature.Shadows, self.checked)
+                }
+            }
+
+            CheckBox {
+                text: "MeshShader";
+                height: 24px;
+                checked: false;
+                toggled => {
+                    feature_enabled(Feature.MeshShader, self.checked)
                 }
             }
 

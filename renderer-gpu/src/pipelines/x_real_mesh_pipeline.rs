@@ -10,11 +10,14 @@ use wgpu::{
 };
 
 pub struct XRealMeshShaderPipeline {
-    pipeline: wgpu::RenderPipeline,
+    pipeline: Option<wgpu::RenderPipeline>,
 }
 
 impl XRealMeshShaderPipeline {
-    pub fn new(global_context: &GlobalContext) -> Self {
+    pub fn new(global_context: &GlobalContext, enabled: bool) -> Self {
+        if !enabled {
+            return XRealMeshShaderPipeline { pipeline: None };
+        }
         let device = global_context.device();
         let config = global_context.config();
 
@@ -72,14 +75,18 @@ impl XRealMeshShaderPipeline {
             multiview: None,
             cache: None,
         });
-        XRealMeshShaderPipeline { pipeline }
+        XRealMeshShaderPipeline {
+            pipeline: Some(pipeline),
+        }
     }
 }
 
 impl RenderPipeline<GeneralInstanceInput> for XRealMeshShaderPipeline {
     fn setup_render(&mut self, render_pass: &mut RenderPass, _global_context: &GlobalContext) {
-        render_pass.set_pipeline(&self.pipeline);
-        render_pass.draw_mesh_tasks(1, 1, 1);
+        if let Some(pipeline) = &self.pipeline {
+            render_pass.set_pipeline(pipeline);
+            render_pass.draw_mesh_tasks(1, 1, 1);
+        }
     }
 
     /// General mesh rendering is disabled for now for this pipeline

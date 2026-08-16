@@ -27,6 +27,7 @@ pub(crate) struct MainPassNode {
 impl MainPassNode {
     pub fn new(
         global_context: &GlobalContext,
+        x_real_mesh_shader_pipeline_enabled: bool,
         layers: &Layers,
         world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>,
     ) -> Self {
@@ -37,7 +38,8 @@ impl MainPassNode {
 
         let default_mesh_pipeline = MeshPipeline::new(global_context, true, true, true);
 
-        let x_real_mesh_shader_pipeline = XRealMeshShaderPipeline::new(global_context);
+        let x_real_mesh_shader_pipeline = XRealMeshShaderPipeline::new(global_context,
+                                                                       x_real_mesh_shader_pipeline_enabled);
 
         let default_shape_pipeline = ShapePipeline::new(global_context, None, false, true);
 
@@ -173,8 +175,7 @@ impl PassNode for MainPassNode {
             global_context,
         );
 
-        // For MESH_SHADER
-        #[cfg(target_os = "macos")] {
+        if global_context.x_real_mesh_shader_enabled {
             layers.mesh_layer.render(
                 &mut render_pass,
                 &mut self.x_real_mesh_shader_pipeline,

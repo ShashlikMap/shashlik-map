@@ -227,6 +227,11 @@ pub fn launch_internal(ui: &ShashlikUI) {
                                         shashlik_map.update_tile_store(|tile_provider| {
                                             tile_provider.set_mvt_type(enabled);
                                         });
+                                    },
+                                    Feature::MeshShader => {
+                                        shashlik_map.renderer.update_config(|config| {
+                                            config.x_real_mesh_shader_enabled = enabled;
+                                        });
                                     }
                                 },
                                 SlintMapEvent::PreviewType(preview_type) => {
