@@ -39,7 +39,7 @@ impl<I: MeshInstanceInput> MeshBuffers<I> {
     }
 
     pub fn with_instance_buffer(mut self, instance_buffer: &InstanceBuffer<I>) -> Self {
-        self.instance_buffer = instance_buffer.buffer.clone().map(Into::into);
+        self.instance_buffer = instance_buffer.buffer_with_id.clone();
         self
     }
 
