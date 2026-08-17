@@ -15,7 +15,8 @@ use slint::{ComponentHandle, GraphicsAPI, PhysicalSize, RenderingState};
 use std::cmp::max;
 use std::str::FromStr;
 use std::sync::mpsc;
-use wgpu::TextureUsages;
+use std::time::{Duration, Instant};
+use wgpu::{Device, Instance, TextureUsages};
 use wgpu::{SurfaceColorSpace, SurfaceConfiguration};
 use renderer_gpu::render_config::RenderConfig;
 
@@ -38,6 +39,8 @@ pub fn prepare() {
         .select()
         .expect("Unable to create Slint backend with WGPU based renderer-gpu");
 }
+
+const GENERATE_INSTANCE_REPORT: bool = false;
 
 pub fn launch_internal(ui: &ShashlikUI) {
     let (slint_map_event_sender, slint_map_event_receiver) = mpsc::channel();
@@ -66,11 +69,13 @@ pub fn launch_internal(ui: &ShashlikUI) {
 
     let mut prev_pinch_scale: Option<Scale> = None;
     let mut prev_pan_state: Option<PanState> = None;
+    let mut last_report_time: Instant = Instant::now();
+    let mut device_instance: Option<(Device, Instance)> = None;
     ui.window()
         .set_rendering_notifier(move |state, graphics_api: &GraphicsAPI| {
             match state {
                 RenderingState::RenderingSetup => match graphics_api {
-                    GraphicsAPI::WGPU30 { device, queue, .. } => {
+                    GraphicsAPI::WGPU30 { instance, device, queue , .. } => {
                         let target_texture = device.create_texture(&wgpu::TextureDescriptor {
                             label: None,
                             size: wgpu::Extent3d {
@@ -161,6 +166,7 @@ pub fn launch_internal(ui: &ShashlikUI) {
                                 ShashlikMap::new(renderer, tiles_provider).await
                             }).unwrap();
 
+                        device_instance = Some((device.clone(), instance.clone()));
                         map.resize(texture_width as u32, texture_height as u32);
                         shashlik_map = Some(map);
                     }
@@ -170,6 +176,11 @@ pub fn launch_internal(ui: &ShashlikUI) {
                     if let (Some(shashlik_map), Some(app)) =
                         (shashlik_map.as_mut(), ui_weak.upgrade())
                     {
+                        if GENERATE_INSTANCE_REPORT && let Some((_, instance)) = &device_instance
+                            && last_report_time.elapsed() >= Duration::from_secs_f32(5.0) {
+                            last_report_time = Instant::now();
+                            println!("instanceReport: {:?}", instance.generate_report());
+                        }
                         while let Ok(event) = slint_map_event_receiver.try_recv() {
                             match event {
                                 SlintMapEvent::VerticalScroll(delta_y) => {
