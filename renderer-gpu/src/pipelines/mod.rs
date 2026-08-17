@@ -8,6 +8,7 @@ pub mod shape_pipeline;
 pub mod screen_mesh_pipeline;
 pub mod fill_shadow_map_pipeline;
 pub mod g_buf_pipeline;
+pub mod x_real_mesh_pipeline;
 
 pub trait RenderPipeline<InstanceInputType: MeshInstanceInput> {
     fn setup_compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {}
@@ -20,6 +21,8 @@ pub trait RenderPipeline<InstanceInputType: MeshInstanceInput> {
             render_pass.set_vertex_buffer(1, buffer.slice(..));
         }
     }
+
+    fn is_mesh_rendering_enabled(&self) -> bool { true }
 }
 
 #[derive(Clone, Debug)]
