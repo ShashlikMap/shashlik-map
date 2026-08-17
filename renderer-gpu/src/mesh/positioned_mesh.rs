@@ -104,7 +104,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 } else {
                     self.mesh.index_buf.1
                 };
-                let params: InternalIndirectBufParams = (instance_buffer_length, index_count, index_count);
+                let params: InternalIndirectBufParams = (instance_buffer_length, instance_count, index_count);
                 if self.indirect_prev_params != params {
                     let culled_buffer = Some(global_context.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
                         label: Some("Culled Buffer"),
