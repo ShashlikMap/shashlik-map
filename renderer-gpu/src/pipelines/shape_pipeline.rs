@@ -1,14 +1,13 @@
+use crate::bind_group_cache::{BindGroupCache, BindGroupKey};
 use crate::global_context::GlobalContext;
 use crate::mesh_buffers::MeshBuffers;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex, VertexAttrib};
-use log::error;
+use renderer_common::WorldShapeFeatureLayerTag;
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, Device, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
-use renderer_common::WorldShapeFeatureLayerTag;
-use crate::bind_group_cache::{BindGroupCache, BindGroupKey};
 
 pub struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
@@ -313,12 +312,8 @@ impl RenderPipeline<ShapeInstanceInput> for ShapePipeline {
                                                     culled_buffer.buffer(), "Indirect render BindGroup")
                 });
             render_pass.set_bind_group(2, instance_bind_group, &[]);
-        } else if let Some(buffer) = mesh_buffers.instance_buffer() {
-            if buffer.size() > 0 {
-                render_pass.set_vertex_buffer(1, buffer.slice(..));
-            } else {
-                error!("Buffer is empty!");
-            }
+        } else {
+            Self::setup_mesh_instance_buffers(render_pass, mesh_buffers.instance_buffer());
         }
     }
 }
