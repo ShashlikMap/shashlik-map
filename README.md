@@ -18,7 +18,8 @@ Running on macOS and mobile (Android, iOS):
 
 ### CPU-Only Hardware
 Running on CPU-only hardware using Slint as the host UI and Skia as the renderer ([NXP i.MX93 chip](https://www.nxp.com/products/processors-and-microcontrollers/arm-processors/i-mx-applications-processors/i-mx-9-processors/i-mx-93-applications-processor-family-arm-cortex-a55-ml-acceleration-power-efficient-mpu:i.MX93) used as a reference hardware):
-<img width="379" height="263" alt="Screenshot 2026-08-18 at 21 30 38" src="https://github.com/user-attachments/assets/5aa37c80-204a-446f-b2fa-72dcf5b70146" />
+
+<img width="450" alt="Screenshot 2026-08-18 at 21 30 38" src="https://github.com/user-attachments/assets/5aa37c80-204a-446f-b2fa-72dcf5b70146" />
 
 
 ## Tech stack
