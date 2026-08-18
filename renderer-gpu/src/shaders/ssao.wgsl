@@ -63,7 +63,8 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
     for (var i = 0; i < samples; i++) {
         var kl = textureLoad(kernel, vec2(i, 0), 0).rgb;
         let dist_scale = f32(i) / f32(samples);
-        let samplePos = fragPos + (TBN * (kl * lerp(0.1, 1.0, dist_scale * dist_scale))) * radius;
+
+        let samplePos = fragPos + (TBN * (kl * mix(0.1, 1.0, dist_scale * dist_scale))) * radius;
 
         let viewSampleDir = normalize(samplePos - fragPos);
         let ndots = max(dot(normal, viewSampleDir), 0.0);
@@ -87,8 +88,4 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
         occlusion = occlusion / f32(samples);
         textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
     }
-}
-
-fn lerp(a: f32, b: f32, f:f32) -> f32 {
-    return a + f * (b - a);
 }

@@ -1,7 +1,8 @@
+use log::error;
 use crate::global_context::GlobalContext;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::mesh_buffers::MeshBuffers;
-use wgpu::{ColorTargetState, ComputePass, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, VertexBufferLayout};
+use wgpu::{Buffer, ColorTargetState, ComputePass, DepthStencilState, Device, Label, MultisampleState, PipelineCompilationOptions, PipelineLayout, PrimitiveState, RenderPass, ShaderModule, VertexBufferLayout};
 
 pub mod mesh_pipeline;
 pub mod shape_pipeline;
@@ -16,9 +17,18 @@ pub trait RenderPipeline<InstanceInputType: MeshInstanceInput> {
                     _mesh: &MeshBuffers<InstanceInputType>) {}
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext);
     fn setup_mesh_buffers(&mut self, render_pass: &mut RenderPass, mesh_buffers: &MeshBuffers<InstanceInputType>) {
-        // by default all instances go to vertex buffer slot 1
-        if let Some(buffer) = mesh_buffers.instance_buffer() {
-            render_pass.set_vertex_buffer(1, buffer.slice(..));
+        Self::setup_mesh_instance_buffers(render_pass, mesh_buffers.instance_buffer());
+    }
+
+    fn setup_mesh_instance_buffers(render_pass: &mut RenderPass, instance_buffer: Option<&Buffer>) {
+        if let Some(buffer) = instance_buffer {
+            if buffer.size() > 0 {
+                // by default all instances go to vertex buffer slot 1. But it would be better to let a concrete pipeline to decide
+                render_pass.set_vertex_buffer(1, buffer.slice(..));
+            } else {
+                // this is potentially possible but better to avoid in general, so let's log it now
+                error!("Buffer is empty!");
+            }
         }
     }
 
