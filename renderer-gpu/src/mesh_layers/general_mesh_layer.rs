@@ -85,6 +85,9 @@ impl<I: MeshInstanceInput> BaseMeshLayer for GeneralMeshLayer<I> {
 impl<I: MeshInstanceInput> RenderableLayer<I> for GeneralMeshLayer<I> {
     fn render(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
         render_pipeline.setup_render(render_pass, global_context);
+        if !render_pipeline.is_mesh_rendering_enabled() {
+            return;
+        }
         self.render_data_holder.run_mut_action(|mesh| {
             render_pipeline.setup_mesh_buffers(render_pass, mesh.get_mesh_buffers());
             mesh.render_instanced(render_pass, self.disable_skip_mesh_feature);

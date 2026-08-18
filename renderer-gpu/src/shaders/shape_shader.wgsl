@@ -281,11 +281,9 @@ fn dashed_style(uv_dist: vec3f, params: mat4x3<f32>) -> vec4<f32> {
 
 const freq = 0.5; // the less the longer dashes
 fn dash_solid(dist: f32, extra_color: vec4f, main_color: vec4f) -> vec4f {
-    let dash = step(0.5, fract(dist * freq));
-
-    if(dash <= 0.0) {
-        return extra_color;
-    } else {
-        return main_color;
-    }
+    let p2_scale = camera.p2_scale;
+    // prevents dash to be too short when a line width longer than a default dash
+    let freq_fixed = select(freq, freq * 0.2 * p2_scale, p2_scale <= 2.0);
+    let dash = step(0.5, fract(dist * freq_fixed));
+    return select(main_color, extra_color, dash <= 0.0);
 }

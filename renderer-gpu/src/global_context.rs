@@ -17,6 +17,7 @@ pub struct GlobalContext {
     pub styles_bind_group_layout: BindGroupLayout,
     pub style_bind_group: Option<BindGroup>,
     ssao_enabled: bool,
+    pub x_real_mesh_shader_enabled: bool,
     pub(crate) texture_view_resources: TextureViewResources,
     preview_type: PreviewType,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[[f32; 4]; 4]>>,
@@ -37,6 +38,7 @@ impl GlobalContext {
             styles_bind_group_layout,
             style_bind_group: None,
             ssao_enabled: render_config.ssao_enabled,
+            x_real_mesh_shader_enabled: render_config.x_real_mesh_shader_enabled,
             texture_view_resources,
             preview_type: render_config.preview_type,
             style_uniform_rx: style_store.subscribe(),
@@ -81,6 +83,7 @@ impl GlobalContext {
 
         self.preview_type = render_config.preview_type;
         self.ssao_enabled = render_config.ssao_enabled;
+        self.x_real_mesh_shader_enabled = render_config.x_real_mesh_shader_enabled;
     }
 
     fn update_style_bind_group(&mut self) {

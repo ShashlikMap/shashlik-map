@@ -1,16 +1,17 @@
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
-use crate::mesh::mesh_instance_input::{MeshInstanceInput};
+use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::mesh_buffers::MeshBuffers;
+use crate::mesh_layers::LayerAttrMapper;
 use crate::utils::ReceiverExt;
 use glam::DVec3;
 use renderer_common::render_modifier::SpatialData;
 use tokio::sync::broadcast::Receiver;
 use wgpu::util::{DeviceExt, DrawIndexedIndirectArgs};
 use wgpu::{ComputePass, RenderPass};
-use crate::mesh_layers::LayerAttrMapper;
 
+type InternalIndirectBufParams = (usize, usize, usize);
 pub struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
     attr_map: LayerAttrMapper<T>,
@@ -21,7 +22,8 @@ pub struct PositionedMesh<T: MeshInstanceInput> {
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
     original_instance_positions_alpha: Vec<(DVec3, f32)>,
-    mesh_buffers: MeshBuffers<T>
+    mesh_buffers: MeshBuffers<T>,
+    indirect_prev_params: InternalIndirectBufParams,
 }
 
 impl Mesh {
@@ -56,6 +58,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             original_instance_positions_alpha: instance_positions_alpha
                 .unwrap_or(vec![(DVec3::new(0.0, 0.0, 0.0), 1f32)]),
             mesh_buffers: MeshBuffers::default(),
+            indirect_prev_params: InternalIndirectBufParams::default(),
         }
     }
 
@@ -87,14 +90,10 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 &self.attrs,
             );
 
+            self.mesh_buffers = self.mesh_buffers.clone()
+                .with_instance_buffer(&self.instance_buffer);
             if indirect {
                 let instance_buffer_length = self.get_instance_buffer_length();
-                let culled_buffer = global_context.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Culled Buffer"),
-                    contents: bytemuck::cast_slice(&vec![0; instance_buffer_length]),
-                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                });
-                
                 let instance_count = if self.attrs.len() <= 2 {
                     self.attrs.len() * instance_buffer_length
                 } else {
@@ -105,27 +104,32 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                 } else {
                     self.mesh.index_buf.1
                 };
-                // instances_args_buffer has to be reset before computing
-                let indirect_args_struct = DrawIndexedIndirectArgs {
-                    index_count: index_count as u32,
-                    instance_count: instance_count as u32,
-                    first_index: 0,
-                    base_vertex: 0,
-                    first_instance: 0,
-                };
-                let indirect_args = global_context.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("indirect args"),
-                    contents: indirect_args_struct.as_bytes(),
-                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT |wgpu::BufferUsages::COPY_DST,
-                });
+                let params: InternalIndirectBufParams = (instance_buffer_length, instance_count, index_count);
+                if self.indirect_prev_params != params {
+                    let culled_buffer = Some(global_context.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("Culled Buffer"),
+                        contents: bytemuck::cast_slice(&vec![0; instance_buffer_length]),
+                        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                    }));
 
-                self.mesh_buffers = MeshBuffers::builder()
-                    .with_instance_buffer(&self.instance_buffer)
-                    .with_culled_and_args_buffer(Some(culled_buffer), Some(indirect_args))
+                    // instances_args_buffer has to be reset before computing
+                    let indirect_args_struct = DrawIndexedIndirectArgs {
+                        index_count: index_count as u32,
+                        instance_count: instance_count as u32,
+                        first_index: 0,
+                        base_vertex: 0,
+                        first_instance: 0,
+                    };
+                    let indirect_args = Some(global_context.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("indirect args"),
+                        contents: indirect_args_struct.as_bytes(),
+                        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
+                    }));
 
-            } else {
-                self.mesh_buffers = MeshBuffers::builder()
-                    .with_instance_buffer(&self.instance_buffer)
+                    self.mesh_buffers = self.mesh_buffers
+                        .clone().with_culled_and_args_buffer(culled_buffer, indirect_args)
+                }
+                self.indirect_prev_params = params;
             }
         }
     }

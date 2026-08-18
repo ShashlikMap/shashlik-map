@@ -250,6 +250,7 @@ impl GpuRenderer {
         }
 
         let main_node = MainPassNode::new(&mut self.global_context,
+                                          self.render_config.x_real_mesh_shader_enabled,
                                           &self.layers,
                                           self.layers.world_shapes_feature_tags.clone());
         self.pass_nodes.push(Box::new(main_node));
