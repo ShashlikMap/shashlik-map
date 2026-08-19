@@ -18,6 +18,7 @@ use std::thread::spawn;
 use std::time::SystemTime;
 use osm::map::NatureKind::Water;
 use osm::source::reqwest_source::ReqwestSource;
+use renderer_common::TilesType;
 use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::mvt::mvt_tile_store::MvtTileStore;
 use crate::tiles::shashlik_v1::ShashlikV1TileStore;
@@ -70,6 +71,15 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
             dpi_scale,
             feature_processor: Arc::new(feature_processor),
         }
+    }
+
+    pub fn set_tiles_type(&mut self, tiles_type: TilesType) {
+        let tiles_provider_store: Box<dyn TilesProviderStore> = match tiles_type {
+            TilesType::MapTiler => Box::new(MvtTileStore::new()),
+            TilesType::V0 => Box::new(TileStore::new(ReqwestSource::new())),
+            TilesType::V1 =>  Box::new(ShashlikV1TileStore::new()),
+        };
+        self.set_store(tiles_provider_store)
     }
 
     pub fn set_mvt_type(&mut self, enabled: bool) {

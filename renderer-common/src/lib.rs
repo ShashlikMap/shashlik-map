@@ -159,6 +159,13 @@ impl PreviewType {
     }
 }
 
+#[derive(Eq, PartialEq, Copy, Clone, Hash, Display, EnumIter, EnumString)]
+pub enum TilesType {
+    MapTiler,
+    V0,
+    V1,
+}
+
 #[macro_export] macro_rules! min_f64 {
     ($x:expr) => ($x);
     ($x:expr, $($y:expr),+) => {

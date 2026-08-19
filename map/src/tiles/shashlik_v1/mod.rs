@@ -8,7 +8,7 @@ use osm::map::{MapGeomObject, MapGeometry};
 use osm::tiles::{TileKey, TileRanges};
 use tiles::decode::DecodedTile;
 use tiles::Tile;
-use tiles::reader::{HttpRangeReader, PmTilesReader, TileSource};
+use tiles::reader::{FileRangeReader, HttpRangeReader, PmTilesReader, TileSource};
 use tiles::view::TilePayload;
 use tokio::runtime::{Handle, Runtime};
 use crate::tiles::shashlik_v1::shashlik_v1_parser::ShashlikV1Parser;
@@ -17,7 +17,7 @@ pub struct ShashlikV1TileStore {
     shashlik_v1parser: ShashlikV1Parser,
     tokio_rt: Runtime,
     tokio_handle: Handle,
-    pm_tiles_reader: PmTilesReader<HttpRangeReader>,
+    pm_tiles_reader: PmTilesReader<FileRangeReader>,
 }
 
 struct TileMetersBounds {
@@ -36,7 +36,7 @@ impl ShashlikV1TileStore {
 
         let pm_tiles_reader = tokio_handle.block_on(async move {
             let reader =
-                HttpRangeReader::open("https://d41xpk1mpwqmt.cloudfront.net/planet.pmtiles")
+                FileRangeReader::open("../../Downloads/japan.pmtiles")
                     .await
                     .unwrap();
             let pm_reader = PmTilesReader::open(reader).await.unwrap();
@@ -188,9 +188,9 @@ impl TilesProviderStore for ShashlikV1TileStore {
             let dd = self
                 .pm_tiles_reader
                 .tile(Tile {
-                    x: 911 as u32,
-                    y: 404 as u32,
-                    z: 10 as u8,
+                    x: tile_key.tile_x as u32,
+                    y: tile_key.tile_y as u32,
+                    z: tile_key.zoom_level as u8,
                 })
                 .await
                 .unwrap();
@@ -198,12 +198,8 @@ impl TilesProviderStore for ShashlikV1TileStore {
         });
         if let Some(tile_data) = tile_data {
             let decoded_tile = DecodedTile::from_tile_bytes(tile_data);
-            let data = self.shashlik_v1parser.read_decoded_tile(decoded_tile, &TileKey {
-                tile_x: 911,
-                tile_y: 404,
-                zoom_level: 10,
-            });
-            println!("data = {:?}",data);
+            let data = self.shashlik_v1parser.read_decoded_tile(decoded_tile, tile_key);
+            // println!("data = {:?}",data);
             return data;
         }
 

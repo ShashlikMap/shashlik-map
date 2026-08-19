@@ -1,11 +1,12 @@
 use crate::MAX_ZOOM_LEVEL;
 use geo::MapCoords;
-use geo_types::{Coord, Geometry, LineString, Point, Polygon, coord};
+use geo_types::{Coord, LineString, Polygon, coord};
 use osm::map::{
-    HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, WayInfo,
+    HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo,
+    MapPointObjectKind, NatureKind, PopAreaInfo, RailwayKind, WayInfo,
 };
 use osm::tiles::TileKey;
-use tiles::decode::{DecodedTile, RoadKind};
+use tiles::decode::{AreaKind, DecodedTile, LabelClass, RoadKind};
 
 pub struct ShashlikV1Parser {}
 
@@ -19,35 +20,6 @@ impl ShashlikV1Parser {
     pub fn new() -> Self {
         Self {}
     }
-    fn get_all_lines(geometry: Geometry<i32>) -> Vec<LineString<i32>> {
-        match geometry {
-            Geometry::LineString(line_string) => {
-                vec![line_string]
-            }
-            Geometry::MultiLineString(multi_line_string) => multi_line_string.into_iter().collect(),
-            _ => Vec::new(),
-        }
-    }
-
-    fn get_all_polygons(geometry: Geometry<i32>) -> Vec<Polygon<i32>> {
-        match geometry {
-            Geometry::Polygon(polygon) => {
-                vec![polygon]
-            }
-            Geometry::MultiPolygon(multi_polygon) => multi_polygon.into_iter().collect(),
-            _ => Vec::new(),
-        }
-    }
-
-    fn get_all_points(geometry: Geometry<i32>) -> Vec<Point<i32>> {
-        match geometry {
-            Geometry::Point(point) => {
-                vec![point]
-            }
-            Geometry::MultiPoint(multi_point) => multi_point.into_iter().collect(),
-            _ => Vec::new(),
-        }
-    }
 
     pub fn read_decoded_tile(
         &self,
@@ -55,33 +27,51 @@ impl ShashlikV1Parser {
         tile_key: &TileKey,
     ) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
         let mut result = vec![];
-        println!("tile r: {:?}, ",tile.roads.len());
-        println!("tile a: {:?}, ",tile.areas.len());
-        println!("tile extent: {:?}, ",tile.extent);
-        println!("tile labels: {:?}, ",tile.labels.len());
-        println!("tile pois: {:?}, ",tile.pois.len());
         for road in tile.roads {
-
             let line_kind = match road.kind {
-                RoadKind::Motorway => HighwayKind::Motorway,
-                RoadKind::Trunk => HighwayKind::Trunk,
-                RoadKind::Primary => HighwayKind::Primary,
-                RoadKind::Secondary => HighwayKind::Secondary,
-                RoadKind::Tertiary => HighwayKind::Tertiary,
-                RoadKind::Unclassified => HighwayKind::Unclassified,
-                RoadKind::Residential => HighwayKind::Residential,
-                RoadKind::LivingStreet => HighwayKind::Residential,
-                RoadKind::Service => HighwayKind::Service,
+                RoadKind::Motorway | RoadKind::MajorRoad => LineKind::Highway {
+                    kind: HighwayKind::Motorway,
+                },
+                RoadKind::Trunk => LineKind::Highway {
+                    kind: HighwayKind::Trunk,
+                },
+                RoadKind::Primary => LineKind::Highway {
+                    kind: HighwayKind::Primary,
+                },
+                RoadKind::Secondary => LineKind::Highway {
+                    kind: HighwayKind::Secondary,
+                },
+                RoadKind::Tertiary => LineKind::Highway {
+                    kind: HighwayKind::Tertiary,
+                },
+                RoadKind::Unclassified => LineKind::Highway {
+                    kind: HighwayKind::Unclassified,
+                },
+                RoadKind::Residential => LineKind::Highway {
+                    kind: HighwayKind::Residential,
+                },
+                RoadKind::LivingStreet => LineKind::Highway {
+                    kind: HighwayKind::Residential,
+                },
+                RoadKind::Service => LineKind::Highway {
+                    kind: HighwayKind::Service,
+                },
+                RoadKind::Unknown => LineKind::Highway {
+                    kind: HighwayKind::Unclassified,
+                },
+                RoadKind::Rail => LineKind::Railway {
+                    kind: RailwayKind::Rail,
+                },
                 _ => continue,
             };
 
             let map_geom_obj = MapGeomObject {
                 id: -1,
                 kind: MapGeomObjectKind::Way(WayInfo {
-                    line_kind: LineKind::Highway { kind: line_kind },
+                    line_kind,
                     layer: road.layer as i32,
                     layer_kind: LayerKind::None,
-                    name_en: None,
+                    name_en: road.name,
                 }),
             };
 
@@ -95,28 +85,52 @@ impl ShashlikV1Parser {
             let hh = MapGeometry::Line(LineString::new(qgg));
             result.push((map_geom_obj, hh))
         }
-        // let mut result = self.schema_parser.parse(reader.layers(), |feature| {
-        //     let mut res = vec![];
-        //     let geom_type = feature.geom_type();
-        //     let geometry = feature.geometry();
-        //
-        //     if let (Some(geom_type), Some(geometry)) = (geom_type, geometry.ok()) {
-        //         if geom_type == GeomType::LINESTRING {
-        //             for line in Self::get_all_lines(geometry) {
-        //                 res.push(MapGeometry::Line(line));
-        //             }
-        //         } else if geom_type == GeomType::POLYGON {
-        //             for polygon in Self::get_all_polygons(geometry) {
-        //                 res.push(MapGeometry::Poly(polygon));
-        //             }
-        //         } else if geom_type == GeomType::POINT {
-        //             for point in Self::get_all_points(geometry) {
-        //                 res.push(MapGeometry::Coord(coord! {x: point.x(), y: point.y()}));
-        //             }
-        //         }
-        //     }
-        //     res
-        // });
+
+        for area in tile.areas {
+            let area_kind = match area.kind {
+                AreaKind::Water => NatureKind::Water,
+                AreaKind::Forest => NatureKind::Forest,
+                AreaKind::Grass => NatureKind::Park,
+                AreaKind::Building => continue,
+                AreaKind::Land => continue,
+            };
+
+            let map_geom_obj = MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::Nature(area_kind),
+            };
+
+            let qgg = area.rings[0]
+                .iter()
+                .map(|c| {
+                    coord! {x: c[0] as i32, y: c[1] as i32 }
+                })
+                .collect();
+
+            let hh = MapGeometry::Poly(Polygon::new(LineString::new(qgg), vec![]));
+            result.push((map_geom_obj, hh))
+        }
+
+        for label in tile.labels {
+            let _ = match label.class {
+                LabelClass::City => {}
+                _ => continue,
+            };
+
+            let map_geom_obj = MapGeomObject {
+                id: -1,
+                kind: MapGeomObjectKind::Poi(MapPointInfo {
+                    text: label.name,
+                    kind: MapPointObjectKind::PopArea(PopAreaInfo {
+                        level: 0,
+                        population: 0,
+                    }),
+                }),
+            };
+            let hh =
+                MapGeometry::Coord(coord! { x: label.anchor[0] as i32, y: label.anchor[1] as i32 });
+            result.push((map_geom_obj, hh))
+        }
 
         result.sort_by(|(a, _), (b, _)| a.cmp(b));
         let fixed = result

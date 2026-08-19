@@ -16,7 +16,6 @@ export enum Feature {
     SSAO,
     Shadows,
     MeshShader,
-    MapTiler
 }
 
 export enum Action {
@@ -40,6 +39,7 @@ export struct PanState {
 
 export component ShashlikUI inherits Window {
     in property <[string]> preview_type_items;
+    in property <[string]> tiles_type_items;
     in property <int> screen-width;
     in property <int> screen-height;
     in property <image> texture <=> image.source;
@@ -53,6 +53,7 @@ export component ShashlikUI inherits Window {
     callback vert_scroll(float);
     callback follow_mode(bool);
     callback preview_type(string);
+    callback tiles_type(string);
     callback feature_enabled(Feature, bool);
     callback btn_click(Action, int);
     callback key-pressed(KeyEvent);
@@ -133,12 +134,12 @@ export component ShashlikUI inherits Window {
                 current-index: 0;
             }
 
-            CheckBox {
-                text: "MapTiler";
-                height: 24px;
-                checked: false;
-                toggled => {
-                    feature_enabled(Feature.MapTiler, self.checked)
+            tiles_types := ComboBox {
+                height: 48px;
+                model: tiles_type_items;
+                current-index: 0;
+                selected(value) => {
+                    tiles_type(value)
                 }
             }
 

@@ -1,4 +1,4 @@
-use renderer_common::PreviewType;
+use renderer_common::{PreviewType, TilesType};
 use slint::{PhysicalSize, VecModel};
 use std::rc::Rc;
 use strum::IntoEnumIterator;
@@ -24,6 +24,7 @@ enum SlintMapEvent {
     FollowMode(bool),
     FeatureEnabled(Feature, bool),
     PreviewType(PreviewType),
+    TilesType(TilesType),
     BtnAction(Action, i32),
 }
 
@@ -50,10 +51,14 @@ fn main() {
     ui.set_screen_width(screen_size.width as i32);
     ui.set_screen_height(screen_size.height as i32);
 
-    let items: Vec<slint::SharedString> = PreviewType::iter()
-        .map(move |preview_type| preview_type.to_string().into())
+    let preview_items: Vec<slint::SharedString> = PreviewType::iter()
+        .map(move |item| item.to_string().into())
         .collect();
-    ui.set_preview_type_items(Rc::new(VecModel::from(items)).into());
+    let tiles_items: Vec<slint::SharedString> = TilesType::iter()
+        .map(move |item| item.to_string().into())
+        .collect();
+    ui.set_preview_type_items(Rc::new(VecModel::from(preview_items)).into());
+    ui.set_tiles_type_items(Rc::new(VecModel::from(tiles_items)).into());
 
     launch_internal(&ui);
 
