@@ -1,9 +1,8 @@
-use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::mvt::mvt_scheme_parser::MvtSchemeParser;
+use crate::tiles::tile_parser::TileParser;
 use fast_mvt::proto::GeomType;
 use fast_mvt::{MvtReaderRef, MvtResult};
-use geo::MapCoords;
-use geo_types::{Coord, Geometry, LineString, Point, Polygon, coord};
+use geo_types::{Geometry, LineString, Point, Polygon, coord};
 use osm::map::{MapGeomObject, MapGeometry};
 use osm::tiles::TileKey;
 
@@ -58,60 +57,37 @@ impl MvtParser {
         bytes: &[u8],
         tile_key: &TileKey,
     ) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>)>> {
-        let reader = MvtReaderRef::new(bytes)?;
-        let mut result = self.schema_parser.parse(reader.layers(), |feature| {
-            let mut res = vec![];
-            let geom_type = feature.geom_type();
-            let geometry = feature.geometry();
+        Ok(self.parse_tile(bytes, 4096.0, tile_key))
+    }
+}
 
-            if let (Some(geom_type), Some(geometry)) = (geom_type, geometry.ok()) {
-                if geom_type == GeomType::LINESTRING {
-                    for line in Self::get_all_lines(geometry) {
-                        res.push(MapGeometry::Line(line));
-                    }
-                } else if geom_type == GeomType::POLYGON {
-                    for polygon in Self::get_all_polygons(geometry) {
-                        res.push(MapGeometry::Poly(polygon));
-                    }
-                } else if geom_type == GeomType::POINT {
-                    for point in Self::get_all_points(geometry) {
-                        res.push(MapGeometry::Coord(coord! {x: point.x(), y: point.y()}));
+impl TileParser<&[u8]> for MvtParser {
+    fn parse_tile_inner(&self, data: &[u8]) -> Vec<(MapGeomObject, MapGeometry<i32>)> {
+        let mut result = vec![];
+        if let Ok(reader) = MvtReaderRef::new(data) {
+            result = self.schema_parser.parse(reader.layers(), |feature| {
+                let mut res = vec![];
+                let geom_type = feature.geom_type();
+                let geometry = feature.geometry();
+
+                if let (Some(geom_type), Some(geometry)) = (geom_type, geometry.ok()) {
+                    if geom_type == GeomType::LINESTRING {
+                        for line in Self::get_all_lines(geometry) {
+                            res.push(MapGeometry::Line(line));
+                        }
+                    } else if geom_type == GeomType::POLYGON {
+                        for polygon in Self::get_all_polygons(geometry) {
+                            res.push(MapGeometry::Poly(polygon));
+                        }
+                    } else if geom_type == GeomType::POINT {
+                        for point in Self::get_all_points(geometry) {
+                            res.push(MapGeometry::Coord(coord! {x: point.x(), y: point.y()}));
+                        }
                     }
                 }
-            }
-            res
-        });
-
-        result.sort_by(|(a, _), (b, _)| a.cmp(b));
-        let fixed = result
-            .into_iter()
-            .map(|(geom, obj)| {
-                let obj_fixed = Self::convert_and_restore_data(&obj, tile_key);
-                (geom, obj_fixed)
+                res
             })
-            .collect();
-
-        Ok(fixed)
-    }
-
-    fn convert_and_restore_data(
-        geometry: &MapGeometry<i32>,
-        tile_key: &TileKey,
-    ) -> MapGeometry<f32> {
-        // FIXME Zoom level handling
-        let factor = 2.0f32.powf((MAX_ZOOM_LEVEL - tile_key.zoom_level) as f32);
-        let koef = 512.0f32 / 4096.0;
-        let total_multiplier = factor * koef;
-        let convert_coord = |c: &Coord<i32>| -> Coord<f32> {
-            Coord {
-                x: (c.x as f32) * total_multiplier,
-                y: (c.y as f32) * total_multiplier,
-            }
-        };
-        match geometry {
-            MapGeometry::Line(line) => MapGeometry::Line(line.map_coords(|c| convert_coord(&c))),
-            MapGeometry::Poly(poly) => MapGeometry::Poly(poly.map_coords(|c| convert_coord(&c))),
-            MapGeometry::Coord(coord) => MapGeometry::Coord(convert_coord(coord)),
         }
+        result
     }
 }

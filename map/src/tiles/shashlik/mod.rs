@@ -1,19 +1,26 @@
-use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesProviderStore};
 use crate::MAX_ZOOM_LEVEL;
+use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesProviderStore};
 use geo::{BoundingRect, Intersects, MapCoordsInPlace, Scale};
 use geo_types::{Coord, Polygon, Rect};
 use glam::DVec3;
+use googleprojection::Mercator;
 use osm::map::{MapGeomObject, MapGeometry};
 use osm::source::TileSource;
-use osm::tiles::{calc_tile_ranges, TileKey, TileStore, TILE_SIZE, TILES_COUNT, TILE_OVERLAP_PERCENT};
+use osm::tiles::{TILES_COUNT, TILE_OVERLAP_PERCENT, TILE_SIZE, TileKey, TileStore, calc_tile_ranges};
 
-impl<S: TileSource> MercatorProvider<TILE_SIZE> for TileStore<S> {}
+impl<S: TileSource> MercatorProvider for TileStore<S> {
+    fn mercator(&self) -> Mercator {
+        Mercator::with_size(TILE_SIZE)
+    }
+}
+
 
 /// TileStore uses hardcoded zoom 22, so the caller's zoom has to be ignored
 impl<S: TileSource> MercatorConverter for TileStore<S> {
     fn lon_lat_to_world(&self, lon_lat: &Coord<f64>, _zoom_level: i32) -> Coord<f64> {
         let lon_lat: (f64, f64) = (*lon_lat).into();
-        Self::mercator()
+
+        self.mercator()
             .from_ll_to_subpixel(&lon_lat, 22)
             .unwrap()
             .into()
@@ -21,12 +28,13 @@ impl<S: TileSource> MercatorConverter for TileStore<S> {
 
     fn world_to_lon_lat(&self, xy: &Coord<f64>, _zoom_level: i32) -> Coord<f64> {
         let xy: (f64, f64) = (*xy).into();
-        Self::mercator()
+        self.mercator()
             .from_pixel_to_ll(&xy, 22)
             .unwrap()
             .into()
     }
 }
+
 impl <S:TileSource> TilesProviderStore for TileStore<S> {
     fn convert_zoom(&self, zoom_level: i32) -> i32 {
         MAX_ZOOM_LEVEL - zoom_level

@@ -1,5 +1,5 @@
 use crate::tiles::tile_data::TileData;
-use crate::tiles::tiles_provider::{MercatorConverter, TilesMessage, TilesProvider, TilesProviderStore};
+use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesMessage, TilesProvider, TilesProviderStore};
 use futures::{Stream};
 use futures::channel::mpsc::{UnboundedSender, unbounded};
 use geo::{Area, Convert};
@@ -16,10 +16,13 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 use std::time::SystemTime;
+use googleprojection::Mercator;
 use osm::map::NatureKind::Water;
 use osm::source::reqwest_source::ReqwestSource;
+use renderer_common::TilesType;
 use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::mvt::mvt_tile_store::MvtTileStore;
+use crate::tiles::shashlik_v1::ShashlikV1TileStore;
 
 pub trait FeatureProcessor: Send + Sync {
     fn process_poi(
@@ -71,19 +74,19 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         }
     }
 
-    pub fn set_mvt_type(&mut self, enabled: bool) {
-        let new_store: Box<dyn TilesProviderStore> = if enabled {
-            Box::new(MvtTileStore::new())
-        } else {
-            Box::new(TileStore::new(ReqwestSource::new()))
+    pub fn set_tiles_type(&mut self, tiles_type: TilesType) {
+        let tiles_provider_store: Box<dyn TilesProviderStore> = match tiles_type {
+            TilesType::MapTiler => Box::new(MvtTileStore::new()),
+            TilesType::V0 => Box::new(TileStore::new(ReqwestSource::new())),
+            TilesType::V1 =>  Box::new(ShashlikV1TileStore::new()),
         };
-        self.set_store(new_store)
+        self.set_store(tiles_provider_store)
     }
 
     fn set_store(&mut self, store: Box<dyn TilesProviderStore>) {
         self.tile_store = Arc::from(store);
 
-        // TODO Refactor
+        // TODO Refactor + cancel ongoing downloads
         self.per_frame_cache.clear();
         self.loading_map.write().unwrap().clear();
         let to_remove = self.actual_cache.read().unwrap().iter().map(|item| item.as_string_key()).collect();
@@ -190,6 +193,12 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         };
 
         tile_data
+    }
+}
+
+impl<FP: FeatureProcessor + 'static> MercatorProvider for DefaultTilesProvider<FP> {
+    fn mercator(&self) -> Mercator {
+        Mercator::default()
     }
 }
 

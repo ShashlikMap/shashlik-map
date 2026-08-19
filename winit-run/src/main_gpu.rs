@@ -2,12 +2,12 @@ use crate::{Action, Feature, PanState, Scale, ShashlikUI, SlintMapEvent};
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
+use map::tiles::mvt::mvt_tile_store::MvtTileStore;
 use map::{DEFAULT_FONT_DATA, ShashlikMap};
 use native_dialog::DialogBuilder;
-use osm::source::reqwest_source::ReqwestSource;
-use osm::tiles::TileStore;
-use renderer_common::{PreviewType, feature_layer_tags};
+use renderer_common::{PreviewType, TilesType, feature_layer_tags};
 use renderer_gpu::GpuRenderer;
+use renderer_gpu::render_config::RenderConfig;
 use renderer_gpu::wgpu_canvas::DefaultWgpuCanvas;
 use slint::wgpu_30::wgpu::{Features, Limits};
 use slint::wgpu_30::{WGPUConfiguration, WGPUSettings};
@@ -18,7 +18,6 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 use wgpu::{Device, Instance, TextureUsages};
 use wgpu::{SurfaceColorSpace, SurfaceConfiguration};
-use renderer_gpu::render_config::RenderConfig;
 
 pub fn prepare() {
     let mut wgpu_settings = WGPUSettings::default();
@@ -109,7 +108,7 @@ pub fn launch_internal(ui: &ShashlikUI) {
                             target_texture,
                         );
                         let tiles_provider = DefaultTilesProvider::new(
-                            Box::new(TileStore::new(ReqwestSource::new())),
+                            Box::new(MvtTileStore::new()),
                             ShashlikFeatureProcessor::default(),
                             dpi,
                         );
@@ -145,10 +144,18 @@ pub fn launch_internal(ui: &ShashlikUI) {
                             });
 
                             let slint_map_event_sender_internal = slint_map_event_sender.clone();
-                            ui_weak.on_preview_type(move |preview_type| {
-                                let preview_type = PreviewType::from_str(preview_type.as_str()).unwrap();
+                            ui_weak.on_preview_type(move |item| {
+                                let item = PreviewType::from_str(item.as_str()).unwrap();
                                 slint_map_event_sender_internal
-                                    .send(SlintMapEvent::PreviewType(preview_type))
+                                    .send(SlintMapEvent::PreviewType(item))
+                                    .unwrap();
+                            });
+
+                            let slint_map_event_sender_internal = slint_map_event_sender.clone();
+                            ui_weak.on_tiles_type(move |item| {
+                                let item = TilesType::from_str(item.as_str()).unwrap();
+                                slint_map_event_sender_internal
+                                    .send(SlintMapEvent::TilesType(item))
                                     .unwrap();
                             });
                         }
@@ -234,11 +241,6 @@ pub fn launch_internal(ui: &ShashlikUI) {
                                             config.shadow_enabled = enabled;
                                         });
                                     },
-                                    Feature::MapTiler => {
-                                        shashlik_map.update_tile_store(|tile_provider| {
-                                            tile_provider.set_mvt_type(enabled);
-                                        });
-                                    },
                                     Feature::MeshShader => {
                                         shashlik_map.renderer.update_config(|config| {
                                             config.x_real_mesh_shader_enabled = enabled;
@@ -249,6 +251,12 @@ pub fn launch_internal(ui: &ShashlikUI) {
                                     shashlik_map.renderer.update_config(|config| {
                                         config.preview_type = preview_type;
                                     });
+                                },
+                                SlintMapEvent::TilesType(item) => {
+                                    shashlik_map.update_tile_store(|tile_provider| {
+                                        tile_provider.set_tiles_type(item);
+                                    });
+
                                 }
                             };
                         }
