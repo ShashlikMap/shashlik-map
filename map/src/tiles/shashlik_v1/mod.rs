@@ -1,20 +1,20 @@
 mod shashlik_v1_parser;
 
+use crate::tiles::shashlik_v1::shashlik_v1_parser::ShashlikV1Parser;
 use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesProviderStore};
 use geo::{CoordsIter, Scale};
-use geo_types::{Coord, Polygon, Rect, coord};
+use geo_types::{Polygon, Rect, coord};
 use glam::DVec3;
 use osm::map::{MapGeomObject, MapGeometry};
 use osm::tiles::{TileKey, TileRanges};
-use tiles::decode::DecodedTile;
 use tiles::Tile;
-use tiles::reader::{FileRangeReader, HttpRangeReader, PmTilesReader, TileSource};
+use tiles::decode::DecodedTile;
+use tiles::reader::{FileRangeReader, PmTilesReader, TileSource};
 use tiles::view::TilePayload;
 use tokio::runtime::{Handle, Runtime};
-use crate::tiles::shashlik_v1::shashlik_v1_parser::ShashlikV1Parser;
 
 pub struct ShashlikV1TileStore {
-    shashlik_v1parser: ShashlikV1Parser,
+    shashlik_v1_parser: ShashlikV1Parser,
     tokio_rt: Runtime,
     tokio_handle: Handle,
     pm_tiles_reader: PmTilesReader<FileRangeReader>,
@@ -35,16 +35,15 @@ impl ShashlikV1TileStore {
         let tokio_handle = tokio_rt.handle().clone();
 
         let pm_tiles_reader = tokio_handle.block_on(async move {
-            let reader =
-                FileRangeReader::open("../../Downloads/japan.pmtiles")
-                    .await
-                    .unwrap();
+            let reader = FileRangeReader::open("../../Downloads/japan.pmtiles")
+                .await
+                .unwrap();
             let pm_reader = PmTilesReader::open(reader).await.unwrap();
             pm_reader
         });
 
         Self {
-            shashlik_v1parser: ShashlikV1Parser::new(),
+            shashlik_v1_parser: ShashlikV1Parser::new(),
             tokio_rt,
             tokio_handle,
             pm_tiles_reader,
@@ -88,26 +87,8 @@ impl ShashlikV1TileStore {
     }
 }
 
-impl MercatorProvider<512> for ShashlikV1TileStore {}
-
-impl MercatorConverter for ShashlikV1TileStore {
-    fn lon_lat_to_world(&self, lon_lat: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
-        let lon_lat: (f64, f64) = (*lon_lat).into();
-
-        Self::mercator()
-            .from_ll_to_subpixel(&lon_lat, zoom_level as usize)
-            .unwrap()
-            .into()
-    }
-
-    fn world_to_lon_lat(&self, xy: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
-        let xy: (f64, f64) = (*xy).into();
-        Self::mercator()
-            .from_pixel_to_ll(&xy, zoom_level as usize)
-            .unwrap()
-            .into()
-    }
-}
+impl MercatorProvider for ShashlikV1TileStore {}
+impl MercatorConverter for ShashlikV1TileStore {}
 
 impl TilesProviderStore for ShashlikV1TileStore {
     fn convert_zoom(&self, zoom_level: i32) -> i32 {
@@ -198,8 +179,9 @@ impl TilesProviderStore for ShashlikV1TileStore {
         });
         if let Some(tile_data) = tile_data {
             let decoded_tile = DecodedTile::from_tile_bytes(tile_data);
-            let data = self.shashlik_v1parser.read_decoded_tile(decoded_tile, tile_key);
-            // println!("data = {:?}",data);
+            let data = self
+                .shashlik_v1_parser
+                .read_decoded_tile(decoded_tile, tile_key);
             return data;
         }
 

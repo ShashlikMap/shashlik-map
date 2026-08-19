@@ -1,5 +1,5 @@
 use crate::tiles::tile_data::TileData;
-use crate::tiles::tiles_provider::{MercatorConverter, TilesMessage, TilesProvider, TilesProviderStore};
+use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesMessage, TilesProvider, TilesProviderStore};
 use futures::{Stream};
 use futures::channel::mpsc::{UnboundedSender, unbounded};
 use geo::{Area, Convert};
@@ -16,6 +16,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 use std::time::SystemTime;
+use googleprojection::Mercator;
 use osm::map::NatureKind::Water;
 use osm::source::reqwest_source::ReqwestSource;
 use renderer_common::TilesType;
@@ -202,6 +203,12 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         };
 
         tile_data
+    }
+}
+
+impl<FP: FeatureProcessor + 'static> MercatorProvider for DefaultTilesProvider<FP> {
+    fn mercator(&self) -> Mercator {
+        Mercator::default()
     }
 }
 

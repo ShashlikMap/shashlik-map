@@ -1,6 +1,6 @@
 use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesProviderStore};
 use geo::{CoordsIter, Scale};
-use geo_types::{Coord, Rect, coord, Polygon};
+use geo_types::{Rect, coord, Polygon};
 use glam::DVec3;
 use log::error;
 use osm::map::{MapGeomObject, MapGeometry};
@@ -99,6 +99,9 @@ impl MvtTileStore {
     }
 }
 
+impl MercatorProvider for MvtTileStore {}
+impl MercatorConverter for MvtTileStore {}
+
 impl TilesProviderStore for MvtTileStore {
     fn convert_zoom(&self, zoom_level: i32) -> i32 {
         zoom_level
@@ -169,26 +172,5 @@ impl TilesProviderStore for MvtTileStore {
     fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
         let data = self.fetch_tile(tile_key.tile_x, tile_key.tile_y, tile_key.zoom_level).unwrap_or_default();
         self.mvt_parser.read_mvt_tile(data.as_slice(), tile_key).unwrap_or_default()
-    }
-}
-
-impl MercatorProvider<512> for MvtTileStore {}
-
-impl MercatorConverter for MvtTileStore {
-    fn lon_lat_to_world(&self, lon_lat: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
-        let lon_lat: (f64, f64) = (*lon_lat).into();
-
-        Self::mercator()
-            .from_ll_to_subpixel(&lon_lat, zoom_level as usize)
-            .unwrap()
-            .into()
-    }
-
-    fn world_to_lon_lat(&self, xy: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
-        let xy: (f64, f64) = (*xy).into();
-        Self::mercator()
-            .from_pixel_to_ll(&xy, zoom_level as usize)
-            .unwrap()
-            .into()
     }
 }

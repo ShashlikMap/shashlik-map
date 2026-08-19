@@ -13,15 +13,28 @@ pub enum TilesMessage {
     ToRemove(HashSet<String>),
 }
 
-pub trait MercatorProvider<const SIZE: usize> {
-    fn mercator() -> Mercator {
-        Mercator::with_size(SIZE)
+pub trait MercatorProvider {
+    fn mercator(&self) -> Mercator {
+        Mercator::with_size(512)
     }
 }
 
-pub trait MercatorConverter: Send + Sync {
-    fn lon_lat_to_world(&self, lon_lat: &Coord<f64>, zoom_level: i32) -> Coord<f64>;
-    fn world_to_lon_lat(&self, xy: &Coord<f64>, zoom_level: i32) -> Coord<f64>;
+pub trait MercatorConverter: Send + Sync + MercatorProvider{
+    fn lon_lat_to_world(&self, lon_lat: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
+        let lon_lat: (f64, f64) = (*lon_lat).into();
+
+        self.mercator()
+            .from_ll_to_subpixel(&lon_lat, zoom_level as usize)
+            .unwrap()
+            .into()
+    }
+    fn world_to_lon_lat(&self, xy: &Coord<f64>, zoom_level: i32) -> Coord<f64> {
+        let xy: (f64, f64) = (*xy).into();
+        self.mercator()
+            .from_pixel_to_ll(&xy, zoom_level as usize)
+            .unwrap()
+            .into()
+    }
 }
 
 pub trait TilesProviderStore: MercatorConverter {
