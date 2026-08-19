@@ -106,14 +106,15 @@ impl TileParser<DecodedTile> for ShashlikV1Parser {
                 kind: MapGeomObjectKind::Nature(area_kind),
             };
 
-            let qgg = area.rings[0]
+            // TODO Use all rings
+            let just_outer_ring = area.rings[0]
                 .iter()
                 .map(|c| {
                     coord! {x: c[0] as i32, y: c[1] as i32 }
                 })
                 .collect();
 
-            let hh = MapGeometry::Poly(Polygon::new(LineString::new(qgg), vec![]));
+            let hh = MapGeometry::Poly(Polygon::new(LineString::new(just_outer_ring), vec![]));
             result.push((map_geom_obj, hh))
         }
 

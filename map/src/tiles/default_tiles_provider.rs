@@ -95,7 +95,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
     fn set_store(&mut self, store: Box<dyn TilesProviderStore>) {
         self.tile_store = Arc::from(store);
 
-        // TODO Refactor
+        // TODO Refactor + cancel ongoing downloads
         self.per_frame_cache.clear();
         self.loading_map.write().unwrap().clear();
         let to_remove = self.actual_cache.read().unwrap().iter().map(|item| item.as_string_key()).collect();
