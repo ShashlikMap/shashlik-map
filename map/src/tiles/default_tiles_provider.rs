@@ -85,7 +85,6 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
 
     pub fn set_mvt_type(&mut self, enabled: bool) {
         let new_store: Box<dyn TilesProviderStore> = if enabled {
-            // Box::new(MvtTileStore::new())
             Box::new(ShashlikV1TileStore::new())
         } else {
             Box::new(TileStore::new(ReqwestSource::new()))

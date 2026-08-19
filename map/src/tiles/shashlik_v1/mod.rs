@@ -23,6 +23,7 @@ impl ShashlikV1TileStore {
         let tokio_handle = tokio_rt.handle().clone();
 
         let pm_tiles_reader = tokio_handle.block_on(async move {
+            // TODO So far, just some hardcoded path
             let reader = FileRangeReader::open("../../Downloads/japan.pmtiles")
                 .await
                 .unwrap();
@@ -45,7 +46,7 @@ impl MercatorConverter for ShashlikV1TileStore {}
 impl TilesProviderStore for ShashlikV1TileStore {
     fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
         let tile_data = self.tokio_handle.block_on(async move {
-            let dd = self
+            let tile_data = self
                 .pm_tiles_reader
                 .tile(Tile {
                     x: tile_key.tile_x as u32,
@@ -54,7 +55,7 @@ impl TilesProviderStore for ShashlikV1TileStore {
                 })
                 .await
                 .unwrap();
-            dd
+            tile_data
         });
         if let Some(tile_data) = tile_data {
             let decoded_tile = DecodedTile::from_tile_bytes(tile_data);
