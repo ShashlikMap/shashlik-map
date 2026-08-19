@@ -83,15 +83,6 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         self.set_store(tiles_provider_store)
     }
 
-    pub fn set_mvt_type(&mut self, enabled: bool) {
-        let new_store: Box<dyn TilesProviderStore> = if enabled {
-            Box::new(ShashlikV1TileStore::new())
-        } else {
-            Box::new(TileStore::new(ReqwestSource::new()))
-        };
-        self.set_store(new_store)
-    }
-
     fn set_store(&mut self, store: Box<dyn TilesProviderStore>) {
         self.tile_store = Arc::from(store);
 

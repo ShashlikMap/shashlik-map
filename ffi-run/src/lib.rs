@@ -6,8 +6,9 @@ use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::ShashlikMap;
 use renderer_gpu::GpuRenderer;
-use renderer_common::{PreviewType};
+use renderer_common::{PreviewType, TilesType};
 use std::sync::RwLock;
+use log::__private_api::enabled;
 
 #[derive(uniffi::Object)]
 pub struct ShashlikMapApi {
@@ -93,7 +94,12 @@ impl ShashlikMapApi {
     fn set_mvt_tileset(&self, enabled: bool) {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
         shashlik_map.update_tile_store(|tile_store| {
-            tile_store.set_mvt_type(enabled);
+            let tiles_type = if enabled {
+                TilesType::MapTiler
+            } else {
+                TilesType::V0
+            };
+            tile_store.set_tiles_type(tiles_type);
         });
     }
 
