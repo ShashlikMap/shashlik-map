@@ -244,7 +244,7 @@ impl SsaoPassNode {
         let mut rng = rng();
         from_fn(|_| {
             let mut v = Self::generate_rnd_vec4_2(&mut rng).normalize();
-            v *= rng.random_range(0.0..=1.0);
+            // v *= rng.random_range(0.0..=1.0);
             v
         })
     }

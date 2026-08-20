@@ -54,7 +54,7 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
 
     let noise_sample_coords = pixel_coord % vec2u(noise_size, noise_size);
     let noise_vec = textureLoad(noise, noise_sample_coords, 0).rgb;
-    let randomVec = (camera.view * vec4f(noise_vec, 0.0)).xyz;
+    let randomVec = noise_vec;
     let tangent = normalize(randomVec - normal * dot(randomVec, normal));
     let bitangent = cross(normal, tangent);
     let TBN = mat3x3(tangent, bitangent, normal);
