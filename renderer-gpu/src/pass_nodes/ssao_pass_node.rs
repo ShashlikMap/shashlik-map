@@ -44,7 +44,7 @@ impl SsaoPassNode {
         let noise_texture = create_simple_texture_with_data(
             TextureData {
                 sample_count: 1,
-                size: (64, 64),
+                size: (4, 4),
                 usage: TextureUsages::TEXTURE_BINDING,
                 format: TextureFormat::Rgba32Float,
             },
@@ -63,7 +63,7 @@ impl SsaoPassNode {
             },
             global_context.queue(),
             global_context.device(),
-            bytemuck::cast_slice(&Self::generate_ssao_kerner_data()),
+            bytemuck::cast_slice(&Self::generate_ssao_kernel_data()),
         );
 
         let ssao_bind_group_layout =
@@ -222,15 +222,11 @@ impl SsaoPassNode {
         }
     }
 
-    fn generate_noise_texture_data() -> [[Vec4; 3]; 4096] {
+    fn generate_noise_texture_data() -> [Vec4; 16] {
         use core::array::from_fn;
         let mut rng = rng();
         from_fn(|_| {
-            [
-                Self::generate_rnd_vec4(&mut rng),
-                Self::generate_rnd_vec4(&mut rng),
-                Self::generate_rnd_vec4(&mut rng),
-            ]
+            Self::generate_rnd_vec4(&mut rng)
         })
     }
 
@@ -243,15 +239,13 @@ impl SsaoPassNode {
         )
     }
 
-    fn generate_ssao_kerner_data() -> [[Vec4; 3]; 16] {
+    fn generate_ssao_kernel_data() -> [Vec4; 16] {
         use core::array::from_fn;
         let mut rng = rng();
         from_fn(|_| {
-            [
-                Self::generate_rnd_vec4_2(&mut rng),
-                Self::generate_rnd_vec4_2(&mut rng),
-                Self::generate_rnd_vec4_2(&mut rng),
-            ]
+            let mut v = Self::generate_rnd_vec4_2(&mut rng).normalize();
+            v *= rng.random_range(0.0..=1.0);
+            v
         })
     }
 

@@ -27,11 +27,11 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     compute_ssao(pixel_coord, vec2f(ssao_size), screen_size);
 }
 
-const radius: f32 = 0.15;
+const radius: f32 = 0.5;
 
 const samples: i32 = 16;
 
-const noise_size: u32 = 64;
+const noise_size: u32 = 4;
 
 fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
     let pixel_mul = u32(screen_size.x / ssao_size.x);
@@ -81,11 +81,9 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
 
         let rangeCheck = smoothstep(0.0, 1.0, (radius) / abs(fragPos.z - sampleDepth));
 
-        occlusion += select(0.0, 1.0, sampleDepth > samplePos.z) * rangeCheck * ndots;
+        occlusion += select(0.0, 1.0, sampleDepth > samplePos.z + 0.025) * rangeCheck;
     }
 
-    if(occlusion > 0.0) {
-        occlusion = occlusion / f32(samples);
-        textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
-    }
+    occlusion = occlusion / f32(samples);
+    textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
 }
