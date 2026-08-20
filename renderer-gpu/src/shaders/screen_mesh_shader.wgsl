@@ -128,6 +128,11 @@ const weights = array<f32, 9>(
 
 @fragment
 fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
+    let a_koef = max(0.0, 1.0 - camera.scale * 0.5);
+    if a_koef <= 0.0 {
+        return vec4f(0.0, 0.0, 0.0, 0.0);
+    }
+
     var result = 0.0;
     let dims = vec2f(textureDimensions(t_diffuse));
     let texelSize = 1.0 / dims;
@@ -141,7 +146,7 @@ fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
     }
     result = result / 4.0;
 
-    return vec4f(0.0, 0.0, 0.0, result * max(0.0, 1.0 - camera.scale * 1.0));
+    return vec4f(0.0, 0.0, 0.0, result * a_koef);
 }
 
 @fragment

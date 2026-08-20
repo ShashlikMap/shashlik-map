@@ -25,10 +25,9 @@ impl SsaoPassNode {
         let device = global_context.device();
         let canvas = &global_context.canvas;
 
-        #[cfg(target_os = "macos")]
+        // SSAO is already expensive, let's try to make it better with one texture size first
+        // don't scale it down
         let ssao_size = (canvas.config().width, canvas.config().height);
-        #[cfg(not(target_os = "macos"))]
-        let mut ssao_size = (canvas.config().width / 2, canvas.config().height / 2);
 
         let ssao_texture = create_simple_texture(
             TextureData {
@@ -225,8 +224,14 @@ impl SsaoPassNode {
     fn generate_noise_texture_data() -> [Vec4; 16] {
         use core::array::from_fn;
         let mut rng = rng();
-        from_fn(|_| {
-            Self::generate_rnd_vec4(&mut rng)
+        let mut angles: [f32; 16] = from_fn(|i| {
+            (i as f32 + rng.random_range(0.0..1.0)) / 16.0 * std::f32::consts::TAU
+        });
+        for i in (1..16).rev() {
+            angles.swap(i, rng.random_range(0..=i));
+        }
+        from_fn(|i| {
+            Vec4::new(angles[i].cos(), angles[i].sin(), rng.random_range(-1.0..=1.0), 0.0)
         })
     }
 

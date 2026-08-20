@@ -27,7 +27,7 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     compute_ssao(pixel_coord, vec2f(ssao_size), screen_size);
 }
 
-const radius: f32 = 0.5;
+const radius: f32 = 0.35;
 
 const samples: i32 = 16;
 
@@ -60,6 +60,7 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
     let TBN = mat3x3(tangent, bitangent, normal);
 
     var occlusion = 0.0;
+    var valid = 0.0;
     for (var i = 0; i < samples; i++) {
         var kl = textureLoad(kernel, vec2(i, 0), 0).rgb;
         let dist_scale = f32(i) / f32(samples);
@@ -76,14 +77,13 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
         let ndcPos = offset.xy / offset.w;
         let uv = ndcPos * vec2f(0.5, -0.5) + vec2f(0.5);
         let screenCoord = vec2i(uv * screen_size);
-
         let sampleDepth = textureLoad(positions, screenCoord, 0).z;
-
         let rangeCheck = smoothstep(0.0, 1.0, (radius) / abs(fragPos.z - sampleDepth));
 
+        valid += 1.0;
         occlusion += select(0.0, 1.0, sampleDepth > samplePos.z + 0.025) * rangeCheck;
     }
 
-    occlusion = occlusion / f32(samples);
+    occlusion = occlusion / valid;
     textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
 }
