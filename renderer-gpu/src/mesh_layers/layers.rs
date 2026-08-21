@@ -28,6 +28,7 @@ pub(crate) struct Layers {
     pub text_feature_layers: FeatureLayers<TextMeshLayer<ScreenShapeInstanceInput>>,
     pub preview_mesh_layer: OrthoMeshLayer<ScreenShapeInstanceInput>,
     pub post_process_layer: OrthoMeshLayer<ScreenShapeInstanceInput>,
+    // TODO This is a fake layer for Gbuf and SSAO. It somehow can be combined with shadow map in future
     pub ground_layer: OrthoMeshLayer<GeneralInstanceInput>,
 }
 

@@ -51,6 +51,7 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
 
         let dot_bias = max(dot(normal, normalize(sample_vector)), 0.0);
         // fast exit if sample_vector is orthogonal to normal
+        // TODO we can prepare kernel to prevent wasted samples
         if(dot_bias == 0.0) {
             continue;
         }
