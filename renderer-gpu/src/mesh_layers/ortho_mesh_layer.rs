@@ -40,12 +40,12 @@ impl<I: MeshInstanceInput> OrthoMeshLayer<I> {
     // FIXME Positioning should not be here
     pub fn set_texture(
         &mut self,
-        texture_view: &TextureView,
+        texture_view: Option<&TextureView>,
         offset: (f32, f32),
         global_context: &GlobalContext,
         buffer_pool: &mut BufferPool,
     ) {
-        self.texture_view = Some(texture_view.clone());
+        self.texture_view = texture_view.cloned();
         let screen_size = global_context.view_projection.screen_size;
 
         if screen_size.0 == 0.0 || screen_size.1 == 0.0 {
@@ -56,16 +56,15 @@ impl<I: MeshInstanceInput> OrthoMeshLayer<I> {
             return;
         }
 
-        let mesh_size;
+        let mut mesh_size = (screen_size.0 as f32, screen_size.1 as f32);
         if self.full_screen_mesh {
-            mesh_size = (screen_size.0 as f32, screen_size.1 as f32);
             self.mesh = Some(Mesh::quad(
                 global_context,
                 buffer_pool,
                 screen_size.0 as f32,
                 screen_size.1 as f32,
             ));
-        } else {
+        } else if let Some(texture_view) = self.texture_view.as_ref() {
             let texture_size = texture_view.texture().size();
             let aspect = texture_size.height as f32 / texture_size.width as f32;
             let width = screen_size.0 as f32 * 0.35;

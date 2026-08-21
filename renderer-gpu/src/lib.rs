@@ -194,7 +194,7 @@ impl GpuRenderer {
 
             self.layers
                 .shadow_map_layer
-                .set_texture(&self.global_context.texture_view_resources.get_or_unwrap(TextureViewKind::ShadowMapDepth), (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
+                .set_texture(self.global_context.texture_view_resources.get(TextureViewKind::ShadowMapDepth), (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
         }
 
         if self.render_config.ssao_enabled {
@@ -206,8 +206,12 @@ impl GpuRenderer {
 
             self.layers
                 .post_process_layer
-                .set_texture(self.global_context.texture_view_resources.get_or_unwrap(TextureViewKind::SSAO),
+                .set_texture(self.global_context.texture_view_resources.get(TextureViewKind::SSAO),
                              (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
+
+            self.layers
+                .ground_layer
+                .set_texture(None, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
         }
 
         self.preview_textures.clear();
@@ -246,7 +250,7 @@ impl GpuRenderer {
         if let Some(texture_view) = self.preview_textures.get(&self.render_config.preview_type) {
             self.layers
                 .preview_mesh_layer
-                .set_texture(texture_view, (-100.0, -100.0), &self.global_context, &mut self.buffer_pool);
+                .set_texture(Some(texture_view), (-100.0, -100.0), &self.global_context, &mut self.buffer_pool);
         }
 
         let main_node = MainPassNode::new(&mut self.global_context,
