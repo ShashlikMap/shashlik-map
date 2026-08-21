@@ -145,7 +145,7 @@ impl SsaoPassNode {
                 ],
                 label: Some("ssao_bind_group_layout"),
             });
-        
+
         let ssao_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &ssao_bind_group_layout,
             entries: &[
@@ -228,20 +228,22 @@ impl SsaoPassNode {
             angles.swap(i, rng.random_range(0..=i));
         }
         from_fn(|i| {
-            Vec4::new(angles[i].cos(), angles[i].sin(), rng.random_range(-1.0..=1.0), 0.0)
+            Vec4::new(angles[i].cos(), angles[i].sin(), 0.0, 0.0).normalize()
         })
     }
 
     fn generate_ssao_kernel_data() -> [Vec4; 16] {
         use core::array::from_fn;
         let mut rng = rng();
-        from_fn(|_| {
-            Vec4::new(
+        from_fn(|i| {
+            let kernel = Vec4::new(
                 rng.random_range(-1.0..=1.0),
                 rng.random_range(-1.0..=1.0),
                 rng.random_range(0.0..=1.0),
                 0.0,
-            )
+            ).truncate().normalize();
+            let t = i as f32 / (16.0 - 1.0) as f32;
+            (kernel * (0.1 + 0.9 * t * t)).extend(0.0)
         })
     }
 }
