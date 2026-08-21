@@ -1,9 +1,9 @@
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::PassNode;
-use crate::textures::{create_simple_texture, create_simple_texture_with_data, TextureData};
+use crate::texture_view_resources::TextureViewKind;
+use crate::textures::{TextureData, create_simple_texture, create_simple_texture_with_data};
 use glam::Vec4;
-use rand::prelude::ThreadRng;
 use rand::{RngExt, rng};
 use std::borrow::Cow;
 use wesl::include_wesl;
@@ -12,7 +12,6 @@ use wgpu::{
     ImageSubresourceRange, ShaderModuleDescriptor, ShaderSource, StorageTextureAccess,
     TextureFormat, TextureUsages, TextureViewDimension,
 };
-use crate::texture_view_resources::TextureViewKind;
 
 pub(crate) struct SsaoPassNode {
     ssao_bind_group: BindGroup,
@@ -39,7 +38,6 @@ impl SsaoPassNode {
             device,
         );
 
-        // TODO Remove the third Vec4 value from the texture data generators.
         let noise_texture = create_simple_texture_with_data(
             TextureData {
                 sample_count: 1,
@@ -52,7 +50,6 @@ impl SsaoPassNode {
             bytemuck::cast_slice(&Self::generate_noise_texture_data()),
         );
 
-        // TODO Remove the third Vec4 value from the texture data generators.
         let kernel_texture = create_simple_texture_with_data(
             TextureData {
                 sample_count: 1,
@@ -64,6 +61,33 @@ impl SsaoPassNode {
             global_context.device(),
             bytemuck::cast_slice(&Self::generate_ssao_kernel_data()),
         );
+
+        let camera_ssao_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: Some("camera_ssao_pipeline_group_layout"),
+            });
+
+        let camera_ssao_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &camera_ssao_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: global_context
+                    .view_projection
+                    .uniform_buffer
+                    .as_entire_binding(),
+            }],
+            label: Some("ssao_camera_pipeline_bind_group"),
+        });
 
         let ssao_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -121,34 +145,7 @@ impl SsaoPassNode {
                 ],
                 label: Some("ssao_bind_group_layout"),
             });
-
-        let camera_ssao_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-                label: Some("camera_ssao_pipeline_group_layout"),
-            });
-
-        let camera_ssao_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &camera_ssao_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: global_context
-                    .view_projection
-                    .uniform_buffer
-                    .as_entire_binding(),
-            }],
-            label: Some("ssao_camera_pipeline_bind_group"),
-        });
-
+        
         let ssao_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &ssao_bind_group_layout,
             entries: &[
@@ -190,8 +187,8 @@ impl SsaoPassNode {
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("SSAO Pipeline Layout"),
                     bind_group_layouts: &[
-                        Some(&ssao_bind_group_layout),
                         Some(&camera_ssao_bind_group_layout),
+                        Some(&ssao_bind_group_layout),
                     ],
                     ..Default::default()
                 });
@@ -235,32 +232,17 @@ impl SsaoPassNode {
         })
     }
 
-    fn generate_rnd_vec4(rng: &mut ThreadRng) -> Vec4 {
-        Vec4::new(
-            rng.random_range(-1.0..=1.0),
-            rng.random_range(-1.0..=1.0),
-            rng.random_range(-1.0..=1.0),
-            0.0,
-        )
-    }
-
     fn generate_ssao_kernel_data() -> [Vec4; 16] {
         use core::array::from_fn;
         let mut rng = rng();
         from_fn(|_| {
-            let mut v = Self::generate_rnd_vec4_2(&mut rng).normalize();
-            // v *= rng.random_range(0.0..=1.0);
-            v
+            Vec4::new(
+                rng.random_range(-1.0..=1.0),
+                rng.random_range(-1.0..=1.0),
+                rng.random_range(0.0..=1.0),
+                0.0,
+            )
         })
-    }
-
-    fn generate_rnd_vec4_2(rng: &mut ThreadRng) -> Vec4 {
-        Vec4::new(
-            rng.random_range(-1.0..=1.0),
-            rng.random_range(-1.0..=1.0),
-            rng.random_range(0.0..=1.0),
-            0.0,
-        )
     }
 }
 
@@ -279,8 +261,8 @@ impl PassNode for SsaoPassNode {
                 timestamp_writes: None,
             });
             compute_pass.set_pipeline(&self.ssao_compute_pipeline);
-            compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
-            compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
+            compute_pass.set_bind_group(0, &self.camera_ssao_bind_group, &[]);
+            compute_pass.set_bind_group(1, &self.ssao_bind_group, &[]);
             let wg_x = (ssao_texture.size().width as f32 / 8.0).ceil() as u32;
             let wg_y = (ssao_texture.size().height as f32 / 8.0).ceil() as u32;
             compute_pass.dispatch_workgroups(wg_x, wg_y, 1);

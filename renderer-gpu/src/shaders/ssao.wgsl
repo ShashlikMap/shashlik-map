@@ -1,18 +1,16 @@
 import super::common::CameraUniform;
 import super::common::frag_pos_from_ray;
 
-@group(0) @binding(0) var ssao_texture: texture_storage_2d<rgba16float, write>;
-
-@group(0) @binding(1) var positions: texture_2d<f32>;
-
-@group(0) @binding(2) var normals: texture_2d<f32>;
-
-@group(0) @binding(3) var noise: texture_2d<f32>;
-
-@group(0) @binding(4) var kernel: texture_2d<f32>;
-
-@group(1) @binding(0)
+@group(0) @binding(0)
 var<uniform> camera: CameraUniform;
+
+@group(1) @binding(0) var ssao_texture: texture_storage_2d<rgba16float, write>;
+
+@group(1) @binding(1) var positions: texture_2d<f32>;
+@group(1) @binding(2) var normals: texture_2d<f32>;
+
+@group(1) @binding(3) var noise: texture_2d<f32>;
+@group(1) @binding(4) var kernel: texture_2d<f32>;
 
 @compute @workgroup_size(8, 8, 1)
 fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
