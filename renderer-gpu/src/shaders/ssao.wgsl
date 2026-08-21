@@ -32,10 +32,10 @@ const noise_size: u32 = 4;
 
 fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
     let pixel_mul = u32(round(screen_size.x / ssao_size.x));
-    let loadedNormal = textureLoad(normals, pixel_mul * pixel_coord, 0).xyz;
+    let loaded_normal = textureLoad(normals, pixel_mul * pixel_coord, 0).xyz;
 
-    let normal = -normalize(loadedNormal);
-    let fragPos = textureLoad(positions, pixel_mul * pixel_coord, 0).xyz;
+    let normal = -normalize(loaded_normal);
+    let frag_pos = textureLoad(positions, pixel_mul * pixel_coord, 0).xyz;
 
     let noise_sample_coords = pixel_coord % vec2u(noise_size, noise_size);
     let noise_vec = textureLoad(noise, noise_sample_coords, 0).rgb;
@@ -47,24 +47,29 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
     var valid = 0.0;
     for (var i = 0; i < samples; i++) {
         var kernel = textureLoad(kernel, vec2(i, 0), 0).rgb;
-        let samplePos = fragPos + (TBN * kernel) * radius;
-        if(abs(samplePos.z - fragPos.z) <= 0.0001) {
+        let sample_vector = TBN * kernel;
+
+        let dot_bias = max(dot(normal, normalize(sample_vector)), 0.0);
+        // fast exit if sample_vector is orthogonal to normal
+        if(dot_bias == 0.0) {
             continue;
         }
-        let offset = camera.proj * vec4f(samplePos, 1.0);
+        let sample_pos = frag_pos + sample_vector * radius;
+
+        let offset = camera.proj * vec4f(sample_pos, 1.0);
         let ndcPos = offset.xy / offset.w;
         let uv = ndcPos * vec2f(0.5, -0.5) + vec2f(0.5);
-        let screenCoord = vec2i(uv * screen_size);
+        let screen_coord = vec2i(uv * screen_size);
         let center_coord = vec2i(pixel_mul * pixel_coord);
-        if (all(screenCoord == center_coord)) {
+        if (all(screen_coord == center_coord)) {
             continue;
         }
-        let sampleDepth = textureLoad(positions, screenCoord, 0).z;
-        let depth_diff = abs(fragPos.z - sampleDepth);
-        let rangeCheck = smoothstep(0.0, 1.0, radius / depth_diff);
+        let sample_depth = textureLoad(positions, screen_coord, 0).z;
+        let depth_diff = abs(frag_pos.z - sample_depth);
+        let range_check = smoothstep(0.0, 1.0, radius / depth_diff);
 
         valid += 1.0;
-        occlusion += select(0.0, 1.0, sampleDepth > samplePos.z + 0.03) * rangeCheck;
+        occlusion += select(0.0, 1.0, sample_depth > sample_pos.z + 0.025) * range_check * dot_bias;
     }
 
     occlusion = occlusion / valid;
