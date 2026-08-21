@@ -27,7 +27,6 @@ fn vs_main(
     var modelnormal = model.normal;
     // TODO
     modelnormal.z = -abs(modelnormal.z);
-    out.world_position = modelpos;
     out.world_normal = -modelnormal;
 
     out.view_position = (camera.view * vec4f(modelpos, 1.0)).xyz;
