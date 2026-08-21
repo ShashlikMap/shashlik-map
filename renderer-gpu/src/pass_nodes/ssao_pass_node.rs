@@ -47,7 +47,7 @@ impl SsaoPassNode {
             },
             global_context.queue(),
             global_context.device(),
-            bytemuck::cast_slice(&Self::generate_noise_texture_data()),
+            bytemuck::cast_slice(&Self::generate_noise_texture_data::<16>()),
         );
 
         let kernel_texture = create_simple_texture_with_data(
@@ -59,7 +59,7 @@ impl SsaoPassNode {
             },
             global_context.queue(),
             global_context.device(),
-            bytemuck::cast_slice(&Self::generate_ssao_kernel_data()),
+            bytemuck::cast_slice(&Self::generate_ssao_kernel_data::<16>()),
         );
 
         let camera_ssao_bind_group_layout =
@@ -218,13 +218,13 @@ impl SsaoPassNode {
         }
     }
 
-    fn generate_noise_texture_data() -> [Vec4; 16] {
+    fn generate_noise_texture_data<const N: usize>() -> [Vec4; N] {
         use core::array::from_fn;
         let mut rng = rng();
-        let mut angles: [f32; 16] = from_fn(|i| {
-            (i as f32 + rng.random_range(0.0..1.0)) / 16.0 * std::f32::consts::TAU
+        let mut angles: [f32; N] = from_fn(|i| {
+            (i as f32 + rng.random_range(0.0..1.0)) / (N as f32) * std::f32::consts::TAU
         });
-        for i in (1..16).rev() {
+        for i in (1..N).rev() {
             angles.swap(i, rng.random_range(0..=i));
         }
         from_fn(|i| {
@@ -232,7 +232,7 @@ impl SsaoPassNode {
         })
     }
 
-    fn generate_ssao_kernel_data() -> [Vec4; 16] {
+    fn generate_ssao_kernel_data<const N: usize>() -> [Vec4; N] {
         use core::array::from_fn;
         let mut rng = rng();
         from_fn(|i| {
@@ -242,7 +242,7 @@ impl SsaoPassNode {
                 rng.random_range(0.0..=1.0),
                 0.0,
             ).truncate().normalize();
-            let t = i as f32 / (16.0 - 1.0) as f32;
+            let t = i as f32 / ((N as f32) - 1.0);
             (kernel * (0.1 + 0.9 * t * t)).extend(0.0)
         })
     }
