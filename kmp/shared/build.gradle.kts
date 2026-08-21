@@ -100,7 +100,9 @@ version = "0.2.1"
 mavenPublishing {
     publishToMavenCentral()
 
-    signAllPublications()
+    if (!project.hasProperty("skipSigning")) {
+        signAllPublications()
+    }
 
     coordinates(group.toString(), "mapshared", version.toString())
 
