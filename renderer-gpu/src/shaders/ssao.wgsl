@@ -73,6 +73,7 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
         occlusion += select(0.0, 1.0, sample_depth > sample_pos.z + 0.025) * range_check * dot_bias;
     }
 
-    occlusion = occlusion / valid;
+    // valid potentially can be 0.0
+    occlusion = select(0.0, occlusion / valid, valid > 0.0);
     textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
 }
