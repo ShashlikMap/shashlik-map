@@ -57,11 +57,6 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
         let sample_vector = TBN * kernel;
 
         let dot_bias = max(dot(normal, normalize(sample_vector)), 0.0);
-        // fast exit if sample_vector is orthogonal to normal
-        // TODO we can prepare kernel to prevent wasted samples
-        if(dot_bias == 0.0) {
-            continue;
-        }
         let sample_pos = frag_pos + sample_vector * radius;
 
         let offset = camera.proj * vec4f(sample_pos, 1.0);
@@ -72,12 +67,14 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
         if (all(screen_coord == center_coord)) {
             continue;
         }
+        let slope_bias: f32 = max(0.05 * (1.0 - dot_bias), 0.005);
+
         let sample_depth = textureLoad(positions, screen_coord, 0).z;
-        let depth_diff = abs(frag_pos.z - sample_depth);
+        let depth_diff = abs(frag_pos.z - sample_depth) + 0.001;
         let range_check = smoothstep(0.0, 1.0, radius / depth_diff);
 
         valid += 1.0;
-        occlusion += select(0.0, 1.0, sample_depth > sample_pos.z + 0.025) * range_check * dot_bias;
+        occlusion += select(0.0, 1.0, sample_depth >= sample_pos.z + slope_bias) * range_check * dot_bias;
     }
 
     // valid potentially can be 0.0

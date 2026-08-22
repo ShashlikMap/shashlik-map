@@ -249,7 +249,8 @@ impl SsaoPassNode {
                     0.0,
                 ).truncate().try_normalize();
 
-                if let Some(kernel) = kernel {
+                // filter kernels close to the surface to increase amount of effective kernels
+                if let Some(kernel) = kernel && kernel.z > 0.01 {
                     break kernel;
                 }
             };
