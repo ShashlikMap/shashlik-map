@@ -29,6 +29,7 @@ const radius: f32 = 0.5;
 const samples: i32 = 16;
 
 const noise_size: u32 = 4;
+const noise_vec = vec2u(noise_size, noise_size);
 
 fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
     let pixel_mul = u32(round(screen_size.x / ssao_size.x));
@@ -37,11 +38,17 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
     let normal = -normalize(loaded_normal);
     let frag_pos = textureLoad(positions, pixel_mul * pixel_coord, 0).xyz;
 
-    let noise_sample_coords = pixel_coord % vec2u(noise_size, noise_size);
+    let noise_sample_coords = pixel_coord % noise_vec;
     let noise_vec = textureLoad(noise, noise_sample_coords, 0).rgb;
-    let tangent = normalize(noise_vec - normal * dot(noise_vec, normal));
-    let bitangent = cross(normal, tangent);
-    let TBN = mat3x3(tangent, bitangent, normal);
+
+    let normal_dot_p = dot(noise_vec, normal);
+    var TBN: mat3x3<f32>;
+    // TODO So far we use Duff's method as a fallback. Further, we could try to combine Duff's with random vector to remove branching.
+    if (normal_dot_p > 0.999) {
+        TBN = duff_onb(normal);
+    } else {
+        TBN = gram_schmidt_onb(normal, noise_vec, normal_dot_p);
+    }
 
     var occlusion = 0.0;
     var valid = 0.0;
@@ -76,4 +83,21 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
     // valid potentially can be 0.0
     occlusion = select(0.0, occlusion / valid, valid > 0.0);
     textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
+}
+
+fn gram_schmidt_onb(normal: vec3<f32>, noise_vec: vec3<f32>, dot_p: f32) -> mat3x3<f32> {
+    let tangent = normalize(noise_vec - normal * dot_p);
+    let bitangent = cross(normal, tangent);
+    return mat3x3(tangent, bitangent, normal);
+}
+
+fn duff_onb(n: vec3<f32>) -> mat3x3<f32> {
+    let s: f32 = select(-1.0, 1.0, n.z >= 0.0);
+    let a: f32 = -1.0 / (s + n.z);
+    let b: f32 = n.x * n.y * a;
+
+    let b1 = vec3<f32>(1.0 + s * n.x * n.x * a, s * b, -s * n.x);
+    let b2 = vec3<f32>(b, s + n.y * n.y * a, -n.y);
+
+    return mat3x3(b1, b2, n);
 }
