@@ -1,9 +1,9 @@
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::PassNode;
-use crate::textures::{create_simple_texture, create_simple_texture_with_data, TextureData};
+use crate::texture_view_resources::TextureViewKind;
+use crate::textures::{TextureData, create_simple_texture, create_simple_texture_with_data};
 use glam::Vec4;
-use rand::prelude::ThreadRng;
 use rand::{RngExt, rng};
 use std::borrow::Cow;
 use wesl::include_wesl;
@@ -12,7 +12,6 @@ use wgpu::{
     ImageSubresourceRange, ShaderModuleDescriptor, ShaderSource, StorageTextureAccess,
     TextureFormat, TextureUsages, TextureViewDimension,
 };
-use crate::texture_view_resources::TextureViewKind;
 
 pub(crate) struct SsaoPassNode {
     ssao_bind_group: BindGroup,
@@ -21,14 +20,18 @@ pub(crate) struct SsaoPassNode {
 }
 
 impl SsaoPassNode {
+    // TODO Sync with ones in shader, someday
+    const NOISE_SIZE: usize = 16;
+
+    const KERNEL_SIZE: usize = 16;
+
     pub fn new(global_context: &mut GlobalContext) -> Self {
         let device = global_context.device();
         let canvas = &global_context.canvas;
 
-        #[cfg(target_os = "macos")]
+        // SSAO is already expensive, let's try to make it better with one texture size first
+        // don't scale it down
         let ssao_size = (canvas.config().width, canvas.config().height);
-        #[cfg(not(target_os = "macos"))]
-        let mut ssao_size = (canvas.config().width / 2, canvas.config().height / 2);
 
         let ssao_texture = create_simple_texture(
             TextureData {
@@ -40,31 +43,60 @@ impl SsaoPassNode {
             device,
         );
 
-        // TODO Remove the third Vec4 value from the texture data generators.
+        const {
+            assert!(Self::NOISE_SIZE.isqrt().pow(2) == Self::NOISE_SIZE);
+        };
+        let size = Self::NOISE_SIZE.isqrt() as u32;
         let noise_texture = create_simple_texture_with_data(
             TextureData {
                 sample_count: 1,
-                size: (64, 64),
+                size: (size, size),
                 usage: TextureUsages::TEXTURE_BINDING,
                 format: TextureFormat::Rgba32Float,
             },
             global_context.queue(),
             global_context.device(),
-            bytemuck::cast_slice(&Self::generate_noise_texture_data()),
+            bytemuck::cast_slice(&Self::generate_noise_texture_data::<{Self::NOISE_SIZE}>()),
         );
 
-        // TODO Remove the third Vec4 value from the texture data generators.
         let kernel_texture = create_simple_texture_with_data(
             TextureData {
                 sample_count: 1,
-                size: (16, 1),
+                size: (Self::KERNEL_SIZE as u32, 1),
                 usage: TextureUsages::TEXTURE_BINDING,
                 format: TextureFormat::Rgba32Float,
             },
             global_context.queue(),
             global_context.device(),
-            bytemuck::cast_slice(&Self::generate_ssao_kerner_data()),
+            bytemuck::cast_slice(&Self::generate_ssao_kernel_data::<{Self::KERNEL_SIZE}>()),
         );
+
+        let camera_ssao_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: Some("camera_ssao_pipeline_group_layout"),
+            });
+
+        let camera_ssao_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &camera_ssao_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: global_context
+                    .view_projection
+                    .uniform_buffer
+                    .as_entire_binding(),
+            }],
+            label: Some("ssao_camera_pipeline_bind_group"),
+        });
 
         let ssao_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -123,33 +155,6 @@ impl SsaoPassNode {
                 label: Some("ssao_bind_group_layout"),
             });
 
-        let camera_ssao_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::COMPUTE,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-                label: Some("camera_ssao_pipeline_group_layout"),
-            });
-
-        let camera_ssao_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &camera_ssao_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: global_context
-                    .view_projection
-                    .uniform_buffer
-                    .as_entire_binding(),
-            }],
-            label: Some("ssao_camera_pipeline_bind_group"),
-        });
-
         let ssao_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &ssao_bind_group_layout,
             entries: &[
@@ -191,8 +196,8 @@ impl SsaoPassNode {
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("SSAO Pipeline Layout"),
                     bind_group_layouts: &[
-                        Some(&ssao_bind_group_layout),
                         Some(&camera_ssao_bind_group_layout),
+                        Some(&ssao_bind_group_layout),
                     ],
                     ..Default::default()
                 });
@@ -222,46 +227,36 @@ impl SsaoPassNode {
         }
     }
 
-    fn generate_noise_texture_data() -> [[Vec4; 3]; 4096] {
+    fn generate_noise_texture_data<const N: usize>() -> [Vec4; N] {
         use core::array::from_fn;
         let mut rng = rng();
-        from_fn(|_| {
-            [
-                Self::generate_rnd_vec4(&mut rng),
-                Self::generate_rnd_vec4(&mut rng),
-                Self::generate_rnd_vec4(&mut rng),
-            ]
+        from_fn(|i| {
+            let angle = (i as f32 + rng.random_range(0.0..1.0)) / (N as f32) * std::f32::consts::TAU;
+            Vec4::new(angle.cos(), angle.sin(), 0.0, 0.0)
         })
     }
 
-    fn generate_rnd_vec4(rng: &mut ThreadRng) -> Vec4 {
-        Vec4::new(
-            rng.random_range(-1.0..=1.0),
-            rng.random_range(-1.0..=1.0),
-            rng.random_range(-1.0..=1.0),
-            0.0,
-        )
-    }
-
-    fn generate_ssao_kerner_data() -> [[Vec4; 3]; 16] {
+    fn generate_ssao_kernel_data<const N: usize>() -> [Vec4; N] {
         use core::array::from_fn;
         let mut rng = rng();
-        from_fn(|_| {
-            [
-                Self::generate_rnd_vec4_2(&mut rng),
-                Self::generate_rnd_vec4_2(&mut rng),
-                Self::generate_rnd_vec4_2(&mut rng),
-            ]
-        })
-    }
+        from_fn(|i| {
+            // loop prevents non-finite vector after normalization
+            let kernel = loop {
+                let kernel = Vec4::new(
+                    rng.random_range(-1.0..=1.0),
+                    rng.random_range(-1.0..=1.0),
+                    rng.random_range(0.0..=1.0),
+                    0.0,
+                ).truncate().try_normalize();
 
-    fn generate_rnd_vec4_2(rng: &mut ThreadRng) -> Vec4 {
-        Vec4::new(
-            rng.random_range(-1.0..=1.0),
-            rng.random_range(-1.0..=1.0),
-            rng.random_range(0.0..=1.0),
-            0.0,
-        )
+                // filter kernels close to the surface to increase amount of effective kernels
+                if let Some(kernel) = kernel && kernel.z > 0.01 {
+                    break kernel;
+                }
+            };
+            let t = i as f32 / ((N as f32) - 1.0);
+            (kernel * (0.1 + 0.9 * t * t)).extend(kernel.z)
+        })
     }
 }
 
@@ -280,8 +275,8 @@ impl PassNode for SsaoPassNode {
                 timestamp_writes: None,
             });
             compute_pass.set_pipeline(&self.ssao_compute_pipeline);
-            compute_pass.set_bind_group(0, &self.ssao_bind_group, &[]);
-            compute_pass.set_bind_group(1, &self.camera_ssao_bind_group, &[]);
+            compute_pass.set_bind_group(0, &self.camera_ssao_bind_group, &[]);
+            compute_pass.set_bind_group(1, &self.ssao_bind_group, &[]);
             let wg_x = (ssao_texture.size().width as f32 / 8.0).ceil() as u32;
             let wg_y = (ssao_texture.size().height as f32 / 8.0).ceil() as u32;
             compute_pass.dispatch_workgroups(wg_x, wg_y, 1);

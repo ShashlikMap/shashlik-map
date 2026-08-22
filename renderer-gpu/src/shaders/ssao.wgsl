@@ -1,18 +1,15 @@
 import super::common::CameraUniform;
-import super::common::frag_pos_from_ray;
 
-@group(0) @binding(0) var ssao_texture: texture_storage_2d<rgba16float, write>;
-
-@group(0) @binding(1) var positions: texture_2d<f32>;
-
-@group(0) @binding(2) var normals: texture_2d<f32>;
-
-@group(0) @binding(3) var noise: texture_2d<f32>;
-
-@group(0) @binding(4) var kernel: texture_2d<f32>;
-
-@group(1) @binding(0)
+@group(0) @binding(0)
 var<uniform> camera: CameraUniform;
+
+@group(1) @binding(0) var ssao_texture: texture_storage_2d<rgba16float, write>;
+
+@group(1) @binding(1) var positions: texture_2d<f32>;
+@group(1) @binding(2) var normals: texture_2d<f32>;
+
+@group(1) @binding(3) var noise: texture_2d<f32>;
+@group(1) @binding(4) var kernel: texture_2d<f32>;
 
 @compute @workgroup_size(8, 8, 1)
 fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -27,65 +24,80 @@ fn compute_main(@builtin(global_invocation_id) id: vec3<u32>) {
     compute_ssao(pixel_coord, vec2f(ssao_size), screen_size);
 }
 
-const radius: f32 = 0.15;
+const radius: f32 = 0.5;
 
 const samples: i32 = 16;
 
-const noise_size: u32 = 64;
+const noise_size: u32 = 4;
+const noise_tile = vec2u(noise_size, noise_size);
 
 fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
-    let pixel_mul = u32(screen_size.x / ssao_size.x);
-    let loadedNormal = textureLoad(normals, pixel_mul * pixel_coord, 0).xyz;
-    if(loadedNormal.y > 0.0) {
-        return;
-    }
-    var normal = loadedNormal;
+    let pixel_mul = u32(round(screen_size.x / ssao_size.x));
+    let loaded_normal = textureLoad(normals, pixel_mul * pixel_coord, 0).xyz;
 
-    var fragPos = vec3f(0.0, 0.0, 0.0);
-    if(loadedNormal.x == 0.0 && loadedNormal.y == 0.0 && loadedNormal.z == 0.0) {
-        let uv_coord = (vec2f(pixel_mul * pixel_coord.xy) * camera.inv_screen_size) * 2.0 - 1.0;
-        fragPos = frag_pos_from_ray(camera, uv_coord);
-        fragPos = (camera.view * vec4f(fragPos, 1.0)).xyz;
-        normal = normalize((camera.view_tr_inv * vec4f(0.0, 0.0, 1.0, 1.0)).xyz);
-    } else {
-        normal = -normalize(loadedNormal);
-        fragPos = textureLoad(positions, pixel_mul * pixel_coord, 0).xyz;
-    }
+    let normal = -normalize(loaded_normal);
+    let frag_pos = textureLoad(positions, pixel_mul * pixel_coord, 0).xyz;
 
-    let noise_sample_coords = pixel_coord % vec2u(noise_size, noise_size);
+    let noise_sample_coords = pixel_coord % noise_tile;
     let noise_vec = textureLoad(noise, noise_sample_coords, 0).rgb;
-    let randomVec = (camera.view * vec4f(noise_vec, 0.0)).xyz;
-    let tangent = normalize(randomVec - normal * dot(randomVec, normal));
-    let bitangent = cross(normal, tangent);
-    let TBN = mat3x3(tangent, bitangent, normal);
+
+    let normal_dot_p = dot(noise_vec, normal);
+    var TBN: mat3x3<f32>;
+    // TODO So far we use Duff's method as a fallback. Further, we could try to combine Duff's with random vector to remove branching.
+    if (abs(normal_dot_p) > 0.999) {
+        TBN = duff_onb(normal);
+    } else {
+        TBN = gram_schmidt_onb(normal, noise_vec, normal_dot_p);
+    }
 
     var occlusion = 0.0;
+    var weight_sum = 0.0;
     for (var i = 0; i < samples; i++) {
-        var kl = textureLoad(kernel, vec2(i, 0), 0).rgb;
-        let dist_scale = f32(i) / f32(samples);
+        var kernel_vec = textureLoad(kernel, vec2(i, 0), 0);
+        let sample_vector = TBN * kernel_vec.xyz;
 
-        let samplePos = fragPos + (TBN * (kl * mix(0.1, 1.0, dist_scale * dist_scale))) * radius;
+        let sample_pos = frag_pos + sample_vector * radius;
 
-        let viewSampleDir = normalize(samplePos - fragPos);
-        let ndots = max(dot(normal, viewSampleDir), 0.0);
-        if(ndots == 0.0) {
-            continue;
-        }
-
-        let offset = camera.proj * vec4f(samplePos, 1.0);
+        let offset = camera.proj * vec4f(sample_pos, 1.0);
         let ndcPos = offset.xy / offset.w;
         let uv = ndcPos * vec2f(0.5, -0.5) + vec2f(0.5);
-        let screenCoord = vec2i(uv * screen_size);
+        if (any(uv < vec2f(0.0)) || any(uv >= vec2f(1.0))) {
+            continue;
+        }
+        let screen_coord = vec2i(uv * screen_size);
+        let center_coord = vec2i(pixel_mul * pixel_coord);
+        if (all(screen_coord == center_coord)) {
+            continue;
+        }
+        let dot_bias = kernel_vec.w;
+        let slope_bias: f32 = max(0.05 * (1.0 - dot_bias), 0.005);
 
-        let sampleDepth = textureLoad(positions, screenCoord, 0).z;
+        let sample_depth = textureLoad(positions, screen_coord, 0).z;
+        let depth_diff = abs(frag_pos.z - sample_depth) + 0.001;
+        let range_check = smoothstep(0.0, 1.0, radius / depth_diff);
 
-        let rangeCheck = smoothstep(0.0, 1.0, (radius) / abs(fragPos.z - sampleDepth));
-
-        occlusion += select(0.0, 1.0, sampleDepth > samplePos.z) * rangeCheck * ndots;
+        weight_sum += dot_bias;
+        occlusion += select(0.0, 1.0, sample_depth >= sample_pos.z + slope_bias) * range_check * dot_bias;
     }
 
-    if(occlusion > 0.0) {
-        occlusion = occlusion / f32(samples);
-        textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
-    }
+    // weight_sum potentially can be 0.0
+    occlusion = select(0.0, occlusion / weight_sum, weight_sum > 0.0);
+    textureStore(ssao_texture, pixel_coord, vec4f(occlusion * 0.5, 0.0, 0.0, 0.0));
+}
+
+fn gram_schmidt_onb(normal: vec3<f32>, noise_vec: vec3<f32>, dot_p: f32) -> mat3x3<f32> {
+    let tangent = normalize(noise_vec - normal * dot_p);
+    let bitangent = cross(normal, tangent);
+    return mat3x3(tangent, bitangent, normal);
+}
+
+fn duff_onb(n: vec3<f32>) -> mat3x3<f32> {
+    let s: f32 = select(-1.0, 1.0, n.z >= 0.0);
+    let a: f32 = -1.0 / (s + n.z);
+    let b: f32 = n.x * n.y * a;
+
+    let b1 = vec3<f32>(1.0 + s * n.x * n.x * a, s * b, -s * n.x);
+    let b2 = vec3<f32>(b, s + n.y * n.y * a, -n.y);
+
+    return mat3x3(b1, b2, n);
 }

@@ -120,29 +120,27 @@ fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
     }
 }
 
-const weights = array<f32, 9>(
-        1.0, 2.0, 1.0,
-        2.0, 4.0, 2.0,
-        1.0, 2.0, 1.0
-    );
-
 @fragment
 fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
+    let a_koef = max(0.0, 1.0 - camera.scale * 0.5);
+    if a_koef <= 0.0 {
+        return vec4f(0.0, 0.0, 0.0, 0.0);
+    }
+
     var result = 0.0;
-    let texelSize = 1.0 / vec2f(textureDimensions(t_diffuse));
+    let dims = vec2f(textureDimensions(t_diffuse));
+    let texelSize = 1.0 / dims;
+    let base = (floor(in.uv * dims) + 0.5) * texelSize;
 
-    var index = 0;
-
-    for (var y = -1; y <= 1; y++) {
-        for (var x = -1; x <= 1; x++) {
-            let offset = in.uv + vec2f(f32(x), f32(y)) * texelSize;
-            result += textureSample(t_diffuse, s_diffuse, offset).r * weights[index];
-            index++;
+    for (var y = -1; y <= 1; y += 2) {
+        for (var x = -1; x <= 1; x += 2) {
+            let offset = base + (vec2f(f32(x), f32(y)) - 0.5) * texelSize;
+            result += textureSample(t_diffuse, s_diffuse, offset).r;
         }
     }
-    result = result / 16.0;
+    result = result / 4.0;
 
-    return vec4f(0.0, 0.0, 0.0, result * max(0.0, 1.0 - camera.scale * 2.0));
+    return vec4f(0.0, 0.0, 0.0, result * a_koef);
 }
 
 @fragment

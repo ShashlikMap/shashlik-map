@@ -9,6 +9,7 @@ use wgpu::{CommandEncoder, TextureFormat, TextureUsages};
 
 pub(crate) struct GBufferPassNode {
     g_buf_pipeline: GBufPipeline,
+    g_buf_ground_pipeline: GBufPipeline,
 }
 
 impl GBufferPassNode {
@@ -22,7 +23,7 @@ impl GBufferPassNode {
                 sample_count: 1,
                 size: non_msaa_size,
                 usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-                format: TextureFormat::Rgba16Float,
+                format: TextureFormat::Rgba32Float,
             },
             global_context.device(),
         );
@@ -52,7 +53,8 @@ impl GBufferPassNode {
             .texture_view_resources.insert(TextureViewKind::GBufDepth, non_msaa_depth_texture_view);
 
         Self {
-            g_buf_pipeline: GBufPipeline::new(global_context)
+            g_buf_pipeline: GBufPipeline::new(global_context, false),
+            g_buf_ground_pipeline: GBufPipeline::new(global_context, true)
         }
     }
 }
@@ -122,6 +124,7 @@ impl PassNode for GBufferPassNode {
 
         let mut render_pass = encoder.begin_render_pass(&descriptor);
 
+        layers.ground_layer.render(&mut render_pass, &mut self.g_buf_ground_pipeline, global_context);
         layers.mesh_layer.render(&mut render_pass, &mut self.g_buf_pipeline, global_context);
     }
 }

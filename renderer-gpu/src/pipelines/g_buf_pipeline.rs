@@ -1,10 +1,10 @@
 use crate::global_context::GlobalContext;
-use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::RenderPipeline;
-use crate::vertex_attrs::GeneralInstanceInput;
+use crate::pipelines::mesh_pipeline::MeshPipeline;
+use crate::vertex_attrs::{GeneralInstanceInput, MeshVertexWithUV, VertexAttrib};
 use std::borrow::Cow;
 use wesl::include_wesl;
-use wgpu::TextureFormat::Rgba16Float;
+use wgpu::TextureFormat::{Rgba16Float, Rgba32Float};
 use wgpu::{RenderPass, ShaderModuleDescriptor, ShaderSource, TextureFormat};
 
 pub struct GBufPipeline {
@@ -13,7 +13,7 @@ pub struct GBufPipeline {
 }
 
 impl GBufPipeline {
-    pub fn new(global_context: &GlobalContext) -> Self {
+    pub fn new(global_context: &GlobalContext, with_vertex: bool) -> Self {
         let mesh_pipeline = MeshPipeline::new(global_context, false, false, false);
         let mut root_descriptor = mesh_pipeline.prepare(global_context);
 
@@ -25,11 +25,16 @@ impl GBufPipeline {
                     source: ShaderSource::Wgsl(Cow::from(include_wesl!("g_buf_frag_shader"))),
                 });
         root_descriptor.label = Some("g_buffer_pipeline");
+        if with_vertex {
+            root_descriptor.vertex.module = g_buf_frag_shader_module.to_owned();
+            root_descriptor.vertex.buffers = vec![MeshVertexWithUV::desc(), GeneralInstanceInput::desc()];
+            root_descriptor.primitive.cull_mode = None;
+        }
         let fragment = root_descriptor.fragment.as_mut().unwrap();
         fragment.module = g_buf_frag_shader_module;
         fragment.targets = vec![
             Some(wgpu::ColorTargetState {
-                format: Rgba16Float,
+                format: Rgba32Float,
                 blend: None,
                 write_mask: wgpu::ColorWrites::ALL,
             }),
@@ -39,7 +44,6 @@ impl GBufPipeline {
                 write_mask: wgpu::ColorWrites::ALL,
             }),
         ];
-        fragment.entry_point = Some("fs_main_g_buf");
         root_descriptor.multisample.count = 1;
         // render pass for g buffer uses Depth24Plus but original descriptor Depth24PlusStencil8
         root_descriptor.depth_stencil.as_mut().unwrap().format = TextureFormat::Depth24Plus;
