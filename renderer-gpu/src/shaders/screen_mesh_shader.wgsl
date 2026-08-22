@@ -120,12 +120,6 @@ fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
     }
 }
 
-const weights = array<f32, 9>(
-        1.0, 2.0, 1.0,
-        2.0, 4.0, 2.0,
-        1.0, 2.0, 1.0
-    );
-
 @fragment
 fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
     let a_koef = max(0.0, 1.0 - camera.scale * 0.5);

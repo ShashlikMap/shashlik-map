@@ -20,6 +20,11 @@ pub(crate) struct SsaoPassNode {
 }
 
 impl SsaoPassNode {
+    // TODO Sync with ones in shader, someday
+    const NOISE_SIZE: usize = 16;
+
+    const KERNEL_SIZE: usize = 16;
+
     pub fn new(global_context: &mut GlobalContext) -> Self {
         let device = global_context.device();
         let canvas = &global_context.canvas;
@@ -38,28 +43,32 @@ impl SsaoPassNode {
             device,
         );
 
+        const {
+            assert!(Self::NOISE_SIZE.isqrt().pow(2) == Self::NOISE_SIZE);
+        };
+        let size = Self::NOISE_SIZE.isqrt() as u32;
         let noise_texture = create_simple_texture_with_data(
             TextureData {
                 sample_count: 1,
-                size: (4, 4),
+                size: (size, size),
                 usage: TextureUsages::TEXTURE_BINDING,
                 format: TextureFormat::Rgba32Float,
             },
             global_context.queue(),
             global_context.device(),
-            bytemuck::cast_slice(&Self::generate_noise_texture_data::<16>()),
+            bytemuck::cast_slice(&Self::generate_noise_texture_data::<{Self::NOISE_SIZE}>()),
         );
 
         let kernel_texture = create_simple_texture_with_data(
             TextureData {
                 sample_count: 1,
-                size: (16, 1),
+                size: (Self::KERNEL_SIZE as u32, 1),
                 usage: TextureUsages::TEXTURE_BINDING,
                 format: TextureFormat::Rgba32Float,
             },
             global_context.queue(),
             global_context.device(),
-            bytemuck::cast_slice(&Self::generate_ssao_kernel_data::<16>()),
+            bytemuck::cast_slice(&Self::generate_ssao_kernel_data::<{Self::KERNEL_SIZE}>()),
         );
 
         let camera_ssao_bind_group_layout =
@@ -221,14 +230,9 @@ impl SsaoPassNode {
     fn generate_noise_texture_data<const N: usize>() -> [Vec4; N] {
         use core::array::from_fn;
         let mut rng = rng();
-        let mut angles: [f32; N] = from_fn(|i| {
-            (i as f32 + rng.random_range(0.0..1.0)) / (N as f32) * std::f32::consts::TAU
-        });
-        for i in (1..N).rev() {
-            angles.swap(i, rng.random_range(0..=i));
-        }
         from_fn(|i| {
-            Vec4::new(angles[i].cos(), angles[i].sin(), 0.0, 0.0).normalize()
+            let angle = (i as f32 + rng.random_range(0.0..1.0)) / (N as f32) * std::f32::consts::TAU;
+            Vec4::new(angle.cos(), angle.sin(), 0.0, 0.0)
         })
     }
 
