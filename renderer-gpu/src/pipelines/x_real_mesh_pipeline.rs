@@ -33,11 +33,7 @@ impl XRealMeshShaderPipeline {
         let pipeline = device.create_mesh_pipeline(&wgpu::MeshPipelineDescriptor {
             label: Some("X Real Mesh Shader Pipeline"),
             layout: Some(&pipeline_layout),
-            task: Some(wgpu::TaskState {
-                module: &shader_module,
-                entry_point: Some("ts_main"),
-                compilation_options: Default::default(),
-            }),
+            task: None,
             mesh: wgpu::MeshState {
                 module: &shader_module,
                 entry_point: Some("ms_main"),
