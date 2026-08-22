@@ -240,12 +240,19 @@ impl SsaoPassNode {
         use core::array::from_fn;
         let mut rng = rng();
         from_fn(|i| {
-            let kernel = Vec4::new(
-                rng.random_range(-1.0..=1.0),
-                rng.random_range(-1.0..=1.0),
-                rng.random_range(0.0..=1.0),
-                0.0,
-            ).truncate().normalize();
+            // loop prevents non-finite vector after normalization
+            let kernel = loop {
+                let kernel = Vec4::new(
+                    rng.random_range(-1.0..=1.0),
+                    rng.random_range(-1.0..=1.0),
+                    rng.random_range(0.0..=1.0),
+                    0.0,
+                ).truncate().try_normalize();
+
+                if let Some(kernel) = kernel {
+                    break kernel;
+                }
+            };
             let t = i as f32 / ((N as f32) - 1.0);
             (kernel * (0.1 + 0.9 * t * t)).extend(0.0)
         })
