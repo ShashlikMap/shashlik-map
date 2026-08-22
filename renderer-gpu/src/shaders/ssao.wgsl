@@ -29,7 +29,7 @@ const radius: f32 = 0.5;
 const samples: i32 = 16;
 
 const noise_size: u32 = 4;
-const noise_vec = vec2u(noise_size, noise_size);
+const noise_tile = vec2u(noise_size, noise_size);
 
 fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
     let pixel_mul = u32(round(screen_size.x / ssao_size.x));
@@ -38,48 +38,51 @@ fn compute_ssao(pixel_coord: vec2<u32>, ssao_size: vec2f, screen_size: vec2f) {
     let normal = -normalize(loaded_normal);
     let frag_pos = textureLoad(positions, pixel_mul * pixel_coord, 0).xyz;
 
-    let noise_sample_coords = pixel_coord % noise_vec;
+    let noise_sample_coords = pixel_coord % noise_tile;
     let noise_vec = textureLoad(noise, noise_sample_coords, 0).rgb;
 
     let normal_dot_p = dot(noise_vec, normal);
     var TBN: mat3x3<f32>;
     // TODO So far we use Duff's method as a fallback. Further, we could try to combine Duff's with random vector to remove branching.
-    if (normal_dot_p > 0.999) {
+    if (abs(normal_dot_p) > 0.999) {
         TBN = duff_onb(normal);
     } else {
         TBN = gram_schmidt_onb(normal, noise_vec, normal_dot_p);
     }
 
     var occlusion = 0.0;
-    var valid = 0.0;
+    var weight_sum = 0.0;
     for (var i = 0; i < samples; i++) {
-        var kernel = textureLoad(kernel, vec2(i, 0), 0).rgb;
-        let sample_vector = TBN * kernel;
+        var kernel_vec = textureLoad(kernel, vec2(i, 0), 0);
+        let sample_vector = TBN * kernel_vec.xyz;
 
-        let dot_bias = max(dot(normal, normalize(sample_vector)), 0.0);
         let sample_pos = frag_pos + sample_vector * radius;
 
         let offset = camera.proj * vec4f(sample_pos, 1.0);
         let ndcPos = offset.xy / offset.w;
         let uv = ndcPos * vec2f(0.5, -0.5) + vec2f(0.5);
+        if (any(uv < vec2f(0.0)) || any(uv >= vec2f(1.0))) {
+            continue;
+        }
         let screen_coord = vec2i(uv * screen_size);
         let center_coord = vec2i(pixel_mul * pixel_coord);
         if (all(screen_coord == center_coord)) {
             continue;
         }
+        let dot_bias = kernel_vec.w;
         let slope_bias: f32 = max(0.05 * (1.0 - dot_bias), 0.005);
 
         let sample_depth = textureLoad(positions, screen_coord, 0).z;
         let depth_diff = abs(frag_pos.z - sample_depth) + 0.001;
         let range_check = smoothstep(0.0, 1.0, radius / depth_diff);
 
-        valid += 1.0;
+        weight_sum += dot_bias;
         occlusion += select(0.0, 1.0, sample_depth >= sample_pos.z + slope_bias) * range_check * dot_bias;
     }
 
-    // valid potentially can be 0.0
-    occlusion = select(0.0, occlusion / valid, valid > 0.0);
-    textureStore(ssao_texture, pixel_coord, vec4f(occlusion, 0.0, 0.0, 0.0));
+    // weight_sum potentially can be 0.0
+    occlusion = select(0.0, occlusion / weight_sum, weight_sum > 0.0);
+    textureStore(ssao_texture, pixel_coord, vec4f(occlusion * 0.5, 0.0, 0.0, 0.0));
 }
 
 fn gram_schmidt_onb(normal: vec3<f32>, noise_vec: vec3<f32>, dot_p: f32) -> mat3x3<f32> {

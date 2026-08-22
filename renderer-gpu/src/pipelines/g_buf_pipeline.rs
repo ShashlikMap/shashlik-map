@@ -4,7 +4,7 @@ use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::vertex_attrs::{GeneralInstanceInput, MeshVertexWithUV, VertexAttrib};
 use std::borrow::Cow;
 use wesl::include_wesl;
-use wgpu::TextureFormat::Rgba16Float;
+use wgpu::TextureFormat::{Rgba16Float, Rgba32Float};
 use wgpu::{RenderPass, ShaderModuleDescriptor, ShaderSource, TextureFormat};
 
 pub struct GBufPipeline {
@@ -34,7 +34,7 @@ impl GBufPipeline {
         fragment.module = g_buf_frag_shader_module;
         fragment.targets = vec![
             Some(wgpu::ColorTargetState {
-                format: Rgba16Float,
+                format: Rgba32Float,
                 blend: None,
                 write_mask: wgpu::ColorWrites::ALL,
             }),

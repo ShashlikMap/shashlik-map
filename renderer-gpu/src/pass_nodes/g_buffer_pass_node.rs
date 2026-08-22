@@ -23,7 +23,7 @@ impl GBufferPassNode {
                 sample_count: 1,
                 size: non_msaa_size,
                 usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-                format: TextureFormat::Rgba16Float,
+                format: TextureFormat::Rgba32Float,
             },
             global_context.device(),
         );

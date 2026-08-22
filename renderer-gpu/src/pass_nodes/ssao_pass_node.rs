@@ -255,7 +255,7 @@ impl SsaoPassNode {
                 }
             };
             let t = i as f32 / ((N as f32) - 1.0);
-            (kernel * (0.1 + 0.9 * t * t)).extend(0.0)
+            (kernel * (0.1 + 0.9 * t * t)).extend(kernel.z)
         })
     }
 }
