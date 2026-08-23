@@ -104,16 +104,3 @@ fn pcf(t_depth: texture_depth_2d, s_compare: sampler_comparison, coord: vec2f, b
     }
     return shadow;
 }
-
-fn frag_pos_from_ray(camera: CameraUniform, uv: vec2f) -> vec3f {
-    let near_world1 = camera.view_proj_inv * vec4f(uv.xy, 0.0, 1.0);
-    let near_world = near_world1.xyz / near_world1.w;
-    let far_world1 = camera.view_proj_inv * vec4f(uv.xy, 1.0, 1.0);
-    let far_world = far_world1.xyz / far_world1.w;
-
-    var u = -near_world.z / (far_world.z - near_world.z);
-    if u < 0.0 {
-        u = 1.0 - u;
-    }
-    return near_world + u * (far_world - near_world);
-}

@@ -1,31 +1,35 @@
 import super::mesh_shader_common::{VertexInput, InstanceInput, VertexOutput};
 import super::common::CameraUniform;
 import super::common::shadow_map;
-import super::common::frag_pos_from_ray;
 
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 
 var<immediate> params: u32;
 
-const positions = array<vec2<f32>, 3>(
-    vec2<f32>(-1.0,  1.0),
-    vec2<f32>( 3.0,  1.0),
-    vec2<f32>(-1.0, -3.0)
-);
+fn frag_pos_from_ray(camera: CameraUniform, uv: vec2f) -> vec3f {
+    let near_world1 = camera.view_proj_inv * vec4f(uv.xy, 0.0, 1.0);
+    let near_world = near_world1.xyz / near_world1.w;
+    let far_world1 = camera.view_proj_inv * vec4f(uv.xy, 1.0, 1.0);
+    let far_world = far_world1.xyz / far_world1.w;
+
+    var u = -near_world.z / (far_world.z - near_world.z);
+    if u < 0.0 {
+        u = 1.0 - u;
+    }
+    return near_world + u * (far_world - near_world);
+}
 
 @vertex
 fn vs_main(
-    @builtin(vertex_index) vertexIndex: u32,
     model: VertexInput,
     pos: InstanceInput
 ) -> VertexOutput {
     var out: VertexOutput;
     var modelpos: vec3f;
     if (pos.ortho_transform == 1) {
-        let clip_pos2d = positions[vertexIndex];
-        modelpos = frag_pos_from_ray(camera, clip_pos2d);
-        out.flag = 1;
+        modelpos = frag_pos_from_ray(camera, model.position.xy);
+        out.virtual_plane = 1;
     } else {
         let model_matrix = mat4x4<f32>(
                 pos.model_matrix_0,
@@ -85,17 +89,18 @@ const dither_strength = 2.0 / 255.0;
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
     var shadow = 0.0;
+    let is_virtual_plane = in.virtual_plane == 1u;
     if((params & 2) > 0) {
         let currentDepth = in.pos_from_light.z;
         let projCoords = in.pos_from_light.xy;
         let shadow_bias = 0.0007 * camera.scale;
         let depth_with_bias = currentDepth - shadow_bias;
-        let bias = select(depth_with_bias, currentDepth, in.flag == 1u);
+        let bias = select(depth_with_bias, currentDepth, is_virtual_plane);
 
         shadow = shadow_map(t_depth, s_compare, projCoords, 1.2, bias);
     }
 
-    if (in.flag == 1u) {
+    if (is_virtual_plane) {
         return vec4(0.0, 0.0, 0.0, shadow * 0.25);
     }
 

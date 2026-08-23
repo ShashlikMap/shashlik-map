@@ -99,6 +99,8 @@ impl<I: MeshInstanceInput> RenderableLayer<I> for GeneralMeshLayer<I> {
             render_pipeline.setup_mesh_buffers(render_pass, mesh.get_mesh_buffers());
             mesh.render_instanced(render_pass, self.disable_skip_mesh_feature);
         });
+
+        // we render virtual_ground after other meshes to utilize depth buffer to cull geometry
         if let Some(virtual_ground) = self.virtual_ground.as_mut() {
             virtual_ground.render(render_pass);
         }

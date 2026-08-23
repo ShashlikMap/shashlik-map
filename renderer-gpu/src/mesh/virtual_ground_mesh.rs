@@ -20,7 +20,7 @@ impl VirtualGroundMesh {
             normals: [0.0, 0.0, 1.0],
         });
         geometry_buffer.vertices.push(MeshVertex {
-            position: [-3.0, 1.0, 0.0],
+            position: [3.0, 1.0, 0.0],
             normals: [0.0, 0.0, 1.0],
         });
         geometry_buffer.vertices.push(MeshVertex {
