@@ -50,7 +50,6 @@ impl MainPassNode {
             TextureInfo {
                 use_texture: true,
                 filterable: false, // ideally, it should be picked using underlying TextureFormat..
-                vs_shader: None,
                 fs_shader: "fs_main_textured",
             },
             false,
@@ -65,7 +64,6 @@ impl MainPassNode {
             TextureInfo {
                 use_texture: true,
                 filterable: true,
-                vs_shader: None,
                 fs_shader: "fs_main_tex_storage",
             },
             false,
@@ -83,7 +81,6 @@ impl MainPassNode {
             TextureInfo {
                 use_texture: false,
                 filterable: false,
-                vs_shader: None,
                 fs_shader: "",
             },
             false,

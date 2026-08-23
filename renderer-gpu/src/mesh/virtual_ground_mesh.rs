@@ -9,7 +9,7 @@ use wgpu::{Buffer, RenderPass};
 
 pub(crate) struct VirtualGroundMesh {
     vertices: Buffer,
-    instance_buffer: InstanceBuffer<GeneralInstanceInput>,
+    instance_buffer: Buffer,
 }
 
 impl VirtualGroundMesh {
@@ -47,6 +47,13 @@ impl VirtualGroundMesh {
                 ortho_transform: 1
             }],
         );
+
+        let instance_buffer = instance_buffer
+            .buffer_with_id
+            .as_ref()
+            .expect("virtual instance buffer should exist")
+            .buffer()
+            .clone();
         Self {
             vertices,
             instance_buffer,
@@ -54,14 +61,7 @@ impl VirtualGroundMesh {
     }
     pub fn render(&mut self, render_pass: &mut RenderPass) {
         render_pass.set_vertex_buffer(0, self.vertices.slice(..));
-
-        let instance_buffer = self
-            .instance_buffer
-            .buffer_with_id
-            .as_ref()
-            .expect("virtual instance buffer should exist")
-            .buffer();
-        render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
         render_pass.draw(0..3, 0..1);
     }
 }
