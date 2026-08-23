@@ -6,6 +6,7 @@ use crate::pipelines::g_buf_pipeline::GBufPipeline;
 use crate::texture_view_resources::TextureViewKind;
 use crate::textures::{TextureData, create_depth_texture, create_simple_texture};
 use wgpu::{CommandEncoder, TextureFormat, TextureUsages};
+use crate::pipelines::RenderPipeline;
 
 pub(crate) struct GBufferPassNode {
     g_buf_pipeline: GBufPipeline,
@@ -124,7 +125,9 @@ impl PassNode for GBufferPassNode {
 
         let mut render_pass = encoder.begin_render_pass(&descriptor);
 
-        layers.ground_layer.render(&mut render_pass, &mut self.g_buf_ground_pipeline, global_context);
+        self.g_buf_ground_pipeline.setup_render(&mut render_pass, global_context);
+        render_pass.draw(0..3, 0..1);
+
         layers.mesh_layer.render(&mut render_pass, &mut self.g_buf_pipeline, global_context);
     }
 }

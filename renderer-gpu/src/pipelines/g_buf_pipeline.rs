@@ -27,7 +27,7 @@ impl GBufPipeline {
         root_descriptor.label = Some("g_buffer_pipeline");
         if with_vertex {
             root_descriptor.vertex.module = g_buf_frag_shader_module.to_owned();
-            root_descriptor.vertex.buffers = vec![MeshVertexWithUV::desc(), GeneralInstanceInput::desc()];
+            root_descriptor.vertex.buffers = vec![];
             root_descriptor.primitive.cull_mode = None;
         }
         let fragment = root_descriptor.fragment.as_mut().unwrap();
@@ -60,7 +60,7 @@ impl RenderPipeline<GeneralInstanceInput> for GBufPipeline {
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         render_pass.set_pipeline(&self.render_pipeline);
         self.mesh_pipeline.setup_render(render_pass, global_context);
-        
+
         // override mesh_pipeline immediates, to prevent any shadows related work
         render_pass.set_immediates(
             0,

@@ -208,10 +208,6 @@ impl GpuRenderer {
                 .post_process_layer
                 .set_texture(self.global_context.texture_view_resources.get(TextureViewKind::SSAO),
                              (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
-
-            self.layers
-                .ground_layer
-                .set_texture(None, (0.0, 0.0), &self.global_context, &mut self.buffer_pool);
         }
 
         self.preview_textures.clear();

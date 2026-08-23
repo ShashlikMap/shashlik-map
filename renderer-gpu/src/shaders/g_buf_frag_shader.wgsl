@@ -13,15 +13,20 @@ struct VertexInput {
     @location(2) uv: vec2<f32>,
 }
 
+const positions = array<vec2<f32>, 3>(
+    vec2<f32>(-1.0,  1.0),
+    vec2<f32>( 3.0,  1.0),
+    vec2<f32>(-1.0, -3.0)
+);
+
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 
 @vertex
 fn vs_main(
-    model: VertexInput,
-    pos: InstanceInput
+    @builtin(vertex_index) vertexIndex: u32,
 ) -> VertexOutput {
-    let clip_pos2d = model.uv * 2.0 - 1.0;
+    let clip_pos2d = positions[vertexIndex];
     let final_world_pos = (vec4<f32>(frag_pos_from_ray(camera, clip_pos2d), 1.0));
 
     var out: VertexOutput;
