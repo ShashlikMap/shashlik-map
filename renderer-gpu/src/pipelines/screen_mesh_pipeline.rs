@@ -5,7 +5,7 @@ use crate::textures::{TextureData, create_simple_texture};
 use crate::vertex_attrs::{MeshVertexWithUV, ScreenShapeInstanceInput, VertexAttrib};
 use std::borrow::Cow;
 use wesl::include_wesl;
-use wgpu::{BindGroup, BindGroupLayout, CompareFunction, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
+use wgpu::{BindGroup, BindGroupLayout, BindingType, CompareFunction, FilterMode, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
 
 pub struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
@@ -29,6 +29,16 @@ pub struct TextureInfo {
     pub filterable: bool,
     pub vs_shader: Option<&'static str>,
     pub fs_shader: &'static str,
+}
+
+impl TextureInfo {
+
+    fn sample_binding_type(&self) -> SamplerBindingType {
+        if self.filterable { SamplerBindingType::Filtering } else { SamplerBindingType::NonFiltering }
+    }
+    fn filter_mode(&self) -> FilterMode {
+        if self.filterable { wgpu::FilterMode::Linear } else { wgpu::FilterMode::Nearest }
+    }
 }
 
 impl ScreenMeshPipeline {
@@ -67,9 +77,7 @@ impl ScreenMeshPipeline {
                     wgpu::BindGroupLayoutEntry {
                         binding: 2,
                         visibility: wgpu::ShaderStages::FRAGMENT,
-                        // This should match the filterable field of the
-                        // corresponding Texture entry above.
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        ty: BindingType::Sampler(texture_info.sample_binding_type()),
                         count: None,
                     },
                     wgpu::BindGroupLayoutEntry {
@@ -198,8 +206,8 @@ impl ScreenMeshPipeline {
         device: &wgpu::Device,
     ) -> BindGroup {
         let diffuse_sampler = device.create_sampler(&SamplerDescriptor {
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
+            mag_filter: self.texture_info.filter_mode(),
+            min_filter: self.texture_info.filter_mode(),
             ..Default::default()
         });
         let sampler_compare = device.create_sampler(&SamplerDescriptor {
