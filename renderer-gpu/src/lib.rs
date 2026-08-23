@@ -337,29 +337,24 @@ impl GpuRenderer {
         self.global_context.device().poll(wgpu::PollType::wait_indefinitely()).unwrap();
 
         if let Ok(_) = rx.recv() {
-            let data = buffer_slice.get_mapped_range().expect("ASDASD");
+            let data = buffer_slice.get_mapped_range().expect("Mapped range error");
             let width = tt.width() as usize;
             let height = tt.height() as usize;
-            let unpadded_bytes_per_row = width * 4; // 4 bytes for u32 (RGBA8)
+            let unpadded_bytes_per_row = width * 4;
             let padded_bytes_per_row = padded_bytes_per_row as usize;
 
-            // 3. Pre-allocate a tightly packed vector for the final PNG
             let mut packed_data = Vec::with_capacity(width * height * 4);
 
-            // 4. Iterate over rows and strip the padding
             for chunk in data.chunks_exact(padded_bytes_per_row) {
-                // Only grab the valid pixel data, skipping the trailing padding
                 packed_data.extend_from_slice(&chunk[..unpadded_bytes_per_row]);
             }
 
-            // Drop the mapped range view before unmapping the buffer
             drop(data);
             self.global_context.output_buffer.unmap();
 
-            // 5. Create the ImageBuffer and save it to disk
             if let Some(img_buf) = ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, packed_data) {
-                img_buf.save("output.png").expect("Failed to save PNG image");
-                println!("PNG successfully saved with exact texture dimensions!");
+                img_buf.save("output.png").expect("PNG failed");
+                println!("PNG ok");
             }
         }
 
