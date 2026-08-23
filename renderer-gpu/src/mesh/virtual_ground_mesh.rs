@@ -17,15 +17,15 @@ impl VirtualGroundMesh {
         let mut geometry_buffer: VertexBuffers<MeshVertex, u32> = VertexBuffers::new();
         geometry_buffer.vertices.push(MeshVertex {
             position: [-1.0, 1.0, 0.0],
-            normals: [0.0, 0.0, 0.0],
+            normals: [0.0, 0.0, 1.0],
         });
         geometry_buffer.vertices.push(MeshVertex {
             position: [-3.0, 1.0, 0.0],
-            normals: [0.0, 0.0, 0.0],
+            normals: [0.0, 0.0, 1.0],
         });
         geometry_buffer.vertices.push(MeshVertex {
             position: [-1.0, -3.0, 0.0],
-            normals: [0.0, 0.0, 0.0],
+            normals: [0.0, 0.0, 1.0],
         });
         let vertices = buffer_pool.create(
             global_context.device(),
