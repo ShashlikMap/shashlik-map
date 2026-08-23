@@ -1,7 +1,7 @@
 use crate::global_context::GlobalContext;
 use crate::pipelines::RenderPipeline;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
-use crate::vertex_attrs::{GeneralInstanceInput, MeshVertexWithUV, VertexAttrib};
+use crate::vertex_attrs::GeneralInstanceInput;
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::TextureFormat::{Rgba16Float, Rgba32Float};

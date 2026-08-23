@@ -8,6 +8,7 @@ use crate::mesh_layers::text_mesh_layer::TextMeshLayer;
 use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput, ScreenShapeInstanceInput};
 use renderer_common::WorldShapeFeatureLayerTag;
 use rustybuzz::ttf_parser;
+use crate::buffer_pool::BufferPool;
 
 pub(crate) const WORLD_TEXT_LAYER: &'static str = "world_text_layer";
 pub(crate) const SCREEN_TEXT_LAYER: &'static str = "screen_text_layer";
@@ -34,10 +35,11 @@ impl Layers {
     pub fn new(
         world_shapes_feature_tags: Vec<WorldShapeFeatureLayerTag>,
         global_context: &mut GlobalContext,
+        buffer_pool: &mut BufferPool,
         font: ttf_parser::Face<'static>,
     ) -> Layers {
         let feature_layers = FeatureLayers::new(world_shapes_feature_tags.clone(), |tag| {
-            GeneralMeshLayer::new(tag.indirect, ShapeInstanceInput::from)
+            GeneralMeshLayer::new(tag.indirect, ShapeInstanceInput::from, false, buffer_pool)
         });
         let text_feature_layers = FeatureLayers::new(
             vec![
@@ -56,8 +58,8 @@ impl Layers {
         Layers {
             world_shapes_feature_tags,
             feature_layers,
-            mesh_layer: GeneralMeshLayer::new(false, Into::into),
-            shape_layer: GeneralMeshLayer::new(false, Into::into),
+            mesh_layer: GeneralMeshLayer::new(false, Into::into, false, buffer_pool),
+            shape_layer: GeneralMeshLayer::new(false, Into::into, false, buffer_pool),
             screen_shape_layer: ScreenShapeLayer::new(global_context, Into::into),
             shadow_map_layer: OrthoMeshLayer::new(true, false, Into::into),
             text_feature_layers,

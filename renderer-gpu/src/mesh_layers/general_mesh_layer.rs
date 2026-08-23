@@ -19,7 +19,7 @@ pub(crate) struct GeneralMeshLayer<I: MeshInstanceInput> {
 }
 
 impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
-    pub fn new(indirect: bool, attr_map: LayerAttrMapper<I>) -> Self {
+    pub fn new(indirect: bool, attr_map: LayerAttrMapper<I>, with_virtual_ground: bool, buffer_pool: &mut BufferPool) -> Self {
         GeneralMeshLayer {
             render_data_holder: RenderDataHolder::new(),
             indirect,

@@ -7,12 +7,6 @@ struct GBuffer {
     @location(1) normal: vec4<f32>,
 }
 
-struct VertexInput {
-    @location(0) position: vec2<f32>,
-    @location(1) color: vec4<f32>,
-    @location(2) uv: vec2<f32>,
-}
-
 const positions = array<vec2<f32>, 3>(
     vec2<f32>(-1.0,  1.0),
     vec2<f32>( 3.0,  1.0),

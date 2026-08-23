@@ -87,8 +87,9 @@ impl GpuRenderer {
         let style_store = StyleStore::new();
         let mut global_context = GlobalContext::new(canvas, &render_config, &style_store);
 
+        let mut buffer_pool = BufferPool::new();
         let font = Face::parse(font_data, 0)?;
-        let mut layers = Layers::new(feature_tags, &mut global_context, font);
+        let mut layers = Layers::new(feature_tags, &mut global_context, &mut buffer_pool, font);
         
         layers.text_feature_layers.get_layer(SCREEN_TEXT_LAYER).unwrap().add(
             "fps_info".to_string(),
@@ -113,7 +114,7 @@ impl GpuRenderer {
             api,
             fps_counter: FpsCounter::new(),
             global_context,
-            buffer_pool: BufferPool::new(),
+            buffer_pool,
             preview_textures: HashMap::new(),
         })
     }
