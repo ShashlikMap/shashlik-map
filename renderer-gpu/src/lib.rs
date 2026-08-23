@@ -26,6 +26,7 @@ use std::iter;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
+use image::{ImageBuffer, Rgba};
 use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
@@ -105,7 +106,7 @@ impl GpuRenderer {
         Self::run_background(style_store, renderer_tx.clone(), renderer_api_rx);
 
         let api = Arc::new(CommonRendererApi::new(renderer_api_tx));
-        
+
         Ok(Self {
             render_config,
             layers,
@@ -301,9 +302,66 @@ impl GpuRenderer {
             );
         });
 
+        let u32_size = std::mem::size_of::<u32>() as u32;
+        let tt = self.global_context.canvas.texture().unwrap();
+        let unpadded_bytes_per_row = u32_size * tt.width();
+        let alignment = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+        let padded_bytes_per_row = (unpadded_bytes_per_row + alignment - 1) & !(alignment - 1);
+        encoder.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                aspect: wgpu::TextureAspect::All,
+                texture: tt,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+            },
+            wgpu::TexelCopyBufferInfo {
+                buffer: &self.global_context.output_buffer,
+                layout: wgpu::TexelCopyBufferLayout {
+                    bytes_per_row: Some(padded_bytes_per_row),
+                    ..Default::default()
+                },
+            },
+            tt.size(),
+        );
+
         self.global_context
             .queue()
             .submit(iter::once(encoder.finish()));
+
+        let buffer_slice = self.global_context.output_buffer.slice(..);
+        let (tx, rx) = channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).unwrap();
+        });
+
+        self.global_context.device().poll(wgpu::PollType::wait_indefinitely()).unwrap();
+
+        if let Ok(_) = rx.recv() {
+            let data = buffer_slice.get_mapped_range().expect("ASDASD");
+            let width = tt.width() as usize;
+            let height = tt.height() as usize;
+            let unpadded_bytes_per_row = width * 4; // 4 bytes for u32 (RGBA8)
+            let padded_bytes_per_row = padded_bytes_per_row as usize;
+
+            // 3. Pre-allocate a tightly packed vector for the final PNG
+            let mut packed_data = Vec::with_capacity(width * height * 4);
+
+            // 4. Iterate over rows and strip the padding
+            for chunk in data.chunks_exact(padded_bytes_per_row) {
+                // Only grab the valid pixel data, skipping the trailing padding
+                packed_data.extend_from_slice(&chunk[..unpadded_bytes_per_row]);
+            }
+
+            // Drop the mapped range view before unmapping the buffer
+            drop(data);
+            self.global_context.output_buffer.unmap();
+
+            // 5. Create the ImageBuffer and save it to disk
+            if let Some(img_buf) = ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, packed_data) {
+                img_buf.save("output.png").expect("Failed to save PNG image");
+                println!("PNG successfully saved with exact texture dimensions!");
+            }
+        }
 
         self.global_context.canvas.present()
     }

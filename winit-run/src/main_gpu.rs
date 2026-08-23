@@ -87,7 +87,7 @@ pub fn launch_internal(ui: &ShashlikUI) {
                             dimension: wgpu::TextureDimension::D2,
                             format: wgpu::TextureFormat::Rgba8Unorm,
                             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                                | wgpu::TextureUsages::TEXTURE_BINDING,
+                                | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_SRC,
                             view_formats: &[],
                         });
                         let config = SurfaceConfiguration {

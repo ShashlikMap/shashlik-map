@@ -8,6 +8,8 @@ pub trait WgpuCanvas: Send + Sync {
     fn create_texture_view(&mut self) -> TextureView;
     fn present(&mut self) -> Option<Texture>;
     fn on_resize(&mut self);
+
+    fn texture(&self) -> Option<&Texture> { None } 
 }
 
 
@@ -35,4 +37,8 @@ impl WgpuCanvas for DefaultWgpuCanvas {
     }
 
     fn on_resize(&mut self) {}
+
+    fn texture(&self) -> Option<&Texture> {
+        Some(&self.3)
+    }
 }

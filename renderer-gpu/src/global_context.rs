@@ -8,7 +8,7 @@ use crate::view_projection::ViewProjection;
 use crate::wgpu_canvas::WgpuCanvas;
 use renderer_common::PreviewType;
 use wgpu::util::DeviceExt;
-use wgpu::{BindGroup, BindGroupLayout, Device};
+use wgpu::{BindGroup, BindGroupLayout, Buffer, Device};
 
 pub struct GlobalContext {
     pub canvas: Box<dyn WgpuCanvas>,
@@ -21,6 +21,7 @@ pub struct GlobalContext {
     pub(crate) texture_view_resources: TextureViewResources,
     preview_type: PreviewType,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[[f32; 4]; 4]>>,
+    pub output_buffer: Buffer
 }
 
 impl GlobalContext {
@@ -29,6 +30,22 @@ impl GlobalContext {
         let view_projection = ViewProjection::new(device, render_config);
         let collider = Collider::new();
         let styles_bind_group_layout = Self::create_style_bind_group_layout(device);
+
+        let ww = canvas.config().width;
+        let hh = canvas.config().height;
+        let u32_size = std::mem::size_of::<u32>() as u32;
+        let unpadded_bytes_per_row = u32_size * ww;
+        let alignment = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+        let padded_bytes_per_row = (unpadded_bytes_per_row + alignment - 1) & !(alignment - 1);
+        let output_buffer_size = (padded_bytes_per_row * hh) as wgpu::BufferAddress;
+        let output_buffer_desc = wgpu::BufferDescriptor {
+            size: output_buffer_size,
+            usage: wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::MAP_READ,
+            label: None,
+            mapped_at_creation: false,
+        };
+        let output_buffer = device.create_buffer(&output_buffer_desc);
         
         let texture_view_resources = TextureViewResources::new(render_config, device);
         GlobalContext {
@@ -42,6 +59,7 @@ impl GlobalContext {
             texture_view_resources,
             preview_type: render_config.preview_type,
             style_uniform_rx: style_store.subscribe(),
+            output_buffer
         }
     }
 
