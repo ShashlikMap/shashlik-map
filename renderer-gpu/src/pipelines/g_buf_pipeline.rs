@@ -60,5 +60,11 @@ impl RenderPipeline<GeneralInstanceInput> for GBufPipeline {
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         render_pass.set_pipeline(&self.render_pipeline);
         self.mesh_pipeline.setup_render(render_pass, global_context);
+        
+        // override mesh_pipeline immediates, to prevent any shadows related work
+        render_pass.set_immediates(
+            0,
+            bytemuck::bytes_of(&0),
+        );
     }
 }

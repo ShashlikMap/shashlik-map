@@ -39,11 +39,14 @@ fn vs_main(
 
     out.clip_position = camera.view_proj * vec4<f32>(modelpos, 1.0);
 
-    out.view_position = (camera.view * vec4f(modelpos, 1.0)).xyz;
-    out.view_normal = (camera.view_tr_inv * vec4f(modelnormal, 1.0)).xyz;
-
-    out.pos_from_light = camera.light_view_proj * vec4<f32>(modelpos, 1.0);
-    out.pos_from_light = vec4f(out.pos_from_light.xy * vec2f(0.5, -0.5) + 0.5, out.pos_from_light.zw);
+    // calc pos_from_light only if shadows pass, otherwise allow g-buf data if not shadows
+    if((params & 2) > 0) {
+        out.pos_from_light = camera.light_view_proj * vec4<f32>(modelpos, 1.0);
+        out.pos_from_light = vec4f(out.pos_from_light.xy * vec2f(0.5, -0.5) + 0.5, out.pos_from_light.zw);
+    } else {
+        out.view_position = (camera.view * vec4f(modelpos, 1.0)).xyz;
+        out.view_normal = (camera.view_tr_inv * vec4f(modelnormal, 1.0)).xyz;
+    }
 
     return out;
 }
