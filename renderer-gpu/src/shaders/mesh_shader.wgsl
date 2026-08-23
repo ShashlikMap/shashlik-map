@@ -29,8 +29,6 @@ fn vs_main(
     modelnormal.z = -abs(modelnormal.z);
     out.world_normal = -modelnormal;
 
-    out.view_position = (camera.view * vec4f(modelpos, 1.0)).xyz;
-    out.view_normal = (camera.view_tr_inv * vec4f(modelnormal, 1.0)).xyz;
     out.color_alpha = pos.color_alpha;
 
     // check scale_2d_3d, when geometry is flat height = 1.0 gives a correct value for gradient in fragment shader
@@ -38,8 +36,17 @@ fn vs_main(
         // technically, normalized z coord
         out.height = 1.0;
     }
-    out.pos_from_light = camera.light_view_proj * vec4<f32>(modelpos, 1.0);
+
     out.clip_position = camera.view_proj * vec4<f32>(modelpos, 1.0);
+
+    // calc pos_from_light only if shadows pass, otherwise allow g-buf data if not shadows
+    if((params & 2) > 0) {
+        out.pos_from_light = camera.light_view_proj * vec4<f32>(modelpos, 1.0);
+        out.pos_from_light = vec4f(out.pos_from_light.xy * vec2f(0.5, -0.5) + 0.5, out.pos_from_light.zw);
+    } else {
+        out.view_position = (camera.view * vec4f(modelpos, 1.0)).xyz;
+        out.view_normal = (camera.view_tr_inv * vec4f(modelnormal, 1.0)).xyz;
+    }
 
     return out;
 }
@@ -66,7 +73,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
     var shadow = 0.0;
     if((params & 2) > 0) {
         let currentDepth = in.pos_from_light.z;
-        let projCoords = (in.pos_from_light.xy * vec2f(0.5, -0.5)) + 0.5;
+        let projCoords = in.pos_from_light.xy;
         let shadow_bias = 0.0007 * camera.scale;
         let depth_with_bias = currentDepth - shadow_bias;
 

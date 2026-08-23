@@ -50,7 +50,7 @@ impl MainPassNode {
             global_context,
             TextureInfo {
                 use_texture: true,
-                filterable: true,
+                filterable: false, // ideally, it should be picked using underlying TextureFormat..
                 vs_shader: None,
                 fs_shader: "fs_main_textured",
             },
