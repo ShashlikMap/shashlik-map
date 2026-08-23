@@ -1,5 +1,4 @@
 use crate::global_context::GlobalContext;
-use crate::mesh_layers::RenderableLayer;
 use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
 use crate::pipelines::shape_pipeline::ShapePipeline;

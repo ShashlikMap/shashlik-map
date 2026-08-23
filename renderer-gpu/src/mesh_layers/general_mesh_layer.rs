@@ -4,7 +4,9 @@ use crate::global_context::GlobalContext;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
-use crate::mesh_layers::{ComputableLayer, BaseMeshLayer, RenderableLayer, LayerAttrMapper};
+use crate::mesh_layers::BaseMeshLayer;
+use crate::mesh_layers::ComputableLayer;
+use crate::mesh_layers::LayerAttrMapper;
 use crate::pipelines::RenderPipeline;
 use renderer_common::render_modifier::SpatialData;
 use std::mem;
@@ -74,6 +76,32 @@ impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
     pub fn set_virtual_ground(&mut self, global_context: &GlobalContext, buffer_pool: &mut BufferPool) {
         self.virtual_ground = Some(VirtualGroundMesh::new(global_context, buffer_pool));
     }
+
+    pub fn render(&mut self, render_pass: &mut RenderPass,
+                  render_pipeline: &mut impl RenderPipeline<I>,
+                  global_context: &mut GlobalContext) {
+        self.render_with_virtual_ground(render_pass, render_pipeline, global_context, false);
+    }
+
+    pub fn render_with_virtual_ground(&mut self, render_pass: &mut RenderPass,
+              render_pipeline: &mut impl RenderPipeline<I>,
+              global_context: &mut GlobalContext,
+              virtual_ground_enabled: bool) {
+        render_pipeline.setup_render(render_pass, global_context);
+        if !render_pipeline.is_mesh_rendering_enabled() {
+            return;
+        }
+        self.render_data_holder.run_mut_action(|mesh| {
+            render_pipeline.setup_mesh_buffers(render_pass, mesh.get_mesh_buffers());
+            mesh.render_instanced(render_pass, self.disable_skip_mesh_feature);
+        });
+
+        // we render virtual_ground after other meshes to utilize depth buffer to cull geometry
+        if virtual_ground_enabled && let Some(virtual_ground) = self.virtual_ground.as_mut() {
+            println!("virtual_ground");
+            virtual_ground.render(render_pass);
+        }
+    }
 }
 
 impl<I: MeshInstanceInput> BaseMeshLayer for GeneralMeshLayer<I> {
@@ -86,24 +114,6 @@ impl<I: MeshInstanceInput> BaseMeshLayer for GeneralMeshLayer<I> {
 
     fn clear_by_key(&mut self, key: &str) {
         self.render_data_holder.remove(key);
-    }
-}
-
-impl<I: MeshInstanceInput> RenderableLayer<I> for GeneralMeshLayer<I> {
-    fn render(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
-        render_pipeline.setup_render(render_pass, global_context);
-        if !render_pipeline.is_mesh_rendering_enabled() {
-            return;
-        }
-        self.render_data_holder.run_mut_action(|mesh| {
-            render_pipeline.setup_mesh_buffers(render_pass, mesh.get_mesh_buffers());
-            mesh.render_instanced(render_pass, self.disable_skip_mesh_feature);
-        });
-
-        // we render virtual_ground after other meshes to utilize depth buffer to cull geometry
-        if let Some(virtual_ground) = self.virtual_ground.as_mut() {
-            virtual_ground.render(render_pass);
-        }
     }
 }
 

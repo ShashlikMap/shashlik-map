@@ -27,7 +27,7 @@ fn vs_main(
 ) -> VertexOutput {
     var out: VertexOutput;
     var modelpos: vec3f;
-    if (pos.ortho_transform == 1) {
+    if (pos.virtual_plane == 1) {
         modelpos = frag_pos_from_ray(camera, model.position.xy);
         out.virtual_plane = 1;
     } else {

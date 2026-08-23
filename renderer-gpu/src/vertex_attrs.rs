@@ -97,7 +97,7 @@ pub struct GeneralInstanceInput {
     pub(crate) position: [f32; 3],
     pub(crate) color_alpha: f32,
     pub(crate) matrix: [[f32; 4]; 4],
-    pub(crate) ortho_transform: u32
+    pub(crate) virtual_plane: u32
 }
 
 impl VertexAttrib for GeneralInstanceInput {

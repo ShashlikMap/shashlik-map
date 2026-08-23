@@ -163,10 +163,11 @@ impl PassNode for MainPassNode {
             );
         }
 
-        layers.mesh_layer.render(
+        layers.mesh_layer.render_with_virtual_ground(
             &mut render_pass,
             &mut self.default_mesh_pipeline,
             global_context,
+            true
         );
         
         if global_context.is_ssao_enabled() {

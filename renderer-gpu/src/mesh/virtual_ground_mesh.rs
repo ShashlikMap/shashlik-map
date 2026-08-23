@@ -44,7 +44,7 @@ impl VirtualGroundMesh {
                 position: [0.0, 0.0, 0.0],
                 color_alpha: 1.0,
                 matrix: Mat4::IDENTITY.to_cols_array_2d(),
-                ortho_transform: 1
+                virtual_plane: 1
             }],
         );
 
