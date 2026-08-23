@@ -10,21 +10,24 @@ use renderer_common::render_modifier::SpatialData;
 use std::mem;
 use wgpu::{CommandEncoder, ComputePassDescriptor, RenderPass};
 use crate::mesh::mesh_instance_input::{MeshInstanceInput};
+use crate::mesh::virtual_ground_mesh::VirtualGroundMesh;
 
 pub(crate) struct GeneralMeshLayer<I: MeshInstanceInput> {
     render_data_holder: RenderDataHolder<PositionedMesh<I>>,
     indirect: bool,
     pub disable_skip_mesh_feature: bool,
-    attr_map: LayerAttrMapper<I>
+    attr_map: LayerAttrMapper<I>,
+    virtual_ground: Option<VirtualGroundMesh>,
 }
 
 impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
-    pub fn new(indirect: bool, attr_map: LayerAttrMapper<I>, with_virtual_ground: bool, buffer_pool: &mut BufferPool) -> Self {
+    pub fn new(indirect: bool, attr_map: LayerAttrMapper<I>) -> Self {
         GeneralMeshLayer {
             render_data_holder: RenderDataHolder::new(),
             indirect,
             disable_skip_mesh_feature: false,
-            attr_map
+            attr_map,
+            virtual_ground: None
         }
     }
     pub fn add(
@@ -67,6 +70,10 @@ impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
                                       instance_positions);
         self.render_data_holder.set(key.to_string(), vec![mesh]);
     }
+
+    pub fn set_virtual_ground(&mut self, global_context: &GlobalContext, buffer_pool: &mut BufferPool) {
+        self.virtual_ground = Some(VirtualGroundMesh::new(global_context, buffer_pool));
+    }
 }
 
 impl<I: MeshInstanceInput> BaseMeshLayer for GeneralMeshLayer<I> {
@@ -92,6 +99,9 @@ impl<I: MeshInstanceInput> RenderableLayer<I> for GeneralMeshLayer<I> {
             render_pipeline.setup_mesh_buffers(render_pass, mesh.get_mesh_buffers());
             mesh.render_instanced(render_pass, self.disable_skip_mesh_feature);
         });
+        if let Some(virtual_ground) = self.virtual_ground.as_mut() {
+            virtual_ground.render(render_pass);
+        }
     }
 }
 

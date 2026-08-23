@@ -52,6 +52,7 @@ impl From<LayerAttribute> for GeneralInstanceInput {
             position: value.position,
             color_alpha: value.color_alpha,
             matrix: value.matrix,
+            ortho_transform: 0
         }
     }
 }

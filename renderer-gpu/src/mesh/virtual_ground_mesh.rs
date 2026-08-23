@@ -7,7 +7,7 @@ use lyon::lyon_tessellation::VertexBuffers;
 use renderer_common::geometry_data::MeshVertex;
 use wgpu::{Buffer, RenderPass};
 
-struct VirtualGroundMesh {
+pub(crate) struct VirtualGroundMesh {
     vertices: Buffer,
     instance_buffer: InstanceBuffer<GeneralInstanceInput>,
 }
@@ -44,6 +44,7 @@ impl VirtualGroundMesh {
                 position: [0.0, 0.0, 0.0],
                 color_alpha: 1.0,
                 matrix: Mat4::IDENTITY.to_cols_array_2d(),
+                ortho_transform: 1
             }],
         );
         Self {

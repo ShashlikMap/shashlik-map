@@ -39,7 +39,7 @@ impl Layers {
         font: ttf_parser::Face<'static>,
     ) -> Layers {
         let feature_layers = FeatureLayers::new(world_shapes_feature_tags.clone(), |tag| {
-            GeneralMeshLayer::new(tag.indirect, ShapeInstanceInput::from, false, buffer_pool)
+            GeneralMeshLayer::new(tag.indirect, ShapeInstanceInput::from)
         });
         let text_feature_layers = FeatureLayers::new(
             vec![
@@ -55,11 +55,14 @@ impl Layers {
             },
         );
 
+        let mut mesh_layer = GeneralMeshLayer::new(false, Into::into);
+        mesh_layer.set_virtual_ground(global_context, buffer_pool);
+
         Layers {
             world_shapes_feature_tags,
             feature_layers,
-            mesh_layer: GeneralMeshLayer::new(false, Into::into, false, buffer_pool),
-            shape_layer: GeneralMeshLayer::new(false, Into::into, false, buffer_pool),
+            mesh_layer,
+            shape_layer: GeneralMeshLayer::new(false, Into::into),
             screen_shape_layer: ScreenShapeLayer::new(global_context, Into::into),
             shadow_map_layer: OrthoMeshLayer::new(true, false, Into::into),
             text_feature_layers,
