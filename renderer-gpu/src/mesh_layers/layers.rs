@@ -8,6 +8,7 @@ use crate::mesh_layers::text_mesh_layer::TextMeshLayer;
 use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput, ScreenShapeInstanceInput};
 use renderer_common::WorldShapeFeatureLayerTag;
 use rustybuzz::ttf_parser;
+use crate::buffer_pool::BufferPool;
 
 pub(crate) const WORLD_TEXT_LAYER: &'static str = "world_text_layer";
 pub(crate) const SCREEN_TEXT_LAYER: &'static str = "screen_text_layer";
@@ -28,14 +29,13 @@ pub(crate) struct Layers {
     pub text_feature_layers: FeatureLayers<TextMeshLayer<ScreenShapeInstanceInput>>,
     pub preview_mesh_layer: OrthoMeshLayer<ScreenShapeInstanceInput>,
     pub post_process_layer: OrthoMeshLayer<ScreenShapeInstanceInput>,
-    // TODO This is a fake layer for Gbuf and SSAO. It somehow can be combined with shadow map in future
-    pub ground_layer: OrthoMeshLayer<GeneralInstanceInput>,
 }
 
 impl Layers {
     pub fn new(
         world_shapes_feature_tags: Vec<WorldShapeFeatureLayerTag>,
         global_context: &mut GlobalContext,
+        buffer_pool: &mut BufferPool,
         font: ttf_parser::Face<'static>,
     ) -> Layers {
         let feature_layers = FeatureLayers::new(world_shapes_feature_tags.clone(), |tag| {
@@ -55,17 +55,19 @@ impl Layers {
             },
         );
 
+        let mut mesh_layer = GeneralMeshLayer::new(false, Into::into);
+        mesh_layer.set_virtual_ground(global_context, buffer_pool);
+
         Layers {
             world_shapes_feature_tags,
             feature_layers,
-            mesh_layer: GeneralMeshLayer::new(false, Into::into),
+            mesh_layer,
             shape_layer: GeneralMeshLayer::new(false, Into::into),
             screen_shape_layer: ScreenShapeLayer::new(global_context, Into::into),
             shadow_map_layer: OrthoMeshLayer::new(true, false, Into::into),
             text_feature_layers,
             preview_mesh_layer: OrthoMeshLayer::new(false, true, Into::into),
             post_process_layer: OrthoMeshLayer::new(true, false, Into::into),
-            ground_layer: OrthoMeshLayer::new(true, false, Into::into),
         }
     }
 
@@ -85,7 +87,7 @@ impl Layers {
         self.feature_layers.get_layer(tag)
     }
 
-    fn all_layers(&mut self) -> [&mut dyn BaseMeshLayer; 9] {
+    fn all_layers(&mut self) -> [&mut dyn BaseMeshLayer; 8] {
         [
             &mut self.shape_layer,
             &mut self.mesh_layer,
@@ -95,7 +97,6 @@ impl Layers {
             &mut self.text_feature_layers,
             &mut self.feature_layers,
             &mut self.preview_mesh_layer,
-            &mut self.ground_layer,
         ]
     }
 }

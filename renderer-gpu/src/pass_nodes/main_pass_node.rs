@@ -20,7 +20,6 @@ pub(crate) struct MainPassNode {
     feature_shape_pipelines: Vec<(String, ShapePipeline)>,
     preview_screen_mesh_pipeline: ScreenMeshPipeline,
     text_screen_mesh_pipeline: ScreenMeshPipeline,
-    shadow_map_screen_mesh_pipeline: ScreenMeshPipeline,
     post_process_screen_mesh_pipeline: ScreenMeshPipeline,
 }
 
@@ -51,7 +50,6 @@ impl MainPassNode {
             TextureInfo {
                 use_texture: true,
                 filterable: false, // ideally, it should be picked using underlying TextureFormat..
-                vs_shader: None,
                 fs_shader: "fs_main_textured",
             },
             false,
@@ -61,27 +59,11 @@ impl MainPassNode {
             global_context.device(),
         );
 
-        let mut shadow_map_screen_mesh_pipeline = ScreenMeshPipeline::new(
-            global_context,
-            TextureInfo {
-                use_texture: true,
-                filterable: false,
-                vs_shader: Some("vs_main_sm"),
-                fs_shader: "fs_main_sm",
-            },
-            true,
-        );
-        shadow_map_screen_mesh_pipeline.set_texture_view(
-            layers.shadow_map_layer.texture_view(),
-            global_context.device(),
-        );
-
         let mut post_process_screen_mesh_pipeline = ScreenMeshPipeline::new(
             global_context,
             TextureInfo {
                 use_texture: true,
                 filterable: true,
-                vs_shader: None,
                 fs_shader: "fs_main_tex_storage",
             },
             false,
@@ -99,7 +81,6 @@ impl MainPassNode {
             TextureInfo {
                 use_texture: false,
                 filterable: false,
-                vs_shader: None,
                 fs_shader: "",
             },
             false,
@@ -120,7 +101,6 @@ impl MainPassNode {
             text_screen_mesh_pipeline,
             feature_shape_pipelines,
             preview_screen_mesh_pipeline,
-            shadow_map_screen_mesh_pipeline,
             post_process_screen_mesh_pipeline,
         }
     }
@@ -183,19 +163,13 @@ impl PassNode for MainPassNode {
             );
         }
 
-        layers.mesh_layer.render(
+        layers.mesh_layer.render_with_virtual_ground(
             &mut render_pass,
             &mut self.default_mesh_pipeline,
             global_context,
+            true
         );
-
-        if global_context.is_shadow_mapping_enabled() {
-            layers.shadow_map_layer.render(
-                &mut render_pass,
-                &mut self.shadow_map_screen_mesh_pipeline,
-                global_context,
-            );
-        }
+        
         if global_context.is_ssao_enabled() {
             layers.post_process_layer.render(
                 &mut render_pass,

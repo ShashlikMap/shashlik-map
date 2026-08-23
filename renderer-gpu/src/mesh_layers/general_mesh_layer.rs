@@ -4,18 +4,22 @@ use crate::global_context::GlobalContext;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::positioned_mesh::PositionedMesh;
 use crate::mesh_layers::render_data_holder::RenderDataHolder;
-use crate::mesh_layers::{ComputableLayer, BaseMeshLayer, RenderableLayer, LayerAttrMapper};
+use crate::mesh_layers::BaseMeshLayer;
+use crate::mesh_layers::ComputableLayer;
+use crate::mesh_layers::LayerAttrMapper;
 use crate::pipelines::RenderPipeline;
 use renderer_common::render_modifier::SpatialData;
 use std::mem;
 use wgpu::{CommandEncoder, ComputePassDescriptor, RenderPass};
 use crate::mesh::mesh_instance_input::{MeshInstanceInput};
+use crate::mesh::virtual_ground_mesh::VirtualGroundMesh;
 
 pub(crate) struct GeneralMeshLayer<I: MeshInstanceInput> {
     render_data_holder: RenderDataHolder<PositionedMesh<I>>,
     indirect: bool,
     pub disable_skip_mesh_feature: bool,
-    attr_map: LayerAttrMapper<I>
+    attr_map: LayerAttrMapper<I>,
+    virtual_ground: Option<VirtualGroundMesh>,
 }
 
 impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
@@ -24,7 +28,8 @@ impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
             render_data_holder: RenderDataHolder::new(),
             indirect,
             disable_skip_mesh_feature: false,
-            attr_map
+            attr_map,
+            virtual_ground: None
         }
     }
     pub fn add(
@@ -67,6 +72,35 @@ impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
                                       instance_positions);
         self.render_data_holder.set(key.to_string(), vec![mesh]);
     }
+
+    pub fn set_virtual_ground(&mut self, global_context: &GlobalContext, buffer_pool: &mut BufferPool) {
+        self.virtual_ground = Some(VirtualGroundMesh::new(global_context, buffer_pool));
+    }
+
+    pub fn render(&mut self, render_pass: &mut RenderPass,
+                  render_pipeline: &mut impl RenderPipeline<I>,
+                  global_context: &mut GlobalContext) {
+        self.render_with_virtual_ground(render_pass, render_pipeline, global_context, false);
+    }
+
+    pub fn render_with_virtual_ground(&mut self, render_pass: &mut RenderPass,
+              render_pipeline: &mut impl RenderPipeline<I>,
+              global_context: &mut GlobalContext,
+              virtual_ground_enabled: bool) {
+        render_pipeline.setup_render(render_pass, global_context);
+        if !render_pipeline.is_mesh_rendering_enabled() {
+            return;
+        }
+        self.render_data_holder.run_mut_action(|mesh| {
+            render_pipeline.setup_mesh_buffers(render_pass, mesh.get_mesh_buffers());
+            mesh.render_instanced(render_pass, self.disable_skip_mesh_feature);
+        });
+
+        // we render virtual_ground after other meshes to utilize depth buffer to cull geometry
+        if virtual_ground_enabled && let Some(virtual_ground) = self.virtual_ground.as_mut() {
+            virtual_ground.render(render_pass);
+        }
+    }
 }
 
 impl<I: MeshInstanceInput> BaseMeshLayer for GeneralMeshLayer<I> {
@@ -79,19 +113,6 @@ impl<I: MeshInstanceInput> BaseMeshLayer for GeneralMeshLayer<I> {
 
     fn clear_by_key(&mut self, key: &str) {
         self.render_data_holder.remove(key);
-    }
-}
-
-impl<I: MeshInstanceInput> RenderableLayer<I> for GeneralMeshLayer<I> {
-    fn render(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
-        render_pipeline.setup_render(render_pass, global_context);
-        if !render_pipeline.is_mesh_rendering_enabled() {
-            return;
-        }
-        self.render_data_holder.run_mut_action(|mesh| {
-            render_pipeline.setup_mesh_buffers(render_pass, mesh.get_mesh_buffers());
-            mesh.render_instanced(render_pass, self.disable_skip_mesh_feature);
-        });
     }
 }
 

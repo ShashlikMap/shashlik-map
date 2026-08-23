@@ -7,22 +7,42 @@ var<uniform> camera: CameraUniform;
 
 var<immediate> params: u32;
 
+fn frag_pos_from_ray(camera: CameraUniform, uv: vec2f) -> vec3f {
+    let near_world1 = camera.view_proj_inv * vec4f(uv.xy, 0.0, 1.0);
+    let near_world = near_world1.xyz / near_world1.w;
+    let far_world1 = camera.view_proj_inv * vec4f(uv.xy, 1.0, 1.0);
+    let far_world = far_world1.xyz / far_world1.w;
+
+    var u = -near_world.z / (far_world.z - near_world.z);
+    if u < 0.0 {
+        u = 1.0 - u;
+    }
+    return near_world + u * (far_world - near_world);
+}
+
 @vertex
 fn vs_main(
     model: VertexInput,
     pos: InstanceInput
 ) -> VertexOutput {
-    let model_matrix = mat4x4<f32>(
-            pos.model_matrix_0,
-            pos.model_matrix_1,
-            pos.model_matrix_2,
-            pos.model_matrix_3,
-    );
-    var model_position = model_matrix * vec4(model.position.xyz, 1.0);
-    model_position.z = model_position.z * camera.scale_2d_3d;
-
     var out: VertexOutput;
-    var modelpos = model_position.xyz + pos.position;
+    var modelpos: vec3f;
+    if (pos.virtual_plane == 1) {
+        modelpos = frag_pos_from_ray(camera, model.position.xy);
+        out.virtual_plane = 1;
+    } else {
+        let model_matrix = mat4x4<f32>(
+                pos.model_matrix_0,
+                pos.model_matrix_1,
+                pos.model_matrix_2,
+                pos.model_matrix_3,
+        );
+
+        var model_position = model_matrix * vec4(model.position.xyz, 1.0);
+        model_position.z = model_position.z * camera.scale_2d_3d;
+
+        modelpos = model_position.xyz + pos.position;
+    }
 
     var modelnormal = model.normal;
     // TODO
@@ -68,18 +88,23 @@ const dither_strength = 2.0 / 255.0;
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
-    let diffuse_factor = max(dot(in.world_normal, light_dir), 0.15);
-
     var shadow = 0.0;
+    let is_virtual_plane = in.virtual_plane == 1u;
     if((params & 2) > 0) {
         let currentDepth = in.pos_from_light.z;
         let projCoords = in.pos_from_light.xy;
         let shadow_bias = 0.0007 * camera.scale;
         let depth_with_bias = currentDepth - shadow_bias;
+        let bias = select(depth_with_bias, currentDepth, is_virtual_plane);
 
-        shadow = shadow_map(t_depth, s_compare, projCoords, 1.2, depth_with_bias);
+        shadow = shadow_map(t_depth, s_compare, projCoords, 1.2, bias);
     }
 
+    if (is_virtual_plane) {
+        return vec4(0.0, 0.0, 0.0, shadow * 0.25);
+    }
+
+    let diffuse_factor = max(dot(in.world_normal, light_dir), 0.15);
     var base_color = roof_color;
     if (in.world_normal.z < 0.8) {
         // gradient only for walls

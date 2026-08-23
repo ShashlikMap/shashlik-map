@@ -97,6 +97,7 @@ pub struct GeneralInstanceInput {
     pub(crate) position: [f32; 3],
     pub(crate) color_alpha: f32,
     pub(crate) matrix: [[f32; 4]; 4],
+    pub(crate) virtual_plane: u32
 }
 
 impl VertexAttrib for GeneralInstanceInput {
@@ -107,6 +108,7 @@ impl VertexAttrib for GeneralInstanceInput {
         7 => Float32x4,
         8 => Float32x4,
         9 => Float32x4,
+        10 => Uint32,
     ];
 
     const STEP_MODE: VertexStepMode = wgpu::VertexStepMode::Instance;

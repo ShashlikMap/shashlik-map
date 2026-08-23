@@ -1,6 +1,4 @@
 import super::common::CameraUniform;
-import super::common::shadow_map;
-import super::common::frag_pos_from_ray;
 import super::textures;
 import super::textures::TextureType;
 
@@ -64,26 +62,6 @@ fn vs_main(
     return out;    
 }
 
-@vertex
-fn vs_main_sm(
-    model: VertexInput,
-    pos: InstanceInput
-) -> VertexOutput {
-    var out: VertexOutput;
-
-    let clip_pos2d = model.uv * 2.0 - 1.0;
-
-    let final_world_pos = (vec4<f32>(frag_pos_from_ray(camera, clip_pos2d), 1.0));
-
-    out.clip_position = camera.view_proj * final_world_pos;
-
-    // shift a bit ground shadows towards the light to create free contact shadow around building
-    out.pos_from_light = camera.light_view_proj * vec4<f32>((final_world_pos.xy - 0.003), final_world_pos.z, 1.0);
-    out.pos_from_light = vec4f(out.pos_from_light.xy * vec2f(0.5, -0.5) + 0.5, out.pos_from_light.zw);
-
-    return out;
-}
-
 // Fragment shader
 @group(1) @binding(0)
 var t_diffuse: texture_2d<f32>;
@@ -141,15 +119,4 @@ fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
     result = result / 4.0;
 
     return vec4f(0.0, 0.0, 0.0, result * a_koef);
-}
-
-@fragment
-fn fs_main_sm(in: VertexOutput) -> @location(0) vec4<f32> {
-    if(camera.scale >= 2.0) {
-        return vec4(0.0, 0.0, 0.0, 0.0);
-    }
-
-    let shadow = shadow_map(t_depth, s_compare, in.pos_from_light.xy, 1.2, in.pos_from_light.z);
-
-    return vec4(0.0, 0.0, 0.0, shadow * 0.25);
 }
