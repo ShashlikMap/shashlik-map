@@ -13,7 +13,7 @@ pub struct GBufPipeline {
 }
 
 impl GBufPipeline {
-    pub fn new(global_context: &GlobalContext, with_vertex: bool) -> Self {
+    pub fn new(global_context: &GlobalContext) -> Self {
         let mesh_pipeline = MeshPipeline::new(global_context, false, false, false);
         let mut root_descriptor = mesh_pipeline.prepare(global_context);
 
@@ -25,11 +25,6 @@ impl GBufPipeline {
                     source: ShaderSource::Wgsl(Cow::from(include_wesl!("g_buf_frag_shader"))),
                 });
         root_descriptor.label = Some("g_buffer_pipeline");
-        if with_vertex {
-            root_descriptor.vertex.module = g_buf_frag_shader_module.to_owned();
-            root_descriptor.vertex.buffers = vec![];
-            root_descriptor.primitive.cull_mode = None;
-        }
         let fragment = root_descriptor.fragment.as_mut().unwrap();
         fragment.module = g_buf_frag_shader_module;
         fragment.targets = vec![
