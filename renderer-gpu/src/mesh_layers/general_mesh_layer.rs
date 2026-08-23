@@ -98,7 +98,6 @@ impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
 
         // we render virtual_ground after other meshes to utilize depth buffer to cull geometry
         if virtual_ground_enabled && let Some(virtual_ground) = self.virtual_ground.as_mut() {
-            println!("virtual_ground");
             virtual_ground.render(render_pass);
         }
     }
