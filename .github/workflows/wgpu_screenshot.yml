@@ -30,6 +30,16 @@ jobs:
         run: |
           cargo run --bin headless --release
 
+      - name: Compress screenshot
+        if: always()
+        run: |
+          if [ -f output.png ]; then
+            pngquant --quality=50-70 --output output.png output.png
+            ls -lh output.png
+          else
+            echo "No screenshot generated"
+          fi
+
       - name: Upload Screenshot Artifact
         uses: actions/upload-artifact@v4
         with:
