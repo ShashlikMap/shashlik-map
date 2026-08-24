@@ -213,14 +213,6 @@ jobs:
               echo
               echo "$gallery"
             fi
-            echo
-            echo "[View the comparison report]($report) · compared against the golden record (opening the report needs a Pixel Eagle account, the images above do not)"
-            if [ "$changed" -gt 0 ] || [ "$new" -gt 0 ]; then
-              echo
-              echo "If the change is intended, approve it from that report to update the golden record."
-            fi
-            echo
-            echo "Commit \`${HEAD_SHA:0:7}\` · [workflow run]($RUN_URL)"
           } > comment.md
         continue-on-error: true
 
