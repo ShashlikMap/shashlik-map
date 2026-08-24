@@ -13,7 +13,7 @@ use osm::tiles::TileStore;
 use wgpu::{Device, DeviceDescriptor, Features, Label, Limits, MemoryHints, PowerPreference, Queue, SurfaceColorSpace, SurfaceConfiguration, TextureUsages};
 
 fn main() {
-    println!("Headless mode started...");
+    println!("Headless mode started....");
     let (device, queue) = pollster::block_on(async { create_wgpu().await });
 
     let target_texture = device.create_texture(&wgpu::TextureDescriptor {
