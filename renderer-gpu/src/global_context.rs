@@ -29,19 +29,30 @@ impl GlobalContext {
         let view_projection = ViewProjection::new(device, render_config);
         let collider = Collider::new();
         let styles_bind_group_layout = Self::create_style_bind_group_layout(device);
-        
         let texture_view_resources = TextureViewResources::new(render_config, device);
+
+        // subscribe() sends the current style snapshot immediately on the channel.
+        // Consume it right here — before run_background() spawns, so no race is possible —
+        // to guarantee style_bind_group is Some before the very first draw call.
+        // wgpu 30+ panics on uncaptured validation errors, so a None bind group at group 1
+        // during any draw would panic, poison the RwLock, and break every subsequent frame.
+        let mut style_uniform_rx = style_store.subscribe();
+        let style_bind_group = style_uniform_rx
+            .try_recv()
+            .ok()
+            .map(|uniforms| Self::create_styles_bind_group(device, &styles_bind_group_layout, &uniforms));
+
         GlobalContext {
             canvas,
             view_projection,
             collider,
             styles_bind_group_layout,
-            style_bind_group: None,
+            style_bind_group,
             ssao_enabled: render_config.ssao_enabled,
             x_real_mesh_shader_enabled: render_config.x_real_mesh_shader_enabled,
             texture_view_resources,
             preview_type: render_config.preview_type,
-            style_uniform_rx: style_store.subscribe(),
+            style_uniform_rx,
         }
     }
 
@@ -86,26 +97,27 @@ impl GlobalContext {
         self.x_real_mesh_shader_enabled = render_config.x_real_mesh_shader_enabled;
     }
 
+    fn create_styles_bind_group(device: &Device, layout: &BindGroupLayout, uniforms: &[[[f32; 4]; 4]]) -> BindGroup {
+        // TODO We could reuse the buffer if styles count has not changed
+        let styles_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Style Buffer"),
+            contents: bytemuck::cast_slice(uniforms),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: styles_buffer.as_entire_binding(),
+            }],
+            label: Some("styles_bind_group"),
+        })
+    }
+
     fn update_style_bind_group(&mut self) {
-        let device = self.canvas.device();
         if let Ok(uniforms) = self.style_uniform_rx.no_lagged() {
-            // TODO We could reuse the buffer if styles count has not changed
-            let styles_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Style Buffer"),
-                contents: bytemuck::cast_slice(&uniforms),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            });
-
-            let styles_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &self.styles_bind_group_layout,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: styles_buffer.as_entire_binding(),
-                }],
-                label: Some("styles_bind_group"),
-            });
-
-            self.style_bind_group = Some(styles_bind_group);
+            let device = self.canvas.device();
+            self.style_bind_group = Some(Self::create_styles_bind_group(device, &self.styles_bind_group_layout, &uniforms));
         }
     }
 

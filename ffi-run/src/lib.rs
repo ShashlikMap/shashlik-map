@@ -37,9 +37,13 @@ impl From<RouteCosting> for map::route::RouteCosting {
 #[uniffi::export]
 impl ShashlikMapApi {
     fn render(&self) {
-        let mut shashlik_map = self.shashlik_map.write().unwrap();
-        // TODO handle result
-        shashlik_map.update_and_render(());
+        // Use write() + recover-from-poison so a single bad frame doesn't permanently
+        // brick every subsequent render via a poisoned RwLock.
+        let mut guard = match self.shashlik_map.write() {
+            Ok(g) => g,
+            Err(e) => e.into_inner(),
+        };
+        guard.update_and_render(());
     }
 
     fn resize(&self, width: u32, height: u32) {
