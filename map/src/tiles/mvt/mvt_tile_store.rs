@@ -29,7 +29,7 @@ impl MvtTileStore {
 
     fn fetch_tile(&self, x: i32, y: i32, z: i32) -> Result<Vec<u8>, reqwest::Error> {
         let t1 = SystemTime::now();
-        let api_key = env!("MAPTILER_API_KEY");
+        let api_key = option_env!("MAPTILER_API_KEY").expect("MAPTILER_API_KEY should be set");
         let response = self
             .client
             .get(format!(
