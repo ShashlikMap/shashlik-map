@@ -32,13 +32,11 @@ jobs:
             echo "screenshot_exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Post screenshot comment to PR
-        if: steps.check_screenshot.outputs.screenshot_exists == 'true'
+      - name: Find associated PR
+        id: find_pr
         uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('fs');
-            
             const { data: pullRequests } = await github.rest.pulls.list({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -56,27 +54,46 @@ jobs:
               }
             }
             
-            if (!prNumber) {
-              console.log('Could not find associated PR');
-              return;
+            if (prNumber) {
+              core.setOutput('pr_number', prNumber);
             }
+
+      - name: Post screenshot comment to PR
+        if: steps.check_screenshot.outputs.screenshot_exists == 'true' && steps.find_pr.outputs.pr_number != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const prNumber = '${{ steps.find_pr.outputs.pr_number }}';
+            const workflowRunId = '${{ github.event.workflow_run.id }}';
+            const artifactUrl = `https://github.com/${{ github.repository }}/actions/runs/${workflowRunId}`;
             
+            // Read and encode screenshot as base64
             const imageBuffer = fs.readFileSync('output.png');
             const base64Image = imageBuffer.toString('base64');
-            const imageDataUrl = 'data:image/png;base64,' + base64Image;
+            const imageSize = (imageBuffer.length / 1024).toFixed(2); // Size in KB
             
-            const body = `## 📸 Screenshot Preview\n\n![Headless WGPU Screenshot](${imageDataUrl})\n\n✅ Screenshot captured successfully from headless WGPU application.`;
+            // Create markdown with base64 data URL (with size limit check)
+            let body;
+            if (base64Image.length > 60000) {
+              // If still too large, post link instead
+              body = `## 📸 Screenshot Preview\n\n✅ Screenshot captured successfully!\n\n[Download Screenshot](${artifactUrl}) (${imageSize} KB)`;
+            } else {
+              // Use data URL if small enough
+              const imageDataUrl = 'data:image/png;base64,' + base64Image;
+              body = `## 📸 Screenshot Preview\n\n![Headless WGPU Screenshot](${imageDataUrl})\n\n✅ Screenshot captured successfully from headless WGPU application.`;
+            }
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: prNumber,
+              issue_number: parseInt(prNumber),
               body: body
             });
             
-            console.log(`Posted screenshot comment to PR #${prNumber}`);
+            console.log(`Posted screenshot comment to PR #${prNumber} (size: ${base64Image.length} chars)`);
 
-      - name: Post no screenshot message
+      - name: Post failure message
         if: steps.check_screenshot.outputs.screenshot_exists == 'false'
         uses: actions/github-script@v7
         with:
