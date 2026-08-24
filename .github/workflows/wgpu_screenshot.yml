@@ -15,7 +15,7 @@ jobs:
       - name: Install Minimal Software Vulkan Drivers
         run: |
           sudo apt-get update
-          sudo apt-get install -y mesa-vulkan-drivers libgl1-mesa-dri
+          sudo apt-get install -y mesa-vulkan-drivers libgl1-mesa-dri pngquant
 
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
