@@ -1,5 +1,7 @@
 name: Pixel Eagle Visual Regression
 
+# Runs after "WGPU Headless Screenshot" so it has access to secrets and
+# pull-requests: write even for pull requests coming from forks.
 on:
   workflow_run:
     workflows: ["WGPU Headless Screenshot"]
@@ -10,6 +12,8 @@ permissions:
   pull-requests: write
 
 env:
+  # Secrets cannot be used in `if:` conditionals, so surface their presence here.
+  # PIXEL_EAGLE_API_KEY is the name the previous integration used, kept as a fallback.
   PIXEL_EAGLE_TOKEN_EXISTS: ${{ (secrets.PIXEL_EAGLE_TOKEN || secrets.PIXEL_EAGLE_API_KEY) != '' }}
   PIXEL_EAGLE_URL: https://pixel-eagle.com
   SCREENSHOT_NAME: map-default-view
@@ -82,7 +86,8 @@ jobs:
             --arg os "linux" \
             --arg event "$EVENT" \
             --arg pr "$PR_NUMBER" \
-            '{branch: $branch, commit: $commit, os: $os, event: $event}
+            '{branch: $branch, commit: $commit, os: $os, event: $event,
+              compare_with_golden: true}
              + (if $pr == "" then {} else {pr: $pr} end)')
 
           run_id=$(curl -sS --fail-with-body --retry 3 --retry-all-errors \
@@ -99,44 +104,50 @@ jobs:
             -F "screenshot=$SCREENSHOT_NAME" > /dev/null
           echo "Uploaded $SCREENSHOT_NAME"
 
-          # Runs on main only feed the baseline, there is nothing to comment on.
+          # Runs on main are only there to be approved into the golden record,
+          # there is no pull request to comment on.
           if [ -z "$PR_NUMBER" ]; then
-            echo "Push build: run $run_id stored as baseline, skipping comparison."
+            echo "Push build: run $run_id uploaded, approve it into the golden record from the web interface."
             exit 0
           fi
 
-          # Compare against the most recent push build on main. Filtering on the
-          # event too keeps a pull request branch that happens to be called "main"
-          # from being picked as the baseline.
+          # Compare against the project's golden record, the baseline approved from
+          # the Pixel Eagle web interface. 404 means no golden record exists yet.
           http=$(curl -sS -o compare.json -w '%{http_code}' \
-            -X POST "$api/runs/$run_id/compare/auto" \
-            -H "$auth" -H 'Content-Type: application/json' \
-            -d '{"branch": "main", "event": "push"}')
+            -X POST "$api/runs/$run_id/compare/golden" -H "$auth")
 
-          if [ "$http" != "200" ]; then
-            echo "No comparison available (HTTP $http): $(cat compare.json)"
-            {
-              echo '<!-- pixel-eagle -->'
-              echo '## 📸 Visual Regression (Pixel Eagle)'
-              echo
-              echo "Screenshot uploaded as run \`$run_id\`, but no baseline run on \`main\` was found to compare against."
-              echo
-              echo "Once this branch lands on \`main\`, its run becomes the baseline for later pull requests."
-              echo
-              echo "Commit \`${HEAD_SHA:0:7}\` · [workflow run]($RUN_URL)"
-            } > comment.md
-            exit 0
-          fi
+          case "$http" in
+            2*) ;;
+            404)
+              echo "This project has no golden record yet: $(cat compare.json)"
+              {
+                echo '<!-- pixel-eagle -->'
+                echo '## 📸 Visual Regression (Pixel Eagle)'
+                echo
+                echo "Screenshot uploaded as run \`$run_id\`, but this project has no golden record to compare against yet."
+                echo
+                echo "Open the run in the Pixel Eagle web interface and set it as the golden record to start catching regressions."
+                echo
+                echo "Commit \`${HEAD_SHA:0:7}\` · [workflow run]($RUN_URL)"
+              } > comment.md
+              exit 0
+              ;;
+            *)
+              echo "::error::comparison against the golden record failed (HTTP $http): $(cat compare.json)"
+              exit 1
+              ;;
+          esac
 
           # Diffs are computed asynchronously, poll until every one is done.
-          to=$(jq -r '.to' compare.json)
           for _ in $(seq 1 24); do
             if jq -e 'all(.diff[]; .diff | type == "object" and has("Done"))' compare.json > /dev/null; then
               break
             fi
             sleep 5
-            curl -sS -o compare.json "$api/runs/$run_id/compare/$to" -H "$auth"
+            curl -sS --fail-with-body -o compare.json \
+              "$api/runs/$run_id/compare/golden" -H "$auth"
           done
+          to=$(jq -r '.to' compare.json)
 
           project_id=$(jq -r '.project_id' compare.json)
           report="$api/project/$project_id/run/$run_id/compare/$to"
@@ -166,7 +177,11 @@ jobs:
                 (.missing[] | "- `\(.name)` is missing from this run")
               ] | join("\n")' compare.json
             echo
-            echo "[View the comparison report]($report) · compared against run \`$to\` on \`main\`"
+            echo "[View the comparison report]($report) · compared against the golden record (run \`$to\`)"
+            if [ "$changed" -gt 0 ] || [ "$new" -gt 0 ]; then
+              echo
+              echo "If the change is intended, approve it from that report to update the golden record."
+            fi
             echo
             echo "Commit \`${HEAD_SHA:0:7}\` · [workflow run]($RUN_URL)"
           } > comment.md
