@@ -1,199 +1,225 @@
-name: Post Screenshot to PR
+name: Pixel Eagle Visual Regression
 
 on:
   workflow_run:
     workflows: ["WGPU Headless Screenshot"]
-    types:
-      - completed
+    types: [completed]
 
 permissions:
   contents: read
   pull-requests: write
 
+env:
+  PIXEL_EAGLE_TOKEN_EXISTS: ${{ (secrets.PIXEL_EAGLE_TOKEN || secrets.PIXEL_EAGLE_API_KEY) != '' }}
+  PIXEL_EAGLE_URL: https://pixel-eagle.com
+  SCREENSHOT_NAME: map-default-view
+
 jobs:
-  post-screenshot:
+  pixel-eagle:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.event == 'pull_request'
+    if: github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'push'
 
     steps:
       - name: Download screenshot artifact
         uses: actions/download-artifact@v4
         with:
           name: headless-screenshot
+          path: screenshot
           github-token: ${{ github.token }}
           run-id: ${{ github.event.workflow_run.id }}
         continue-on-error: true
 
-      - name: Download PR metadata artifact
+      - name: Download run metadata artifact
         uses: actions/download-artifact@v4
         with:
           name: pr-metadata
+          path: metadata
           github-token: ${{ github.token }}
           run-id: ${{ github.event.workflow_run.id }}
         continue-on-error: true
 
-      - name: Extract PR metadata
+      - name: Read run metadata
         id: metadata
         run: |
-          if [ -f pr_number.txt ]; then
-            PR_NUMBER=$(cat pr_number.txt)
-            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
-          fi
-          if [ -f head_sha.txt ]; then
-            HEAD_SHA=$(cat head_sha.txt)
-            echo "head_sha=$HEAD_SHA" >> $GITHUB_OUTPUT
-          fi
-          if [ -f pr_title.txt ]; then
-            PR_TITLE=$(cat pr_title.txt)
-            echo "pr_title=$PR_TITLE" >> $GITHUB_OUTPUT
-          fi
+          read_meta() {
+            if [ -f "metadata/$1" ]; then tr -d '\r\n' < "metadata/$1"; fi
+          }
+          {
+            echo "pr_number=$(read_meta pr_number.txt)"
+            echo "head_sha=$(read_meta head_sha.txt)"
+            echo "head_ref=$(read_meta head_ref.txt)"
+            echo "base_ref=$(read_meta base_ref.txt)"
+            if [ -f screenshot/output.png ]; then
+              echo "screenshot=true"
+            else
+              echo "screenshot=false"
+            fi
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Check if screenshot exists
-        id: check_screenshot
+      - name: Warn about missing token
+        if: ${{ ! fromJSON(env.PIXEL_EAGLE_TOKEN_EXISTS) }}
         run: |
-          if [ -f output.png ]; then
-            echo "screenshot_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "screenshot_exists=false" >> $GITHUB_OUTPUT
-          fi
+          echo "The PIXEL_EAGLE_TOKEN secret is not set, skipping the upload to Pixel Eagle." >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload to Pixel-Eagle API
-        if: steps.check_screenshot.outputs.screenshot_exists == 'true' && steps.metadata.outputs.pr_number != ''
+      - name: Upload to Pixel Eagle and compare
         id: pixel_eagle
+        if: steps.metadata.outputs.screenshot == 'true' && fromJSON(env.PIXEL_EAGLE_TOKEN_EXISTS)
+        env:
+          PIXEL_EAGLE_TOKEN: ${{ secrets.PIXEL_EAGLE_TOKEN || secrets.PIXEL_EAGLE_API_KEY }}
+          PR_NUMBER: ${{ steps.metadata.outputs.pr_number }}
+          HEAD_SHA: ${{ steps.metadata.outputs.head_sha }}
+          HEAD_REF: ${{ steps.metadata.outputs.head_ref }}
+          EVENT: ${{ github.event.workflow_run.event }}
+          RUN_URL: ${{ github.event.repository.html_url }}/actions/runs/${{ github.event.workflow_run.id }}
         run: |
-          PR_NUMBER="${{ steps.metadata.outputs.pr_number }}"
-          HEAD_SHA="${{ steps.metadata.outputs.head_sha }}"
-          PR_TITLE="${{ steps.metadata.outputs.pr_title }}"
-          
-          # Prepare screenshot file
-          if [ ! -f output.png ]; then
-            echo "screenshot_not_found=true" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          auth="Authorization: Bearer $PIXEL_EAGLE_TOKEN"
+          api="$PIXEL_EAGLE_URL"
+
+          metadata=$(jq -nc \
+            --arg branch "$HEAD_REF" \
+            --arg commit "$HEAD_SHA" \
+            --arg os "linux" \
+            --arg event "$EVENT" \
+            --arg pr "$PR_NUMBER" \
+            '{branch: $branch, commit: $commit, os: $os, event: $event}
+             + (if $pr == "" then {} else {pr: $pr} end)')
+
+          run_id=$(curl -sS --fail-with-body --retry 3 --retry-all-errors \
+            -X POST "$api/runs" \
+            -H "$auth" -H 'Content-Type: application/json' \
+            -d "$metadata" | jq -r '.id')
+          echo "Created Pixel Eagle run $run_id ($metadata)"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+          curl -sS --fail-with-body --retry 3 --retry-all-errors \
+            -X POST "$api/runs/$run_id" \
+            -H "$auth" \
+            -F "data=@screenshot/output.png" \
+            -F "screenshot=$SCREENSHOT_NAME" > /dev/null
+          echo "Uploaded $SCREENSHOT_NAME"
+
+          # Runs on main only feed the baseline, there is nothing to comment on.
+          if [ -z "$PR_NUMBER" ]; then
+            echo "Push build: run $run_id stored as baseline, skipping comparison."
             exit 0
           fi
-          
-          # Upload screenshot to Pixel-Eagle API
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-            -H "Authorization: Bearer ${{ secrets.PIXEL_EAGLE_API_KEY }}" \
-            -H "Content-Type: multipart/form-data" \
-            -F "file=@output.png" \
-            -F "project_id=ShashlikMap" \
-            -F "environment=pr-${PR_NUMBER}" \
-            -F "baseline_branch=main" \
-            -F "metadata={\"pr_number\": ${PR_NUMBER}, \"sha\": \"${HEAD_SHA}\", \"title\": \"${PR_TITLE}\"}" \
-            "https://api.pixel-eagle.com/v1/screenshots")
-          
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
-          RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
-          
-          if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
-            COMPARISON_URL=$(echo "$RESPONSE_BODY" | grep -o '"comparison_url":"[^"]*' | cut -d'"' -f4)
-            REGRESSION_COUNT=$(echo "$RESPONSE_BODY" | grep -o '"regression_count":[0-9]*' | cut -d':' -f2)
-            
-            echo "success=true" >> $GITHUB_OUTPUT
-            echo "comparison_url=$COMPARISON_URL" >> $GITHUB_OUTPUT
-            echo "regression_count=$REGRESSION_COUNT" >> $GITHUB_OUTPUT
-            echo "Pixel-Eagle upload successful"
-          else
-            echo "success=false" >> $GITHUB_OUTPUT
-            echo "Pixel-Eagle upload failed with HTTP $HTTP_CODE"
-            echo "Response: $RESPONSE_BODY"
+
+          # Compare against the most recent push build on main. Filtering on the
+          # event too keeps a pull request branch that happens to be called "main"
+          # from being picked as the baseline.
+          http=$(curl -sS -o compare.json -w '%{http_code}' \
+            -X POST "$api/runs/$run_id/compare/auto" \
+            -H "$auth" -H 'Content-Type: application/json' \
+            -d '{"branch": "main", "event": "push"}')
+
+          if [ "$http" != "200" ]; then
+            echo "No comparison available (HTTP $http): $(cat compare.json)"
+            {
+              echo '<!-- pixel-eagle -->'
+              echo '## 📸 Visual Regression (Pixel Eagle)'
+              echo
+              echo "Screenshot uploaded as run \`$run_id\`, but no baseline run on \`main\` was found to compare against."
+              echo
+              echo "Once this branch lands on \`main\`, its run becomes the baseline for later pull requests."
+              echo
+              echo "Commit \`${HEAD_SHA:0:7}\` · [workflow run]($RUN_URL)"
+            } > comment.md
+            exit 0
           fi
+
+          # Diffs are computed asynchronously, poll until every one is done.
+          to=$(jq -r '.to' compare.json)
+          for _ in $(seq 1 24); do
+            if jq -e 'all(.diff[]; .diff | type == "object" and has("Done"))' compare.json > /dev/null; then
+              break
+            fi
+            sleep 5
+            curl -sS -o compare.json "$api/runs/$run_id/compare/$to" -H "$auth"
+          done
+
+          project_id=$(jq -r '.project_id' compare.json)
+          report="$api/project/$project_id/run/$run_id/compare/$to"
+          changed=$(jq '[.diff[] | select(.diff | type == "object" and has("Done") and (.Done > 0))] | length' compare.json)
+          new=$(jq '.new | length' compare.json)
+          missing=$(jq '.missing | length' compare.json)
+          unchanged=$(jq '.unchanged | length' compare.json)
+
+          echo "changed=$changed new=$new missing=$missing unchanged=$unchanged"
+          echo "report=$report" >> "$GITHUB_OUTPUT"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+
+          {
+            echo '<!-- pixel-eagle -->'
+            echo '## 📸 Visual Regression (Pixel Eagle)'
+            echo
+            if [ "$changed" -gt 0 ] || [ "$new" -gt 0 ] || [ "$missing" -gt 0 ]; then
+              echo "⚠️ **Differences detected** — $changed changed, $new new, $missing missing, $unchanged unchanged."
+            else
+              echo "✅ **No visual changes** — $unchanged screenshot(s) match the baseline."
+            fi
+            echo
+            jq -r '
+              [ (.diff[] | select((.diff | type == "object") and .diff.Done > 0)
+                           | "- `\(.name)` changed by \((.diff.Done * 10000 | round) / 100)%"),
+                (.new[]     | "- `\(.name)` is new"),
+                (.missing[] | "- `\(.name)` is missing from this run")
+              ] | join("\n")' compare.json
+            echo
+            echo "[View the comparison report]($report) · compared against run \`$to\` on \`main\`"
+            echo
+            echo "Commit \`${HEAD_SHA:0:7}\` · [workflow run]($RUN_URL)"
+          } > comment.md
         continue-on-error: true
+
+      - name: Build fallback comment
+        if: always() && steps.metadata.outputs.pr_number != '' && hashFiles('comment.md') == ''
         env:
-          PIXEL_EAGLE_API_KEY: ${{ secrets.PIXEL_EAGLE_API_KEY }}
+          SCREENSHOT_EXISTS: ${{ steps.metadata.outputs.screenshot }}
+          HEAD_SHA: ${{ steps.metadata.outputs.head_sha }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_URL: ${{ github.event.repository.html_url }}/actions/runs/${{ github.event.workflow_run.id }}
+        run: |
+          {
+            echo '<!-- pixel-eagle -->'
+            echo '## 📸 Visual Regression (Pixel Eagle)'
+            echo
+            if [ "$SCREENSHOT_EXISTS" != "true" ]; then
+              echo "⚠️ **No screenshot was produced** — the headless render finished with \`$CONCLUSION\`."
+            elif [ "$PIXEL_EAGLE_TOKEN_EXISTS" != "true" ]; then
+              echo "ℹ️ The screenshot was captured but \`PIXEL_EAGLE_TOKEN\` is not configured, so it was not uploaded to Pixel Eagle."
+            else
+              echo "⚠️ The screenshot was captured but the upload to Pixel Eagle failed."
+            fi
+            echo
+            echo "[View the workflow run and artifacts]($RUN_URL)"
+            echo
+            echo "Commit \`${HEAD_SHA:0:7}\`"
+          } > comment.md
 
-      - name: Post Pixel-Eagle comment to PR
-        if: steps.pixel_eagle.outputs.success == 'true' && steps.metadata.outputs.pr_number != ''
+      - name: Post or update the pull request comment
+        if: always() && steps.metadata.outputs.pr_number != '' && hashFiles('comment.md') != ''
         uses: actions/github-script@v7
-        with:
-          github-token: ${{ github.token }}
-          script: |
-            const prNumber = parseInt('${{ steps.metadata.outputs.pr_number }}');
-            const comparisonUrl = '${{ steps.pixel_eagle.outputs.comparison_url }}';
-            const regressionCount = parseInt('${{ steps.pixel_eagle.outputs.regression_count }}') || 0;
-            const workflowRunId = '${{ github.event.workflow_run.id }}';
-            const headSha = '${{ steps.metadata.outputs.head_sha }}';
-            
-            let body = `## 📸 Visual Regression Testing (Pixel-Eagle)\n\n`;
-            
-            if (regressionCount > 0) {
-              body += `⚠️ **${regressionCount} Visual Regression(s) Detected**\n\n`;
-              body += `The screenshot shows ${regressionCount} pixel difference(s) compared to the baseline.\n`;
-            } else {
-              body += `✅ **All Visual Tests Passed**\n\n`;
-              body += `No regressions detected — screenshot matches baseline.\n`;
-            }
-            
-            if (comparisonUrl) {
-              body += `\n[View Comparison Report](${comparisonUrl})`;
-            }
-            
-            body += `\n\nCommit: [\`${headSha.substring(0, 7)}\`](https://github.com/${{ github.repository }}/commit/${headSha})`;
-            
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body: body
-            });
-            
-            console.log(`Posted Pixel-Eagle comparison to PR #${prNumber}`);
-
-      - name: Post screenshot fallback comment (if Pixel-Eagle upload failed)
-        if: steps.pixel_eagle.outputs.success == 'false' && steps.check_screenshot.outputs.screenshot_exists == 'true' && steps.metadata.outputs.pr_number != ''
-        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.metadata.outputs.pr_number }}
         with:
           github-token: ${{ github.token }}
           script: |
             const fs = require('fs');
-            const prNumber = parseInt('${{ steps.metadata.outputs.pr_number }}');
-            const workflowRunId = '${{ github.event.workflow_run.id }}';
-            const artifactUrl = `https://github.com/${{ github.repository }}/actions/runs/${workflowRunId}`;
-            const headSha = '${{ steps.metadata.outputs.head_sha }}';
-            
-            // Read and encode screenshot as base64
-            const imageBuffer = fs.readFileSync('output.png');
-            const base64Image = imageBuffer.toString('base64');
-            const imageSize = (imageBuffer.length / 1024).toFixed(2);
-            
-            let body = `## 📸 Screenshot Preview\n\n`;
-            body += `⚠️ Pixel-Eagle API upload failed. Displaying screenshot directly.\n\n`;
-            
-            if (base64Image.length > 60000) {
-              body += `✅ Screenshot captured successfully!\n\n[Download Screenshot](${artifactUrl}) (${imageSize} KB)`;
-            } else {
-              const imageDataUrl = 'data:image/png;base64,' + base64Image;
-              body += `![Headless WGPU Screenshot](${imageDataUrl})\n\n✅ Screenshot captured successfully.`;
-            }
-            
-            body += `\n\nCommit: [\`${headSha.substring(0, 7)}\`](https://github.com/${{ github.repository }}/commit/${headSha})`;
-            
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body: body
-            });
-            
-            console.log(`Posted fallback screenshot comment to PR #${prNumber}`);
+            const body = fs.readFileSync('comment.md', 'utf8');
+            const marker = '<!-- pixel-eagle -->';
+            const issue_number = parseInt(process.env.PR_NUMBER, 10);
+            const { owner, repo } = context.repo;
 
-      - name: Post failure message
-        if: steps.check_screenshot.outputs.screenshot_exists == 'false' && steps.metadata.outputs.pr_number != ''
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ github.token }}
-          script: |
-            const prNumber = parseInt('${{ steps.metadata.outputs.pr_number }}');
-            const workflowRunId = '${{ github.event.workflow_run.id }}';
-            const artifactUrl = `https://github.com/${{ github.repository }}/actions/runs/${workflowRunId}`;
-            
-            const body = `## ⚠️ Screenshot Generation Failed\n\nThe headless WGPU application did not generate a screenshot.\n\nWorkflow Status: [\`${{ github.event.workflow_run.conclusion }}\`](${artifactUrl})\n\n[View Workflow Logs](${artifactUrl})`;
-            
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body: body
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100,
             });
-            
-            console.log(`Posted failure message to PR #${prNumber}`);
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+              console.log(`Updated comment ${existing.id} on PR #${issue_number}`);
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+              console.log(`Created comment on PR #${issue_number}`);
+            }
