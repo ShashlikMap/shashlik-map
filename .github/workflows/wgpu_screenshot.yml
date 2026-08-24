@@ -2,16 +2,14 @@ name: WGPU Headless Screenshot
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main, master]
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
-  screenshot:
+  headless-screenshot:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,7 +17,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y mesa-vulkan-drivers libgl1-mesa-dri pngquant
+          sudo apt-get install -y mesa-vulkan-drivers libgl1-mesa-dri
 
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -34,60 +32,26 @@ jobs:
         run: |
           cargo run --bin headless --release
 
-      - name: Compress screenshot
-        if: always()
-        run: |
-          if [ -f output.png ]; then
-            pngquant --quality=50-70 --force --output output_temp.png output.png
-            mv output_temp.png output.png
-            ls -lh output.png
-          else
-            echo "No screenshot generated"
-          fi
-
       - name: Upload Screenshot Artifact
         uses: actions/upload-artifact@v4
         with:
           name: headless-screenshot
           path: output.png
-          retention-days: 1
+          retention-days: 5
 
-      - name: Post screenshot comment to PR
-        if: always()
-        uses: actions/github-script@v7
+      - name: Store PR metadata
+        if: github.event_name == 'pull_request'
+        run: |
+          mkdir -p pr-metadata
+          echo "${{ github.event.pull_request.number }}" > pr-metadata/pr_number.txt
+          echo "${{ github.event.pull_request.head.sha }}" > pr-metadata/head_sha.txt
+          echo "${{ github.event.pull_request.head.repo.full_name }}" > pr-metadata/head_repo.txt
+          echo "${{ github.event.pull_request.title }}" > pr-metadata/pr_title.txt
+
+      - name: Upload PR metadata artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
         with:
-          script: |
-            const fs = require('fs');
-            
-            if (!fs.existsSync('output.png')) {
-              console.log('No screenshot found, skipping comment');
-              return;
-            }
-            
-            const imageBuffer = fs.readFileSync('output.png');
-            const base64Image = imageBuffer.toString('base64');
-            const imageSize = (imageBuffer.length / 1024).toFixed(2);
-            
-            console.log(`Image size: ${imageSize} KB, base64 size: ${base64Image.length} chars`);
-            
-            if (base64Image.length > 60000) {
-              console.log('Image too large for base64, posting download link only');
-              const body = `## 📸 Screenshot Preview\n\n✅ Screenshot captured successfully (${imageSize} KB)!\n\nDownload from artifacts →`;
-            
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: body
-              });
-            } else {
-              const imageDataUrl = 'data:image/png;base64,' + base64Image;
-              const body = `## 📸 Screenshot Preview\n\n![Headless WGPU Screenshot](${imageDataUrl})\n\n✅ Screenshot captured successfully!`;
-            
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: body
-              });
-            }
+          name: pr-metadata
+          path: pr-metadata/
+          retention-days: 5
