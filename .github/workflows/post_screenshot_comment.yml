@@ -147,16 +147,52 @@ jobs:
             curl -sS --fail-with-body -o compare.json \
               "$api/runs/$run_id/compare/golden" -H "$auth"
           done
-          to=$(jq -r '.to' compare.json)
 
           project_id=$(jq -r '.project_id' compare.json)
-          report="$api/project/$project_id/run/$run_id/compare/$to"
+          report="$api/project/$project_id/run/$run_id/compare/golden"
           changed=$(jq '[.diff[] | select(.diff | type == "object" and has("Done") and (.Done > 0))] | length' compare.json)
           new=$(jq '.new | length' compare.json)
           missing=$(jq '.missing | length' compare.json)
           unchanged=$(jq '.unchanged | length' compare.json)
 
           echo "changed=$changed new=$new missing=$missing unchanged=$unchanged"
+
+          # Screenshot and diff images are served without authentication, but only
+          # for public projects. Probe one before embedding them, so a private
+          # project degrades to the report link instead of broken images.
+          details=$(jq -r '
+            [ (.diff[] | select((.diff | type == "object") and .diff.Done > 0)
+                         | "- `\(.name)` changed by \((.diff.Done * 10000 | round) / 100)%"),
+              (.new[]     | "- `\(.name)` is new"),
+              (.missing[] | "- `\(.name)` is missing from this run")
+            ] | join("\n")' compare.json)
+
+          files="$api/files/$project_id"
+          # Diff images are rendered per comparison settings; these are the
+          # defaults the web interface falls back to when a project sets none.
+          diffopts=$(jq -r '(.settings // {})
+            | "\(.flip // false)/\(.tolerance // 0)/\(.threshold // 0.0002)/\(.dilate // 0)"' compare.json)
+          gallery=""
+          probe=$(jq -r 'first((.diff[]?.hash), (.new[]?.hash), (.unchanged[]?.hash)) // empty' compare.json)
+          if [ -n "$probe" ]; then
+            code=$(curl -sS -o /dev/null -w '%{http_code}' "$files/screenshot/$probe")
+            if [ "$code" = "200" ]; then
+              gallery=$(jq -r --arg files "$files" --arg opts "$diffopts" '
+                # Images are served without a Pixel Eagle account, so link each
+                # thumbnail to the full-size PNG rather than to the web interface.
+                def shot($h): "<a href=\"\($files)/screenshot/\($h)\"><img src=\"\($files)/screenshot/\($h)\" width=\"300\"></a>";
+                def diffshot($a; $b): "<a href=\"\($files)/diff/\($a)/\($b)/\($opts)\"><img src=\"\($files)/diff/\($a)/\($b)/\($opts)\" width=\"300\"></a>";
+                [ (.diff[] |
+                     "**\(.name)**\n\n"
+                     + "<table><tr><th>Golden record</th><th>This PR</th><th>Difference</th></tr>"
+                     + "<tr><td>\(shot(.previous_hash))</td><td>\(shot(.hash))</td><td>\(diffshot(.hash; .previous_hash))</td></tr></table>"),
+                  (.new[]       | "**\(.name)** (new)\n\n\(shot(.hash))"),
+                  (.unchanged[] | "**\(.name)**\n\n\(shot(.hash))")
+                ] | join("\n\n")' compare.json)
+            else
+              echo "Images are not publicly readable (HTTP $code), embedding the report link only."
+            fi
+          fi
           echo "report=$report" >> "$GITHUB_OUTPUT"
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
 
@@ -169,15 +205,16 @@ jobs:
             else
               echo "✅ **No visual changes** — $unchanged screenshot(s) match the baseline."
             fi
+            if [ -n "$details" ]; then
+              echo
+              echo "$details"
+            fi
+            if [ -n "$gallery" ]; then
+              echo
+              echo "$gallery"
+            fi
             echo
-            jq -r '
-              [ (.diff[] | select((.diff | type == "object") and .diff.Done > 0)
-                           | "- `\(.name)` changed by \((.diff.Done * 10000 | round) / 100)%"),
-                (.new[]     | "- `\(.name)` is new"),
-                (.missing[] | "- `\(.name)` is missing from this run")
-              ] | join("\n")' compare.json
-            echo
-            echo "[View the comparison report]($report) · compared against the golden record (run \`$to\`)"
+            echo "[View the comparison report]($report) · compared against the golden record (opening the report needs a Pixel Eagle account, the images above do not)"
             if [ "$changed" -gt 0 ] || [ "$new" -gt 0 ]; then
               echo
               echo "If the change is intended, approve it from that report to update the golden record."
