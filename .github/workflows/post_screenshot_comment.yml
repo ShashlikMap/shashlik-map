@@ -13,7 +13,7 @@ permissions:
 jobs:
   post-screenshot:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success'
+    if: github.event.workflow_run.event == 'pull_request'
 
     steps:
       - name: Download screenshot artifact
@@ -22,6 +22,31 @@ jobs:
           name: headless-screenshot
           github-token: ${{ github.token }}
           run-id: ${{ github.event.workflow_run.id }}
+        continue-on-error: true
+
+      - name: Download PR metadata artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-metadata
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+        continue-on-error: true
+
+      - name: Extract PR metadata
+        id: metadata
+        run: |
+          if [ -f pr_number.txt ]; then
+            PR_NUMBER=$(cat pr_number.txt)
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          fi
+          if [ -f head_sha.txt ]; then
+            HEAD_SHA=$(cat head_sha.txt)
+            echo "head_sha=$HEAD_SHA" >> $GITHUB_OUTPUT
+          fi
+          if [ -f pr_title.txt ]; then
+            PR_TITLE=$(cat pr_title.txt)
+            echo "pr_title=$PR_TITLE" >> $GITHUB_OUTPUT
+          fi
 
       - name: Check if screenshot exists
         id: check_screenshot
@@ -32,92 +57,78 @@ jobs:
             echo "screenshot_exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Find associated PR
-        id: find_pr
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data: pullRequests } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              sort: 'updated',
-              direction: 'desc',
-              per_page: 10
-            });
+      - name: Upload to Pixel-Eagle API
+        if: steps.check_screenshot.outputs.screenshot_exists == 'true' && steps.metadata.outputs.pr_number != ''
+        id: pixel_eagle
+        run: |
+          PR_NUMBER="${{ steps.metadata.outputs.pr_number }}"
+          HEAD_SHA="${{ steps.metadata.outputs.head_sha }}"
+          PR_TITLE="${{ steps.metadata.outputs.pr_title }}"
+          
+          # Prepare screenshot file
+          if [ ! -f output.png ]; then
+            echo "screenshot_not_found=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Upload screenshot to Pixel-Eagle API
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer ${{ secrets.PIXEL_EAGLE_API_KEY }}" \
+            -H "Content-Type: multipart/form-data" \
+            -F "file=@output.png" \
+            -F "project_id=ShashlikMap" \
+            -F "environment=pr-${PR_NUMBER}" \
+            -F "baseline_branch=main" \
+            -F "metadata={\"pr_number\": ${PR_NUMBER}, \"sha\": \"${HEAD_SHA}\", \"title\": \"${PR_TITLE}\"}" \
+            "https://api.pixel-eagle.com/v1/screenshots")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+          RESPONSE_BODY=$(echo "$RESPONSE" | head -n -1)
+          
+          if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
+            COMPARISON_URL=$(echo "$RESPONSE_BODY" | grep -o '"comparison_url":"[^"]*' | cut -d'"' -f4)
+            REGRESSION_COUNT=$(echo "$RESPONSE_BODY" | grep -o '"regression_count":[0-9]*' | cut -d':' -f2)
             
-            let prNumber = null;
-            for (const pr of pullRequests) {
-              if (pr.head.sha === '${{ github.event.workflow_run.head_sha }}') {
-                prNumber = pr.number;
-                break;
-              }
-            }
-            
-            if (prNumber) {
-              core.setOutput('pr_number', prNumber);
-            }
+            echo "success=true" >> $GITHUB_OUTPUT
+            echo "comparison_url=$COMPARISON_URL" >> $GITHUB_OUTPUT
+            echo "regression_count=$REGRESSION_COUNT" >> $GITHUB_OUTPUT
+            echo "Pixel-Eagle upload successful"
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+            echo "Pixel-Eagle upload failed with HTTP $HTTP_CODE"
+            echo "Response: $RESPONSE_BODY"
+          fi
+        continue-on-error: true
+        env:
+          PIXEL_EAGLE_API_KEY: ${{ secrets.PIXEL_EAGLE_API_KEY }}
 
-      - name: Post screenshot comment to PR
-        if: steps.check_screenshot.outputs.screenshot_exists == 'true' && steps.find_pr.outputs.pr_number != ''
+      - name: Post Pixel-Eagle comment to PR
+        if: steps.pixel_eagle.outputs.success == 'true' && steps.metadata.outputs.pr_number != ''
         uses: actions/github-script@v7
         with:
+          github-token: ${{ github.token }}
           script: |
-            const fs = require('fs');
-            const prNumber = '${{ steps.find_pr.outputs.pr_number }}';
+            const prNumber = parseInt('${{ steps.metadata.outputs.pr_number }}');
+            const comparisonUrl = '${{ steps.pixel_eagle.outputs.comparison_url }}';
+            const regressionCount = parseInt('${{ steps.pixel_eagle.outputs.regression_count }}') || 0;
             const workflowRunId = '${{ github.event.workflow_run.id }}';
-            const artifactUrl = `https://github.com/${{ github.repository }}/actions/runs/${workflowRunId}`;
+            const headSha = '${{ steps.metadata.outputs.head_sha }}';
             
-            // Read and encode screenshot as base64
-            const imageBuffer = fs.readFileSync('output.png');
-            const base64Image = imageBuffer.toString('base64');
-            const imageSize = (imageBuffer.length / 1024).toFixed(2); // Size in KB
+            let body = `## 📸 Visual Regression Testing (Pixel-Eagle)\n\n`;
             
-            // Create markdown with base64 data URL (with size limit check)
-            let body;
-            if (base64Image.length > 60000) {
-              // If still too large, post link instead
-              body = `## 📸 Screenshot Preview\n\n✅ Screenshot captured successfully!\n\n[Download Screenshot](${artifactUrl}) (${imageSize} KB)`;
+            if (regressionCount > 0) {
+              body += `⚠️ **${regressionCount} Visual Regression(s) Detected**\n\n`;
+              body += `The screenshot shows ${regressionCount} pixel difference(s) compared to the baseline.\n`;
             } else {
-              // Use data URL if small enough
-              const imageDataUrl = 'data:image/png;base64,' + base64Image;
-              body = `## 📸 Screenshot Preview\n\n![Headless WGPU Screenshot](${imageDataUrl})\n\n✅ Screenshot captured successfully from headless WGPU application.`;
+              body += `✅ **All Visual Tests Passed**\n\n`;
+              body += `No regressions detected — screenshot matches baseline.\n`;
             }
             
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: parseInt(prNumber),
-              body: body
-            });
-            
-            console.log(`Posted screenshot comment to PR #${prNumber} (size: ${base64Image.length} chars)`);
-
-      - name: Post failure message
-        if: steps.check_screenshot.outputs.screenshot_exists == 'false'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data: pullRequests } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              sort: 'updated',
-              direction: 'desc',
-              per_page: 10
-            });
-            
-            let prNumber = null;
-            for (const pr of pullRequests) {
-              if (pr.head.sha === '${{ github.event.workflow_run.head_sha }}') {
-                prNumber = pr.number;
-                break;
-              }
+            if (comparisonUrl) {
+              body += `\n[View Comparison Report](${comparisonUrl})`;
             }
             
-            if (!prNumber) return;
-            
-            const body = `## ⚠️ Screenshot Generation Failed\n\nThe headless WGPU application did not generate a screenshot. Check the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}) for details.`;
+            body += `\n\nCommit: [\`${headSha.substring(0, 7)}\`](https://github.com/${{ github.repository }}/commit/${headSha})`;
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -125,3 +136,64 @@ jobs:
               issue_number: prNumber,
               body: body
             });
+            
+            console.log(`Posted Pixel-Eagle comparison to PR #${prNumber}`);
+
+      - name: Post screenshot fallback comment (if Pixel-Eagle upload failed)
+        if: steps.pixel_eagle.outputs.success == 'false' && steps.check_screenshot.outputs.screenshot_exists == 'true' && steps.metadata.outputs.pr_number != ''
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const fs = require('fs');
+            const prNumber = parseInt('${{ steps.metadata.outputs.pr_number }}');
+            const workflowRunId = '${{ github.event.workflow_run.id }}';
+            const artifactUrl = `https://github.com/${{ github.repository }}/actions/runs/${workflowRunId}`;
+            const headSha = '${{ steps.metadata.outputs.head_sha }}';
+            
+            // Read and encode screenshot as base64
+            const imageBuffer = fs.readFileSync('output.png');
+            const base64Image = imageBuffer.toString('base64');
+            const imageSize = (imageBuffer.length / 1024).toFixed(2);
+            
+            let body = `## 📸 Screenshot Preview\n\n`;
+            body += `⚠️ Pixel-Eagle API upload failed. Displaying screenshot directly.\n\n`;
+            
+            if (base64Image.length > 60000) {
+              body += `✅ Screenshot captured successfully!\n\n[Download Screenshot](${artifactUrl}) (${imageSize} KB)`;
+            } else {
+              const imageDataUrl = 'data:image/png;base64,' + base64Image;
+              body += `![Headless WGPU Screenshot](${imageDataUrl})\n\n✅ Screenshot captured successfully.`;
+            }
+            
+            body += `\n\nCommit: [\`${headSha.substring(0, 7)}\`](https://github.com/${{ github.repository }}/commit/${headSha})`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: body
+            });
+            
+            console.log(`Posted fallback screenshot comment to PR #${prNumber}`);
+
+      - name: Post failure message
+        if: steps.check_screenshot.outputs.screenshot_exists == 'false' && steps.metadata.outputs.pr_number != ''
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const prNumber = parseInt('${{ steps.metadata.outputs.pr_number }}');
+            const workflowRunId = '${{ github.event.workflow_run.id }}';
+            const artifactUrl = `https://github.com/${{ github.repository }}/actions/runs/${workflowRunId}`;
+            
+            const body = `## ⚠️ Screenshot Generation Failed\n\nThe headless WGPU application did not generate a screenshot.\n\nWorkflow Status: [\`${{ github.event.workflow_run.conclusion }}\`](${artifactUrl})\n\n[View Workflow Logs](${artifactUrl})`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: body
+            });
+            
+            console.log(`Posted failure message to PR #${prNumber}`);
