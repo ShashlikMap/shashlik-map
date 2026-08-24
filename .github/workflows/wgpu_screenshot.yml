@@ -2,7 +2,7 @@ name: WGPU Headless Screenshot
 
 on:
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
 
 jobs:
   screenshot:
@@ -27,7 +27,6 @@ jobs:
         env:
           WGPU_BACKEND: vulkan
           GALLIUM_DRIVER: llvmpipe
-          MAPTILER_API_KEY: ${{ secrets.MAPTILER_API_KEY }}
         run: |
           cargo run --bin headless --release
 

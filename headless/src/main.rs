@@ -8,6 +8,8 @@ use renderer_gpu::render_config::RenderConfig;
 use renderer_gpu::wgpu_canvas::DefaultWgpuCanvas;
 use std::thread::sleep;
 use std::time::Duration;
+use osm::source::reqwest_source::ReqwestSource;
+use osm::tiles::TileStore;
 use wgpu::{Device, DeviceDescriptor, Features, Label, Limits, MemoryHints, PowerPreference, Queue, SurfaceColorSpace, SurfaceConfiguration, TextureUsages};
 
 fn main() {
@@ -43,7 +45,7 @@ fn main() {
     };
     let canvas = DefaultWgpuCanvas(queue.clone(), device.clone(), config, target_texture);
     let tiles_provider = DefaultTilesProvider::new(
-        Box::new(MvtTileStore::new()),
+        Box::new(TileStore::new(ReqwestSource::new())),
         ShashlikFeatureProcessor::default(),
         1.0,
     );
