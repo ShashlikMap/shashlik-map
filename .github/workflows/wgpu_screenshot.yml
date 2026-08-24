@@ -34,7 +34,8 @@ jobs:
         if: always()
         run: |
           if [ -f output.png ]; then
-            pngquant --quality=50-70 --output output.png output.png
+            pngquant --quality=70-90 --force --output output_temp.png output.png
+            mv output_temp.png output.png
             ls -lh output.png
           else
             echo "No screenshot generated"
