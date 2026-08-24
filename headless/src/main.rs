@@ -8,10 +8,7 @@ use renderer_gpu::render_config::RenderConfig;
 use renderer_gpu::wgpu_canvas::DefaultWgpuCanvas;
 use std::thread::sleep;
 use std::time::Duration;
-use wgpu::{
-    Device, DeviceDescriptor, Features, Label, Limits, MemoryHints, Queue, SurfaceColorSpace,
-    SurfaceConfiguration, TextureUsages,
-};
+use wgpu::{Device, DeviceDescriptor, Features, Label, Limits, MemoryHints, PowerPreference, Queue, SurfaceColorSpace, SurfaceConfiguration, TextureUsages};
 
 fn main() {
     println!("Headless mode started");
@@ -81,9 +78,9 @@ async fn create_wgpu() -> (Device, Queue) {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::default(),
+            power_preference: PowerPreference::LowPower,
             compatible_surface: None,
-            force_fallback_adapter: false,
+            force_fallback_adapter: true,
             apply_limit_buckets: true,
         })
         .await
