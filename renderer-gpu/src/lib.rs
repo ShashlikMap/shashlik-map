@@ -4,11 +4,16 @@ use crate::buffer_pool::BufferPool;
 use crate::mesh_layers::layers::SCREEN_TEXT_LAYER;
 use crate::messages::RendererMessage;
 use crate::pass_nodes::PassNode;
+use crate::pass_nodes::g_buffer_pass_node::GBufferPassNode;
 use crate::pass_nodes::main_pass_node::MainPassNode;
 use crate::pass_nodes::prepass_node::PrepassNode;
 use crate::pass_nodes::render_to_texture_pass_node::RenderToTexturePassNode;
+use crate::pass_nodes::screenshot_pass::ScreenshotPass;
 use crate::pass_nodes::shadow_pre_pass::ShadowPrepass;
+use crate::pass_nodes::ssao_pass_node::SsaoPassNode;
+use crate::render_config::RenderConfig;
 use crate::styles::style_store::StyleStore;
+use crate::texture_view_resources::TextureViewKind;
 use crate::wgpu_canvas::WgpuCanvas;
 use canvas_api::GpuCanvasApi;
 use geo_types::Coord;
@@ -26,14 +31,9 @@ use std::iter;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
-use image::{ImageBuffer, Rgba};
 use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
-use crate::pass_nodes::g_buffer_pass_node::GBufferPassNode;
-use crate::pass_nodes::ssao_pass_node::SsaoPassNode;
-use crate::render_config::RenderConfig;
-use crate::texture_view_resources::TextureViewKind;
 
 pub mod canvas_api;
 pub mod draw_commands;
@@ -256,6 +256,10 @@ impl GpuRenderer {
                                           &self.layers,
                                           self.layers.world_shapes_feature_tags.clone());
         self.pass_nodes.push(Box::new(main_node));
+
+        if self.render_config.headless {
+            self.pass_nodes.push(Box::new(ScreenshotPass()));
+        }
     }
 
     pub fn update(&mut self, data: RendererUpdateData) {
@@ -302,61 +306,11 @@ impl GpuRenderer {
             );
         });
 
-        let u32_size = std::mem::size_of::<u32>() as u32;
-        let tt = self.global_context.canvas.texture().unwrap();
-        let unpadded_bytes_per_row = u32_size * tt.width();
-        let alignment = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-        let padded_bytes_per_row = (unpadded_bytes_per_row + alignment - 1) & !(alignment - 1);
-        encoder.copy_texture_to_buffer(
-            wgpu::TexelCopyTextureInfo {
-                aspect: wgpu::TextureAspect::All,
-                texture: tt,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-            },
-            wgpu::TexelCopyBufferInfo {
-                buffer: &self.global_context.output_buffer,
-                layout: wgpu::TexelCopyBufferLayout {
-                    bytes_per_row: Some(padded_bytes_per_row),
-                    ..Default::default()
-                },
-            },
-            tt.size(),
-        );
-
         self.global_context
             .queue()
             .submit(iter::once(encoder.finish()));
 
-        let buffer_slice = self.global_context.output_buffer.slice(..);
-        let (tx, rx) = channel();
-        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-            tx.send(result).unwrap();
-        });
-
-        self.global_context.device().poll(wgpu::PollType::wait_indefinitely()).unwrap();
-
-        if let Ok(_) = rx.recv() {
-            let data = buffer_slice.get_mapped_range().expect("Mapped range error");
-            let width = tt.width() as usize;
-            let height = tt.height() as usize;
-            let unpadded_bytes_per_row = width * 4;
-            let padded_bytes_per_row = padded_bytes_per_row as usize;
-
-            let mut packed_data = Vec::with_capacity(width * height * 4);
-
-            for chunk in data.chunks_exact(padded_bytes_per_row) {
-                packed_data.extend_from_slice(&chunk[..unpadded_bytes_per_row]);
-            }
-
-            drop(data);
-            self.global_context.output_buffer.unmap();
-
-            if let Some(img_buf) = ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, packed_data) {
-                img_buf.save("output.png").expect("PNG failed");
-                println!("PNG ok");
-            }
-        }
+        self.global_context.create_screenshot_if_available();
 
         self.global_context.canvas.present()
     }

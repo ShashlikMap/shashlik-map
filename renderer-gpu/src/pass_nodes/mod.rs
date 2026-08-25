@@ -4,6 +4,7 @@ pub mod prepass_node;
 pub mod shadow_pre_pass;
 pub mod g_buffer_pass_node;
 pub mod ssao_pass_node;
+pub mod screenshot_pass;
 
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;

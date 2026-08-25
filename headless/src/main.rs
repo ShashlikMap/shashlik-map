@@ -43,7 +43,8 @@ fn main() {
     );
 
     let mut map = pollster::block_on(async {
-        let render_config = RenderConfig::default();
+        let mut render_config = RenderConfig::default();
+        render_config.headless = true;
         let renderer = GpuRenderer::new_with_config(
             render_config,
             feature_layer_tags(),
