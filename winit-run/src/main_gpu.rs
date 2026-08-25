@@ -16,8 +16,7 @@ use std::cmp::max;
 use std::str::FromStr;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
-use wgpu::{Device, Instance, TextureUsages};
-use wgpu::{SurfaceColorSpace, SurfaceConfiguration};
+use wgpu::{Device, Instance};
 
 pub fn prepare() {
     let mut wgpu_settings = WGPUSettings::default();
@@ -87,24 +86,12 @@ pub fn launch_internal(ui: &ShashlikUI) {
                             dimension: wgpu::TextureDimension::D2,
                             format: wgpu::TextureFormat::Rgba8Unorm,
                             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                                | wgpu::TextureUsages::TEXTURE_BINDING,
+                                | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_SRC,
                             view_formats: &[],
                         });
-                        let config = SurfaceConfiguration {
-                            usage: TextureUsages::RENDER_ATTACHMENT,
-                            format: target_texture.format(),
-                            color_space: SurfaceColorSpace::Auto,
-                            width: target_texture.width(),
-                            height: target_texture.height(),
-                            present_mode: Default::default(),
-                            desired_maximum_frame_latency: 2,
-                            alpha_mode: Default::default(),
-                            view_formats: vec![],
-                        };
-                        let canvas = DefaultWgpuCanvas(
+                        let canvas = DefaultWgpuCanvas::new(
                             queue.clone(),
                             device.clone(),
-                            config,
                             target_texture,
                         );
                         let tiles_provider = DefaultTilesProvider::new(

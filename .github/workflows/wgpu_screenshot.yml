@@ -1,0 +1,75 @@
+name: WGPU Headless Screenshot
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wgpu-screenshot-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  headless-screenshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Store run metadata
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
+        run: |
+          mkdir -p pr-metadata
+          printf '%s' "$PR_NUMBER" > pr-metadata/pr_number.txt
+          printf '%s' "$HEAD_SHA"  > pr-metadata/head_sha.txt
+          printf '%s' "$HEAD_REF"  > pr-metadata/head_ref.txt
+          printf '%s' "$BASE_REF"  > pr-metadata/base_ref.txt
+
+      - name: Upload run metadata artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-metadata
+          path: pr-metadata/
+          retention-days: 5
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mesa-vulkan-drivers libgl1-mesa-dri
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+
+      - name: Run Headless WGPU Application
+        env:
+          WGPU_BACKEND: vulkan
+          GALLIUM_DRIVER: llvmpipe
+        run: |
+          cargo run --bin headless --release
+          if [ ! -f output.png ]; then
+            echo "::error::the headless run finished but did not produce output.png"
+            exit 1
+          fi
+          ls -l output.png
+
+      - name: Upload Screenshot Artifact
+        if: always() && hashFiles('output.png') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: headless-screenshot
+          path: output.png
+          retention-days: 5

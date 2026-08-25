@@ -6,6 +6,7 @@ pub struct RenderConfig {
     shadow_texture_size: u32,
     pub ssao_enabled: bool,
     pub preview_type: PreviewType,
+    pub headless: bool,
 }
 
 impl RenderConfig {
@@ -29,6 +30,7 @@ impl Default for RenderConfig {
             shadow_texture_size: 2048,
             ssao_enabled: false,
             preview_type: PreviewType::None,
+            headless: false,
         }
     }
 }

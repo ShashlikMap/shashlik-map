@@ -4,11 +4,16 @@ use crate::buffer_pool::BufferPool;
 use crate::mesh_layers::layers::SCREEN_TEXT_LAYER;
 use crate::messages::RendererMessage;
 use crate::pass_nodes::PassNode;
+use crate::pass_nodes::g_buffer_pass_node::GBufferPassNode;
 use crate::pass_nodes::main_pass_node::MainPassNode;
 use crate::pass_nodes::prepass_node::PrepassNode;
 use crate::pass_nodes::render_to_texture_pass_node::RenderToTexturePassNode;
+use crate::pass_nodes::screenshot_pass::ScreenshotPass;
 use crate::pass_nodes::shadow_pre_pass::ShadowPrepass;
+use crate::pass_nodes::ssao_pass_node::SsaoPassNode;
+use crate::render_config::RenderConfig;
 use crate::styles::style_store::StyleStore;
+use crate::texture_view_resources::TextureViewKind;
 use crate::wgpu_canvas::WgpuCanvas;
 use canvas_api::GpuCanvasApi;
 use geo_types::Coord;
@@ -29,10 +34,6 @@ use std::thread::spawn;
 use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
-use crate::pass_nodes::g_buffer_pass_node::GBufferPassNode;
-use crate::pass_nodes::ssao_pass_node::SsaoPassNode;
-use crate::render_config::RenderConfig;
-use crate::texture_view_resources::TextureViewKind;
 
 pub mod canvas_api;
 pub mod draw_commands;
@@ -105,7 +106,7 @@ impl GpuRenderer {
         Self::run_background(style_store, renderer_tx.clone(), renderer_api_rx);
 
         let api = Arc::new(CommonRendererApi::new(renderer_api_tx));
-        
+
         Ok(Self {
             render_config,
             layers,
@@ -255,6 +256,10 @@ impl GpuRenderer {
                                           &self.layers,
                                           self.layers.world_shapes_feature_tags.clone());
         self.pass_nodes.push(Box::new(main_node));
+
+        if self.render_config.headless {
+            self.pass_nodes.push(Box::new(ScreenshotPass()));
+        }
     }
 
     pub fn update(&mut self, data: RendererUpdateData) {
@@ -304,6 +309,8 @@ impl GpuRenderer {
         self.global_context
             .queue()
             .submit(iter::once(encoder.finish()));
+
+        self.global_context.create_screenshot_if_available();
 
         self.global_context.canvas.present()
     }

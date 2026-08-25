@@ -1,14 +1,16 @@
+use std::sync::mpsc::channel;
+use image::{ImageBuffer, Rgba};
 use crate::RendererUpdateData;
 use crate::collider::Collider;
 use crate::render_config::RenderConfig;
 use crate::styles::style_store::StyleStore;
 use crate::texture_view_resources::TextureViewResources;
-use crate::utils::ReceiverExt;
+use crate::utils::{ReceiverExt, TextureExt};
 use crate::view_projection::ViewProjection;
 use crate::wgpu_canvas::WgpuCanvas;
 use renderer_common::PreviewType;
 use wgpu::util::DeviceExt;
-use wgpu::{BindGroup, BindGroupLayout, Device};
+use wgpu::{BindGroup, BindGroupLayout, Buffer, Device};
 
 pub struct GlobalContext {
     pub canvas: Box<dyn WgpuCanvas>,
@@ -21,6 +23,7 @@ pub struct GlobalContext {
     pub(crate) texture_view_resources: TextureViewResources,
     preview_type: PreviewType,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[[f32; 4]; 4]>>,
+    png_buffer: Option<Buffer>
 }
 
 impl GlobalContext {
@@ -29,7 +32,7 @@ impl GlobalContext {
         let view_projection = ViewProjection::new(device, render_config);
         let collider = Collider::new();
         let styles_bind_group_layout = Self::create_style_bind_group_layout(device);
-        
+
         let texture_view_resources = TextureViewResources::new(render_config, device);
         GlobalContext {
             canvas,
@@ -42,6 +45,7 @@ impl GlobalContext {
             texture_view_resources,
             preview_type: render_config.preview_type,
             style_uniform_rx: style_store.subscribe(),
+            png_buffer: None
         }
     }
 
@@ -129,5 +133,43 @@ impl GlobalContext {
 
     pub fn preview_type(&self) -> PreviewType {
         self.preview_type
+    }
+
+    pub fn set_png_buffer(&mut self, buffer: Buffer) {
+        self.png_buffer = Some(buffer);
+    }
+
+    pub fn create_screenshot_if_available(&mut self) {
+        if let Some(png_buffer) = self.png_buffer.take() {
+            let buffer_slice = png_buffer.slice(..);
+            let (tx, rx) = channel();
+            buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+                tx.send(result).unwrap();
+            });
+
+            self.device().poll(wgpu::PollType::wait_indefinitely()).unwrap();
+
+            let texture = self.canvas.texture().unwrap();
+            let texture_width = texture.width() as usize;
+            let texture_height = texture.height() as usize;
+
+            if let Ok(_) = rx.recv() {
+                let data = buffer_slice.get_mapped_range().expect("Mapped range error");
+
+                let mut packed_data = Vec::with_capacity(texture_width * texture_height * 4);
+
+                for chunk in data.chunks_exact(texture.padded_bytes_per_row() as usize) {
+                    packed_data.extend_from_slice(&chunk[..texture.unpadded_bytes_per_row() as usize]);
+                }
+
+                drop(data);
+                png_buffer.unmap();
+
+                if let Some(img_buf) = ImageBuffer::<Rgba<u8>, _>::from_raw(texture_width as u32, texture_height as u32, packed_data) {
+                    img_buf.save("output.png").expect("PNG failed");
+                    println!("PNG created");
+                }
+            }
+        }
     }
 }
