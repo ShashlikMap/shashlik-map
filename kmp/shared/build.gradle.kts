@@ -39,15 +39,15 @@ kotlin {
         }
     }
     
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "Shared"
-            isStatic = true
-        }
-    }
+//    listOf(
+//        iosArm64(),
+//        iosSimulatorArm64()
+//    ).forEach { iosTarget ->
+//        iosTarget.binaries.framework {
+//            baseName = "Shared"
+//            isStatic = true
+//        }
+//    }
     
     sourceSets {
         androidMain.dependencies {
@@ -95,7 +95,7 @@ android {
 }
 
 group = "io.github.shashlikmap"
-version = "0.2.1"
+version = "0.2.2"
 
 mavenPublishing {
     publishToMavenCentral()
