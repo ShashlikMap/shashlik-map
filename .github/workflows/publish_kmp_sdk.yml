@@ -6,8 +6,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  publish:
+  publish_kmp_sdk:
     runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ./kmp
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
