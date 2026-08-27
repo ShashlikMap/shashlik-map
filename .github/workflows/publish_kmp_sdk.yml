@@ -36,9 +36,6 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Prebuild rustls-platform-verifier-android
-        run: cargo build -p rustls-platform-verifier --release --target aarch64-linux-android || true
-
       - name: Publish to MavenCentral
         run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
         env:
