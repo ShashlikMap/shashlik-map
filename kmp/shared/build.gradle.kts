@@ -1,4 +1,5 @@
 import gobley.gradle.cargo.tasks.CargoBuildTask
+import groovy.json.JsonSlurper
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -31,6 +32,38 @@ uniffi {
     }
 }
 
+val rustlsPlatformVerifierAar = providers.exec {
+    workingDir = rootDir.parentFile
+    commandLine(
+        "cargo", "metadata",
+        "--format-version", "1",
+        "--filter-platform", "aarch64-linux-android",
+    )
+}.standardOutput.asText.map { metadata ->
+    @Suppress("UNCHECKED_CAST")
+    val packages = (JsonSlurper().parseText(metadata) as Map<String, Any>)
+        .getValue("packages") as List<Map<String, Any>>
+    val crate = packages.firstOrNull { it["name"] == "rustls-platform-verifier-android" }
+        ?: error("rustls-platform-verifier-android is not in the Cargo graph for aarch64-linux-android")
+    val version = crate.getValue("version") as String
+    val crateDir = File(crate.getValue("manifest_path") as String).parentFile
+    File(crateDir, "maven/rustls/rustls-platform-verifier/$version/rustls-platform-verifier-$version.aar")
+        .also { require(it.isFile) { "Expected the rustls-platform-verifier AAR at $it" } }
+}
+
+val unpackRustlsPlatformVerifier by tasks.registering(Copy::class) {
+    description = "Extracts the Kotlin component bundled in the rustls-platform-verifier-android crate."
+    from(zipTree(rustlsPlatformVerifierAar)) {
+        include("classes.jar")
+    }
+    into(layout.buildDirectory.dir("rustlsPlatformVerifier"))
+    rename("classes.jar", "rustls-platform-verifier.jar")
+}
+
+val rustlsPlatformVerifierJar = files(
+    layout.buildDirectory.file("rustlsPlatformVerifier/rustls-platform-verifier.jar")
+).builtBy(unpackRustlsPlatformVerifier)
+
 kotlin {
     androidTarget {
         publishLibraryVariants("release")
@@ -38,7 +71,7 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
+
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -48,7 +81,7 @@ kotlin {
             isStatic = true
         }
     }
-    
+
     sourceSets {
         androidMain.dependencies {
             implementation(libs.androidx.core.ktx)
@@ -58,7 +91,7 @@ kotlin {
             implementation(libs.androidx.material3)
             implementation(libs.accompanist)
             implementation(libs.play.services.location)
-            implementation(libs.rustls.platform.verifier)
+            implementation(rustlsPlatformVerifierJar)
             implementation("net.java.dev.jna:jna:5.18.1@aar")
             implementation("com.jakewharton.timber:timber:5.0.1")
         }
@@ -83,6 +116,7 @@ android {
     }
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
+        consumerProguardFiles("consumer-rules.pro")
         ndk {
             //noinspection ChromeOsAbiSupport
             abiFilters += listOf("arm64-v8a")
@@ -95,7 +129,7 @@ android {
 }
 
 group = "io.github.shashlikmap"
-version = "0.2.1"
+version = "0.3.0"
 
 mavenPublishing {
     publishToMavenCentral()
