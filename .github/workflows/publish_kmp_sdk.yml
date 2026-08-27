@@ -1,9 +1,9 @@
 name: Publish KMP SDK
 on:
-  push:
-    branches:
-      - publish_kmp_sdk
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   publish_kmp_sdk:
