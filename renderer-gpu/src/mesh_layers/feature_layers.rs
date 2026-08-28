@@ -2,7 +2,7 @@ use crate::global_context::GlobalContext;
 use crate::mesh_layers::BaseMeshLayer;
 use indexmap::IndexMap;
 
-pub struct FeatureLayers<ML: BaseMeshLayer> {
+pub(crate) struct FeatureLayers<ML: BaseMeshLayer> {
     feature_shape_layers: IndexMap<&'static str, ML>,
 }
 

@@ -7,7 +7,7 @@ use renderer_common::geometry_data::{LineData, TextData};
 use renderer_common::render_modifier::SpatialData;
 use wgpu::RenderPass;
 
-pub struct TextMeshLayer<I: MeshInstanceInput> {
+pub(crate) struct TextMeshLayer<I: MeshInstanceInput> {
     text_renderer: TextRenderer<I>,
 }
 

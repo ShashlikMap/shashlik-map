@@ -8,11 +8,10 @@ use renderer_common::geometry_data::StyledRangeInfo;
 use crate::buffer_pool::BufferPool;
 use crate::global_context::GlobalContext;
 
-
 #[derive(Clone)]
-pub struct StyledRange(pub Range<usize>, pub StyledRangeInfo);
+pub(crate) struct StyledRange(pub Range<usize>, pub StyledRangeInfo);
 
-pub struct Mesh {
+pub(crate) struct Mesh {
     pub vertex_buf: Buffer,
     pub index_buf: (Buffer, usize),
     pub layers_indices: Vec<StyledRange>,
@@ -85,17 +84,21 @@ impl Mesh {
     pub fn render_instanced(
         &self,
         render_pass: &mut RenderPass,
+        global_context: &GlobalContext,
         instance_count: usize,
         disable_skip_mesh_feature: bool,
         indirect_args: Option<&Buffer>
     ) {
         if instance_count > 0 {
             let range = 0..(instance_count as u32);
-            self.render(render_pass, &range, disable_skip_mesh_feature, indirect_args);
+            self.render(render_pass, global_context, &range, disable_skip_mesh_feature, indirect_args);
         }
     }
 
-    fn render(&self, render_pass: &mut RenderPass, instances: &Range<u32>, disable_skip_mesh_feature: bool, indirect_args: Option<&Buffer>) {
+    fn render(&self, render_pass: &mut RenderPass,
+              global_context: &GlobalContext,
+              instances: &Range<u32>,
+              disable_skip_mesh_feature: bool, indirect_args: Option<&Buffer>) {
         let v_buf = &self.vertex_buf;
         let i_buf = &self.index_buf.0;
         if v_buf.size() > 0 && i_buf.size() > 0 {
@@ -103,6 +106,10 @@ impl Mesh {
             render_pass.set_index_buffer(i_buf.slice(..), wgpu::IndexFormat::Uint32);
             for range in &self.layers_indices {
                 let styled_range_info = &range.1;
+
+                if let Some(sss) = styled_range_info.skip_after && sss <= global_context.view_projection.uniform.scale  {
+                    continue;
+                }
                 // TODO Think how it can be done in more abstract way
                 if disable_skip_mesh_feature && styled_range_info.skip_preview {
                     continue;

@@ -11,7 +11,7 @@ pub mod fill_shadow_map_pipeline;
 pub mod g_buf_pipeline;
 pub mod x_real_mesh_pipeline;
 
-pub trait RenderPipeline<InstanceInputType: MeshInstanceInput> {
+pub(crate) trait RenderPipeline<InstanceInputType: MeshInstanceInput> {
     fn setup_compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {}
     fn compute_mesh(&mut self, _compute_pass: &mut ComputePass,
                     _mesh: &MeshBuffers<InstanceInputType>) {}

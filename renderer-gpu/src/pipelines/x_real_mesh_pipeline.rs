@@ -9,7 +9,7 @@ use wgpu::{
     ShaderSource, StencilState, TextureFormat,
 };
 
-pub struct XRealMeshShaderPipeline {
+pub(crate) struct XRealMeshShaderPipeline {
     pipeline: Option<wgpu::RenderPipeline>,
 }
 

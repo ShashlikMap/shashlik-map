@@ -7,7 +7,7 @@ use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, BindingType, CompareFunction, FilterMode, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
 
-pub struct ScreenMeshPipeline {
+pub(crate) struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
     texture_bind_group_layout: BindGroupLayout,
     texture_type_and_bind_group: Option<(TextureType, BindGroup)>,

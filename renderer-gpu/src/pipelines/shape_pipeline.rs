@@ -9,7 +9,7 @@ use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, Device, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
 
-pub struct ShapePipeline {
+pub(crate) struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
     pipeline: Option<wgpu::RenderPipeline>,
     vs_func_name: Option<&'static str>,

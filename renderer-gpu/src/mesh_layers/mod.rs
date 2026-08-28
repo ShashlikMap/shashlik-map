@@ -21,18 +21,18 @@ pub struct LayerAttribute {
     pub(crate) screen_space: u32,
 }
 
-pub type LayerAttrMapper<I> = fn(LayerAttribute) -> I;
+pub(crate) type LayerAttrMapper<I> = fn(LayerAttribute) -> I;
 
-pub trait BaseMeshLayer {
+pub(crate) trait BaseMeshLayer {
     fn update(&mut self, global_context: &mut GlobalContext);
 
     fn clear_by_key(&mut self, key: &str);
 }
 
-pub trait RenderableLayer<I: MeshInstanceInput> {
+pub(crate) trait RenderableLayer<I: MeshInstanceInput> {
     fn render(&mut self, _render_pass: &mut RenderPass, _render_pipeline: &mut impl RenderPipeline<I>, _global_context: &mut GlobalContext) {}
 }
 
-pub trait ComputableLayer<I: MeshInstanceInput> {
+pub(crate) trait ComputableLayer<I: MeshInstanceInput> {
     fn compute(&mut self, _command_encoder: &mut CommandEncoder, _render_pipeline: &mut impl RenderPipeline<I>, _global_context: &mut GlobalContext) {}
 }

@@ -257,7 +257,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     Some((style_id, -100, GeometryType::Polygon, None))
                 }
                 MapGeomObjectKind::Building(_) => {
-                    Some((StyleId::new("building"), -99, GeometryType::Polygon, None))
+                    Some((StyleId::new("building"), -98, GeometryType::Polygon, None))
                 }
                 _ => None,
             } {
@@ -294,7 +294,8 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         level
                     };
 
-                    // TODO This stuff is quite expensive. Need to figure out optimization at least when color alpha is zero
+                    let mut styled_range_info = StyledRangeInfo::new(1, true);
+                    styled_range_info.skip_after = Some(0.8f32);
                     geometry_data.push(GeometryData::Shape(ShapeData {
                         path: path_builder.clone().build(),
                         geometry_type: GeometryType::Polyline(PolylineOptions {
@@ -304,8 +305,8 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                             tolerance: 0.02,
                         }),
                         style_id: StyleId::new("building_stand"),
-                        index_layer_level: -99, // same as just buildings
-                        styled_range_info: StyledRangeInfo::new(1, true),
+                        index_layer_level: -99,
+                        styled_range_info,
                     }));
 
                     geometry_data.push(GeometryData::ExtrudedPolygon(ExtrudedPolygonData {

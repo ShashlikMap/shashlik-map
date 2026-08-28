@@ -27,6 +27,4 @@ impl Transition2d3dHelper {
         self.scale_2d_3d = clamp(self.scale_2d_3d + scale_2d_3d_mul * anim_speed, 0.0, 1.0);
         self.scale_2d_3d
     }
-    
-    pub fn scale_2d_3d(&self) -> f32 { self.scale_2d_3d }
 }

@@ -8,7 +8,7 @@ use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilState, TextureFormat, TextureUsages};
 
-pub struct MeshPipeline {
+pub(crate) struct MeshPipeline {
     pipeline: Option<wgpu::RenderPipeline>,
     pub bind_group_layout: BindGroupLayout,
     depth_bind_group_layout: Option<BindGroupLayout>,

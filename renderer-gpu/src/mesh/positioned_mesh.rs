@@ -12,7 +12,7 @@ use wgpu::util::{DeviceExt, DrawIndexedIndirectArgs};
 use wgpu::{ComputePass, RenderPass};
 
 type InternalIndirectBufParams = (usize, usize, usize);
-pub struct PositionedMesh<T: MeshInstanceInput> {
+pub(crate) struct PositionedMesh<T: MeshInstanceInput> {
     mesh: Mesh,
     attr_map: LayerAttrMapper<T>,
     instance_buffer: InstanceBuffer<T>,
@@ -161,12 +161,14 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
     pub fn render_instanced(
         &mut self,
         render_pass: &mut RenderPass,
+        global_context: &GlobalContext,
         disable_skip_mesh_feature: bool,
     ) {
         let instances_args_buffer = self.mesh_buffers.args_buffer();
         let instance_count = self.get_instance_buffer_length();
         self.mesh.render_instanced(
             render_pass,
+            global_context,
             instance_count,
             disable_skip_mesh_feature,
             instances_args_buffer

@@ -7,7 +7,7 @@ use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{Face, RenderPass, ShaderModuleDescriptor, ShaderSource};
 
-pub struct FillShadowMapPipeline {
+pub(crate) struct FillShadowMapPipeline {
     mesh_pipeline: MeshPipeline,
     render_pipeline: wgpu::RenderPipeline,
 }

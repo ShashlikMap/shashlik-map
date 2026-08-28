@@ -24,14 +24,14 @@ pub(crate) struct ViewProjUniform {
     light_view_proj: [[f32; 4]; 4],
     view_tr_inv: [[f32; 4]; 4],
     inv_screen_size: [f32; 2],
-    scale: f32,
+    pub(crate) scale: f32,
     p2_scale: f32,
     scale_2d_3d: f32
 }
 
 #[derive(Clone)]
-pub struct ViewProjection {
-    uniform: ViewProjUniform,
+pub(crate) struct ViewProjection {
+    pub uniform: ViewProjUniform,
     pub scale_2d_3d: f32,
     pub cs_offset: DVec3,
     pub screen_size: (f64, f64),

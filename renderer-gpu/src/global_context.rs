@@ -12,7 +12,7 @@ use renderer_common::PreviewType;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, Device};
 
-pub struct GlobalContext {
+pub(crate) struct GlobalContext {
     pub canvas: Box<dyn WgpuCanvas>,
     pub view_projection: ViewProjection,
     pub collider: Collider,

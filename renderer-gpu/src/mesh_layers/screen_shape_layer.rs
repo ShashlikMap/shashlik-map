@@ -137,7 +137,7 @@ impl<I: MeshInstanceInput> RenderableLayer<I> for ScreenShapeLayer<I> {
             let instance_count = instance_buf.length;
             if instance_count > 0 {
                 render_pipeline.setup_mesh_buffers(render_pass, mesh_buffers);
-                mesh.render_instanced(render_pass, instance_count, false, None);
+                mesh.render_instanced(render_pass, global_context, instance_count, false, None);
             }
         });
     }

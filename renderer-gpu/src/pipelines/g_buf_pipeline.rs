@@ -7,7 +7,7 @@ use wesl::include_wesl;
 use wgpu::TextureFormat::{Rgba16Float, Rgba32Float};
 use wgpu::{RenderPass, ShaderModuleDescriptor, ShaderSource, TextureFormat};
 
-pub struct GBufPipeline {
+pub(crate) struct GBufPipeline {
     mesh_pipeline: MeshPipeline,
     render_pipeline: wgpu::RenderPipeline,
 }
