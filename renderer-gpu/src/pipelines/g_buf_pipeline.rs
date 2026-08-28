@@ -59,7 +59,7 @@ impl RenderPipeline<GeneralInstanceInput> for GBufPipeline {
         // override mesh_pipeline immediates, to prevent any shadows related work
         render_pass.set_immediates(
             0,
-            bytemuck::bytes_of(&MeshRenderFlag::GBuf),
+            bytemuck::bytes_of(&(MeshRenderFlag::GBuf as u32)),
         );
     }
 }

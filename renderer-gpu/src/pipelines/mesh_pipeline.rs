@@ -223,7 +223,7 @@ impl RenderPipeline<GeneralInstanceInput> for MeshPipeline {
         }
         render_pass.set_immediates(
             0,
-            bytemuck::bytes_of(&mask),
+            bytemuck::bytes_of(&(mask as u32)),
         );
         render_pass.set_bind_group(0, &self.bind_group, &[]);
 

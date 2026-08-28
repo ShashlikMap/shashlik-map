@@ -1,4 +1,3 @@
-use bytemuck::{Pod, Zeroable};
 use log::error;
 use crate::global_context::GlobalContext;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
@@ -14,16 +13,13 @@ pub mod x_real_mesh_pipeline;
 
 // Keep it in sync with one in mesh_shader.wgsl
 // TODO Can we actually generate wgsl file using enum?..
-#[repr(C)]
+#[repr(u32)]
 #[derive(Clone, Copy)]
 pub(crate) enum MeshRenderFlag {
     None = 0,
     Shadows = 2,
     GBuf = 4,
 }
-
-unsafe impl Zeroable for MeshRenderFlag {}
-unsafe impl Pod for MeshRenderFlag {}
 
 pub(crate) trait RenderPipeline<InstanceInputType: MeshInstanceInput> {
     fn setup_compute(&mut self, _compute_pass: &mut ComputePass, _global_context: &GlobalContext) {}
