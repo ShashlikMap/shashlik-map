@@ -4,7 +4,7 @@ use glam::DVec3;
 use renderer_common::render_modifier::SpatialData;
 use crate::mesh_layers::{LayerAttrMapper, LayerAttribute};
 
-pub trait MeshInstanceInput: Sized + Pod + From<LayerAttribute> {
+pub(crate) trait MeshInstanceInput: Sized + Pod + From<LayerAttribute> {
     fn fill_attrs(
         attrs: &mut Vec<Self>,
         attr_mapper: LayerAttrMapper<Self>,

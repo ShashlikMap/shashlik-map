@@ -93,7 +93,7 @@ impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
         }
         self.render_data_holder.run_mut_action(|mesh| {
             render_pipeline.setup_mesh_buffers(render_pass, mesh.get_mesh_buffers());
-            mesh.render_instanced(render_pass, self.disable_skip_mesh_feature);
+            mesh.render_instanced(render_pass, global_context, self.disable_skip_mesh_feature);
         });
 
         // we render virtual_ground after other meshes to utilize depth buffer to cull geometry

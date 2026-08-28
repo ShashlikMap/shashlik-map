@@ -1,5 +1,5 @@
 use crate::global_context::GlobalContext;
-use crate::pipelines::{OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline};
+use crate::pipelines::{MeshRenderFlag, OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline};
 use crate::texture_view_resources::TextureViewKind;
 use crate::textures::{SAMPLE_COUNT, TextureData, create_simple_texture};
 use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
@@ -8,7 +8,7 @@ use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilState, TextureFormat, TextureUsages};
 
-pub struct MeshPipeline {
+pub(crate) struct MeshPipeline {
     pipeline: Option<wgpu::RenderPipeline>,
     pub bind_group_layout: BindGroupLayout,
     depth_bind_group_layout: Option<BindGroupLayout>,
@@ -217,13 +217,13 @@ impl RenderPipeline<GeneralInstanceInput> for MeshPipeline {
             render_pass.set_stencil_reference(1);
         }
         
-        let mut mask = 0;
+        let mut mask = MeshRenderFlag::None;
         if global_context.is_shadow_mapping_enabled() {
-            mask |= 2;
+            mask = MeshRenderFlag::Shadows;
         }
         render_pass.set_immediates(
             0,
-            bytemuck::bytes_of(&mask),
+            bytemuck::bytes_of(&(mask as u32)),
         );
         render_pass.set_bind_group(0, &self.bind_group, &[]);
 

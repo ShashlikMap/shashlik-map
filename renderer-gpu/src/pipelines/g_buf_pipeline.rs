@@ -1,5 +1,5 @@
 use crate::global_context::GlobalContext;
-use crate::pipelines::RenderPipeline;
+use crate::pipelines::{MeshRenderFlag, RenderPipeline};
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::vertex_attrs::GeneralInstanceInput;
 use std::borrow::Cow;
@@ -7,7 +7,7 @@ use wesl::include_wesl;
 use wgpu::TextureFormat::{Rgba16Float, Rgba32Float};
 use wgpu::{RenderPass, ShaderModuleDescriptor, ShaderSource, TextureFormat};
 
-pub struct GBufPipeline {
+pub(crate) struct GBufPipeline {
     mesh_pipeline: MeshPipeline,
     render_pipeline: wgpu::RenderPipeline,
 }
@@ -59,7 +59,7 @@ impl RenderPipeline<GeneralInstanceInput> for GBufPipeline {
         // override mesh_pipeline immediates, to prevent any shadows related work
         render_pass.set_immediates(
             0,
-            bytemuck::bytes_of(&0),
+            bytemuck::bytes_of(&(MeshRenderFlag::GBuf as u32)),
         );
     }
 }

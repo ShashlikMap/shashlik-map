@@ -9,6 +9,7 @@ use std::cell::OnceCell;
 pub struct StyledRangeInfo {
     pub instance_offset: u8,
     pub skip_preview: bool,
+    pub scale_filter: Option<fn(f32) -> bool>
 }
 
 impl StyledRangeInfo {
@@ -16,6 +17,7 @@ impl StyledRangeInfo {
         StyledRangeInfo {
             instance_offset,
             skip_preview,
+            scale_filter: None
         }
     }
 }

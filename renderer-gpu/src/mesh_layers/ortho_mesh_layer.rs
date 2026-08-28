@@ -10,7 +10,7 @@ use glam::Mat4;
 use log::error;
 use wgpu::{RenderPass, TextureView};
 
-pub struct OrthoMeshLayer<I: MeshInstanceInput> {
+pub(crate) struct OrthoMeshLayer<I: MeshInstanceInput> {
     attr_map: LayerAttrMapper<I>,
     mesh: Option<Mesh>,
     instance_buffer: InstanceBuffer<I>,
@@ -122,7 +122,7 @@ impl<I: MeshInstanceInput> RenderableLayer<I> for OrthoMeshLayer<I> {
 
             render_pipeline.setup_mesh_buffers(render_pass, &self.mesh_buffers);
             let instance_count = self.instance_buffer.length;
-            mesh.render_instanced(render_pass, instance_count, false, None);
+            mesh.render_instanced(render_pass, global_context, instance_count, false, None);
         }
     }
 }

@@ -9,11 +9,11 @@ enum ColliderMsg {
     ViewProj(ViewProjection),
 }
 
-pub trait ColliderTask: Send {
+pub(crate) trait ColliderTask: Send {
     fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler);
 }
 
-pub struct Collider {
+pub(crate) struct Collider {
     tasks: Arc<Mutex<Vec<Box<dyn ColliderTask>>>>,
     sender: Sender<ColliderMsg>,
 }
@@ -60,7 +60,7 @@ impl Collider {
         });
     }
 
-    pub fn update_view_proj(&mut self, view_projection: &ViewProjection) {
+    pub(crate) fn update_view_proj(&mut self, view_projection: &ViewProjection) {
         self.sender
             .send(ColliderMsg::ViewProj(view_projection.clone()))
             .unwrap();

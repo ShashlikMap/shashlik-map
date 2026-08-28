@@ -4,7 +4,7 @@ use wgpu::Buffer;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh_instance_input::MeshInstanceInput;
 
-pub struct MeshBuffers<I: MeshInstanceInput> {
+pub(crate) struct MeshBuffers<I: MeshInstanceInput> {
     instance_buffer: Option<BufferWithId>,
     culled_buffer: Option<BufferWithId>,
     instance_args_buffer: Option<BufferWithId>,
@@ -51,10 +51,6 @@ impl<I: MeshInstanceInput> MeshBuffers<I> {
 
     pub fn instance_buffer(&self) -> Option<&Buffer> {
         self.instance_buffer.as_ref().map(|id| &id.buffer)
-    }
-
-    pub fn culled_buffer(&self) -> Option<&Buffer> {
-        self.culled_buffer.as_ref().map(|id| &id.buffer)
     }
 
     pub fn args_buffer(&self) -> Option<&Buffer> {

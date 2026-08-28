@@ -9,7 +9,7 @@ pub mod mesh_instance_input;
 pub mod positioned_mesh;
 pub(crate) mod virtual_ground_mesh;
 
-pub struct InstanceBuffer<T: Pod> {
+pub(crate) struct InstanceBuffer<T: Pod> {
     pub buffer_with_id: Option<BufferWithId>,
     pub length: usize,
     max_length: usize,

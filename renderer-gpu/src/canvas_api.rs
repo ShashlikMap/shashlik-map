@@ -253,6 +253,7 @@ impl GpuCanvasApi {
         let geom_type = data.geometry_type;
         let style_index = self.style_store.get_index(&data.style_id);
         let initial_index = self.geometry.indices.len();
+
         match geom_type {
             GeometryType::Polyline(options) => {
                 // drop polylines with non-positive width
@@ -282,7 +283,7 @@ impl GpuCanvasApi {
             }
         }
         let last_index = self.geometry.indices.len();
-
+        
         let ranges = self
             .indices_by_layers
             .entry(data.index_layer_level)
