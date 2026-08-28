@@ -1,5 +1,5 @@
 use crate::global_context::GlobalContext;
-use crate::pipelines::RenderPipeline;
+use crate::pipelines::{MeshRenderFlag, RenderPipeline};
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::vertex_attrs::GeneralInstanceInput;
 use std::borrow::Cow;
@@ -59,7 +59,7 @@ impl RenderPipeline<GeneralInstanceInput> for GBufPipeline {
         // override mesh_pipeline immediates, to prevent any shadows related work
         render_pass.set_immediates(
             0,
-            bytemuck::bytes_of(&0),
+            bytemuck::bytes_of(&MeshRenderFlag::GBuf),
         );
     }
 }

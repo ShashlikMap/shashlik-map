@@ -2,10 +2,15 @@ import super::mesh_shader_common::{VertexInput, InstanceInput, VertexOutput};
 import super::common::CameraUniform;
 import super::common::shadow_map;
 
+alias MeshRenderFlag = u32;
+const NONE: MeshRenderFlag = 0;
+const SHADOWS: MeshRenderFlag = 2;
+const G_BUF: MeshRenderFlag = 4;
+
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 
-var<immediate> params: u32;
+var<immediate> render_flag: MeshRenderFlag;
 
 fn frag_pos_from_ray(camera: CameraUniform, uv: vec2f) -> vec3f {
     let near_world1 = camera.view_proj_inv * vec4f(uv.xy, 0.0, 1.0);
@@ -72,12 +77,19 @@ fn vs_main(
     out.clip_position = camera.view_proj * vec4<f32>(modelpos, 1.0);
 
     // calc pos_from_light only if shadows pass, otherwise allow g-buf data if not shadows
-    if((params & 2) > 0) {
-        out.pos_from_light = camera.light_view_proj * vec4<f32>(modelpos, 1.0);
-        out.pos_from_light = vec4f(out.pos_from_light.xy * vec2f(0.5, -0.5) + 0.5, out.pos_from_light.zw);
-    } else {
-        out.view_position = (camera.view * vec4f(modelpos, 1.0)).xyz;
-        out.view_normal = (camera.view_tr_inv * vec4f(modelnormal, 1.0)).xyz;
+    switch (render_flag) {
+        case SHADOWS: {
+            out.pos_from_light = camera.light_view_proj * vec4<f32>(modelpos, 1.0);
+            out.pos_from_light = vec4f(out.pos_from_light.xy * vec2f(0.5, -0.5) + 0.5, out.pos_from_light.zw);
+        }
+        case G_BUF: {
+            // bear in mind, then GBuf will use another fragment shader, not one in this file
+            out.view_position = (camera.view * vec4f(modelpos, 1.0)).xyz;
+            out.view_normal = (camera.view_tr_inv * vec4f(modelnormal, 1.0)).xyz;
+        }
+        default: {
+            // nothing
+        }
     }
 
     return out;
@@ -102,7 +114,7 @@ const dither_strength = 2.0 / 255.0;
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
     var shadow = 0.0;
     let is_virtual_plane = in.virtual_plane == 1u;
-    if((params & 2) > 0) {
+    if (render_flag == SHADOWS) {
         let currentDepth = in.pos_from_light.z;
         let projCoords = in.pos_from_light.xy;
         let shadow_bias = 0.0007 * camera.scale;

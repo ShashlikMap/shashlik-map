@@ -1,5 +1,5 @@
 use crate::global_context::GlobalContext;
-use crate::pipelines::{OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline};
+use crate::pipelines::{MeshRenderFlag, OwnedFragmentState, OwnedRenderPipelineDescriptor, OwnedVertexState, RenderPipeline};
 use crate::texture_view_resources::TextureViewKind;
 use crate::textures::{SAMPLE_COUNT, TextureData, create_simple_texture};
 use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
@@ -217,9 +217,9 @@ impl RenderPipeline<GeneralInstanceInput> for MeshPipeline {
             render_pass.set_stencil_reference(1);
         }
         
-        let mut mask = 0;
+        let mut mask = MeshRenderFlag::None;
         if global_context.is_shadow_mapping_enabled() {
-            mask |= 2;
+            mask = MeshRenderFlag::Shadows;
         }
         render_pass.set_immediates(
             0,
