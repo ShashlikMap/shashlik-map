@@ -163,20 +163,25 @@ impl PassNode for MainPassNode {
             );
         }
 
-        layers.mesh_layer.render_with_virtual_ground(
-            &mut render_pass,
-            &mut self.default_mesh_pipeline,
-            global_context,
-            true
-        );
-        
-        if global_context.is_ssao_enabled() {
-            layers.post_process_layer.render(
+        // 3D rendering only if 3D visible, including transition to 2D
+        // TODO Ideally, it should be possible to control outside of the renderer
+        if global_context.view_projection.scale_2d_3d > 0.0 {
+            layers.mesh_layer.render_with_virtual_ground(
                 &mut render_pass,
-                &mut self.post_process_screen_mesh_pipeline,
+                &mut self.default_mesh_pipeline,
                 global_context,
+                true
             );
+
+            if global_context.is_ssao_enabled() {
+                layers.post_process_layer.render(
+                    &mut render_pass,
+                    &mut self.post_process_screen_mesh_pipeline,
+                    global_context,
+                );
+            }
         }
+
         layers.screen_shape_layer.render(
             &mut render_pass,
             &mut self.screen_shape_pipeline,

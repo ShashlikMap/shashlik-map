@@ -217,7 +217,6 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         self.camera_controller.update_camera(&mut self.camera);
 
         self.update_entities();
-        self.update_styles();
 
         let cam_zoom = self.camera.scale();
         let scale_2d_3d = self.transition_2d_3d_helper.update(cam_zoom, Self::TEMP_ANIMATION_SPEED as f32);
@@ -286,19 +285,6 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
                 }
             }
         }
-    }
-
-    fn update_styles(&mut self) {
-        // // TODO Generally it should not be here + if there are no extruded polygons it makes no sense at all
-        // let scale_2d_3d = self.transition_2d_3d_helper.scale_2d_3d();
-        // if scale_2d_3d > 0.0 && scale_2d_3d < 1.0 {
-        //     self.renderer
-        //         .api().update_style(StyleId::new("building_stand"), move |style| {
-        //         // fyi, shift values to ensure a full opaque or transparent value
-        //         let new_value = ((scale_2d_3d - 0.05) * 1.1).clamp(0.0, 1.0);
-        //         style.set_alpha(new_value * 0.5);
-        //     });
-        // }
     }
 
     fn update_entities(&mut self) {

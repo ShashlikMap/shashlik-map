@@ -107,7 +107,8 @@ impl Mesh {
             for range in &self.layers_indices {
                 let styled_range_info = &range.1;
 
-                if let Some(sss) = styled_range_info.skip_after && sss <= global_context.view_projection.uniform.scale  {
+                if let Some(scale_filter) = styled_range_info.scale_filter
+                    && !scale_filter(global_context.view_projection.uniform.scale) {
                     continue;
                 }
                 // TODO Think how it can be done in more abstract way

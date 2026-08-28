@@ -285,38 +285,54 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     }
                 }
 
-                if let MapGeomObjectKind::Building(level) = kind
-                    && zoom_level == 0 && self.include_extruded
-                {
-                    let level = if level == 0 {
-                        rand::rng().random_range(2..=3)
-                    } else {
-                        level
-                    };
+                if let MapGeomObjectKind::Building(level) = kind {
+                    let building_path = path_builder.build();
 
                     let mut styled_range_info = StyledRangeInfo::new(1, true);
-                    styled_range_info.skip_after = Some(0.8f32);
-                    geometry_data.push(GeometryData::Shape(ShapeData {
-                        path: path_builder.clone().build(),
-                        geometry_type: GeometryType::Polyline(PolylineOptions {
-                            width: 0.8,
-                            line_cap: LineCap::Butt,
-                            line_join: LineJoin::Round,
-                            tolerance: 0.02,
-                        }),
-                        style_id: StyleId::new("building_stand"),
-                        index_layer_level: -99,
-                        styled_range_info,
-                    }));
+                    if zoom_level == 0 && self.include_extruded {
+                        let level = if level == 0 {
+                            rand::rng().random_range(2..=3)
+                        } else {
+                            level
+                        };
 
-                    geometry_data.push(GeometryData::ExtrudedPolygon(ExtrudedPolygonData {
-                        path: path_builder.build(),
-                        height: level as f32 * 2.0,
+                        styled_range_info.scale_filter = Some(|scale| scale <= 0.8f32);
+                        geometry_data.push(GeometryData::Shape(ShapeData {
+                            path: building_path.clone(),
+                            geometry_type: GeometryType::Polyline(PolylineOptions {
+                                width: 0.8,
+                                line_cap: LineCap::Butt,
+                                line_join: LineJoin::Round,
+                                tolerance: 0.02,
+                            }),
+                            style_id: StyleId::new("building_stand"),
+                            index_layer_level: -99,
+                            styled_range_info: styled_range_info.clone(),
+                        }));
+
+
+                        geometry_data.push(GeometryData::ExtrudedPolygon(ExtrudedPolygonData {
+                            path: building_path.clone(),
+                            height: level as f32 * 2.0,
+                        }));
+                    }
+
+                    styled_range_info.scale_filter = Some(|scale| scale >= 1.0f32);
+                    geometry_data.push(GeometryData::Shape(ShapeData {
+                        path: building_path,
+                        geometry_type,
+                        style_id,
+                        index_layer_level: layer_level as i8,
+                        styled_range_info,
                     }));
                 } else {
                     let double_style = match &kind {
-                        MapGeomObjectKind::Nature(_) |
-                        MapGeomObjectKind::Building(_) => { false }
+                        MapGeomObjectKind::Building(_) => {
+                            panic!("Buildings should not be processed here");
+                        }
+                        MapGeomObjectKind::Nature(_) => {
+                            false
+                        }
                         MapGeomObjectKind::Way(info) => {
                             match info.line_kind {
                                 LineKind::Highway { .. } => { zoom_level < 1 }
