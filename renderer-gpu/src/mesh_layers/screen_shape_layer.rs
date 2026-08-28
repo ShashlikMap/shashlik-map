@@ -17,6 +17,7 @@ use renderer_common::render_modifier::SpatialData;
 use rstar::primitives::Rectangle;
 use std::collections::HashMap;
 use std::mem;
+use rustc_hash::FxHashMap;
 use wgpu::RenderPass;
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
@@ -25,7 +26,7 @@ pub(crate) struct ScreenShapeLayer<I: MeshInstanceInput> {
     meshes: HashMap<String, (Mesh, InstanceBuffer<I>, MeshBuffers<I>)>,
     collision_task_controller: CollisionTaskController<
         (ShapeInfo, f32, String),
-        HashMap<String, Vec<(DVec3, f32)>>,
+        FxHashMap<String, Vec<(DVec3, f32)>>,
     >,
 }
 
@@ -146,7 +147,7 @@ impl<I: MeshInstanceInput> RenderableLayer<I> for ScreenShapeLayer<I> {
 struct ScreenMeshCollisionHandler {
     collision_task_wrapper: CollisionTaskWrapper<
         (ShapeInfo, f32, String),
-        HashMap<String, Vec<(DVec3, f32)>>,
+        FxHashMap<String, Vec<(DVec3, f32)>>,
     >,
 }
 
@@ -155,7 +156,7 @@ impl ScreenMeshCollisionHandler {
     pub fn new(
         collision_task_wrapper: CollisionTaskWrapper<
             (ShapeInfo, f32, String),
-            HashMap<String, Vec<(DVec3, f32)>>,
+            FxHashMap<String, Vec<(DVec3, f32)>>,
         >,
     ) -> Self {
         ScreenMeshCollisionHandler {
@@ -168,11 +169,11 @@ impl ColliderTask for ScreenMeshCollisionHandler {
     fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler) {
         let render_data_holder = self.collision_task_wrapper.update_holder();
 
-        let mut hm: HashMap<String, Vec<(DVec3, f32)>> = HashMap::new();
+        let mut hm: FxHashMap<String, Vec<(DVec3, f32)>> = FxHashMap::default();
         render_data_holder
             .run_mut_action(|(shape_info, alpha, key)| {
                 let screen_pos = view_projection.screen_position(&shape_info.position);
-                let offset = shape_info.size * 0.5;
+                let offset = shape_info.size * 0.75;
                 // no need to use f64 for collision detection
                 let bounds = Rectangle::from_corners(
                     point! { x: screen_pos.x as f32 - offset, y: screen_pos.y as f32 - offset},
@@ -180,6 +181,7 @@ impl ColliderTask for ScreenMeshCollisionHandler {
                 );
 
                 let within_screen = collision_handler.within_screen(bounds);
+                let prev_alpha = *alpha;
                 if within_screen {
                     if collision_handler.check_and_insert(bounds) {
                         *alpha = clamp(*alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
@@ -188,7 +190,11 @@ impl ColliderTask for ScreenMeshCollisionHandler {
                     }
                 }
 
-                hm.entry(key.clone()).or_default().push((shape_info.position, *alpha));
+                // don't process if it was transparent and nothing changed
+                let still_transparent = prev_alpha == 0.0 && prev_alpha == *alpha;
+                if !still_transparent {
+                    hm.entry(key.clone()).or_default().push((shape_info.position, *alpha));
+                }
             });
 
         self.collision_task_wrapper.send_result(hm);
