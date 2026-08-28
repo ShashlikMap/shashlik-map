@@ -19,9 +19,9 @@ struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(1) view_normal: vec3<f32>,
     @location(2) view_position: vec3<f32>,
-    @location(3) world_normal: vec3<f32>,
-    @location(4) pos_from_light: vec4<f32>,
-    @location(5) color_alpha: f32,
-    @location(6) height: f32,
+    @location(3) pos_from_light: vec4<f32>,
+    @location(4) color_alpha: f32,
+    @location(5) base_color: vec3<f32>,
+    @location(6) diffuse_sun_factor: vec3<f32>,
     @location(7) @interpolate(flat) virtual_plane: u32,
 }

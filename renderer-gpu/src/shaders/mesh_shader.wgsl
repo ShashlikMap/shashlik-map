@@ -47,15 +47,27 @@ fn vs_main(
     var modelnormal = model.normal;
     // TODO
     modelnormal.z = -abs(modelnormal.z);
-    out.world_normal = -modelnormal;
+    let world_normal = -modelnormal;
 
     out.color_alpha = pos.color_alpha;
 
+    var out_height = 0.0;
     // check scale_2d_3d, when geometry is flat height = 1.0 gives a correct value for gradient in fragment shader
     if(modelpos.z > 0.0 || camera.scale_2d_3d == 0.0) {
         // technically, normalized z coord
-        out.height = 1.0;
+        out_height = 1.0;
     }
+
+    out.base_color = roof_color;
+    if (world_normal.z < 0.8) {
+        // gradient only for walls
+        let gradient_koef_ground = min(1.0, (0.9 + out_height * 7.0));
+        let gradient_koef_walls = 0.85 + out_height * 0.15;
+        out.base_color = wall_color * gradient_koef_walls * gradient_koef_ground;
+    }
+
+    let diffuse_factor = max(dot(world_normal, light_dir), 0.15);
+    out.diffuse_sun_factor = sun_color * (0.5 * diffuse_factor);
 
     out.clip_position = camera.view_proj * vec4<f32>(modelpos, 1.0);
 
@@ -104,21 +116,13 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
         return vec4(0.0, 0.0, 0.0, shadow * 0.25);
     }
 
-    let diffuse_factor = max(dot(in.world_normal, light_dir), 0.15);
-    var base_color = roof_color;
-    if (in.world_normal.z < 0.8) {
-        // gradient only for walls
-        let gradient_koef_ground = min(1.0, (0.9 + in.height * 7.0));
-        let gradient_koef_walls = 0.85 + in.height * 0.15;
-        base_color = wall_color * gradient_koef_walls * gradient_koef_ground;
-    }
-
-    let direct_sun = sun_color * (0.5 * diffuse_factor) * (1.0 - shadow * 0.3);
+    let base_color = in.base_color;
+    let direct_sun = in.diffuse_sun_factor * (1.0 - shadow * 0.3);
     let total_lighting = ambient_color + direct_sun;
     let result_color = total_lighting * base_color;
 
-    let noise = fract(sin(dot(in.clip_position.xy, vec2<f32>(12.9898, 78.233))) * 43758.5453);
-    let final_color = (result_color) + (noise - 0.5) * dither_strength;
+//    let noise = fract(sin(dot(in.clip_position.xy, vec2<f32>(12.9898, 78.233))) * 43758.5453);
+//    let final_color = (result_color) + (noise - 0.5) * dither_strength;
 
-    return vec4(final_color, in.color_alpha);
+    return vec4(result_color, in.color_alpha);
 }
