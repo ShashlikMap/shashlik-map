@@ -121,8 +121,5 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
     let total_lighting = ambient_color + direct_sun;
     let result_color = total_lighting * base_color;
 
-//    let noise = fract(sin(dot(in.clip_position.xy, vec2<f32>(12.9898, 78.233))) * 43758.5453);
-//    let final_color = (result_color) + (noise - 0.5) * dither_strength;
-
     return vec4(result_color, in.color_alpha);
 }

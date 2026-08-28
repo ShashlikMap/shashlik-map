@@ -317,7 +317,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         }));
                     }
 
-                    styled_range_info.scale_filter = Some(|scale| scale >= 1.0f32);
+                    styled_range_info.scale_filter = Some(|scale| scale >= 1.8f32);
                     geometry_data.push(GeometryData::Shape(ShapeData {
                         path: building_path,
                         geometry_type,
