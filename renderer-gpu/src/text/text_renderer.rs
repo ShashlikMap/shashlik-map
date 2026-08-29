@@ -21,6 +21,7 @@ use std::f32::consts::PI;
 use std::mem;
 use std::ops::Range;
 use std::sync::Arc;
+use log::error;
 use wgpu::RenderPass;
 use crate::mesh_layers::{LayerAttrMapper, LayerAttribute};
 
@@ -37,7 +38,7 @@ pub struct TextRenderer<I: MeshInstanceInput> {
     attr_map: LayerAttrMapper<I>,
     collision_task_controller:
         CollisionTaskController<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
-    instance_buffer_map: FxHashMap<GlyphId, Range<u32>>,
+    instance_buffer_ranges: Vec<Range<u32>>,
     instance_buffer: InstanceBuffer<I>,
     glyph_cache: GlyphCache,
     glyph_data: FxHashMap<GlyphId, Vec<GlyphData>>,
@@ -59,7 +60,7 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
         Self {
             attr_map,
             collision_task_controller,
-            instance_buffer_map: FxHashMap::default(),
+            instance_buffer_ranges: Vec::new(),
             instance_buffer: InstanceBuffer::default(),
             glyph_cache,
             glyph_data: FxHashMap::default(),
@@ -83,8 +84,8 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
         let cs_offset = dvec3(cs_offset.x, cs_offset.y, 0.0);
         let total_len = glyph_data.iter().map(|it| it.1.len()).sum::<usize>();
         let mut attrs = Vec::with_capacity(total_len);
-
-        glyph_data.iter().for_each(|(glyph_id, list)| {
+        self.instance_buffer_ranges.clear();
+        glyph_data.iter().for_each(|(_, list)| {
             let start_index = attrs.len() as u32;
 
             list.iter().for_each(|glyph_data| {
@@ -104,7 +105,7 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
             });
 
             let end_index = attrs.len() as u32;
-            self.instance_buffer_map.insert(*glyph_id, start_index..end_index);
+            self.instance_buffer_ranges.push(start_index..end_index);
         });
 
         self.instance_buffer.update("TextInstanceBuffer", global_context, &attrs);
@@ -121,9 +122,9 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
     pub fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         let glyph_data = mem::take(&mut self.glyph_data);
 
-        if !self.instance_buffer_map.is_empty() && !glyph_data.is_empty() {
+        if !self.instance_buffer_ranges.is_empty() && !glyph_data.is_empty() {
             self.glyph_cache.process_glyph_data(global_context, &mut self.buffer_pool,
-                                                glyph_data, |mesh, data| {
+                                                glyph_data, |mesh, index_ranges| {
                     let v_buf = &mesh.vertex_buf;
                     if v_buf.size() > 0 {
                         let (i_buf, _) = &mesh.index_buf;
@@ -132,10 +133,13 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
                         if let Some(instance_buffer) = self.instance_buffer.buffer_with_id.as_ref() {
                             render_pass.set_vertex_buffer(1, instance_buffer.buffer().slice(..));
 
-                            data.into_iter().for_each(|(glyph_id, range)| {
-                                let instance_range = self.instance_buffer_map.get(&glyph_id).unwrap();
-                                render_pass.draw_indexed(range, 0, instance_range.clone());
-                            })
+                            if self.instance_buffer_ranges.len() != index_ranges.len() {
+                                error!("Glyph instance and indices ranges length are not equal");
+                            } else {
+                                index_ranges.into_iter().zip(self.instance_buffer_ranges.iter()).for_each(|(index_range, instance_range)| {
+                                    render_pass.draw_indexed(index_range, 0, instance_range.clone());
+                                })
+                            }
                         }
                     }
                 });

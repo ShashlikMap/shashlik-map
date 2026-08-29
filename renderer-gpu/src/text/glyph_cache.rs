@@ -47,7 +47,7 @@ impl GlyphCache {
         global_context: &GlobalContext,
         buffer_pool: &mut BufferPool,
         glyph_data: FxHashMap<GlyphId, Vec<GlyphData>>,
-        action: impl FnOnce(&Mesh, Vec<(GlyphId, Range<u32>)>),
+        action: impl FnOnce(&Mesh, Vec<Range<u32>>),
     ) {
         let mut path_builder: Option<GlyphTesselator> = None;
         let prev_mesh_state = (self.vb.vertices.len(), self.vb.indices.len());
@@ -69,7 +69,7 @@ impl GlyphCache {
 
                     start_index..end_index
                 });
-            result.push((glyph_id, range.clone()));
+            result.push(range.clone());
         });
 
         let new_mesh_state = (self.vb.vertices.len(), self.vb.indices.len());
