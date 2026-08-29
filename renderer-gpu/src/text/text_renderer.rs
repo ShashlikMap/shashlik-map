@@ -77,7 +77,7 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
         glyph_data: &FxHashMap<GlyphId, Vec<GlyphData>>,
     ) {
         let cs_offset = global_context.view_projection.cs_offset;
-        glyph_data.iter().for_each(|(key, list)| {
+        glyph_data.iter().for_each(|(glyph_id, list)| {
             let mut attrs = vec![];
             list.iter().for_each(|glyph_data| {
                 let mut position = DVec3::new(glyph_data.position.0, glyph_data.position.1, 0.0);
@@ -97,7 +97,7 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
 
             let instance_buffer = self
                 .instance_buffer_map
-                .entry(*key)
+                .entry(*glyph_id)
                 .or_insert(InstanceBuffer::default());
             instance_buffer.update("TextInstanceBuffer", global_context, &attrs);
         });
@@ -123,12 +123,12 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
                     render_pass.set_vertex_buffer(0, v_buf.slice(..));
                     render_pass.set_index_buffer(i_buf.slice(..), wgpu::IndexFormat::Uint32);
 
-                    data.into_iter().for_each(|(glyph_id, range_count)| {
+                    data.into_iter().for_each(|(glyph_id, range)| {
                         let instance_buffer = self.instance_buffer_map.get(&glyph_id).unwrap();
                         let instance_count = instance_buffer.length as u32;
                         if let Some(instance_buffer) = instance_buffer.buffer_with_id.as_ref() {
                             render_pass.set_vertex_buffer(1, instance_buffer.buffer().slice(..));
-                            render_pass.draw_indexed(range_count, 0, 0..instance_count);
+                            render_pass.draw_indexed(range, 0, 0..instance_count);
                         }
                     })
                 }
