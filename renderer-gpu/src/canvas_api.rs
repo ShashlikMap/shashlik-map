@@ -38,7 +38,7 @@ pub struct GpuCanvasApi {
     style_store: StyleStore,
     flushed: bool,
     draw_commands: Vec<Box<dyn DrawCommand>>,
-    geometry: VertexBuffers<ShapeVertex, u32>,
+    shapes: Vec<ShapeData>,
     indices_by_layers: BTreeMap<i8, Vec<StyledRange>>,
     geometry3d: VertexBuffers<MeshVertex, u32>,
     text_vec: Vec<TextData>,
@@ -64,7 +64,7 @@ impl GpuCanvasApi {
             style_store,
             flushed: false,
             draw_commands: Vec::new(),
-            geometry: VertexBuffers::new(),
+            shapes: Vec::new(),
             indices_by_layers: BTreeMap::new(),
             geometry3d: VertexBuffers::new(),
             text_vec: Vec::new(),
@@ -76,7 +76,7 @@ impl GpuCanvasApi {
         self.flushed = false;
         self.feature_layer_tag = None;
         self.indices_by_layers.clear();
-        self.geometry.clear();
+        self.shapes.clear();
         self.geometry3d.clear();
         self.text_vec.clear();
 
@@ -116,7 +116,16 @@ impl GpuCanvasApi {
     }
 
     fn prepare_mesh2d_command(&mut self) {
-        let mesh = mem::replace(&mut self.geometry, VertexBuffers::new());
+        let mut geometry = VertexBuffers::new();
+        let mut shapes = mem::take(&mut self.shapes);
+        shapes.sort_by_key(|shape| {
+            shape.index_layer_level
+        });
+        for data in shapes {
+            self.process_shape(data, &mut geometry);
+        }
+
+        let mesh = geometry;
         if !mesh.vertices.is_empty() {
             let flatten_ranges = mem::take(&mut self.indices_by_layers)
                 .into_values()
@@ -250,9 +259,13 @@ impl GpuCanvasApi {
     }
 
     fn path(&mut self, data: ShapeData) {
+        self.shapes.push(data);
+    }
+
+    fn process_shape(&mut self, data: ShapeData, geometry: &mut VertexBuffers<ShapeVertex, u32>) {
         let geom_type = data.geometry_type;
         let style_index = self.style_store.get_index(&data.style_id);
-        let initial_index = self.geometry.indices.len();
+        let initial_index = geometry.indices.len();
 
         match geom_type {
             GeometryType::Polyline(options) => {
@@ -260,7 +273,7 @@ impl GpuCanvasApi {
                 if options.width <= 0.0 {
                     return;
                 }
-                self.tessellate_stroke_path(&data.path, options, |vertex| {
+                self.tessellate_stroke_path(&data.path, geometry, options, |vertex| {
                     ShapeVertex::new(
                         [vertex.position().x, vertex.position().y],
                         [vertex.normal().x, vertex.normal().y],
@@ -271,7 +284,7 @@ impl GpuCanvasApi {
                 });
             }
             GeometryType::Polygon => {
-                Self::tessellate_fill_path(&data.path, &mut self.geometry, |vertex| {
+                Self::tessellate_fill_path(&data.path, geometry, |vertex| {
                     ShapeVertex::new(
                         [vertex.position().x, vertex.position().y],
                         [0.0, 0.0],
@@ -282,7 +295,7 @@ impl GpuCanvasApi {
                 });
             }
         }
-        let last_index = self.geometry.indices.len();
+        let last_index = geometry.indices.len();
         
         let ranges = self
             .indices_by_layers
@@ -406,9 +419,9 @@ impl GpuCanvasApi {
         }
     }
 
-    fn tessellate_stroke_path<F>(&mut self, path: &Path, polyline_options: PolylineOptions, ctor: F)
+    fn tessellate_stroke_path<F, VT>(&mut self, path: &Path, geometry: &mut VertexBuffers<VT, u32>, polyline_options: PolylineOptions, ctor: F)
     where
-        F: Fn(StrokeVertex) -> ShapeVertex,
+        F: Fn(StrokeVertex) -> VT,
     {
         let mut tessellator = StrokeTessellator::new();
         {
@@ -420,7 +433,7 @@ impl GpuCanvasApi {
                         .with_line_cap(polyline_options.line_cap)
                         .with_line_join(polyline_options.line_join)
                         .with_tolerance(polyline_options.tolerance),
-                    &mut BuffersBuilder::new(&mut self.geometry, ctor),
+                    &mut BuffersBuilder::new(geometry, ctor),
                 )
                 .unwrap();
         }
