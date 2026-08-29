@@ -7,7 +7,6 @@ use osm::map::{
     HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapPointInfo, MapPointObjectKind,
     NatureKind,
 };
-use rand::RngExt;
 use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, LineData, PolylineOptions, ShapeData, StyledRangeInfo, SvgBackground, SvgData, TextData};
 use renderer_common::style_id::StyleId;
 use seahash::hash;
@@ -291,7 +290,8 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     let mut styled_range_info = StyledRangeInfo::new(1, true);
                     if zoom_level == 0 && self.include_extruded {
                         let level = if level == 0 {
-                            rand::rng().random_range(2..=3)
+                            let (point, _) = building_path.first_endpoint().unwrap_or_default();
+                            (((point.x as i32 * point.y as i32) % 2) + 2) as u16
                         } else {
                             level
                         };
