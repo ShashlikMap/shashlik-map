@@ -284,6 +284,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     }
                 }
 
+                
                 if let MapGeomObjectKind::Building(level) = kind {
                     let building_path = path_builder.build();
 
