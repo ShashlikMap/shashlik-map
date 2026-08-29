@@ -77,12 +77,13 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
         glyph_data: &FxHashMap<GlyphId, Vec<GlyphData>>,
     ) {
         let cs_offset = global_context.view_projection.cs_offset;
+        let cs_offset = dvec3(cs_offset.x, cs_offset.y, 0.0);
         glyph_data.iter().for_each(|(glyph_id, list)| {
-            let mut attrs = vec![];
+            let mut attrs = Vec::with_capacity(list.len());
             list.iter().for_each(|glyph_data| {
                 let mut position = DVec3::new(glyph_data.position.0, glyph_data.position.1, 0.0);
                 if !glyph_data.screen_space {
-                    position -= dvec3(cs_offset.x, cs_offset.y, 0.0)
+                    position -= cs_offset;
                 }
 
                 let instance_input = (self.attr_map)(LayerAttribute {
