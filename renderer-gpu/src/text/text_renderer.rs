@@ -101,6 +101,7 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
                 .or_insert(InstanceBuffer::default());
             instance_buffer.update("TextInstanceBuffer", global_context, &attrs);
         });
+
     }
 
     pub fn update(&mut self, global_context: &mut GlobalContext) {
@@ -115,20 +116,21 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
         let glyph_data = mem::take(&mut self.glyph_data);
 
         if !self.instance_buffer_map.is_empty() && !glyph_data.is_empty() {
-            glyph_data.iter().for_each(|(glyph_id, list)| {
-                let glyph_mesh = self.glyph_cache.get_or_tessellate(global_context, &mut self.buffer_pool, glyph_id);
-                let v_buf = &glyph_mesh.vertex_buf;
+            self.glyph_cache.process_glyph_data(global_context, &mut self.buffer_pool, glyph_data, |mesh, data| {
+                let v_buf = &mesh.vertex_buf;
                 if v_buf.size() > 0 {
-                    let (i_buf, i_buf_len) = &glyph_mesh.index_buf;
-                    let instance_buffer = self.instance_buffer_map.get(glyph_id).unwrap();
-                    if let Some(instance_buffer) = instance_buffer.buffer_with_id.as_ref() {
-                        render_pass.set_vertex_buffer(0, v_buf.slice(..));
-                        render_pass.set_index_buffer(i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                    let (i_buf, _) = &mesh.index_buf;
+                    render_pass.set_vertex_buffer(0, v_buf.slice(..));
+                    render_pass.set_index_buffer(i_buf.slice(..), wgpu::IndexFormat::Uint32);
 
-                        render_pass.set_vertex_buffer(1, instance_buffer.buffer().slice(..));
-
-                        render_pass.draw_indexed(0..*i_buf_len as u32, 0, 0..list.len() as u32);
-                    }
+                    data.into_iter().for_each(|(glyph_id, range_count)| {
+                        let instance_buffer = self.instance_buffer_map.get(glyph_id).unwrap();
+                        let instance_count = instance_buffer.length as u32;
+                        if let Some(instance_buffer) = instance_buffer.buffer_with_id.as_ref() {
+                            render_pass.set_vertex_buffer(1, instance_buffer.buffer().slice(..));
+                            render_pass.draw_indexed(range_count.clone(), 0, 0..instance_count);
+                        }
+                    })
                 }
             });
         }
