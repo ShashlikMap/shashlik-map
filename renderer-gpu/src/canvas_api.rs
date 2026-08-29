@@ -116,8 +116,12 @@ impl GpuCanvasApi {
     }
 
     fn prepare_mesh2d_command(&mut self) {
-        let mut geometry = VertexBuffers::new();
         let mut shapes = mem::take(&mut self.shapes);
+        if shapes.is_empty() {
+            return;
+        }
+
+        let mut geometry = VertexBuffers::new();
         shapes.sort_by_key(|shape| {
             shape.index_layer_level
         });
