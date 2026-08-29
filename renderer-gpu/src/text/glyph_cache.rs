@@ -3,7 +3,6 @@ use crate::global_context::GlobalContext;
 use crate::mesh::mesh::Mesh;
 use crate::text::default_face_wrapper::DefaultFaceWrapper;
 use crate::text::glyph_tesselator::GlyphTesselator;
-use crate::text::text_renderer::GlyphData;
 use crate::vertex_attrs::MeshVertexWithUV;
 use lyon::lyon_tessellation::VertexBuffers;
 use renderer_common::geometry_data::StyledRangeInfo;
@@ -46,13 +45,13 @@ impl GlyphCache {
         &mut self,
         global_context: &GlobalContext,
         buffer_pool: &mut BufferPool,
-        glyph_data: FxHashMap<GlyphId, Vec<GlyphData>>,
+        glyph_ids: Vec<GlyphId>,
         action: impl FnOnce(&Mesh, Vec<Range<u32>>),
     ) {
         let mut path_builder: Option<GlyphTesselator> = None;
         let prev_mesh_state = (self.vb.vertices.len(), self.vb.indices.len());
-        let mut result = Vec::with_capacity(glyph_data.len());
-        glyph_data.into_iter().for_each(|(glyph_id, _)| {
+        let mut result = Vec::with_capacity(glyph_ids.len());
+        glyph_ids.into_iter().for_each(|glyph_id| {
             let range = self
                 .glyph_mesh_range_map
                 .entry(glyph_id.clone())
