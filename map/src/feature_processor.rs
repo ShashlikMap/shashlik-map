@@ -291,7 +291,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     if zoom_level == 0 && self.include_extruded {
                         let level = if level == 0 {
                             let (point, _) = building_path.first_endpoint().unwrap_or_default();
-                            (((point.x as i32 * point.y as i32) % 2) + 2) as u16
+                            (((point.x.abs() as i32 * point.y.abs() as i32) % 2) + 2) as u16
                         } else {
                             level
                         };
