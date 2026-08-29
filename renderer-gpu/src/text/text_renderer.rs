@@ -118,7 +118,7 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
     pub fn render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         if !self.instance_buffer_ranges.is_empty() {
             self.glyph_cache.process_glyph_data(global_context, &mut self.buffer_pool,
-                                                self.instance_buffer_ranges.iter().map(|(id, _)| *id).collect(), |mesh, index_ranges| {
+                                                self.instance_buffer_ranges.iter().map(|(id, _)| *id), |mesh, index_ranges| {
                     let v_buf = &mesh.vertex_buf;
                     if v_buf.size() > 0 {
                         let (i_buf, _) = &mesh.index_buf;

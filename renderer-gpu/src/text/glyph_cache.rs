@@ -45,12 +45,12 @@ impl GlyphCache {
         &mut self,
         global_context: &GlobalContext,
         buffer_pool: &mut BufferPool,
-        glyph_ids: Vec<GlyphId>,
+        glyph_ids: impl Iterator<Item = GlyphId>,
         action: impl FnOnce(&Mesh, Vec<Range<u32>>),
     ) {
         let mut path_builder: Option<GlyphTesselator> = None;
         let prev_mesh_state = (self.vb.vertices.len(), self.vb.indices.len());
-        let mut result = Vec::with_capacity(glyph_ids.len());
+        let mut result = Vec::with_capacity(glyph_ids.size_hint().0);
         glyph_ids.into_iter().for_each(|glyph_id| {
             let range = self
                 .glyph_mesh_range_map
