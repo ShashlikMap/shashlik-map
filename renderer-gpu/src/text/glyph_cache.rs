@@ -47,12 +47,14 @@ impl GlyphCache {
         global_context: &GlobalContext,
         buffer_pool: &mut BufferPool,
         glyph_data: FxHashMap<GlyphId, Vec<GlyphData>>,
-        action: impl FnOnce(&Mesh, Vec<(&GlyphId, &Range<u32>)>),
+        action: impl FnOnce(&Mesh, Vec<(GlyphId, Range<u32>)>),
     ) {
         let mut path_builder: Option<GlyphTesselator> = None;
         let prev_mesh_state = (self.vb.vertices.len(), self.vb.indices.len());
-        glyph_data.iter().for_each(|(glyph_id, _)| {
-            self.glyph_mesh_range_map
+        let mut result = Vec::with_capacity(glyph_data.len());
+        glyph_data.into_iter().for_each(|(glyph_id, _)| {
+            let range = self
+                .glyph_mesh_range_map
                 .entry(glyph_id.clone())
                 .or_insert_with(|| {
                     let start_index = self.vb.indices.len() as u32;
@@ -67,11 +69,11 @@ impl GlyphCache {
 
                     start_index..end_index
                 });
+            result.push((glyph_id, range.clone()));
         });
 
         let new_mesh_state = (self.vb.vertices.len(), self.vb.indices.len());
         if prev_mesh_state != new_mesh_state {
-            println!("asd");
             let updated_mesh = Mesh::create(
                 None,
                 global_context,
@@ -82,9 +84,6 @@ impl GlyphCache {
             self.mesh = Some(updated_mesh);
         }
 
-        action(
-            self.mesh.as_ref().expect("Should be created!"),
-            self.glyph_mesh_range_map.iter().collect(),
-        );
+        action(self.mesh.as_ref().expect("Should be created!"), result);
     }
 }

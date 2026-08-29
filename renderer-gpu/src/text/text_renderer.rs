@@ -124,11 +124,11 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
                     render_pass.set_index_buffer(i_buf.slice(..), wgpu::IndexFormat::Uint32);
 
                     data.into_iter().for_each(|(glyph_id, range_count)| {
-                        let instance_buffer = self.instance_buffer_map.get(glyph_id).unwrap();
+                        let instance_buffer = self.instance_buffer_map.get(&glyph_id).unwrap();
                         let instance_count = instance_buffer.length as u32;
                         if let Some(instance_buffer) = instance_buffer.buffer_with_id.as_ref() {
                             render_pass.set_vertex_buffer(1, instance_buffer.buffer().slice(..));
-                            render_pass.draw_indexed(range_count.clone(), 0, 0..instance_count);
+                            render_pass.draw_indexed(range_count, 0, 0..instance_count);
                         }
                     })
                 }
