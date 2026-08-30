@@ -21,7 +21,13 @@ pub struct ShashlikFeatureProcessor {
 
 impl Default for ShashlikFeatureProcessor {
     fn default() -> Self {
-        ShashlikFeatureProcessor::new(true, |_, _| true)
+        ShashlikFeatureProcessor::new(true, |zoom_level, kind| {
+            // by default, we keep building only for zoom_level >= 13
+            match kind {
+                MapGeomObjectKind::Building(_) => zoom_level >= 13,
+                _ => true,
+            }
+        })
     }
 }
 
