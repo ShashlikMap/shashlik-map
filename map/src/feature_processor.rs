@@ -83,6 +83,7 @@ impl ShashlikFeatureProcessor {
 impl FeatureProcessor for ShashlikFeatureProcessor {
     fn process_poi(
         &self,
+        id: i64,
         geometry_data: &mut Vec<GeometryData>,
         poi: &MapPointInfo,
         zoom_level: i32,
@@ -138,6 +139,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             };
 
             geometry_data.push(GeometryData::Svg(SvgData {
+                id: id as u64,
                 icon,
                 position: DVec3::from((local_position.x, local_position.y, 0.0)),
                 size: icon_size * dpi_scale,

@@ -27,6 +27,7 @@ use crate::tiles::shashlik_v1::ShashlikV1TileStore;
 pub trait FeatureProcessor: Send + Sync {
     fn process_poi(
         &self,
+        id: i64,
         geometry_data: &mut Vec<GeometryData>,
         poi: &MapPointInfo,
         zoom_level: i32,
@@ -126,6 +127,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                     match &obj_type.kind {
                         MapGeomObjectKind::Poi(poi) => {
                             feature_processor.process_poi(
+                                obj_type.id,
                                 &mut geometry_data,
                                 poi,
                                 zoom_level,

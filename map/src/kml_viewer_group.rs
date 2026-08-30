@@ -48,6 +48,7 @@ impl KmlGroup {
         collection.iter().for_each(|geom| match geom {
             Geometry::Point(point) => {
                 geometry_data.push(GeometryData::Svg(SvgData {
+                    id: 0,
                     icon: ("kml", Self::CIRCLE_SVG),
                     position: DVec3::new(point.x(), point.y(), 0.0),
                     size: 2.0,

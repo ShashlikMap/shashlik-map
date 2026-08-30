@@ -27,7 +27,7 @@ use std::mem;
 
 #[derive(Clone)]
 pub struct MeshInfo {
-    pub instance_positions: Option<Vec<DVec3>>,
+    pub instance_positions: Option<Vec<(u64, DVec3)>>,
     pub size: Option<f32>,
     pub with_collision: bool,
     pub instance_key: String,
@@ -110,7 +110,7 @@ impl GpuCanvasApi {
                 self.svg(data);
             }
             GeometryData::Text(data) => {
-                self.text(data);
+                // self.text(data);
             }
         }
     }
@@ -324,7 +324,7 @@ impl GpuCanvasApi {
                 mesh_info
                     .instance_positions
                     .get_or_insert_default()
-                    .push(data.position);
+                    .push((data.id, data.position));
                 mesh_info.with_collision = data.with_collision
             })
             .or_insert_with(|| {
@@ -371,7 +371,7 @@ impl GpuCanvasApi {
                 (
                     mesh,
                     MeshInfo {
-                        instance_positions: Some(vec![data.position]),
+                        instance_positions: Some(vec![(data.id, data.position)]),
                         size: Some(mesh_size),
                         with_collision: data.with_collision,
                         instance_key: data.icon.0.to_string(),

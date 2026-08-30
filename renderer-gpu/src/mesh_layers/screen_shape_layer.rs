@@ -17,7 +17,7 @@ use renderer_common::render_modifier::SpatialData;
 use rstar::primitives::Rectangle;
 use std::collections::HashMap;
 use std::mem;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use wgpu::RenderPass;
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
@@ -31,6 +31,7 @@ pub(crate) struct ScreenShapeLayer<I: MeshInstanceInput> {
 }
 
 struct ShapeInfo {
+    pub id: u64,
     pub position: DVec3,
     pub size: f32,
 }
@@ -81,7 +82,8 @@ impl<I: MeshInstanceInput> ScreenShapeLayer<I> {
 
             let batch_data: Vec<_> = instance_positions.into_iter().map(|item| {
                 let shape_info = ShapeInfo {
-                    position: item + spatial_data.transform,
+                    id: item.0,
+                    position: item.1 + spatial_data.transform,
                     size
                 };
                 (shape_info, 0.0f32, instance_key.clone())
@@ -149,6 +151,7 @@ struct ScreenMeshCollisionHandler {
         (ShapeInfo, f32, String),
         FxHashMap<String, Vec<(DVec3, f32)>>,
     >,
+    id_to_alpha: FxHashMap<u64, f32>
 }
 
 impl ScreenMeshCollisionHandler {
@@ -161,6 +164,7 @@ impl ScreenMeshCollisionHandler {
     ) -> Self {
         ScreenMeshCollisionHandler {
             collision_task_wrapper,
+            id_to_alpha: FxHashMap::default(),
         }
     }
 }
@@ -170,30 +174,36 @@ impl ColliderTask for ScreenMeshCollisionHandler {
         let render_data_holder = self.collision_task_wrapper.update_holder();
 
         let mut hm: FxHashMap<String, Vec<(DVec3, f32)>> = FxHashMap::default();
+        let mut id_collisions: FxHashSet<u64> = FxHashSet::default();
         render_data_holder
-            .run_mut_action(|(shape_info, alpha, key)| {
-                let screen_pos = view_projection.screen_position(&shape_info.position);
-                let offset = shape_info.size * 0.75;
-                // no need to use f64 for collision detection
-                let bounds = Rectangle::from_corners(
-                    point! { x: screen_pos.x as f32 - offset, y: screen_pos.y as f32 - offset},
-                    point! { x: screen_pos.x as f32 + offset, y: screen_pos.y as f32 + offset},
-                );
+            .run_mut_action(|(shape_info, _, key)| {
 
-                let within_screen = collision_handler.within_screen(bounds);
-                let prev_alpha = *alpha;
-                if within_screen {
-                    if collision_handler.check_and_insert(bounds) {
-                        *alpha = clamp(*alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
-                    } else {
-                        *alpha = clamp(*alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                if id_collisions.insert(shape_info.id) {
+                    let mut alpha = *self.id_to_alpha.get(&shape_info.id).unwrap_or(&0.0f32);
+                    let screen_pos = view_projection.screen_position(&shape_info.position);
+                    let offset = shape_info.size * 0.75;
+                    // no need to use f64 for collision detection
+                    let bounds = Rectangle::from_corners(
+                        point! { x: screen_pos.x as f32 - offset, y: screen_pos.y as f32 - offset},
+                        point! { x: screen_pos.x as f32 + offset, y: screen_pos.y as f32 + offset},
+                    );
+
+                    let within_screen = collision_handler.within_screen(bounds);
+                    let prev_alpha = alpha;
+                    if within_screen {
+                        if collision_handler.check_and_insert(bounds) {
+                            alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                        } else {
+                            alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                        }
+                        self.id_to_alpha.insert(shape_info.id, alpha);
                     }
-                }
 
-                // don't process if it was transparent and nothing changed
-                let still_transparent = prev_alpha == 0.0 && prev_alpha == *alpha;
-                if !still_transparent {
-                    hm.entry(key.clone()).or_default().push((shape_info.position, *alpha));
+                    // don't process if it was transparent and nothing changed
+                    let still_transparent = prev_alpha == 0.0 && prev_alpha == alpha;
+                    if !still_transparent {
+                        hm.entry(key.clone()).or_default().push((shape_info.position, alpha));
+                    }
                 }
             });
 
