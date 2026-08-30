@@ -292,6 +292,7 @@ impl MvtPropHandler {
         let geom_obj = (self.builder)(&self);
         geom_obj
             .map(|mut geom_obj| {
+                // TODO No ID later
                 geom_obj.id = feature.id().unwrap_or(0) as i64;
                 let geom = geom_builder(feature);
                 geom.into_iter()
