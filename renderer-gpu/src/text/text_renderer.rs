@@ -409,6 +409,7 @@ impl ColliderTask for TextRendererCollisionHandler {
             }
         });
 
+        self.id_to_alpha_map.retain(|id, _| id_collisions.contains(id));
         self.task_wrapper.send_result(glyph_data);
     }
 }

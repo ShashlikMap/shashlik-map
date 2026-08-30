@@ -207,6 +207,7 @@ impl ColliderTask for ScreenMeshCollisionHandler {
                 }
             });
 
+        self.id_to_alpha.retain(|id, _| id_collisions.contains(id));
         self.collision_task_wrapper.send_result(hm);
     }
 }
