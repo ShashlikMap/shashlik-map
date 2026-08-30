@@ -9,7 +9,6 @@ use osm::map::{
 };
 use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, LineData, PolylineOptions, ShapeData, StyledRangeInfo, SvgBackground, SvgData, TextData};
 use renderer_common::style_id::StyleId;
-use std::collections::HashMap;
 use capitalize::Capitalize;
 use lyon::lyon_tessellation::{LineCap, LineJoin};
 use crate::MAX_ZOOM_LEVEL;
@@ -176,7 +175,6 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         line: LineString<f32>,
         interiors: Vec<LineString<f32>>,
         kind: MapGeomObjectKind,
-        line_text_map: &mut HashMap<String, i32>,
         zoom_level: i32,
         dpi_scale: f32,
     ) {
@@ -360,27 +358,17 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 }
 
                 if let Some(name) = name {
-                    // TODO Need to create a proper repetition logic for line label once shashlik-tiles-v1 added and v0 dropped
-                    // TODO When text render along the path is ready, it has to be decided how to reduce the repetitive data inside tile
-                    //  So far just accept every 30 item. There might be more then 500 lines with the same name!
-                    let name_count = line_text_map
-                        .entry(name.clone())
-                        .and_modify(|entry| *entry += 1)
-                        .or_insert(0);
-                    if *name_count % 30 == 0 {
-                        // FIXME TextRenderer has a bug for only 2 coords line, let's skip it for now
-                        if line.len() > 2 {
-                            geometry_data.push(GeometryData::Text(TextData::new(
-                                id as u64,
-                                name.capitalize(),
-                                Vec2::new(0.0, 0.0),
-                                22.0 * dpi_scale,
-                                LineData::new(line
-                                    .iter()
-                                    .map(|item| DVec3::new(item.x as f64, item.y as f64, 0.0))
-                                    .collect())
-                            )));
-                        }
+                    if line.len() > 2 {
+                        geometry_data.push(GeometryData::Text(TextData::new(
+                            id as u64,
+                            name.capitalize(),
+                            Vec2::new(0.0, 0.0),
+                            22.0 * dpi_scale,
+                            LineData::new(line
+                                .iter()
+                                .map(|item| DVec3::new(item.x as f64, item.y as f64, 0.0))
+                                .collect())
+                        )));
                     }
                 }
             }
