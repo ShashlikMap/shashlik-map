@@ -37,6 +37,7 @@ pub trait FeatureProcessor: Send + Sync {
 
     fn process_line(
         &self,
+        id: i64,
         geometry_data: &mut Vec<GeometryData>,
         line: LineString<f32>,
         interiors: Vec<LineString<f32>>,
@@ -140,6 +141,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                 }
                 MapGeometry::Line(line) => {
                     feature_processor.process_line(
+                        obj_type.id,
                         &mut geometry_data,
                         line.convert(),
                         vec![],
@@ -174,6 +176,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                         }
 
                         feature_processor.process_line(
+                            obj_type.id,
                             &mut geometry_data,
                             line,
                             interiors,

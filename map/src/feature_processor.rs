@@ -9,7 +9,6 @@ use osm::map::{
 };
 use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, LineData, PolylineOptions, ShapeData, StyledRangeInfo, SvgBackground, SvgData, TextData};
 use renderer_common::style_id::StyleId;
-use seahash::hash;
 use std::collections::HashMap;
 use capitalize::Capitalize;
 use lyon::lyon_tessellation::{LineCap, LineJoin};
@@ -150,9 +149,8 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         }
 
         if !poi.text.is_empty() {
-            let id =
-                hash(format!("{:?}{}{}", poi.text, local_position.x, local_position.y).as_bytes());
             let y_offset = if icon.is_some() { 30.0 } else { 0.0 };
+            let id = id as u64;
             geometry_data.push(GeometryData::Text(TextData::new(
                 id,
                 poi.text.to_uppercase(),
@@ -167,6 +165,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
 
     fn process_line(
         &self,
+        id: i64,
         geometry_data: &mut Vec<GeometryData>,
         line: LineString<f32>,
         interiors: Vec<LineString<f32>>,
@@ -366,7 +365,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         // FIXME TextRenderer has a bug for only 2 coords line, let's skip it for now
                         if line.len() > 2 {
                             geometry_data.push(GeometryData::Text(TextData::new(
-                                hash(name.as_bytes()),
+                                id as u64,
                                 name.capitalize(),
                                 Vec2::new(0.0, 0.0),
                                 22.0 * dpi_scale,

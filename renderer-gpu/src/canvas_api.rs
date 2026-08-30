@@ -110,7 +110,7 @@ impl GpuCanvasApi {
                 self.svg(data);
             }
             GeometryData::Text(data) => {
-                // self.text(data);
+                self.text(data);
             }
         }
     }

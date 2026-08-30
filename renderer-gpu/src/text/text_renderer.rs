@@ -13,10 +13,9 @@ use num::clamp;
 use renderer_common::collision_handler::CollisionHandler;
 use renderer_common::geometry_data::TextData;
 use rstar::primitives::Rectangle;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use rustybuzz::ttf_parser::GlyphId;
 use splines::{Interpolation, Key, Spline};
-use std::collections::HashMap;
 use std::f32::consts::PI;
 use std::ops::Range;
 use std::sync::Arc;
@@ -142,7 +141,7 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
 }
 
 struct TextRendererCollisionHandler {
-    id_to_alpha_map: HashMap<u64, f32>,
+    id_to_alpha_map: FxHashMap<u64, f32>,
     default_face: Arc<DefaultFaceWrapper>,
     task_wrapper: CollisionTaskWrapper<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
 }
@@ -156,7 +155,7 @@ impl TextRendererCollisionHandler {
         task_wrapper: CollisionTaskWrapper<TextData, FxHashMap<GlyphId, Vec<GlyphData>>>,
     ) -> Self {
         TextRendererCollisionHandler {
-            id_to_alpha_map: HashMap::new(),
+            id_to_alpha_map: FxHashMap::default(),
             default_face,
             task_wrapper,
         }
@@ -170,8 +169,13 @@ impl ColliderTask for TextRendererCollisionHandler {
         let flip_rot_m = Mat4::from_rotation_z(PI);
         let tangent_basis = Vec2::X;
 
+        let mut id_collisions: FxHashSet<u64> = FxHashSet::default();
+
         let mut glyph_data: FxHashMap<GlyphId, Vec<GlyphData>> = FxHashMap::default();
         render_data_holder.run_mut_action(|data| {
+            if !id_collisions.insert(data.id) {
+                return;
+            }
             let glyph_buffer = data.glyph_buffer
                 .get_or_insert_with(|| self.default_face.shape(data.text.as_str()));
 
@@ -313,12 +317,7 @@ impl ColliderTask for TextRendererCollisionHandler {
 
                     // render only completed text
                     if glyph_index >= glyphs_len {
-                        let contains = self.id_to_alpha_map.contains_key(&data.id);
-                        let mut alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
-                        if contains {
-                            data.alpha = alpha;
-                            return;
-                        }
+                        let mut alpha = *self.id_to_alpha_map.get(&data.id).unwrap_or(&0.0f32);
                         let rects = glyphs_to_draw
                             .iter()
                             .map(|(rect, _)| rect.clone())
@@ -329,8 +328,10 @@ impl ColliderTask for TextRendererCollisionHandler {
                             alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
                         };
                         data.alpha = alpha;
+                        self.id_to_alpha_map.insert(data.id, alpha);
                     } else if discard_animated {
                         data.alpha = clamp(data.alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
+                        self.id_to_alpha_map.insert(data.id, data.alpha);
                     } else {
                         glyphs_to_draw.clear();
                     }
@@ -355,20 +356,17 @@ impl ColliderTask for TextRendererCollisionHandler {
 
                 let within_screen = collision_handler.within_screen(section_rect);
                 if data.screen_space || within_screen {
-                    let contains = self.id_to_alpha_map.contains_key(&data.id);
-                    let mut alpha = *self.id_to_alpha_map.entry(data.id).or_insert(data.alpha);
-                    if contains {
-                        data.alpha = alpha;
-                        return;
-                    }
-
+                    let mut alpha = data.alpha; //*self.id_to_alpha_map.get(&data.id).unwrap_or(&0.0f32);
                     // calc only for non screen space
                     if !data.screen_space {
+                        alpha = *self.id_to_alpha_map.get(&data.id).unwrap_or(&0.0f32);
                         if collision_handler.check_and_insert(section_rect) {
                             alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
                         } else {
                             alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
                         }
+                        self.id_to_alpha_map.insert(data.id, alpha);
+
                     }
                     data.alpha = alpha;
                     if data.alpha > 0.0 {
@@ -411,7 +409,6 @@ impl ColliderTask for TextRendererCollisionHandler {
             }
         });
 
-        self.id_to_alpha_map.clear();
         self.task_wrapper.send_result(glyph_data);
     }
 }

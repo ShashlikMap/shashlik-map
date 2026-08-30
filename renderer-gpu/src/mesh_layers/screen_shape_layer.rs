@@ -181,7 +181,7 @@ impl ColliderTask for ScreenMeshCollisionHandler {
                 if id_collisions.insert(shape_info.id) {
                     let mut alpha = *self.id_to_alpha.get(&shape_info.id).unwrap_or(&0.0f32);
                     let screen_pos = view_projection.screen_position(&shape_info.position);
-                    let offset = shape_info.size * 0.75;
+                    let offset = shape_info.size * 0.67;
                     // no need to use f64 for collision detection
                     let bounds = Rectangle::from_corners(
                         point! { x: screen_pos.x as f32 - offset, y: screen_pos.y as f32 - offset},
