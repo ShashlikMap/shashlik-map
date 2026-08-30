@@ -94,6 +94,7 @@ pub struct SvgBackground {
 }
 
 pub struct SvgData {
+    pub id: u64,
     pub icon: (&'static str, &'static [u8]),
     pub position: DVec3,
     pub size: f32,

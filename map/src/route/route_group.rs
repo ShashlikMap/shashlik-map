@@ -78,6 +78,7 @@ impl <T: CanvasApi> RenderGroup<T> for RouteGroup {
                     let pos = vect * koef;
 
                     canvas.geometry_data(GeometryData::Svg(SvgData {
+                        id: 0,
                         // TODO shape instead of SVG
                         icon: ("route_dot", Self::SQUARE_SVG),
                         position: Vec3::new(

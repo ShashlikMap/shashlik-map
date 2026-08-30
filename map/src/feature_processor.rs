@@ -9,8 +9,6 @@ use osm::map::{
 };
 use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, LineData, PolylineOptions, ShapeData, StyledRangeInfo, SvgBackground, SvgData, TextData};
 use renderer_common::style_id::StyleId;
-use seahash::hash;
-use std::collections::HashMap;
 use capitalize::Capitalize;
 use lyon::lyon_tessellation::{LineCap, LineJoin};
 use crate::MAX_ZOOM_LEVEL;
@@ -22,7 +20,13 @@ pub struct ShashlikFeatureProcessor {
 
 impl Default for ShashlikFeatureProcessor {
     fn default() -> Self {
-        ShashlikFeatureProcessor::new(true, |_, _| true)
+        ShashlikFeatureProcessor::new(true, |zoom_level, kind| {
+            // by default, we keep building only for zoom_level >= 13
+            match kind {
+                MapGeomObjectKind::Building(_) => zoom_level >= 13,
+                _ => true,
+            }
+        })
     }
 }
 
@@ -83,6 +87,7 @@ impl ShashlikFeatureProcessor {
 impl FeatureProcessor for ShashlikFeatureProcessor {
     fn process_poi(
         &self,
+        id: i64,
         geometry_data: &mut Vec<GeometryData>,
         poi: &MapPointInfo,
         zoom_level: i32,
@@ -138,6 +143,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             };
 
             geometry_data.push(GeometryData::Svg(SvgData {
+                id: id as u64,
                 icon,
                 position: DVec3::from((local_position.x, local_position.y, 0.0)),
                 size: icon_size * dpi_scale,
@@ -148,9 +154,8 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         }
 
         if !poi.text.is_empty() {
-            let id =
-                hash(format!("{:?}{}{}", poi.text, local_position.x, local_position.y).as_bytes());
             let y_offset = if icon.is_some() { 30.0 } else { 0.0 };
+            let id = id as u64;
             geometry_data.push(GeometryData::Text(TextData::new(
                 id,
                 poi.text.to_uppercase(),
@@ -165,11 +170,11 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
 
     fn process_line(
         &self,
+        id: i64,
         geometry_data: &mut Vec<GeometryData>,
         line: LineString<f32>,
         interiors: Vec<LineString<f32>>,
         kind: MapGeomObjectKind,
-        line_text_map: &mut HashMap<String, i32>,
         zoom_level: i32,
         dpi_scale: f32,
     ) {
@@ -353,27 +358,17 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 }
 
                 if let Some(name) = name {
-                    // TODO Need to create a proper repetition logic for line label once shashlik-tiles-v1 added and v0 dropped
-                    // TODO When text render along the path is ready, it has to be decided how to reduce the repetitive data inside tile
-                    //  So far just accept every 30 item. There might be more then 500 lines with the same name!
-                    let name_count = line_text_map
-                        .entry(name.clone())
-                        .and_modify(|entry| *entry += 1)
-                        .or_insert(0);
-                    if *name_count % 30 == 0 {
-                        // FIXME TextRenderer has a bug for only 2 coords line, let's skip it for now
-                        if line.len() > 2 {
-                            geometry_data.push(GeometryData::Text(TextData::new(
-                                hash(name.as_bytes()),
-                                name.capitalize(),
-                                Vec2::new(0.0, 0.0),
-                                22.0 * dpi_scale,
-                                LineData::new(line
-                                    .iter()
-                                    .map(|item| DVec3::new(item.x as f64, item.y as f64, 0.0))
-                                    .collect())
-                            )));
-                        }
+                    if line.len() > 2 {
+                        geometry_data.push(GeometryData::Text(TextData::new(
+                            id as u64,
+                            name.capitalize(),
+                            Vec2::new(0.0, 0.0),
+                            22.0 * dpi_scale,
+                            LineData::new(line
+                                .iter()
+                                .map(|item| DVec3::new(item.x as f64, item.y as f64, 0.0))
+                                .collect())
+                        )));
                     }
                 }
             }

@@ -27,6 +27,7 @@ use crate::tiles::shashlik_v1::ShashlikV1TileStore;
 pub trait FeatureProcessor: Send + Sync {
     fn process_poi(
         &self,
+        id: i64,
         geometry_data: &mut Vec<GeometryData>,
         poi: &MapPointInfo,
         zoom_level: i32,
@@ -36,11 +37,11 @@ pub trait FeatureProcessor: Send + Sync {
 
     fn process_line(
         &self,
+        id: i64,
         geometry_data: &mut Vec<GeometryData>,
         line: LineString<f32>,
         interiors: Vec<LineString<f32>>,
         kind: MapGeomObjectKind,
-        line_text_map: &mut HashMap<String, i32>,
         zoom_level: i32,
         dpi_scale: f32,
     );
@@ -118,7 +119,6 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         }
 
         let mut geometry_data: Vec<GeometryData> = vec![];
-        let mut line_text_map = HashMap::new();
         geom.into_iter()
             .for_each(|(obj_type, geometry)| match geometry {
                 MapGeometry::Coord(coord) => {
@@ -126,6 +126,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                     match &obj_type.kind {
                         MapGeomObjectKind::Poi(poi) => {
                             feature_processor.process_poi(
+                                obj_type.id,
                                 &mut geometry_data,
                                 poi,
                                 zoom_level,
@@ -138,11 +139,11 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                 }
                 MapGeometry::Line(line) => {
                     feature_processor.process_line(
+                        obj_type.id,
                         &mut geometry_data,
                         line.convert(),
                         vec![],
                         obj_type.kind,
-                        &mut line_text_map,
                         zoom_level,
                         dpi_scale,
                     );
@@ -172,11 +173,11 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                         }
 
                         feature_processor.process_line(
+                            obj_type.id,
                             &mut geometry_data,
                             line,
                             interiors,
                             obj_type.kind,
-                            &mut line_text_map,
                             zoom_level,
                             dpi_scale,
                         );

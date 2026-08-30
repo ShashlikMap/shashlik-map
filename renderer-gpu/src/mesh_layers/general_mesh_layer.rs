@@ -63,7 +63,7 @@ impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
 
         let instance_positions =
             mem::take(&mut batch.mesh_info.instance_positions).map(|pos_items| pos_items.into_iter().map(|item| {
-                (item, 1f32)
+                (item.1, 1f32)
             }).collect());
 
         let mesh = mesh.to_positioned(self.attr_map,
