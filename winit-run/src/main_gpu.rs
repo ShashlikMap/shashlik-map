@@ -153,11 +153,12 @@ pub fn launch_internal(ui: &ShashlikUI) {
 
                         let mut map =
                             pollster::block_on(async {
-                                let render_config = if low_res {
-                                    RenderConfig::new(1024, is_round_screen)
+                                let shadow_tex_size = if low_res {
+                                    RenderConfig::HALF_SHADOW_TEX_SIZE
                                 } else {
-                                    RenderConfig::default()
+                                    RenderConfig::DEFAULT_SHADOW_TEX_SIZE
                                 };
+                                let render_config = RenderConfig::new(shadow_tex_size, is_round_screen);
                                 let renderer = GpuRenderer::new_with_config(render_config, feature_layer_tags(),
                                                                             Box::new(canvas), &DEFAULT_FONT_DATA).await?;
 

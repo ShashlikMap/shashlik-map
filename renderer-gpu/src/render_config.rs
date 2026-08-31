@@ -11,6 +11,9 @@ pub struct RenderConfig {
 }
 
 impl RenderConfig {
+    pub const DEFAULT_SHADOW_TEX_SIZE: u32 = 2048;
+    pub const HALF_SHADOW_TEX_SIZE: u32 = 1024;
+
     pub fn new(shadow_texture_size: u32, round_screen: bool) -> RenderConfig {
         assert!(shadow_texture_size > 0);
         let mut config = RenderConfig::default();
@@ -33,7 +36,7 @@ impl Default for RenderConfig {
         Self {
             shadow_enabled: true,
             x_real_mesh_shader_enabled: false,
-            shadow_texture_size: 2048,
+            shadow_texture_size: Self::DEFAULT_SHADOW_TEX_SIZE,
             ssao_enabled: false,
             preview_type: PreviewType::None,
             headless: false,
