@@ -21,6 +21,7 @@ use renderer_common::style_id::StyleId;
 use route::route_controller::RouteController;
 #[cfg(feature = "sgnss")]
 use sgnss::start_sgnss;
+use std::collections::HashSet;
 use std::mem;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -30,6 +31,7 @@ use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use log::error;
 use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData};
+use crate::track_group::TrackGroup;
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
 mod camera;
@@ -38,6 +40,7 @@ mod kml_viewer_group;
 pub mod mesh_loader;
 mod puck_group;
 pub mod route;
+mod track_group;
 pub mod tiles;
 mod transition_2d_3d_helper;
 
@@ -120,6 +123,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         let transition_2d_3d_helper = Transition2d3dHelper::new(zero_zoom_level_loaded.clone());
         Self::run_tiles(renderer.api(), zero_zoom_level_loaded.clone(), tiles_stream);
         Self::load_styles(renderer.api());
+        Self::register_track_style(renderer.api());
 
         let mut camera_controller = CameraController::new();
         camera_controller.pitch = CameraController::MIN_PITCH;
@@ -512,6 +516,34 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
     pub fn clear_routes(&mut self) {
         self.route_controller
             .clear_routes(self.renderer.api());
+    }
+
+    fn register_track_style(renderer_api: Arc<R::RAPI>) {
+        renderer_api.update_style(StyleId::new("track"), |style| {
+            *style = renderer_common::render_style::RenderStyle::fill([0.2, 0.5, 1.0, 0.85]);
+        });
+    }
+
+    pub fn draw_track(&mut self, lon_lats: Vec<(f64, f64)>) {
+        self.renderer.api().clear_render_groups(HashSet::from(["track".to_string()]));
+        if lon_lats.len() < 2 {
+            return;
+        }
+        let converter = self.create_location_coord_converter();
+        let points: Vec<geo_types::Point> = lon_lats
+            .iter()
+            .map(|(lon, lat)| converter(&geo_types::Point::new(*lon, *lat)))
+            .collect();
+        let group = TrackGroup::new(points);
+        self.renderer.api().add_render_group(
+            "track".to_string(),
+            SpatialData::transform(group.first_point()),
+            Box::new(group),
+        );
+    }
+
+    pub fn clear_track(&mut self) {
+        self.renderer.api().clear_render_groups(HashSet::from(["track".to_string()]));
     }
 
     #[allow(unused_variables)]

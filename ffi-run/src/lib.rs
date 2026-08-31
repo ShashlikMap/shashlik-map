@@ -19,6 +19,12 @@ pub struct ShashlikMapApi {
 unsafe impl Sync for ShashlikMapApi {}
 unsafe impl Send for ShashlikMapApi {}
 
+#[derive(uniffi::Record)]
+pub struct LatLon {
+    pub lat: f64,
+    pub lon: f64,
+}
+
 #[derive(uniffi::Enum)]
 pub enum RouteCosting {
     Auto, Pedestrian, Motorbike
@@ -112,5 +118,16 @@ impl ShashlikMapApi {
     fn calculate_route(&self, point_x: f32, point_y: f32, route_costing: RouteCosting) {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
         shashlik_map.create_route_to_screen_point(point_x, point_y, route_costing.into());
+    }
+
+    fn draw_track(&self, points: Vec<LatLon>) {
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
+        let lon_lats: Vec<(f64, f64)> = points.iter().map(|p| (p.lon, p.lat)).collect();
+        shashlik_map.draw_track(lon_lats);
+    }
+
+    fn clear_track(&self) {
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
+        shashlik_map.clear_track();
     }
 }
