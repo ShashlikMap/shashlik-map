@@ -48,6 +48,7 @@ export component ShashlikUI inherits Window {
     out property <Scale> current-scale;
     out property <PanState> current-pan-state;
     in-out property <string> fps_text: "";
+    private property <bool> panel_controls: false;
     private property <bool> extended_controls: true;
     property <bool> pressed: false;
     callback vert_scroll(float);
@@ -63,22 +64,23 @@ export component ShashlikUI inherits Window {
     height: screen-height * 1phx;
 
     forward-focus: key-handler;
-        key-handler := FocusScope {
-            init => { self.focus(); }
+    key-handler := FocusScope {
+        init => { self.focus(); }
 
-            key-pressed(event) => {
-                root.key-pressed(event);
-                accept
-            }
-            key-released(event) => {
-                root.key-released(event);
-                accept
-            }
+        key-pressed(event) => {
+            root.key-pressed(event);
+            accept
         }
+        key-released(event) => {
+            root.key-released(event);
+            accept
+        }
+    }
 
     HorizontalBox {
+        padding: 0;
         image := Image {
-            width: 80%;
+            width: 100%;
             height: 100%;
             TouchArea {
                 width: 100%;
@@ -109,8 +111,65 @@ export component ShashlikUI inherits Window {
                 }
             }
         }
+    }
 
-        VerticalBox {
+    HorizontalLayout {
+        height: 100%;
+        alignment: end;
+        vertical-stretch: 0;
+        cross-axis-alignment: center;
+        padding-right: 16px;
+        Rectangle {
+            width: 44px;
+            height: 44px;
+            border-radius: self.width / 2;
+
+            background: touch-area.pressed ? #3a3a3c : #1c1c1e;
+            border-width: 1px;
+            border-color: #48484a;
+
+            animate background { duration: 100ms; }
+
+            Image {
+                source: @image-url("ic-settings.svg");
+                width: 24px;
+                height: 24px;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                colorize: #ffffff;
+            }
+
+            touch-area := TouchArea {
+                clicked => {
+                    panel_controls = !panel_controls;
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+
+        width: 320px;
+        height: layout.preferred-height + 48px;
+        background: #1c1c1e;
+        border-radius: 8px;
+        border-width: 1px;
+        border-color: #48484a;
+
+        opacity: panel_controls ? 90% : 0%;
+        visible: self.opacity > 0.0;
+
+        animate opacity {
+            duration: 100ms;
+            easing: ease-in-out;
+        }
+
+        layout := VerticalBox {
+            vertical-stretch: 0;
+            padding: 16px;
+
             CheckBox {
                 text: "Follow mode";
                 height: 24px;
@@ -147,6 +206,7 @@ export component ShashlikUI inherits Window {
                 text: "Route";
                 height: 48px;
                 clicked => {
+                    panel_controls = false;
                     btn_click(Action.Route, cost.current-index)
                 }
             }
@@ -155,6 +215,7 @@ export component ShashlikUI inherits Window {
                 text: "ClearRoute";
                 height: 48px;
                 clicked => {
+                    panel_controls = false;
                     btn_click(Action.ClearRoute, cost.current-index)
                 }
             }
@@ -177,7 +238,7 @@ export component ShashlikUI inherits Window {
                 }
             }
 
-            if extended_controls : VerticalLayout {
+            if extended_controls: VerticalLayout {
 //                Button {
 //                    text: "Open KML";
 //                    height: 48px;
@@ -195,7 +256,9 @@ export component ShashlikUI inherits Window {
                     }
                 }
 
-                Rectangle { height: 16px; }
+                Rectangle {
+                    height: 16px;
+                }
 
                 preview_types := ComboBox {
                     height: 48px;

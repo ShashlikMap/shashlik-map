@@ -90,13 +90,16 @@ impl GpuRenderer {
 
         let mut buffer_pool = BufferPool::new();
         let font = Face::parse(font_data, 0)?;
+
+
         let mut layers = Layers::new(feature_tags, &mut global_context, &mut buffer_pool, font);
-        
+
+        let fps_x = (global_context.canvas.config().width / 2) - 10;
         layers.text_feature_layers.get_layer(SCREEN_TEXT_LAYER).unwrap().add(
             "fps_info".to_string(),
             vec![TextData::screen_space_new(0, "FPS 0".to_string(),
-                                            vec2(0.0, 0.0), 40.0,
-                                            LineData::new(vec![dvec3(100.0, 120.0, 0.0)]))],
+                                            vec2(0.0, 0.0), 30.0,
+                                            LineData::new(vec![dvec3(fps_x as f64, 20.0, 0.0)]))],
             SpatialData::new(),
         );
 
