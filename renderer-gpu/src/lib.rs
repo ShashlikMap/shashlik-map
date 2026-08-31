@@ -34,6 +34,7 @@ use std::thread::spawn;
 use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
 use wgpu::{Texture, TextureView};
+use crate::mesh_layers::BaseMeshLayer;
 
 pub mod canvas_api;
 pub mod draw_commands;
@@ -74,6 +75,8 @@ pub struct GpuRenderer {
 }
 
 impl GpuRenderer {
+
+    const FPS_OFFSET: u32 = 10;
     pub async fn new(feature_tags: Vec<WorldShapeFeatureLayerTag>,
                      canvas: Box<dyn WgpuCanvas>,
                      font_data: &'static [u8]) -> anyhow::Result<GpuRenderer> {
@@ -91,18 +94,7 @@ impl GpuRenderer {
         let mut buffer_pool = BufferPool::new();
         let font = Face::parse(font_data, 0)?;
 
-
-        let mut layers = Layers::new(feature_tags, &mut global_context, &mut buffer_pool, font);
-
-        let fps_x = (global_context.canvas.config().width / 2) - 10;
-        layers.text_feature_layers.get_layer(SCREEN_TEXT_LAYER).unwrap().add(
-            "fps_info".to_string(),
-            vec![TextData::screen_space_new(0, "FPS 0".to_string(),
-                                            vec2(0.0, 0.0), 30.0,
-                                            LineData::new(vec![dvec3(fps_x as f64, 20.0, 0.0)]))],
-            SpatialData::new(),
-        );
-
+        let layers = Layers::new(feature_tags, &mut global_context, &mut buffer_pool, font);
         let (renderer_api_tx, renderer_api_rx) = channel();
 
         let (renderer_tx, renderer_rx) = channel();
@@ -177,9 +169,21 @@ impl GpuRenderer {
     pub fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {
             self.global_context.resize(width, height);
-
+            self.setup_fps_counter();
             self.config_pass_nodes_and_textures();
         }
+    }
+
+    fn setup_fps_counter(&mut self) {
+        let fps_x = (self.global_context.canvas.config().width / 2) - Self::FPS_OFFSET;
+        self.layers.text_feature_layers.get_layer(SCREEN_TEXT_LAYER).unwrap().clear_by_key("fps_info");
+        self.layers.text_feature_layers.get_layer(SCREEN_TEXT_LAYER).unwrap().add(
+            "fps_info".to_string(),
+            vec![TextData::screen_space_new(0, "FPS 0".to_string(),
+                                            vec2(0.0, 0.0), 30.0,
+                                            LineData::new(vec![dvec3(fps_x as f64, 20.0, 0.0)]))],
+            SpatialData::new(),
+        );
     }
 
     pub fn update_config(&mut self, action: impl Fn(&mut RenderConfig)) {

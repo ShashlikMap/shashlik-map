@@ -51,9 +51,13 @@ pub fn launch_internal(ui: &ShashlikUI) {
     ui.set_screen_width(screen_size.width as i32);
     ui.set_screen_height(screen_size.height as i32);
 
+    // TODO make a proper env flag later
+    let is_round_screen = cfg!(target_os = "linux");
+    println!("is_round_screen: {}", is_round_screen);
+
     let low_res = max(screen_size.width, screen_size.height) <= 1024;
 
-    let dpi = if screen_size.height <= 600 { 0.7 } else { 1.0 };
+    let dpi = if screen_size.height <= 720 { 0.7 } else { 1.0 };
     let texture_width = ui.get_requested_texture_width();
     let texture_height = ui.get_requested_texture_height();
     println!(
@@ -150,7 +154,7 @@ pub fn launch_internal(ui: &ShashlikUI) {
                         let mut map =
                             pollster::block_on(async {
                                 let render_config = if low_res {
-                                    RenderConfig::new(1024)
+                                    RenderConfig::new(1024, is_round_screen)
                                 } else {
                                     RenderConfig::default()
                                 };

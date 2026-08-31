@@ -1,18 +1,20 @@
 use geo_types::Point;
 use glam::Vec2;
 use rstar::primitives::Rectangle;
-use rstar::{Envelope, RTree, RTreeObject};
+use rstar::{Envelope, RTree, RTreeObject, AABB};
 
 pub struct CollisionHandler {
     objects: RTree<Rectangle<Point<f32>>>,
-    screen_rect: Rectangle<Point<f32>>,
+    screen_rect_envelope: AABB<Point<f32>>,
+    screen_radius_sq: Option<f32>
 }
 
 impl CollisionHandler {
-    pub fn new(width: f32, height: f32) -> Self {
+    pub fn new(width: f32, height: f32, screen_radius_sq: Option<f32>) -> Self {
         CollisionHandler {
             objects: RTree::new(),
-            screen_rect: Self::create_rect(width, height),
+            screen_rect_envelope: Self::create_rect(width, height).envelope(),
+            screen_radius_sq
         }
     }
 
@@ -25,7 +27,11 @@ impl CollisionHandler {
         rectangle: Rectangle<Point<f32>>,
     ) -> bool {
         let envelope = rectangle.envelope();
-        self.screen_rect.envelope().intersects(&envelope)
+        if let Some(screen_radius_sq) = self.screen_radius_sq {
+            return self.check_screen_radius(screen_radius_sq, envelope);
+        }
+
+        self.screen_rect_envelope.intersects(&envelope)
     }
 
     pub fn point_within_screen(
@@ -33,7 +39,15 @@ impl CollisionHandler {
         point: &Vec2,
     ) -> bool {
         let envelope = Point::new(point.x, point.y).envelope();
-        self.screen_rect.envelope().intersects(&envelope)
+        if let Some(screen_radius_sq) = self.screen_radius_sq {
+            return self.check_screen_radius(screen_radius_sq, envelope);
+        }
+        self.screen_rect_envelope.intersects(&envelope)
+    }
+
+    fn check_screen_radius(&self, screen_radius_sq: f32, other_point_aabb: AABB<Point<f32>>) -> bool {
+        let dist_sq_to_screen_center = other_point_aabb.distance_2(&self.screen_rect_envelope.center());
+        dist_sq_to_screen_center <= screen_radius_sq
     }
 
     /// Method first check if rectangle intersects anything and only then adds it to R-tree

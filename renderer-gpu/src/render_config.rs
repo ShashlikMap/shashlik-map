@@ -7,18 +7,24 @@ pub struct RenderConfig {
     pub ssao_enabled: bool,
     pub preview_type: PreviewType,
     pub headless: bool,
+    round_screen: bool
 }
 
 impl RenderConfig {
-    pub fn new(shadow_texture_size: u32) -> RenderConfig {
+    pub fn new(shadow_texture_size: u32, round_screen: bool) -> RenderConfig {
         assert!(shadow_texture_size > 0);
         let mut config = RenderConfig::default();
         config.shadow_texture_size = shadow_texture_size;
+        config.round_screen = round_screen;
         config
     }
 
     pub fn shadow_texture_size(&self) -> (u32, u32) {
         (self.shadow_texture_size, self.shadow_texture_size)
+    }
+
+    pub fn round_screen(&self) -> bool {
+        self.round_screen
     }
 }
 
@@ -31,6 +37,7 @@ impl Default for RenderConfig {
             ssao_enabled: false,
             preview_type: PreviewType::None,
             headless: false,
+            round_screen: false
         }
     }
 }

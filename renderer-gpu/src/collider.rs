@@ -47,7 +47,7 @@ impl Collider {
                         ColliderMsg::ViewProj(view_projection) => {
                             let (width, height) = view_projection.screen_size;
                             let mut collision_handler =
-                                CollisionHandler::new(width as f32, height as f32);
+                                CollisionHandler::new(width as f32, height as f32, view_projection.round_screen_sq_radius());
                             if let Ok(mut tasks) = tasks.try_lock() {
                                 tasks.iter_mut().for_each(|task| {
                                     task.run(&view_projection, &mut collision_handler);
