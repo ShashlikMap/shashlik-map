@@ -1,3 +1,4 @@
+use std::cmp::min;
 use crate::Renderer;
 use crate::render_config::RenderConfig;
 use crate::{GpuRenderer, RendererUpdateData};
@@ -40,6 +41,7 @@ pub(crate) struct ViewProjection {
     ortho: DMat4,
     is_shadow_enabled: bool,
     shadow_texture_size: (u32, u32),
+    round_screen_sq_radius: Option<f32>
 }
 
 impl ViewProjection {
@@ -85,6 +87,7 @@ impl ViewProjection {
             ortho,
             is_shadow_enabled: render_config.shadow_enabled,
             shadow_texture_size: render_config.shadow_texture_size(),
+            round_screen_sq_radius: render_config.round_screen().then_some(0.0f32),
         }
     }
 
@@ -129,6 +132,10 @@ impl ViewProjection {
         self.cs_offset = data.cs_offset;
         self.inv_view_proj_matrix = data.view_proj_matrix.inverse();
         self.screen_size = (config.width as f64, config.height as f64);
+
+        if let Some(ref mut radius_sq) = self.round_screen_sq_radius {
+            *radius_sq = ((min(config.width, config.height) as f32) * 0.5f32).powf(2f32);
+        }
 
         queue.write_buffer(
             &self.uniform_buffer,
@@ -226,5 +233,9 @@ impl ViewProjection {
 
     pub fn is_shadow_mapping_enabled(&self) -> bool {
         (self.scale_2d_3d > 0.0) && self.is_shadow_enabled
+    }
+
+    pub fn round_screen_sq_radius(&self) -> Option<f32> {
+        self.round_screen_sq_radius
     }
 }
