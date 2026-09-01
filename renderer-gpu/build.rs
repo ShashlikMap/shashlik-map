@@ -1,7 +1,7 @@
-use wesl::Feature;
+use wesl::{Feature, Wesl};
 
 fn main() {
-    let mut wesl = wesl::Wesl::new("src/shaders");
+    let mut wesl = Wesl::new("src/shaders");
     wesl.set_feature("CASTANO", Feature::Enable);
     wesl.set_feature("OUTLINE_DEBUG", Feature::Disable);
     wesl.build_artifact(&"package::shape_shader".parse().unwrap(), "shape_shader");

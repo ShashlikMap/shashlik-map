@@ -77,6 +77,8 @@ impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
     }
 
     pub fn set_virtual_ground(&mut self, global_context: &GlobalContext, buffer_pool: &mut BufferPool) {
+        self.virtual_ground_circle = None;
+        self.virtual_ground = None;
         if global_context.view_projection.round_screen_sq_radius().is_some() {
             self.virtual_ground_circle = Some(VirtualGroundCircleMesh::new(global_context, buffer_pool));
         } else {
