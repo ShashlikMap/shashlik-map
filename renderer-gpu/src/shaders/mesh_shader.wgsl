@@ -54,8 +54,6 @@ fn vs_main(
     modelnormal.z = -abs(modelnormal.z);
     let world_normal = -modelnormal;
 
-    out.color_alpha = pos.color_alpha;
-
     var out_height = 0.0;
     // check scale_2d_3d, when geometry is flat height = 1.0 gives a correct value for gradient in fragment shader
     if(modelpos.z > 0.0 || camera.scale_2d_3d == 0.0) {
@@ -63,13 +61,14 @@ fn vs_main(
         out_height = 1.0;
     }
 
-    out.base_color = roof_color;
+    var base_color = roof_color;
     if (world_normal.z < 0.8) {
         // gradient only for walls
         let gradient_koef_ground = min(1.0, (0.9 + out_height * 7.0));
         let gradient_koef_walls = 0.85 + out_height * 0.15;
-        out.base_color = wall_color * gradient_koef_walls * gradient_koef_ground;
+        base_color = wall_color * gradient_koef_walls * gradient_koef_ground;
     }
+    out.base_color = vec4f(base_color, pos.color_alpha);
 
     let diffuse_factor = max(dot(world_normal, light_dir), 0.15);
     out.diffuse_sun_factor = sun_color * (0.5 * diffuse_factor);
@@ -128,10 +127,10 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32>  {
         return vec4(0.0, 0.0, 0.0, shadow * 0.25);
     }
 
-    let base_color = in.base_color;
+    let base_color = in.base_color.rgb;
     let direct_sun = in.diffuse_sun_factor * (1.0 - shadow * 0.3);
     let total_lighting = ambient_color + direct_sun;
     let result_color = total_lighting * base_color;
 
-    return vec4(result_color, in.color_alpha);
+    return vec4(result_color, in.base_color.a);
 }
