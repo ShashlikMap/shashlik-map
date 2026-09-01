@@ -5,6 +5,7 @@ use crate::pipelines::g_buf_pipeline::GBufPipeline;
 use crate::texture_view_resources::TextureViewKind;
 use crate::textures::{TextureData, create_depth_texture, create_simple_texture};
 use wgpu::{CommandEncoder, TextureFormat, TextureUsages};
+use crate::DEPTH_STENCIL_TEX_FORMAT;
 
 pub(crate) struct GBufferPassNode {
     g_buf_pipeline: GBufPipeline,
@@ -43,7 +44,7 @@ impl GBufferPassNode {
         let non_msaa_depth_texture_view = create_depth_texture(
             non_msaa_size,
             1,
-            TextureFormat::Depth24Plus,
+            DEPTH_STENCIL_TEX_FORMAT,
             global_context.device(),
         );
 

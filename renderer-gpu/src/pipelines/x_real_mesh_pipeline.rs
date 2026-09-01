@@ -1,3 +1,4 @@
+use crate::DEPTH_STENCIL_TEX_FORMAT;
 use crate::global_context::GlobalContext;
 use crate::pipelines::RenderPipeline;
 use crate::textures::SAMPLE_COUNT;
@@ -6,7 +7,7 @@ use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{
     BlendState, DepthBiasState, DepthStencilState, RenderPass, ShaderModuleDescriptor,
-    ShaderSource, StencilState, TextureFormat,
+    ShaderSource, StencilState,
 };
 
 pub(crate) struct XRealMeshShaderPipeline {
@@ -56,7 +57,7 @@ impl XRealMeshShaderPipeline {
             },
             depth_stencil: Some({
                 DepthStencilState {
-                    format: TextureFormat::Depth24PlusStencil8,
+                    format: DEPTH_STENCIL_TEX_FORMAT,
                     depth_write_enabled: Some(false),
                     depth_compare: None,
                     stencil: StencilState::default(),

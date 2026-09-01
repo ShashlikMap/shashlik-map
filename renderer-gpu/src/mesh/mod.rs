@@ -7,6 +7,7 @@ use wgpu::util::DeviceExt;
 pub mod mesh;
 pub mod mesh_instance_input;
 pub mod positioned_mesh;
+pub(crate) mod virtual_ground_circle_mesh;
 pub(crate) mod virtual_ground_mesh;
 
 pub(crate) struct InstanceBuffer<T: Pod> {
