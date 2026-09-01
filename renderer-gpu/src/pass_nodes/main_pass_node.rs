@@ -35,7 +35,7 @@ impl MainPassNode {
             global_context.config().height,
         );
 
-        let default_mesh_pipeline = MeshPipeline::new(global_context, true, true, true);
+        let default_mesh_pipeline = MeshPipeline::new(global_context, true, false, true);
 
         let x_real_mesh_shader_pipeline = XRealMeshShaderPipeline::new(global_context,
                                                                        x_real_mesh_shader_pipeline_enabled);
@@ -91,7 +91,7 @@ impl MainPassNode {
             depth_texture_view: create_depth_texture(
                 size,
                 SAMPLE_COUNT,
-                TextureFormat::Depth24PlusStencil8,
+                TextureFormat::Depth24Plus,
                 global_context.device(),
             ),
             default_mesh_pipeline,
@@ -129,12 +129,9 @@ impl PassNode for MainPassNode {
             view: &self.depth_texture_view,
             depth_ops: Some(wgpu::Operations {
                 load: wgpu::LoadOp::Clear(1.0),
-                store: wgpu::StoreOp::Store,
+                store: wgpu::StoreOp::Discard,
             }),
-            stencil_ops: Some(wgpu::Operations {
-                load: wgpu::LoadOp::Clear(0),
-                store: wgpu::StoreOp::Store,
-            }),
+            stencil_ops: None,
         };
 
         let descriptor = wgpu::RenderPassDescriptor {

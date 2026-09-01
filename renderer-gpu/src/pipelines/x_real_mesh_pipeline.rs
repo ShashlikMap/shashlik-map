@@ -56,7 +56,7 @@ impl XRealMeshShaderPipeline {
             },
             depth_stencil: Some({
                 DepthStencilState {
-                    format: TextureFormat::Depth24PlusStencil8,
+                    format: TextureFormat::Depth24Plus,
                     depth_write_enabled: Some(false),
                     depth_compare: None,
                     stencil: StencilState::default(),

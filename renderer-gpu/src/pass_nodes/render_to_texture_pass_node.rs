@@ -32,7 +32,7 @@ impl RenderToTexturePassNode {
             depth_texture_view: create_depth_texture(
                 size,
                 SAMPLE_COUNT,
-                TextureFormat::Depth24PlusStencil8,
+                TextureFormat::Depth24Plus,
                 global_context.device(),
             ),
             rt_texture_view: create_color_binding_texture(size, global_context),
