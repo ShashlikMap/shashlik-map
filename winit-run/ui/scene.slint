@@ -175,6 +175,7 @@ export component ShashlikUI inherits Window {
                 height: 24px;
                 checked: true;
                 toggled => {
+                    panel_controls = false;
                     follow_mode(self.checked)
                 }
             }
@@ -183,6 +184,7 @@ export component ShashlikUI inherits Window {
                 text: "DM Office";
                 height: 48px;
                 clicked => {
+                    panel_controls = false;
                     btn_click(Action.DmOffice, cost.current-index)
                 }
             }

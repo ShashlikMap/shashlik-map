@@ -50,7 +50,7 @@ struct VertexOutput {
     @location(5) color_alpha: f32,
     @location(6) vertex_pos_xy: vec2<f32>,
     @location(7) bbox: vec4<f32>,
-    @location(8) uv_dist: vec3<f32>,
+    @location(8) uv_dist_scale: vec4<f32>,
 }
 
 // TODO pass as a parameter
@@ -89,7 +89,8 @@ fn vs_main(
     // only two components for normal
     var normal_scale = vec3f(0.0, 0.0, 0.0);
     if(out.outline_flag == 0) {
-        normal_scale = vec3(model.normal.xy * inflate_factor, 0.0);
+        let factor = max(1.0, camera.scale * 0.5); // increase border with scale
+        normal_scale = vec3(model.normal.xy * inflate_factor * factor, 0.0);
     }
 
     let pointPos = modelpos.xyz + normal_scale.xyz;
@@ -97,7 +98,7 @@ fn vs_main(
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
     // divide distance to scale, so dash shader works properly
-    out.uv_dist = vec3f(model.uv, f32(model.dist) / camera.p2_scale);
+    out.uv_dist_scale = vec4f(model.uv, f32(model.dist) / camera.p2_scale, camera.scale);
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
@@ -150,7 +151,8 @@ fn vs_main_route(
     }
 
     out.vertex_pos_xy = pointPos.xy;
-    out.uv_dist = vec3f(model.uv, f32(model.dist));
+    // keep scale 1.0 so route doesn't hide its border
+    out.uv_dist_scale = vec4f(model.uv, f32(model.dist), 1.0);
     out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
@@ -230,9 +232,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     if(style_type == 0) {
         res_color = solid_style(style);
     } else if(style_type == 1) {
-        res_color = border_style(in.outline_flag, style);
+        res_color = border_style(in.outline_flag, in.uv_dist_scale.w, style);
     } else if(style_type == 2) {
-        res_color = dashed_style(in.uv_dist, style);
+        res_color = dashed_style(in.uv_dist_scale.xyz, style);
     } else {
         res_color = vec4(0.0, 0.0, 0.0, 1.0);
     }
@@ -254,11 +256,11 @@ fn solid_style(params: mat4x3<f32>) -> vec4<f32> {
     return fill_color;
 }
 
-fn border_style(outline_flag: u32, params: mat4x3<f32>) -> vec4<f32> {
+fn border_style(outline_flag: u32, scale: f32, params: mat4x3<f32>) -> vec4<f32> {
     let fill_color = vec4(params[0][1], params[0][2], params[1][0], params[1][1]);
     if(outline_flag == 0) {
         let koef = params[1][2];
-        return vec4(fill_color.x * koef, fill_color.y * koef, fill_color.z * koef, 1.0);
+        return vec4(fill_color.x * koef, fill_color.y * koef, fill_color.z * koef, 1.0 / max(1.0, scale));
     }
     return fill_color;
 }

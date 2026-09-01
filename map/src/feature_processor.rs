@@ -10,6 +10,7 @@ use osm::map::{
 use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, LineData, PolylineOptions, ShapeData, StyledRangeInfo, SvgBackground, SvgData, TextData};
 use renderer_common::style_id::StyleId;
 use capitalize::Capitalize;
+use geo::Scale;
 use lyon::lyon_tessellation::{LineCap, LineJoin};
 use crate::MAX_ZOOM_LEVEL;
 
@@ -172,15 +173,14 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         &self,
         id: i64,
         geometry_data: &mut Vec<GeometryData>,
-        line: LineString<f32>,
+        mut line: LineString<f32>,
         interiors: Vec<LineString<f32>>,
         kind: MapGeomObjectKind,
         zoom_level: i32,
         dpi_scale: f32,
     ) {
         let zoom_level = MAX_ZOOM_LEVEL - zoom_level;
-        let line = line.0;
-        if line.len() >= 2 {
+        if line.0.len() >= 2 {
             if !(self.data_filter)(MAX_ZOOM_LEVEL - zoom_level, &kind) {
                 return;
             }
@@ -265,6 +265,13 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 }
                 _ => None,
             } {
+                // a small trick to get rid of many coplanar walls issues
+                // fyi, it might be better to skip it for CPU only devices
+                if matches!(kind, MapGeomObjectKind::Building(_)) {
+                    if line.0.len() % 2 == 0 {
+                        line.scale_mut(1.01);
+                    }
+                }
                 let mut path_builder = Path::builder();
                 path_builder.begin(point(line[0].x, line[0].y));
 
@@ -358,18 +365,16 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 }
 
                 if let Some(name) = name {
-                    if line.len() > 2 {
-                        geometry_data.push(GeometryData::Text(TextData::new(
-                            id as u64,
-                            name.capitalize(),
-                            Vec2::new(0.0, 0.0),
-                            22.0 * dpi_scale,
-                            LineData::new(line
-                                .iter()
-                                .map(|item| DVec3::new(item.x as f64, item.y as f64, 0.0))
-                                .collect())
-                        )));
-                    }
+                    geometry_data.push(GeometryData::Text(TextData::new(
+                        id as u64,
+                        name.capitalize(),
+                        Vec2::new(0.0, 0.0),
+                        22.0 * dpi_scale,
+                        LineData::new(line
+                            .into_iter()
+                            .map(|item| DVec3::new(item.x as f64, item.y as f64, 0.0))
+                            .collect())
+                    )));
                 }
             }
         }

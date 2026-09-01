@@ -18,10 +18,9 @@ googleprojection = "1.2.0"
 geo-types = { workspace = true }
 log = { workspace = true }
 geo = "0.33.1"
-seahash = "4.1.0"
 rayon = "1.11.0"
 kml = { git = "https://github.com/ShashlikMap/kml" }
-fast-mvt = "0.4"
+fast-mvt = "0.6.2"
 
 glam = { workspace = true }
 num = { workspace = true}
