@@ -89,8 +89,8 @@ fn vs_main(
     // only two components for normal
     var normal_scale = vec3f(0.0, 0.0, 0.0);
     if(out.outline_flag == 0) {
-        let qq = max(1.0, camera.scale * 0.5);
-        normal_scale = vec3(model.normal.xy * inflate_factor * qq, 0.0);
+        let factor = max(1.0, camera.scale * 0.5); // increase border with scale
+        normal_scale = vec3(model.normal.xy * inflate_factor * factor, 0.0);
     }
 
     let pointPos = modelpos.xyz + normal_scale.xyz;

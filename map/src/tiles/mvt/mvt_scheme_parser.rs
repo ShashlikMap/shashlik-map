@@ -96,8 +96,10 @@ impl MvtSchemeParser {
         let building_handler = MvtPropHandler::new("building", |handler| {
             // TODO skip for certain zoom levels
             let height: i64 = handler.get_prop_value("height");
+            // fyi, so far we don't support
+            let min_height: i64 = handler.get_prop_value("min_height");
             let underground: bool = handler.get_prop_value("underground");
-            (!underground).then_some(MapGeomObject {
+            (!underground && min_height == 0).then_some(MapGeomObject {
                 id: -1,
                 // fyi, 3 - koef to convert map tiler height to osm levels, 2 - feature processor multiplier
                 kind: MapGeomObjectKind::Building(((height / (3 * 2)) as u16).clamp(0, 100)),
