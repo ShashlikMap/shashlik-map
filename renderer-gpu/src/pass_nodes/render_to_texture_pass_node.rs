@@ -1,3 +1,4 @@
+use crate::DEPTH_STENCIL_TEX_FORMAT;
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
@@ -6,7 +7,7 @@ use crate::textures::{
     SAMPLE_COUNT, create_color_binding_texture, create_common_texture, create_depth_texture,
 };
 use renderer_common::WorldShapeFeatureLayerTag;
-use wgpu::{CommandEncoder, TextureFormat, TextureView};
+use wgpu::{CommandEncoder, TextureView};
 
 pub(crate) struct RenderToTexturePassNode {
     msaa_texture_view: TextureView,
@@ -32,7 +33,7 @@ impl RenderToTexturePassNode {
             depth_texture_view: create_depth_texture(
                 size,
                 SAMPLE_COUNT,
-                TextureFormat::Depth24Plus,
+                DEPTH_STENCIL_TEX_FORMAT,
                 global_context.device(),
             ),
             rt_texture_view: create_color_binding_texture(size, global_context),

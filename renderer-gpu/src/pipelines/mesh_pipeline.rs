@@ -7,6 +7,7 @@ use renderer_common::geometry_data::MeshVertex;
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilState, TextureFormat, TextureUsages};
+use crate::DEPTH_STENCIL_TEX_FORMAT;
 
 pub(crate) struct MeshPipeline {
     pipeline: Option<wgpu::RenderPipeline>,
@@ -191,7 +192,7 @@ impl MeshPipeline {
             },
             depth_stencil: Some({
                 DepthStencilState {
-                    format: TextureFormat::Depth24Plus,
+                    format: DEPTH_STENCIL_TEX_FORMAT,
                     depth_write_enabled: Some(true),
                     depth_compare: Some(CompareFunction::Less),
                     stencil,

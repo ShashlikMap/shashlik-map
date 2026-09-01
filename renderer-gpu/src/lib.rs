@@ -33,7 +33,7 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
 use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
-use wgpu::{Texture, TextureView};
+use wgpu::{Texture, TextureFormat, TextureView};
 use crate::mesh_layers::BaseMeshLayer;
 
 pub mod canvas_api;
@@ -61,6 +61,8 @@ pub mod render_config;
 pub(crate) mod texture_view_resources;
 mod mesh_buffers;
 pub(crate) mod bind_group_cache;
+
+const DEPTH_STENCIL_TEX_FORMAT: TextureFormat = TextureFormat::Depth24Plus;
 
 pub struct GpuRenderer {
     render_config: RenderConfig,

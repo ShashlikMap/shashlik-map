@@ -1,14 +1,15 @@
-use crate::global_context::{GlobalContext};
+use crate::DEPTH_STENCIL_TEX_FORMAT;
+use crate::global_context::GlobalContext;
 use crate::mesh_layers::RenderableLayer;
 use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
+use crate::pipelines::x_real_mesh_pipeline::XRealMeshShaderPipeline;
 use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
 use renderer_common::WorldShapeFeatureLayerTag;
-use wgpu::{CommandEncoder, TextureFormat, TextureView};
-use crate::pipelines::x_real_mesh_pipeline::XRealMeshShaderPipeline;
+use wgpu::{CommandEncoder, TextureView};
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
@@ -91,7 +92,7 @@ impl MainPassNode {
             depth_texture_view: create_depth_texture(
                 size,
                 SAMPLE_COUNT,
-                TextureFormat::Depth24Plus,
+                DEPTH_STENCIL_TEX_FORMAT,
                 global_context.device(),
             ),
             default_mesh_pipeline,
@@ -131,7 +132,10 @@ impl PassNode for MainPassNode {
                 load: wgpu::LoadOp::Clear(1.0),
                 store: wgpu::StoreOp::Discard,
             }),
-            stencil_ops: None,
+            stencil_ops: DEPTH_STENCIL_TEX_FORMAT.has_stencil_aspect().then_some(wgpu::Operations {
+                load: wgpu::LoadOp::Clear(0),
+                store: wgpu::StoreOp::Discard,
+            }),
         };
 
         let descriptor = wgpu::RenderPassDescriptor {

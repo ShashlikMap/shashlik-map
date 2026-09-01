@@ -1,11 +1,12 @@
+use crate::DEPTH_STENCIL_TEX_FORMAT;
 use crate::global_context::GlobalContext;
-use crate::pipelines::{MeshRenderFlag, RenderPipeline};
 use crate::pipelines::mesh_pipeline::MeshPipeline;
+use crate::pipelines::{MeshRenderFlag, RenderPipeline};
 use crate::vertex_attrs::GeneralInstanceInput;
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::TextureFormat::{Rgba16Float, Rgba32Float};
-use wgpu::{RenderPass, ShaderModuleDescriptor, ShaderSource, TextureFormat};
+use wgpu::{RenderPass, ShaderModuleDescriptor, ShaderSource};
 
 pub(crate) struct GBufPipeline {
     mesh_pipeline: MeshPipeline,
@@ -41,7 +42,7 @@ impl GBufPipeline {
         ];
         root_descriptor.multisample.count = 1;
         // render pass for g buffer uses Depth24Plus but original descriptor Depth24PlusStencil8
-        root_descriptor.depth_stencil.as_mut().unwrap().format = TextureFormat::Depth24Plus;
+        root_descriptor.depth_stencil.as_mut().unwrap().format = DEPTH_STENCIL_TEX_FORMAT;
         let pipeline = root_descriptor.to_render_pipeline(global_context.device());
         Self {
             mesh_pipeline,
