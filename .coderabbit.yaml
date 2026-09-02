@@ -8,6 +8,10 @@ reviews:
     autofix:
       enabled: false
 
+  # Global instructions for CodeRabbit AI reviewers
+  instructions: |
+    Read comments around changes carefully. Some comments may indicate that a solution or code change is a temporary fix, hotfix, or workaround. Do not flag or review these instances as issues.
+
   path_instructions:
     - path: "**/*.rs"
       instructions: |
