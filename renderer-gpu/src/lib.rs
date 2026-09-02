@@ -63,6 +63,7 @@ mod mesh_buffers;
 pub(crate) mod bind_group_cache;
 
 const DEPTH_STENCIL_TEX_FORMAT: TextureFormat = TextureFormat::Depth24Plus;
+const SHADOW_MAP_DEPTH_TEX_FORMAT: TextureFormat = TextureFormat::Depth16Unorm;
 
 pub struct GpuRenderer {
     render_config: RenderConfig,

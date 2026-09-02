@@ -3,11 +3,11 @@ use crate::pipelines::{MeshRenderFlag, OwnedFragmentState, OwnedRenderPipelineDe
 use crate::texture_view_resources::TextureViewKind;
 use crate::textures::{SAMPLE_COUNT, TextureData, create_simple_texture};
 use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
+use crate::{DEPTH_STENCIL_TEX_FORMAT, SHADOW_MAP_DEPTH_TEX_FORMAT};
 use renderer_common::geometry_data::MeshVertex;
 use std::borrow::Cow;
 use wesl::include_wesl;
-use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilState, TextureFormat, TextureUsages};
-use crate::DEPTH_STENCIL_TEX_FORMAT;
+use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilState, TextureUsages};
 
 pub(crate) struct MeshPipeline {
     pipeline: Option<wgpu::RenderPipeline>,
@@ -87,7 +87,7 @@ impl MeshPipeline {
                 sample_count: 1,
                 size: (1, 1),
                 usage: TextureUsages::TEXTURE_BINDING,
-                format: TextureFormat::Depth32Float,
+                format: SHADOW_MAP_DEPTH_TEX_FORMAT,
             },
             device,
         );

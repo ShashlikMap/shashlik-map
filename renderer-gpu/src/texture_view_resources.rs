@@ -1,7 +1,8 @@
+use crate::SHADOW_MAP_DEPTH_TEX_FORMAT;
 use crate::render_config::RenderConfig;
 use crate::textures::create_depth_texture;
 use rustc_hash::FxHashMap;
-use wgpu::{Device, TextureFormat, TextureView};
+use wgpu::{Device, TextureView};
 
 #[derive(Eq, PartialEq, Hash)]
 pub(crate) enum TextureViewKind {
@@ -23,7 +24,7 @@ impl TextureViewResources {
         let shadow_map_depth_texture = create_depth_texture(
             render_config.shadow_texture_size(),
             1,
-            TextureFormat::Depth32Float,
+            SHADOW_MAP_DEPTH_TEX_FORMAT,
             device,
         );
         let mut textures = FxHashMap::default();

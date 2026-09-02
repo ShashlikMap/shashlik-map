@@ -6,6 +6,7 @@ use renderer_common::geometry_data::MeshVertex;
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{Face, RenderPass, ShaderModuleDescriptor, ShaderSource};
+use crate::SHADOW_MAP_DEPTH_TEX_FORMAT;
 
 pub(crate) struct FillShadowMapPipeline {
     mesh_pipeline: MeshPipeline,
@@ -33,7 +34,7 @@ impl FillShadowMapPipeline {
         root_descriptor.fragment = None;
         root_descriptor.primitive.cull_mode = Some(Face::Front);
         root_descriptor.multisample.count = 1;
-        root_descriptor.depth_stencil.as_mut().unwrap().format = wgpu::TextureFormat::Depth32Float;
+        root_descriptor.depth_stencil.as_mut().unwrap().format = SHADOW_MAP_DEPTH_TEX_FORMAT;
         let shadow_pipeline = root_descriptor.to_render_pipeline(global_context.device());
         Self {
             mesh_pipeline,

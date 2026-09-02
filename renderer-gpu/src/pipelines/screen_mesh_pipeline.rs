@@ -6,6 +6,7 @@ use crate::vertex_attrs::{MeshVertexWithUV, ScreenShapeInstanceInput, VertexAttr
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, BindingType, CompareFunction, FilterMode, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
+use crate::SHADOW_MAP_DEPTH_TEX_FORMAT;
 
 pub(crate) struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
@@ -229,7 +230,7 @@ impl ScreenMeshPipeline {
                 sample_count: 1,
                 size: (1, 1),
                 usage: TextureUsages::TEXTURE_BINDING,
-                format: TextureFormat::Depth32Float,
+                format: SHADOW_MAP_DEPTH_TEX_FORMAT,
             },
             device,
         );

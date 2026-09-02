@@ -51,8 +51,8 @@ pub fn launch_internal(ui: &ShashlikUI) {
     ui.set_screen_width(screen_size.width as i32);
     ui.set_screen_height(screen_size.height as i32);
 
-    // TODO make a proper env flag later
-    let is_round_screen = cfg!(target_os = "linux");
+    // the same width/height is not typical for screens, let's use it as round screen sign
+    let is_round_screen = screen_size.width == screen_size.height;
     println!("is_round_screen: {}", is_round_screen);
 
     let low_res = max(screen_size.width, screen_size.height) <= 1024;
