@@ -21,6 +21,7 @@ geo = "0.33.1"
 rayon = "1.11.0"
 kml = { git = "https://github.com/ShashlikMap/kml" }
 fast-mvt = "0.6.2"
+rand = { workspace = true, rand = "0.10.2" }
 
 glam = { workspace = true }
 num = { workspace = true}

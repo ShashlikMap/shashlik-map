@@ -12,18 +12,25 @@ use renderer_common::style_id::StyleId;
 use capitalize::Capitalize;
 use geo::Scale;
 use lyon::lyon_tessellation::{LineCap, LineJoin};
+use rand::RngExt;
 use crate::MAX_ZOOM_LEVEL;
 
 pub struct ShashlikFeatureProcessor {
     include_extruded: bool,
-    data_filter: fn(zoom_level: i32, &MapGeomObjectKind) -> bool
+    data_filter: fn(zoom_level: i32, &MapGeomObjectKind) -> bool,
 }
 
 impl Default for ShashlikFeatureProcessor {
     fn default() -> Self {
         ShashlikFeatureProcessor::new(true, |zoom_level, kind| {
-            // by default, we keep building only for zoom_level >= 13
+            // by default, we keep building only for zoom_level >= 13 and TrafficLight/Toilet for >= 15(due to POI id issues)
             match kind {
+                MapGeomObjectKind::Poi(info) => {
+                    match info.kind {
+                        MapPointObjectKind::TrafficLight | MapPointObjectKind::Toilet => zoom_level >= 15,
+                        _ => true,
+                    }
+                }
                 MapGeomObjectKind::Building(_) => zoom_level >= 13,
                 _ => true,
             }
@@ -41,7 +48,7 @@ impl ShashlikFeatureProcessor {
                data_filter: fn(zoom_level: i32, kind: &MapGeomObjectKind) -> bool) -> Self {
         ShashlikFeatureProcessor {
             include_extruded,
-            data_filter
+            data_filter,
         }
     }
 
@@ -88,7 +95,7 @@ impl ShashlikFeatureProcessor {
 impl FeatureProcessor for ShashlikFeatureProcessor {
     fn process_poi(
         &self,
-        id: i64,
+        mut id: i64,
         geometry_data: &mut Vec<GeometryData>,
         poi: &MapPointInfo,
         zoom_level: i32,
@@ -97,6 +104,13 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
     ) {
         if !(self.data_filter)(zoom_level, &MapGeomObjectKind::Poi(poi.clone())) {
             return;
+        }
+        // Temporary workaround for POIs without IDs
+        // For some reason, MapTiler doesn't return it for every POI.
+        // But the collision detector needs it.
+        if id == 0 {
+            let mut rng = rand::rng();
+            id = rng.random();
         }
         let icon: Option<(&str, &[u8])> = match poi.kind {
             MapPointObjectKind::TrainStation(is_train) => {
