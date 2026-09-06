@@ -5,7 +5,6 @@ use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
 use crate::mesh::mesh_instance_input::{MeshInstanceInput};
-use crate::mesh_buffers::MeshBuffers;
 use crate::mesh_layers::{BaseMeshLayer, LayerAttrMapper, RenderableLayer};
 use crate::pipelines::RenderPipeline;
 use crate::view_projection::ViewProjection;
@@ -17,13 +16,16 @@ use renderer_common::render_modifier::SpatialData;
 use rstar::primitives::Rectangle;
 use std::collections::HashMap;
 use std::mem;
+use std::ops::Range;
 use rustc_hash::{FxHashMap, FxHashSet};
 use wgpu::RenderPass;
+use crate::mesh_buffers::MeshBuffers;
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
 pub(crate) struct ScreenShapeLayer<I: MeshInstanceInput> {
     attr_map: LayerAttrMapper<I>,
-    meshes: HashMap<String, (Mesh, InstanceBuffer<I>, MeshBuffers<I>)>,
+    instance_buffer: InstanceBuffer<I>,
+    meshes: HashMap<String, (Mesh, Range<u32>)>,
     collision_task_controller: CollisionTaskController<
         (ShapeInfo, f32, String),
         FxHashMap<String, Vec<(DVec3, f32)>>,
@@ -43,6 +45,7 @@ impl<I: MeshInstanceInput> ScreenShapeLayer<I> {
         global_context.collider.register_task(Box::new(task));
         ScreenShapeLayer {
             attr_map,
+            instance_buffer: InstanceBuffer::default(),
             meshes: HashMap::new(),
             collision_task_controller,
         }
@@ -69,8 +72,7 @@ impl<I: MeshInstanceInput> ScreenShapeLayer<I> {
                         &batch.mesh,
                         mem::take(&mut batch.layers_indices),
                     ),
-                    InstanceBuffer::default(),
-                    MeshBuffers::default()
+                    0..0
                 )
             });
 
@@ -105,11 +107,14 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
             return;
         };
         let cs_offset = global_context.view_projection.cs_offset;
+        let mut all_attrs = vec![];
         self.meshes
             .iter_mut()
-            .for_each(|(key, (_, instance_buffer, mesh_buffers))| {
-                let mut attrs = Vec::new();
+            .for_each(|(key, (_, instance_range))| {
+                *instance_range = 0..0; // reset range before updating so it won't be counted during rendering
                 if let Some(pos_alpha) = hm.get(key) {
+                    let start_index = all_attrs.len() as u32;
+                    let mut attrs = Vec::with_capacity(pos_alpha.len());
                     I::fill_attrs(
                         &mut attrs,
                         self.attr_map,
@@ -117,15 +122,16 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
                         pos_alpha,
                         &SpatialData::new(),
                     );
+                    all_attrs.extend(attrs);
+                    let end_index = all_attrs.len() as u32;
+                    *instance_range = start_index..end_index;
                 }
-
-                instance_buffer.update(
-                    "ScreenInstanceBuffer",
-                    global_context,
-                    &attrs,
-                );
-                *mesh_buffers = MeshBuffers::builder().with_instance_buffer(instance_buffer);
             });
+        self.instance_buffer.update(
+            "ScreenInstanceBuffer",
+            global_context,
+            &all_attrs,
+        );
     }
     
     fn clear_by_key(&mut self, key: &str) {
@@ -136,12 +142,12 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
 impl<I: MeshInstanceInput> RenderableLayer<I> for ScreenShapeLayer<I> {
     fn render(&mut self, render_pass: &mut RenderPass, render_pipeline: &mut impl RenderPipeline<I>, global_context: &mut GlobalContext) {
         render_pipeline.setup_render(render_pass, global_context);
-        self.meshes.iter().for_each(|(_, (mesh, instance_buf, mesh_buffers))| {
-            let instance_count = instance_buf.length;
-            if instance_count > 0 {
-                render_pipeline.setup_mesh_buffers(render_pass, mesh_buffers);
-                mesh.render_instanced(render_pass, global_context, instance_count, false, None);
-            }
+
+        let mesh_buffers = MeshBuffers::builder().with_instance_buffer(&self.instance_buffer);
+        render_pipeline.setup_mesh_buffers(render_pass, &mesh_buffers);
+
+        self.meshes.iter().for_each(|(_, (mesh, instance_range))| {
+            mesh.render_instanced_with_range(render_pass, global_context, instance_range, false, None);
         });
     }
 }

@@ -89,9 +89,19 @@ impl Mesh {
         disable_skip_mesh_feature: bool,
         indirect_args: Option<&Buffer>
     ) {
-        if instance_count > 0 {
-            let range = 0..(instance_count as u32);
-            self.render(render_pass, global_context, &range, disable_skip_mesh_feature, indirect_args);
+        self.render_instanced_with_range(render_pass, global_context, &(0..instance_count as u32), disable_skip_mesh_feature, indirect_args);
+    }
+
+    pub fn render_instanced_with_range(
+        &self,
+        render_pass: &mut RenderPass,
+        global_context: &GlobalContext,
+        instances: &Range<u32>,
+        disable_skip_mesh_feature: bool,
+        indirect_args: Option<&Buffer>
+    ) {
+        if !instances.is_empty() {
+            self.render(render_pass, global_context, instances, disable_skip_mesh_feature, indirect_args);
         }
     }
 
