@@ -33,9 +33,13 @@ uniffi {
 }
 
 val rustlsPlatformVerifierAar = providers.exec {
+    val cargoExecutable = System.getProperty("user.home")?.let { home ->
+        File(home, ".cargo/bin/cargo").takeIf { it.exists() }?.absolutePath
+    } ?: "cargo"
+
     workingDir = rootDir.parentFile
     commandLine(
-        "cargo", "metadata",
+        cargoExecutable, "metadata",
         "--format-version", "1",
         "--filter-platform", "aarch64-linux-android",
     )

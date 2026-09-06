@@ -1,3 +1,4 @@
+use std::env;
 use crate::tiles::mvt::mvt_parser::MvtParser;
 use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesProviderStore};
 use log::error;
@@ -5,47 +6,77 @@ use osm::map::{MapGeomObject, MapGeometry};
 use osm::tiles::TileKey;
 use reqwest::header::{HeaderMap, HeaderValue, ORIGIN};
 use std::time::{Duration, SystemTime};
+use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache, HttpCacheOptions};
+use reqwest_middleware::ClientWithMiddleware;
+use tokio::runtime::Runtime;
+
+const HTTP_CACHE_ENABLED: bool = true;
 
 pub struct MvtTileStore {
+    tokio_rt: Runtime,
     mvt_parser: MvtParser,
-    client: reqwest::blocking::Client,
+    client: ClientWithMiddleware,
 }
+
 
 impl MvtTileStore {
     pub fn new() -> Self {
+        let tokio_rt = Runtime::new().unwrap();
         let mut headers = HeaderMap::new();
         headers.insert(ORIGIN, HeaderValue::from_static("shashlikmap.com"));
-        let client = reqwest::blocking::Client::builder()
+
+        let client = reqwest::Client::builder()
             .default_headers(headers)
             .tcp_keepalive(std::time::Duration::from_secs(30))
             .timeout(Duration::from_secs(10))
             .build()
             .unwrap();
+
+        let client_builder = if !HTTP_CACHE_ENABLED || cfg!(target_os = "android") || cfg!(target_os = "ios") {
+            // fyi, We don't use http cache on mobile device at this moment
+            // It requires to pass a files/cache native folder
+            reqwest_middleware::ClientBuilder::new(client)
+        } else {
+            let mut cache_dir = env::current_exe().expect("Failed to get current executable path");
+            cache_dir.pop();
+            cache_dir.push("maptiler-http-cache");
+            reqwest_middleware::ClientBuilder::new(client)
+                .with(Cache(HttpCache {
+                    mode: CacheMode::Default,
+                    manager: CACacheManager::new(cache_dir, false),
+                    options: HttpCacheOptions::default(),
+                }))
+        };
+
+        let client = client_builder.build();
+
         Self {
+            tokio_rt,
             mvt_parser: MvtParser::default(),
             client,
         }
     }
 
-    fn fetch_tile(&self, x: i32, y: i32, z: i32) -> Result<Vec<u8>, reqwest::Error> {
-        let t1 = SystemTime::now();
+    async fn fetch_tile_inner(&self, x: i32, y: i32, z: i32) -> Result<Vec<u8>, reqwest_middleware::Error> {
         let api_key = option_env!("MAPTILER_API_KEY").expect("MAPTILER_API_KEY should be set");
-        let response = self
+        let bytes = self
             .client
             .get(format!(
                 "https://api.maptiler.com/tiles/v4/{z}/{x}/{y}.pbf?key={api_key}"
             ))
-            .send()?
-            .error_for_status();
-        let bytes_res = response.and_then(|response| response.bytes())?;
-        let bytes = bytes_res.to_vec();
-        let t2 = SystemTime::now();
+            .send().await?.error_for_status()?.bytes().await?.to_vec();
+        Ok(bytes)
+    }
+
+    fn fetch_tile(&self, x: i32, y: i32, z: i32) -> Result<Vec<u8>, reqwest_middleware::Error> {
+        let t1 = SystemTime::now();
+        let bytes = self.tokio_rt.block_on(self.fetch_tile_inner(x, y, z))?;
         error!(
             "get_map_tiler_tile, x = {}, y = {}, z = {}, total_time = {:?}, len = {}",
             x,
             y,
             z,
-            t2.duration_since(t1),
+            t1.elapsed(),
             bytes.len()
         );
         Ok(bytes)

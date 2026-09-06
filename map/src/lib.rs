@@ -21,13 +21,14 @@ use renderer_common::style_id::StyleId;
 use route::route_controller::RouteController;
 #[cfg(feature = "sgnss")]
 use sgnss::start_sgnss;
-use std::mem;
+use std::{mem};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
+use fast_mvt::serde_json;
 use log::error;
 use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData};
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
@@ -470,6 +471,10 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
                 error!("No styles loaded! Trying again!");
                 sleep(Duration::from_millis(1000));
                 styles = StyleLoader::load(false);
+                if styles.is_empty() {
+                    styles = serde_json::from_slice(include_bytes!("../../styles_v0.json")).unwrap();
+                    error!("Offline styles are used!");
+                }
             }
             styles.into_iter().for_each(|style| {
                 let style_id = StyleId::new(style.id);
