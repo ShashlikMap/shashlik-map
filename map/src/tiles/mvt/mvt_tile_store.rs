@@ -37,6 +37,7 @@ impl MvtTileStore {
             // It requires to pass a files/cache native folder
             reqwest_middleware::ClientBuilder::new(client)
         } else {
+            // fyi, keep in mind that the folder might be read-only. Let's ignore it for now.
             let mut cache_dir = env::current_exe().expect("Failed to get current executable path");
             cache_dir.pop();
             cache_dir.push("maptiler-http-cache");

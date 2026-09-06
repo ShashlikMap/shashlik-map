@@ -1,0 +1,450 @@
+[
+  {
+    "id": "ground",
+    "render_style": {
+      "Fill": {
+        "r": 0.957,
+        "g": 0.953,
+        "b": 0.941,
+        "a": 1.0
+      }
+    }
+  },
+  {
+    "id": "railway_station",
+    "render_style": {
+      "Fill": {
+        "r": 0.914,
+        "g": 0.902,
+        "b": 0.882,
+        "a": 1.0
+      }
+    }
+  },
+  {
+    "id": "train_station",
+    "render_style": {
+      "Fill": {
+        "r": 0.914,
+        "g": 0.902,
+        "b": 0.882,
+        "a": 1.0
+      }
+    }
+  },
+  {
+    "id": "poi_traffic_light",
+    "render_style": {
+      "Fill": {
+        "r": 0.29,
+        "g": 0.29,
+        "b": 0.29,
+        "a": 1.0
+      }
+    }
+  },
+  {
+    "id": "poi_parking",
+    "render_style": {
+      "Fill": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      }
+    }
+  },
+  {
+    "id": "poi_ev_station",
+    "render_style": {
+      "Fill": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      }
+    }
+  },
+  {
+    "id": "poi_toilet",
+    "render_style": {
+      "Fill": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      }
+    }
+  },
+  {
+    "id": "kml_dots",
+    "render_style": {
+      "Fill": {
+        "r": 1.0,
+        "g": 0.2,
+        "b": 0.2,
+        "a": 1.0
+      }
+    }
+  },
+  {
+    "id": "water",
+    "render_style": {
+      "Fill": {
+        "r": 0.647,
+        "g": 0.788,
+        "b": 0.922,
+        "a": 1.0
+      }
+    }
+  },
+  {
+    "id": "building",
+    "render_style": {
+      "Border": [
+        {
+          "r": 0.8068,
+          "g": 0.8165,
+          "b": 0.8207,
+          "a": 1.0
+        },
+        0.05
+      ]
+    }
+  },
+  {
+    "id": "building_stand",
+    "render_style": {
+      "Fill": {
+        "r": 0.85,
+        "g": 0.85,
+        "b": 0.85,
+        "a": 1.0
+      }
+    }
+  },
+  {
+    "id": "park",
+    "render_style": {
+      "Fill": {
+        "r": 0.82,
+        "g": 0.945,
+        "b": 0.843,
+        "a": 1.0
+      }
+    }
+  },
+  {
+    "id": "forest",
+    "render_style": {
+      "Fill": {
+        "r": 0.757,
+        "g": 0.91,
+        "b": 0.784,
+        "a": 1.0
+      }
+    }
+  },
+  {
+    "id": "puck_style",
+    "render_style": {
+      "Fill": {
+        "r": 0.118,
+        "g": 0.529,
+        "b": 0.965,
+        "a": 1.0
+      }
+    }
+  },
+  {
+    "id": "route",
+    "render_style": {
+      "Border": [
+        {
+          "r": 0.118,
+          "g": 0.529,
+          "b": 0.965,
+          "a": 1.0
+        },
+        0.2
+      ]
+    }
+  },
+  {
+    "id": "route_motorbike",
+    "render_style": {
+      "Border": [
+        {
+          "r": 0.118,
+          "g": 0.529,
+          "b": 0.965,
+          "a": 1.0
+        },
+        0.2
+      ]
+    }
+  },
+  {
+    "id": "route_alternative",
+    "render_style": {
+      "Border": [
+        {
+          "r": 0.471,
+          "g": 0.525,
+          "b": 0.588,
+          "a": 1.0
+        },
+        0.2
+      ]
+    }
+  },
+  {
+    "id": "highway_motorway",
+    "render_style": {
+      "Border": [
+        {
+          "r": 0.996,
+          "g": 0.8,
+          "b": 0.529,
+          "a": 1.0
+        },
+        0.3
+      ]
+    }
+  },
+  {
+    "id": "highway_trunk",
+    "render_style": {
+      "Border": [
+        {
+          "r": 0.996,
+          "g": 0.8,
+          "b": 0.529,
+          "a": 1.0
+        },
+        0.3
+      ]
+    }
+  },
+  {
+    "id": "highway_primary",
+    "render_style": {
+      "Border": [
+        {
+          "r": 0.880,
+          "g": 0.835,
+          "b": 0.614,
+          "a": 1.0
+        },
+        0.2
+      ]
+    }
+  },
+  {
+    "id": "highway_secondary",
+    "render_style": {
+      "Border": [
+        {
+          "r": 0.880,
+          "g": 0.835,
+          "b": 0.614,
+          "a": 1.0
+        },
+        0.2
+      ]
+    }
+  },
+  {
+    "id": "highway_tertiary",
+    "render_style": {
+      "Border": [
+        {
+          "r": 0.890,
+          "g": 0.886,
+          "b": 0.875,
+          "a": 1.0
+        },
+        0.75
+      ]
+    }
+  },
+  {
+    "id": "highway_default",
+    "render_style": {
+      "Border": [
+        {
+          "r": 0.890,
+          "g": 0.886,
+          "b": 0.875,
+          "a": 1.0
+        },
+        0.75
+      ]
+    }
+  },
+  {
+    "id": "highway_footway",
+    "render_style": {
+      "Border": [
+        {
+          "r": 0.91,
+          "g": 0.906,
+          "b": 0.894,
+          "a": 1.0
+        },
+        0.0
+      ]
+    }
+  },
+  {
+    "id": "admin_line",
+    "render_style": {
+      "Border": [
+        {
+          "r": 0.65,
+          "g": 0.65,
+          "b": 0.65,
+          "a": 1.0
+        },
+        0.0
+      ]
+    }
+  },
+  {
+    "id": "poi",
+    "render_style": {
+      "Fill": {
+        "r": 0.29,
+        "g": 0.29,
+        "b": 0.29,
+        "a": 1.0
+      }
+    }
+  },
+  {
+    "id": "rails",
+    "render_style": {
+      "Dashed": [
+        {
+          "r": 0.48,
+          "g": 0.50,
+          "b": 0.55,
+          "a": 1.0
+        },
+        {
+          "r": 0.70,
+          "g": 0.73,
+          "b": 0.76,
+          "a": 1.0
+        },
+        "Solid"
+      ]
+    }
+  },
+  {
+    "id": "route_pedestrian",
+    "render_style": {
+      "Dashed": [
+        {
+          "r": 1.0,
+          "g": 1.0,
+          "b": 1.0,
+          "a": 1.0
+        },
+        {
+          "r": 0.118,
+          "g": 0.529,
+          "b": 0.965,
+          "a": 1.0
+        },
+        "Circles"
+      ]
+    }
+  },
+  {
+    "id": "route_pedestrian_alternative",
+    "render_style": {
+      "Dashed": [
+        {
+          "r": 1.0,
+          "g": 1.0,
+          "b": 1.0,
+          "a": 1.0
+        },
+        {
+          "r": 0.471,
+          "g": 0.525,
+          "b": 0.588,
+          "a": 1.0
+        },
+        "Circles"
+      ]
+    }
+  },
+  {
+    "id": "poi_icon_background",
+    "render_style": {
+      "Fill": {
+        "r": 0.467,
+        "g": 0.522,
+        "b": 0.596,
+        "a": 0.9
+      }
+    }
+  },
+  {
+    "id": "railway_station_icon_background",
+    "render_style": {
+      "Fill": {
+        "r": 0.231,
+        "g": 0.349,
+        "b": 0.596,
+        "a": 0.9
+      }
+    }
+  },
+  {
+    "id": "train_station_icon_background",
+    "render_style": {
+      "Fill": {
+        "r": 0.231,
+        "g": 0.349,
+        "b": 0.596,
+        "a": 0.9
+      }
+    }
+  },
+  {
+    "id": "poi_toilet_icon_background",
+    "render_style": {
+      "Fill": {
+        "r": 0.54,
+        "g": 0.47,
+        "b": 0.57,
+        "a": 0.9
+      }
+    }
+  },
+  {
+    "id": "poi_parking_icon_background",
+    "render_style": {
+      "Fill": {
+        "r": 0.224,
+        "g": 0.447,
+        "b": 0.741,
+        "a": 0.9
+      }
+    }
+  },
+  {
+    "id": "poi_ev_station_icon_background",
+    "render_style": {
+      "Fill": {
+        "r": 0.224,
+        "g": 0.678,
+        "b": 0.392,
+        "a": 0.9
+      }
+    }
+  }
+]
