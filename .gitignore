@@ -41,6 +41,4 @@ dbs/*.db
 
 .env
 
-styles_v0.json
-
 output.png
