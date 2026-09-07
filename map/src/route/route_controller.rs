@@ -2,7 +2,6 @@ use crate::route::RouteCosting;
 use geo_types::{Point, point};
 use log::error;
 use renderer_common::RendererApi;
-use renderer_common::render_modifier::SpatialData;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -48,10 +47,9 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         #[cfg(target_os = "linux")]
         {
             let route: Vec<Point> = vec![point!(x:0.0, y:0.0), point!(x: 1.0, y:0.0)];
-            let route = Box::new(OverlayShapeGroup::new(route, false, RouteCosting::Auto));
-            let spatial_data = SpatialData::transform(route.first_route_point());
+            let route = Box::new(OverlayShapeGroup::new(route, "route_layer".to_string(), StyleId::new("route"), ShapeType::Line));
             self.api
-                .add_render_group("route".to_string(), spatial_data, route);
+                .add_render_group("route".to_string(), route.spatial_data(), route);
         }
     }
 
