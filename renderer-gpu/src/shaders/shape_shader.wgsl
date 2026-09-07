@@ -104,9 +104,9 @@ fn vs_main(
 }
 
 // TODO pass as a parameter
-const route_inflate_factor: f32 = 1.3;
+const indirect_inflate_factor: f32 = 1.3;
 @vertex
-fn vs_main_route(
+fn vs_main_indirect(
     model: VertexInput,
 ) -> VertexOutput {
     var out: VertexOutput;
@@ -144,7 +144,7 @@ fn vs_main_route(
     if(with_normal) {
         var inflate_scale = 1.0;
         if(model.instance_index % 2 == 0) {
-            inflate_scale *= route_inflate_factor;
+            inflate_scale *= indirect_inflate_factor;
         }
         let normal_scale = indirect_instances[instance_index].normal_scale;
         pointPos += normalize(vec3(model.normal, 0.0)) * normal_scale * 0.5 * inflate_scale;

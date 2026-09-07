@@ -30,11 +30,15 @@ pub fn feature_layer_tags() -> Vec<WorldShapeFeatureLayerTag> {
             ..Default::default()
         },
         WorldShapeFeatureLayerTag {
-            name: "route_layer",
-            vertex_shader: Some("vs_main_route"),
-            indirect: true,
+            name: "custom_overlay_layer",
             single_instance_step: true,
             ..Default::default()
+        },
+        WorldShapeFeatureLayerTag {
+            name: "route_layer",
+            vertex_shader: Some("vs_main_indirect"),
+            indirect: true,
+            single_instance_step: true,
         },
         WorldShapeFeatureLayerTag {
             name: "puck",
