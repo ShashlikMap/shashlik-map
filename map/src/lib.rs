@@ -526,8 +526,8 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             .clear_routes(self.renderer.api());
     }
 
-    pub fn overlay(&self) -> &Overlay<R::RAPI> {
-        &self.overlay
+    pub fn overlay(&mut self) -> &mut Overlay<R::RAPI> {
+        &mut self.overlay
     }
 
     #[allow(unused_variables)]

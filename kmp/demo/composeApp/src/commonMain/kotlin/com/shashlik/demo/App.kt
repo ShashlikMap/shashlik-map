@@ -178,17 +178,23 @@ fun App() {
                             })
                         Text("MVT")
 
-                        val shapeIds = remember { mutableStateSetOf<String?>() }
+                        // Just a temporary test for shape creating.
+                        val shapeIds = remember { mutableStateSetOf<String>() }
                         Button({
                             val (points, shapeType, color) = generateRandomShapeAroundTokyo()
-                            if(shapeIds.size > 5) {
-                                shapeIds.filterNotNull().forEach {
+                            if (shapeIds.size > 5) {
+                                shapeIds.forEach {
                                     ShashlikMapApiHolder.shashlikMapApi?.removeShape(it)
                                 }
                                 shapeIds.clear()
                             }
-                            val shapeId = ShashlikMapApiHolder.shashlikMapApi?.addOverlayShape(points, shapeType, color)
-                            shapeIds += shapeId
+                            ShashlikMapApiHolder.shashlikMapApi?.addOverlayShape(
+                                points,
+                                shapeType,
+                                color
+                            )?.let {
+                                shapeIds += it
+                            }
                         }) {
                             Text("Shp")
                         }

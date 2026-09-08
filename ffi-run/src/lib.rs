@@ -132,8 +132,7 @@ impl ShashlikMapApi {
         shashlik_map.create_route_to_screen_point(point_x, point_y, route_costing.into());
     }
 
-    pub fn add_overlay_shape(&self, points: Vec<Point>, shape_type: ShapeType, color: Color) -> String {
-        let shashlik_map = self.shashlik_map.read().unwrap();
+    pub fn add_overlay_shape(&self, points: Vec<Point>, shape_type: ShapeType, color: Color) -> Option<String> {
         let points = points.into_iter().map(|point| {
             geo_types::Point::new(point.x, point.y)
         }).collect();
@@ -142,12 +141,13 @@ impl ShashlikMapApi {
             ShapeType::Line => map::overlay::ShapeType::Line,
             ShapeType::Polygon => map::overlay::ShapeType::Polygon
         };
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
         let converter = shashlik_map.create_location_coord_converter();
         shashlik_map.overlay().add_overlay_shape(converter, points, shape_type, [color.r, color.g, color.b])
     }
 
     pub fn remove_shape(&self, key: String) {
-        let shashlik_map = self.shashlik_map.read().unwrap();
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
         shashlik_map.overlay().remove_shape(key);
     }
 }
