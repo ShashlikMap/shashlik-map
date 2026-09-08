@@ -31,6 +31,7 @@ use std::time::{Duration, Instant};
 use fast_mvt::serde_json;
 use log::error;
 use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData};
+use crate::overlay::overlay::Overlay;
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
 mod camera;
@@ -41,13 +42,16 @@ mod puck_group;
 pub mod route;
 pub mod tiles;
 mod transition_2d_3d_helper;
-pub(crate) mod overlay;
+pub mod overlay;
+
+type CoordConverter = Box<dyn (Fn(&Point) -> Point) + Send>;
 
 pub struct ShashlikMap<R: Renderer, T: TilesProvider> {
     pub renderer: R,
     camera: Camera,
     camera_controller: CameraController,
     tiles_provider: T,
+    overlay: Overlay<R::RAPI>,
     route_controller: RouteController<R::RAPI>,
     current_world_position: DVec3,
     current_bearing: f64,
@@ -122,6 +126,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         let transition_2d_3d_helper = Transition2d3dHelper::new(zero_zoom_level_loaded.clone());
         Self::run_tiles(renderer.api(), zero_zoom_level_loaded.clone(), tiles_stream);
         Self::load_styles(renderer.api());
+        let overlay = Overlay::new("custom_overlay_layer".to_string(), renderer.api());
 
         let mut camera_controller = CameraController::new();
         camera_controller.pitch = CameraController::MIN_PITCH;
@@ -135,6 +140,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             camera: cam,
             camera_controller,
             tiles_provider,
+            overlay,
             route_controller,
             current_world_position: camera_offset,
             current_bearing: 0.0,
@@ -456,7 +462,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         );
     }
 
-    fn create_location_coord_converter(&self) -> Box<dyn (Fn(&Point) -> Point) + Send> {
+    pub fn create_location_coord_converter(&self) -> CoordConverter {
         let converter = self.tiles_provider.inner_converter();
         Box::new(move |p| {
             let coord: Coord<f64> = (p.x(), p.y()).into();
@@ -518,6 +524,10 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
     pub fn clear_routes(&mut self) {
         self.route_controller
             .clear_routes(self.renderer.api());
+    }
+
+    pub fn overlay(&self) -> &Overlay<R::RAPI> {
+        &self.overlay
     }
 
     #[allow(unused_variables)]

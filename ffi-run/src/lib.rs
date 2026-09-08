@@ -2,18 +2,30 @@ uniffi::setup_scaffolding!();
 
 mod platform;
 
+use map::ShashlikMap;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
-use map::ShashlikMap;
-use renderer_gpu::GpuRenderer;
 use renderer_common::{PreviewType, TilesType};
+use renderer_gpu::GpuRenderer;
 use std::sync::RwLock;
-use log::__private_api::enabled;
 
 #[derive(uniffi::Object)]
 pub struct ShashlikMapApi {
     // TODO ?Can't use generic for FFI ShashlikMapApi?
     shashlik_map: RwLock<ShashlikMap<GpuRenderer, DefaultTilesProvider<ShashlikFeatureProcessor>>>,
+}
+
+#[derive(uniffi::Record)]
+pub struct Point {
+    pub x: f64,
+    pub y: f64,
+}
+
+#[derive(uniffi::Record)]
+pub struct Color {
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
 }
 
 unsafe impl Sync for ShashlikMapApi {}
@@ -22,6 +34,12 @@ unsafe impl Send for ShashlikMapApi {}
 #[derive(uniffi::Enum)]
 pub enum RouteCosting {
     Auto, Pedestrian, Motorbike
+}
+
+#[derive(uniffi::Enum)]
+pub enum ShapeType {
+    Line,
+    Polygon,
 }
 
 impl From<RouteCosting> for map::route::RouteCosting {
@@ -112,5 +130,24 @@ impl ShashlikMapApi {
     fn calculate_route(&self, point_x: f32, point_y: f32, route_costing: RouteCosting) {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
         shashlik_map.create_route_to_screen_point(point_x, point_y, route_costing.into());
+    }
+
+    pub fn add_overlay_shape(&self, points: Vec<Point>, shape_type: ShapeType, color: Color) -> String {
+        let shashlik_map = self.shashlik_map.read().unwrap();
+        let points = points.into_iter().map(|point| {
+            geo_types::Point::new(point.x, point.y)
+        }).collect();
+
+        let shape_type = match shape_type {
+            ShapeType::Line => map::overlay::ShapeType::Line,
+            ShapeType::Polygon => map::overlay::ShapeType::Polygon
+        };
+        let converter = shashlik_map.create_location_coord_converter();
+        shashlik_map.overlay().add_overlay_shape(converter, points, shape_type, [color.r, color.g, color.b])
+    }
+
+    pub fn remove_shape(&self, key: String) {
+        let shashlik_map = self.shashlik_map.read().unwrap();
+        shashlik_map.overlay().remove_shape(key);
     }
 }

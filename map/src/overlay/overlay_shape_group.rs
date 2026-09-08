@@ -11,12 +11,7 @@ use renderer_common::geometry_data::{
 use renderer_common::render_group::RenderGroup;
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::style_id::StyleId;
-
-pub(crate) enum ShapeType {
-    Line,
-    Polygon,
-    DottedLine,
-}
+use crate::overlay::ShapeType;
 
 pub struct OverlayShapeGroup {
     shape: Vec<Point>,
