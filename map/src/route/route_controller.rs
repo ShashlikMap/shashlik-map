@@ -1,9 +1,7 @@
 use crate::route::RouteCosting;
-use crate::route::route_group::RouteGroup;
 use geo_types::{Point, point};
 use log::error;
 use renderer_common::RendererApi;
-use renderer_common::render_modifier::SpatialData;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -12,6 +10,8 @@ use std::time::Duration;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
 use valhalla_client::route::{DirectionsType, Location, Manifest, Trip};
+use renderer_common::style_id::StyleId;
+use crate::overlay::overlay_shape_group::{OverlayShapeGroup, ShapeType};
 
 pub struct RouteController<RAPI: RendererApi + 'static> {
     api: Arc<RAPI>,
@@ -47,10 +47,9 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         #[cfg(target_os = "linux")]
         {
             let route: Vec<Point> = vec![point!(x:0.0, y:0.0), point!(x: 1.0, y:0.0)];
-            let route = Box::new(RouteGroup::new(route, false, RouteCosting::Auto));
-            let spatial_data = SpatialData::transform(route.first_route_point());
+            let route = Box::new(OverlayShapeGroup::new(route, "route_layer".to_string(), StyleId::new("route"), ShapeType::Line));
             self.api
-                .add_render_group("route".to_string(), spatial_data, route);
+                .add_render_group("route".to_string(), route.spatial_data(), route);
         }
     }
 
@@ -98,17 +97,35 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                         .collect();
                                     let route: Vec<Point> =
                                         route.iter().map(|p| converter(p)).collect();
-                                    let route = Box::new(RouteGroup::new(
+                                    let mut shape_type = ShapeType::Line;
+                                    let style_id = match route_costing {
+                                        RouteCosting::Pedestrian => {
+                                            shape_type = ShapeType::DottedLine;
+                                            if index < alternates {
+                                                StyleId::new("route_pedestrian_alternative")
+                                            } else {
+                                                StyleId::new("route_pedestrian")
+                                            }
+                                        },
+                                        RouteCosting::Auto | RouteCosting::Motorbike => {
+                                            if index < alternates {
+                                                StyleId::new("route_alternative")
+                                            } else {
+                                                StyleId::new("route")
+                                            }
+                                        },
+                                    };
+
+                                    let route = Box::new(OverlayShapeGroup::new(
                                         route,
-                                        index < alternates,
-                                        route_costing.clone(),
+                                        "route_layer".to_string(),
+                                        style_id,
+                                        shape_type
                                     ));
-                                    let spatial_data =
-                                        SpatialData::transform(route.first_route_point());
 
                                     api.add_render_group(
                                         Self::create_route_id(index),
-                                        spatial_data,
+                                        route.spatial_data(),
                                         route,
                                     );
                                 } else {

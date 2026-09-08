@@ -41,6 +41,7 @@ mod puck_group;
 pub mod route;
 pub mod tiles;
 mod transition_2d_3d_helper;
+pub(crate) mod overlay;
 
 pub struct ShashlikMap<R: Renderer, T: TilesProvider> {
     pub renderer: R,
