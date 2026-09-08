@@ -32,8 +32,7 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         shape_type: ShapeType,
         fill_color: [f32; 3],
     ) -> Option<String> {
-        // drop if there is no line/polygon geometry
-        if points.len() <= 1 {
+        if !shape_type.are_points_valid(&points) {
             return None;
         }
         let points: Vec<Point> = points.iter().map(|p| converter(p)).collect();
