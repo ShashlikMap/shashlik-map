@@ -11,7 +11,9 @@ use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
 use valhalla_client::route::{DirectionsType, Location, Manifest, Trip};
 use renderer_common::style_id::StyleId;
-use crate::overlay::overlay_shape_group::{OverlayShapeGroup, ShapeType};
+use crate::CoordConverter;
+use crate::overlay::overlay_shape_group::{OverlayShapeGroup};
+use crate::overlay::ShapeType;
 
 pub struct RouteController<RAPI: RendererApi + 'static> {
     api: Arc<RAPI>,
@@ -57,7 +59,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         &mut self,
         to_lon_lat: (f64, f64),
         route_costing: RouteCosting,
-        converter: Box<dyn (Fn(&Point) -> Point) + Send>,
+        converter: CoordConverter,
     ) {
         self.clear_routes(Arc::clone(&self.api));
         if let Some((lon, lat)) = self.current_lon_lat {

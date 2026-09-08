@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,11 +43,17 @@ import com.shashlik.kmp.ShashlikMap
 import com.shashlik.kmp.ShashlikMapApiHolder
 import com.shashlik.kmp.isDebugBuild
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import uniffi.ffi_run.Point
 import uniffi.ffi_run.RouteCosting.AUTO
 import uniffi.ffi_run.RouteCosting.MOTORBIKE
 import uniffi.ffi_run.RouteCosting.PEDESTRIAN
 import uniffi.ffi_run.RouteCosting.entries
+import uniffi.ffi_run.ShapeType
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.random.Random
 
 var routeCosting = mutableStateOf(AUTO)
 
@@ -170,6 +177,27 @@ fun App() {
                                 mvtCheckedState = it
                             })
                         Text("MVT")
+
+                        // Just a temporary test for shape creating.
+                        val shapeIds = remember { mutableStateSetOf<String>() }
+                        Button({
+                            val (points, shapeType, color) = generateRandomShapeAroundTokyo()
+                            if (shapeIds.size > 5) {
+                                shapeIds.forEach {
+                                    ShashlikMapApiHolder.shashlikMapApi?.removeShape(it)
+                                }
+                                shapeIds.clear()
+                            }
+                            ShashlikMapApiHolder.shashlikMapApi?.addOverlayShape(
+                                points,
+                                shapeType,
+                                color
+                            )?.let {
+                                shapeIds += it
+                            }
+                        }) {
+                            Text("Shp")
+                        }
                     }
                     if(EXTENDED_CONTROLS) {
                         Spacer(modifier = Modifier.height(8.dp))
@@ -202,4 +230,47 @@ fun App() {
             )
         }
     }
+}
+
+private fun generateRandomShapeAroundTokyo(): Triple<List<Point>, ShapeType, uniffi.ffi_run.Color> {
+    val centerX = 139.757080078125
+    val centerY = 35.68798828125
+
+    val maxOffset = 0.01
+
+    val shapeType = ShapeType.entries.random()
+    val points = mutableListOf<Point>()
+
+    when (shapeType) {
+        ShapeType.LINE -> {
+            for (i in 0 until 5) {
+                val x = centerX + Random.nextDouble(-maxOffset, maxOffset)
+                val y = centerY + Random.nextDouble(-maxOffset, maxOffset)
+                points.add(Point(x, y))
+            }
+        }
+
+        ShapeType.POLYGON -> {
+            val numVertices = Random.nextInt(3, 7)
+            val angles =
+                DoubleArray(numVertices) { Random.nextDouble(0.0, 2 * PI) }.apply { sort() }
+
+            for (angle in angles) {
+                val radiusX = Random.nextDouble(0.002, maxOffset)
+                val radiusY = Random.nextDouble(0.002, maxOffset)
+
+                val x = centerX + radiusX * cos(angle)
+                val y = centerY + radiusY * sin(angle)
+                points.add(Point(x, y))
+            }
+        }
+    }
+
+    val randomColor = uniffi.ffi_run.Color(
+        r = Random.nextFloat(),
+        g = Random.nextFloat(),
+        b = Random.nextFloat()
+    )
+
+    return Triple(points, shapeType, randomColor)
 }

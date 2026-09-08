@@ -16,6 +16,7 @@ wgpu = { workspace = true}
 renderer-common = { workspace = true }
 log = { workspace = true }
 osm = { workspace = true }
+geo-types = { workspace = true }
 
 [target.'cfg(target_os = "android")'.dependencies]
 app-surface = { workspace = true, features = [] }
