@@ -13,7 +13,15 @@ pub struct TrackGroup {
 }
 
 impl TrackGroup {
+    /// Panics in debug builds if `points` has fewer than 2 entries.
+    /// Callers must validate inputs before construction; `ShashlikMap::draw_track`
+    /// enforces this at the API boundary.
+    ///
+    /// Note: tracks crossing the antimeridian (±180° longitude) are not currently
+    /// supported and will render as a near-world-width segment. Support requires
+    /// world-space seam detection and is deferred to a future update.
     pub fn new(points: Vec<Point>) -> Self {
+        debug_assert!(points.len() >= 2, "TrackGroup requires at least 2 points");
         TrackGroup { points }
     }
 

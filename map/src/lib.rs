@@ -539,10 +539,22 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
     }
 
     pub fn draw_track(&mut self, lon_lats: Vec<(f64, f64)>) {
-        self.renderer.api().clear_render_groups(HashSet::from(["track".to_string()]));
+        // Validate all coordinates before touching render state: reject short inputs and
+        // any non-finite or out-of-geographic-bounds values so the existing track is
+        // preserved when the caller provides bad data.
         if lon_lats.len() < 2 {
             return;
         }
+        let all_valid = lon_lats.iter().all(|(lon, lat)| {
+            lon.is_finite() && lat.is_finite()
+                && (-180.0..=180.0).contains(lon)
+                && (-90.0..=90.0).contains(lat)
+        });
+        if !all_valid {
+            return;
+        }
+
+        self.renderer.api().clear_render_groups(HashSet::from(["track".to_string()]));
         let converter = self.create_location_coord_converter();
         let points: Vec<geo_types::Point> = lon_lats
             .iter()
