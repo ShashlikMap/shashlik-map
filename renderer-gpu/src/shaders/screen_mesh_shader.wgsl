@@ -73,34 +73,6 @@ fn vs_main_globe(
     out.color = vec4f(model.color.rgb, model.color.a * pos.color_alpha);
     out.uv = model.uv;
 
-    if(camera.scale > 20.0) {
-//        let flat_pos = vec3<f32>(model.position * RR, 0.0);
-        let centered_x = model.position.x - (2000.0 * 0.5);
-        let centered_y = model.position.y - (1200.0 * 0.5);
-        let flat_pos = vec3<f32>(centered_x, centered_y, 0.0);
-
-//        let lon = model.position.x * (PI / 2.0);
-//        let lat = model.position.y * (PI / 2.0);
-        let lon = (centered_x / (2000.0 * 0.5)) * (PI / 2.0);
-        let lat = (centered_y / (1200.0 * 0.5)) * (PI / 2.0);
-        let hemisphere_pos = vec3<f32>(
-            RR * cos(lat) * sin(lon),
-            RR * sin(lat),
-            RR * cos(lat) * cos(lon) - RR
-        );
-        let start_morph_scale = 20.0;
-        let full_globe_scale = 40.0;
-
-        let morph_factor = clamp(
-            (camera.scale - start_morph_scale) / (full_globe_scale - start_morph_scale),
-            0.0,
-            1.0
-        );
-        let blended_pos = mix(flat_pos, hemisphere_pos, morph_factor);
-        out.clip_position = camera.view_proj * vec4<f32>(blended_pos, 1.0);
-        return out;
-    }
-
     let model_matrix = mat4x4<f32>(
         pos.model_matrix_0,
         pos.model_matrix_1,
@@ -122,6 +94,40 @@ fn vs_main_globe(
     }
 
     out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
+
+    if(camera.scale > 2000.0) {
+        out.uv = vec2f(model.uv.x, 1.0-model.uv.y);
+//        let flat_pos = vec3<f32>(model.position * RR, 0.0);
+        let centered_x = model.position.x - (2000.0 * 0.5);
+        let centered_y = model.position.y - (1200.0 * 0.5);
+        let flat_pos = vec3<f32>(centered_x, centered_y, 0.0);
+
+//        let lon = model.position.x * (PI / 2.0);
+//        let lat = model.position.y * (PI / 2.0);
+        let lon = (centered_x / (2000.0 * 0.5)) * (PI / 2.0);
+        let lat = (centered_y / (1200.0 * 0.5)) * (PI / 2.0);
+        let hemisphere_pos = vec3<f32>(
+            RR * cos(lat) * sin(lon),
+            RR * sin(lat),
+            RR * cos(lat) * cos(lon) - RR
+        );
+
+        
+        let start_morph_scale = 2000.0;
+        let full_globe_scale = 2500.0;
+
+        let morph_factor = clamp(
+            (camera.scale - start_morph_scale) / (full_globe_scale - start_morph_scale),
+            0.0,
+            1.0
+        );
+        let blended_pos = mix(flat_pos, hemisphere_pos, morph_factor) * 100.0;
+        out.clip_position = camera.view_proj * vec4<f32>(blended_pos, 1.0);
+//        let coord2 = camera.view_proj * vec4<f32>(hemisphere_pos, 1.0);
+//        let blended_pos = mix(out.clip_position.xyz, coord2.xyz, morph_factor);
+//        out.clip_position = vec4<f32>(blended_pos, 1.0);
+        return out;
+    }
 
     return out;
 }
