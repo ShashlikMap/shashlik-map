@@ -62,6 +62,70 @@ fn vs_main(
     return out;    
 }
 
+const PI: f32 = 3.14159265359;
+const RR: f32 = 636.6197723675;
+@vertex
+fn vs_main_globe(
+    model: VertexInput,
+    pos: InstanceInput
+) -> VertexOutput {
+    var out: VertexOutput;
+    out.color = vec4f(model.color.rgb, model.color.a * pos.color_alpha);
+    out.uv = model.uv;
+
+    if(camera.scale > 20.0) {
+//        let flat_pos = vec3<f32>(model.position * RR, 0.0);
+        let centered_x = model.position.x - (2000.0 * 0.5);
+        let centered_y = model.position.y - (1200.0 * 0.5);
+        let flat_pos = vec3<f32>(centered_x, centered_y, 0.0);
+
+//        let lon = model.position.x * (PI / 2.0);
+//        let lat = model.position.y * (PI / 2.0);
+        let lon = (centered_x / (2000.0 * 0.5)) * (PI / 2.0);
+        let lat = (centered_y / (1200.0 * 0.5)) * (PI / 2.0);
+        let hemisphere_pos = vec3<f32>(
+            RR * cos(lat) * sin(lon),
+            RR * sin(lat),
+            RR * cos(lat) * cos(lon) - RR
+        );
+        let start_morph_scale = 20.0;
+        let full_globe_scale = 40.0;
+
+        let morph_factor = clamp(
+            (camera.scale - start_morph_scale) / (full_globe_scale - start_morph_scale),
+            0.0,
+            1.0
+        );
+        let blended_pos = mix(flat_pos, hemisphere_pos, morph_factor);
+        out.clip_position = camera.view_proj * vec4<f32>(blended_pos, 1.0);
+        return out;
+    }
+
+    let model_matrix = mat4x4<f32>(
+        pos.model_matrix_0,
+        pos.model_matrix_1,
+        pos.model_matrix_2,
+        pos.model_matrix_3,
+    );
+
+    let model_position = model_matrix * vec4(model.position, 0.0, 1.0);
+    let ratio_fixed_modelpos = vec4(model_position.xy * vec2(2.0*camera.inv_screen_size.x, 2.0*camera.inv_screen_size.y), model_position.z, 1.0);
+
+    var coord = vec4<f32>(pos.position.xy, 0.0, 1.0);
+    if pos.screen_space == 0 {
+        coord = camera.view_proj * coord;
+    } else {
+        coord.x *= camera.inv_screen_size.x;
+        coord.x = 2.0*(coord.x - 0.5);
+        coord.y *= camera.inv_screen_size.y;
+        coord.y = 2.0*(coord.y - 0.5) * -1.0;
+    }
+
+    out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
+
+    return out;
+}
+
 // Fragment shader
 @group(1) @binding(0)
 var t_diffuse: texture_2d<f32>;
@@ -84,9 +148,9 @@ fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
     let uv = in.uv;
     let tex_size = textureDimensions(t_diffuse);
     let tex_border_y = (tex_border_x * (f32(tex_size.x) / f32(tex_size.y)));
-    if in.uv.x <= tex_border_x || in.uv.x >= 1.0 - tex_border_x || in.uv.y <= tex_border_y || in.uv.y >= 1.0 - tex_border_y {
-         return vec4(1.0, 0.0, 0.0, 1.0);
-    }
+//    if in.uv.x <= tex_border_x || in.uv.x >= 1.0 - tex_border_x || in.uv.y <= tex_border_y || in.uv.y >= 1.0 - tex_border_y {
+//         return vec4(1.0, 0.0, 0.0, 1.0);
+//    }
     if texture_type == textures::GENERAL_RGBA {
         return textureSample(t_diffuse, s_diffuse, in.uv.xy);
     } else if texture_type == textures::GENERAL_RGBA_R_NEG {

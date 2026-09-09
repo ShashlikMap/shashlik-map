@@ -29,6 +29,7 @@ pub struct TextureInfo {
     pub use_texture: bool,
     pub filterable: bool,
     pub multisampled: bool,
+    pub vs_shader: Option<&'static str>,
     pub fs_shader: &'static str,
 }
 
@@ -158,7 +159,7 @@ impl ScreenMeshPipeline {
         let fragment = mesh_descriptor.fragment.as_mut().unwrap();
         fragment.module = shader_module;
         if self.texture_info.use_texture {
-            vertex.entry_point = Some("vs_main");
+            vertex.entry_point = self.texture_info.vs_shader.or(Some("vs_main"));
             fragment.entry_point = Some(self.texture_info.fs_shader);
         }
 

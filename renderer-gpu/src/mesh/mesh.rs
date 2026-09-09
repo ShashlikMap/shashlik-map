@@ -58,6 +58,8 @@ impl Mesh {
     }
 
     pub fn high_poly_quad(global_context: &GlobalContext, buffer_pool: &mut BufferPool, width: f32, height: f32) -> Self {
+        // println!("ww = {width}, h = {height}");
+        // 636.6197723675
         let mut geometry_buffer: VertexBuffers<MeshVertexWithUV, u32> = VertexBuffers::new();
         let segments: u32 = 64;
         let vertex_count = segments + 1;
