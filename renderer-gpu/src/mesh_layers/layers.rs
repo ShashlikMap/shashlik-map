@@ -29,6 +29,7 @@ pub(crate) struct Layers {
     pub text_feature_layers: FeatureLayers<TextMeshLayer<ScreenShapeInstanceInput>>,
     pub preview_mesh_layer: OrthoMeshLayer<ScreenShapeInstanceInput>,
     pub post_process_layer: OrthoMeshLayer<ScreenShapeInstanceInput>,
+    pub globe: OrthoMeshLayer<ScreenShapeInstanceInput>,
 }
 
 impl Layers {
@@ -64,10 +65,11 @@ impl Layers {
             mesh_layer,
             shape_layer: GeneralMeshLayer::new(false, Into::into),
             screen_shape_layer: ScreenShapeLayer::new(global_context, Into::into),
-            shadow_map_layer: OrthoMeshLayer::new(true, false, Into::into),
+            shadow_map_layer: OrthoMeshLayer::new(true, false,false, Into::into),
             text_feature_layers,
-            preview_mesh_layer: OrthoMeshLayer::new(false, true, Into::into),
-            post_process_layer: OrthoMeshLayer::new(true, false, Into::into),
+            preview_mesh_layer: OrthoMeshLayer::new(false, false, true, Into::into),
+            post_process_layer: OrthoMeshLayer::new(true, false,false, Into::into),
+            globe: OrthoMeshLayer::new(true, true,false, Into::into),
         }
     }
 
@@ -87,7 +89,7 @@ impl Layers {
         self.feature_layers.get_layer(tag)
     }
 
-    fn all_layers(&mut self) -> [&mut dyn BaseMeshLayer; 8] {
+    fn all_layers(&mut self) -> [&mut dyn BaseMeshLayer; 9] {
         [
             &mut self.shape_layer,
             &mut self.mesh_layer,
@@ -97,6 +99,7 @@ impl Layers {
             &mut self.text_feature_layers,
             &mut self.feature_layers,
             &mut self.preview_mesh_layer,
+            &mut self.globe,
         ]
     }
 }

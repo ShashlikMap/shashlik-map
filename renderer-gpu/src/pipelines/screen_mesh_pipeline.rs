@@ -28,6 +28,7 @@ enum TextureType {
 pub struct TextureInfo {
     pub use_texture: bool,
     pub filterable: bool,
+    pub multisampled: bool,
     pub fs_shader: &'static str,
 }
 
@@ -56,7 +57,7 @@ impl ScreenMeshPipeline {
                         binding: 0,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
-                            multisampled: false,
+                            multisampled: texture_info.multisampled,
                             view_dimension: wgpu::TextureViewDimension::D2,
                             sample_type: wgpu::TextureSampleType::Float {
                                 filterable: texture_info.filterable,

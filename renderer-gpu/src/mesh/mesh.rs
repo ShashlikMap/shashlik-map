@@ -57,6 +57,46 @@ impl Mesh {
         Self::create(None, global_context, buffer_pool, &geometry_buffer, StyledRangeInfo::default())
     }
 
+    pub fn high_poly_quad(global_context: &GlobalContext, buffer_pool: &mut BufferPool, width: f32, height: f32) -> Self {
+        let mut geometry_buffer: VertexBuffers<MeshVertexWithUV, u32> = VertexBuffers::new();
+        let segments: u32 = 64;
+        let vertex_count = segments + 1;
+
+        for y in 0..vertex_count {
+            for x in 0..vertex_count {
+                let u = x as f32 / segments as f32;
+                let v = y as f32 / segments as f32;
+                let pos_x = u * width;
+                let pos_y = v * height;
+
+                geometry_buffer.vertices.push(MeshVertexWithUV::new(
+                    [pos_x, pos_y],
+                    [0.0, 0.0, 1.0, 1.0],
+                    [u, 1.0 - v],
+                ));
+            }
+        }
+
+        for y in 0..segments {
+            for x in 0..segments {
+                let top_left = y * vertex_count + x;
+                let top_right = top_left + 1;
+                let bottom_left = (y + 1) * vertex_count + x;
+                let bottom_right = bottom_left + 1;
+
+                geometry_buffer.indices.push(top_left);
+                geometry_buffer.indices.push(bottom_left);
+                geometry_buffer.indices.push(bottom_right);
+
+                geometry_buffer.indices.push(top_right);
+                geometry_buffer.indices.push(top_left);
+                geometry_buffer.indices.push(bottom_right);
+            }
+        }
+
+        Self::create(None, global_context, buffer_pool, &geometry_buffer, StyledRangeInfo::default())
+    }
+
     pub fn create<T: NoUninit>(key: Option<&str>, global_context: &GlobalContext, buffer_pool: &mut BufferPool, geometry: &VertexBuffers<T, u32>, styled_range_info: StyledRangeInfo) -> Self {
         Self::create_layered(key, global_context, buffer_pool, geometry, vec![StyledRange(0..geometry.indices.len(), styled_range_info)])
     }

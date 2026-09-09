@@ -10,9 +10,11 @@ use crate::pipelines::x_real_mesh_pipeline::XRealMeshShaderPipeline;
 use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
 use renderer_common::WorldShapeFeatureLayerTag;
 use wgpu::{CommandEncoder, TextureView};
+use crate::buffer_pool::BufferPool;
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
+    globe_resolve_target: TextureView,
     depth_texture_view: TextureView,
     default_mesh_pipeline: MeshPipeline,
     x_real_mesh_shader_pipeline: XRealMeshShaderPipeline,
@@ -22,13 +24,15 @@ pub(crate) struct MainPassNode {
     preview_screen_mesh_pipeline: ScreenMeshPipeline,
     text_screen_mesh_pipeline: ScreenMeshPipeline,
     post_process_screen_mesh_pipeline: ScreenMeshPipeline,
+    globe_screen_mesh_pipeline: ScreenMeshPipeline,
 }
 
 impl MainPassNode {
     pub fn new(
         global_context: &GlobalContext,
+        buffer_pool: &mut BufferPool,
         x_real_mesh_shader_pipeline_enabled: bool,
-        layers: &Layers,
+        layers: &mut Layers,
         world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>,
     ) -> Self {
         let size = (
@@ -51,6 +55,7 @@ impl MainPassNode {
             TextureInfo {
                 use_texture: true,
                 filterable: false, // ideally, it should be picked using underlying TextureFormat..
+                multisampled: false,
                 fs_shader: "fs_main_textured",
             },
             false,
@@ -65,12 +70,32 @@ impl MainPassNode {
             TextureInfo {
                 use_texture: true,
                 filterable: true,
+                multisampled: false,
                 fs_shader: "fs_main_tex_storage",
             },
             false,
         );
         post_process_screen_mesh_pipeline.set_texture_view(
             layers.post_process_layer.texture_view(),
+            global_context.device(),
+        );
+
+        let msaa_texture_view = create_common_texture(size, crate::textures::SAMPLE_COUNT, global_context);
+        let globe_resolve_target = create_common_texture(size, 1, global_context);
+        let mut globe_screen_mesh_pipeline = ScreenMeshPipeline::new(
+            global_context,
+            TextureInfo {
+                use_texture: true,
+                filterable: true,
+                multisampled: false,
+                fs_shader: "fs_main_textured",
+            },
+            false,
+        );
+
+        layers.globe.set_texture(Some(&globe_resolve_target), (0.0, 0.0), global_context, buffer_pool);
+        globe_screen_mesh_pipeline.set_texture_view(
+            layers.globe.texture_view(),
             global_context.device(),
         );
 
@@ -82,13 +107,15 @@ impl MainPassNode {
             TextureInfo {
                 use_texture: false,
                 filterable: false,
+                multisampled: false,
                 fs_shader: "",
             },
             false,
         );
 
         Self {
-            msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
+            msaa_texture_view,
+            globe_resolve_target,
             depth_texture_view: create_depth_texture(
                 size,
                 SAMPLE_COUNT,
@@ -103,6 +130,7 @@ impl MainPassNode {
             feature_shape_pipelines,
             preview_screen_mesh_pipeline,
             post_process_screen_mesh_pipeline,
+            globe_screen_mesh_pipeline
         }
     }
 }
@@ -114,101 +142,144 @@ impl PassNode for MainPassNode {
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {
-        let output_view = global_context.canvas.create_texture_view();
-        let msaa_color_attachment = wgpu::RenderPassColorAttachment {
-            view: &self.msaa_texture_view,
-            resolve_target: Some(&output_view),
-            ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(BACKGROUND_ATTACHMENT_COLOR),
-                // FYI!! Discard output! It improves MSAA drastically on low-end devices
-                store: wgpu::StoreOp::Discard,
-            },
-            depth_slice: None,
-        };
+        {
+            // let output_view = global_context.canvas.create_texture_view();
+            let msaa_color_attachment = wgpu::RenderPassColorAttachment {
+                view: &self.msaa_texture_view,
+                resolve_target: Some(&self.globe_resolve_target),
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(BACKGROUND_ATTACHMENT_COLOR),
+                    store: wgpu::StoreOp::Store,
+                },
+                depth_slice: None,
+            };
 
-        let depth_attachment = wgpu::RenderPassDepthStencilAttachment {
-            view: &self.depth_texture_view,
-            depth_ops: Some(wgpu::Operations {
-                load: wgpu::LoadOp::Clear(1.0),
-                store: wgpu::StoreOp::Discard,
-            }),
-            stencil_ops: DEPTH_STENCIL_TEX_FORMAT.has_stencil_aspect().then_some(wgpu::Operations {
-                load: wgpu::LoadOp::Clear(0),
-                store: wgpu::StoreOp::Discard,
-            }),
-        };
+            let depth_attachment = wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth_texture_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Discard,
+                }),
+                stencil_ops: DEPTH_STENCIL_TEX_FORMAT.has_stencil_aspect().then_some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(0),
+                    store: wgpu::StoreOp::Discard,
+                }),
+            };
 
-        let descriptor = wgpu::RenderPassDescriptor {
-            label: Some("Render Pass"),
-            color_attachments: &[Some(msaa_color_attachment)],
-            depth_stencil_attachment: Some(depth_attachment),
-            occlusion_query_set: None,
-            timestamp_writes: None,
-            multiview_mask: None,
-        };
+            let descriptor = wgpu::RenderPassDescriptor {
+                label: Some("Render Pass"),
+                color_attachments: &[Some(msaa_color_attachment)],
+                depth_stencil_attachment: Some(depth_attachment),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+                multiview_mask: None,
+            };
 
-        let mut render_pass = encoder.begin_render_pass(&descriptor);
-        
-        layers.shape_layer.disable_skip_mesh_feature = false;
-        layers.shape_layer.render(
-            &mut render_pass,
-            &mut self.default_shape_pipeline,
-            global_context,
-        );
+            let mut render_pass = encoder.begin_render_pass(&descriptor);
 
-        if global_context.x_real_mesh_shader_enabled {
-            layers.mesh_layer.render(
+            layers.shape_layer.disable_skip_mesh_feature = false;
+            layers.shape_layer.render(
                 &mut render_pass,
-                &mut self.x_real_mesh_shader_pipeline,
+                &mut self.default_shape_pipeline,
                 global_context,
             );
-        }
 
-        // 3D rendering only if 3D visible, including transition to 2D
-        // TODO Ideally, it should be possible to control outside of the renderer
-        if global_context.view_projection.scale_2d_3d > 0.0 {
-            layers.mesh_layer.render_with_virtual_ground(
-                &mut render_pass,
-                &mut self.default_mesh_pipeline,
-                global_context,
-                true
-            );
-
-            if global_context.is_ssao_enabled() {
-                layers.post_process_layer.render(
+            if global_context.x_real_mesh_shader_enabled {
+                layers.mesh_layer.render(
                     &mut render_pass,
-                    &mut self.post_process_screen_mesh_pipeline,
+                    &mut self.x_real_mesh_shader_pipeline,
+                    global_context,
+                );
+            }
+
+            // 3D rendering only if 3D visible, including transition to 2D
+            // TODO Ideally, it should be possible to control outside of the renderer
+            if global_context.view_projection.scale_2d_3d > 0.0 {
+                layers.mesh_layer.render_with_virtual_ground(
+                    &mut render_pass,
+                    &mut self.default_mesh_pipeline,
+                    global_context,
+                    true
+                );
+
+                if global_context.is_ssao_enabled() {
+                    layers.post_process_layer.render(
+                        &mut render_pass,
+                        &mut self.post_process_screen_mesh_pipeline,
+                        global_context,
+                    );
+                }
+            }
+
+            layers.screen_shape_layer.render(
+                &mut render_pass,
+                &mut self.screen_shape_pipeline,
+                global_context,
+            );
+
+            layers.text_feature_layers.with_layer(|layer| {
+                layer.render(
+                    &mut render_pass,
+                    &mut self.text_screen_mesh_pipeline,
+                    global_context,
+                )
+            });
+
+            self.feature_shape_pipelines
+                .iter_mut()
+                .for_each(|(feature_tag, shape_pipeline)| {
+                    if let Some(layer) = layers.feature_layers.get_layer(feature_tag) {
+                        layer.render(&mut render_pass, shape_pipeline, global_context)
+                    }
+                });
+
+            if global_context.preview_type().is_enabled() {
+                layers.preview_mesh_layer.render(
+                    &mut render_pass,
+                    &mut self.preview_screen_mesh_pipeline,
                     global_context,
                 );
             }
         }
+        {
+            let output_view = global_context.canvas.create_texture_view();
+            let msaa_color_attachment = wgpu::RenderPassColorAttachment {
+                view: &self.msaa_texture_view,
+                resolve_target: Some(&output_view),
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(BACKGROUND_ATTACHMENT_COLOR),
+                    // FYI!! Discard output! It improves MSAA drastically on low-end devices
+                    store: wgpu::StoreOp::Discard,
+                },
+                depth_slice: None,
+            };
 
-        layers.screen_shape_layer.render(
-            &mut render_pass,
-            &mut self.screen_shape_pipeline,
-            global_context,
-        );
+            let depth_attachment = wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth_texture_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Discard,
+                }),
+                stencil_ops: DEPTH_STENCIL_TEX_FORMAT.has_stencil_aspect().then_some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(0),
+                    store: wgpu::StoreOp::Discard,
+                }),
+            };
 
-        layers.text_feature_layers.with_layer(|layer| {
-            layer.render(
+            let descriptor = wgpu::RenderPassDescriptor {
+                label: Some("Render Pass"),
+                color_attachments: &[Some(msaa_color_attachment)],
+                depth_stencil_attachment: Some(depth_attachment),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+                multiview_mask: None,
+            };
+
+            let mut render_pass = encoder.begin_render_pass(&descriptor);
+
+            layers.globe.render(
                 &mut render_pass,
-                &mut self.text_screen_mesh_pipeline,
-                global_context,
-            )
-        });
-
-        self.feature_shape_pipelines
-            .iter_mut()
-            .for_each(|(feature_tag, shape_pipeline)| {
-                if let Some(layer) = layers.feature_layers.get_layer(feature_tag) {
-                    layer.render(&mut render_pass, shape_pipeline, global_context)
-                }
-            });
-
-        if global_context.preview_type().is_enabled() {
-            layers.preview_mesh_layer.render(
-                &mut render_pass,
-                &mut self.preview_screen_mesh_pipeline,
+                &mut self.globe_screen_mesh_pipeline,
                 global_context,
             );
         }

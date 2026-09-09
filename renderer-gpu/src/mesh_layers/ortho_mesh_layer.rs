@@ -12,6 +12,7 @@ use wgpu::{RenderPass, TextureView};
 
 pub(crate) struct OrthoMeshLayer<I: MeshInstanceInput> {
     attr_map: LayerAttrMapper<I>,
+    high_poly_mesh: bool,
     mesh: Option<Mesh>,
     instance_buffer: InstanceBuffer<I>,
     mesh_buffers: MeshBuffers<I>,
@@ -21,9 +22,10 @@ pub(crate) struct OrthoMeshLayer<I: MeshInstanceInput> {
 }
 
 impl<I: MeshInstanceInput> OrthoMeshLayer<I> {
-    pub fn new(full_screen_mesh: bool, is_bottom_right: bool, attr_map: LayerAttrMapper<I>) -> Self {
+    pub fn new(full_screen_mesh: bool, high_poly_mesh: bool, is_bottom_right: bool, attr_map: LayerAttrMapper<I>) -> Self {
         Self {
             attr_map,
+            high_poly_mesh,
             mesh: None,
             instance_buffer: InstanceBuffer::default(),
             mesh_buffers: MeshBuffers::default(),
@@ -35,6 +37,24 @@ impl<I: MeshInstanceInput> OrthoMeshLayer<I> {
 
     pub fn texture_view(&self) -> Option<&TextureView> {
         self.texture_view.as_ref()
+    }
+
+    fn create_mesh(&self, global_context: &GlobalContext, buffer_pool: &mut BufferPool, width: f32, height: f32) -> Mesh {
+        if self.high_poly_mesh {
+            Mesh::high_poly_quad(
+                global_context,
+                buffer_pool,
+                width,
+                height,
+            )
+        } else {
+            Mesh::quad(
+                global_context,
+                buffer_pool,
+                width,
+                height,
+            )
+        }
     }
 
     // FIXME Positioning should not be here
@@ -57,27 +77,14 @@ impl<I: MeshInstanceInput> OrthoMeshLayer<I> {
         }
 
         let mut mesh_size = (screen_size.0 as f32, screen_size.1 as f32);
-        if self.full_screen_mesh {
-            self.mesh = Some(Mesh::quad(
-                global_context,
-                buffer_pool,
-                screen_size.0 as f32,
-                screen_size.1 as f32,
-            ));
-        } else if let Some(texture_view) = self.texture_view.as_ref() {
+        if !self.full_screen_mesh && let Some(texture_view) = self.texture_view.as_ref() {
             let texture_size = texture_view.texture().size();
             let aspect = texture_size.height as f32 / texture_size.width as f32;
             let width = screen_size.0 as f32 * 0.35;
             let height = aspect * width;
             mesh_size = (width, height);
-
-            self.mesh = Some(Mesh::quad(
-                global_context,
-                buffer_pool,
-                mesh_size.0,
-                mesh_size.1,
-            ));
         }
+        self.mesh = Some(self.create_mesh(global_context, buffer_pool, mesh_size.0, mesh_size.1));
 
         let position = [
             if self.is_bottom_right {
@@ -119,6 +126,7 @@ impl<I: MeshInstanceInput> RenderableLayer<I> for OrthoMeshLayer<I> {
     ) {
         if let Some(mesh) = self.mesh.as_ref() {
             render_pipeline.setup_render(render_pass, global_context);
+
 
             render_pipeline.setup_mesh_buffers(render_pass, &self.mesh_buffers);
             let instance_count = self.instance_buffer.length;
