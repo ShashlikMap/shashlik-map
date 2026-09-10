@@ -63,6 +63,8 @@ fn style_array_to_mat(out: ptr<function,VertexOutput>, params: mat4x3<f32>) {
     (*out).style4 = params[3];
 }
 
+const PI: f32 = 3.14159265359;
+
 @vertex
 fn vs_main(
     model: VertexInput,
@@ -99,7 +101,21 @@ fn vs_main(
     out.bbox = pos.bbox;
     // divide distance to scale, so dash shader works properly
     out.uv_dist_scale = vec4f(model.uv, f32(model.dist) / camera.p2_scale, camera.scale);
-    out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
+
+    if(camera.scale > 20000.0) {
+        let lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * modelpos.y))) - (PI * 0.5);
+        let lon = 2.0 * PI * (modelpos.x - 0.5);
+        let globe = vec3<f32>(
+            cos(lat) * sin(lon),
+            cos(lat) * cos(lon),
+            sin(lat),
+        );
+        out.clip_position = camera.view_proj * vec4<f32>(globe, 1.0);
+    } else  {
+        out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
+    }
+
+//    out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
 
@@ -205,14 +221,14 @@ fn vs_main_screen(
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // ignore if both are zero
-    if in.bbox.z > 0.0 || in.bbox.w > 0.0 {
-        if in.vertex_pos_xy.x < in.bbox.x || in.vertex_pos_xy.x > in.bbox.x + in.bbox.z {
-            discard;
-        }
-        if in.vertex_pos_xy.y < in.bbox.y || in.vertex_pos_xy.y > in.bbox.y + in.bbox.w {
-            discard;
-        }
-    }
+//    if in.bbox.z > 0.0 || in.bbox.w > 0.0 {
+//        if in.vertex_pos_xy.x < in.bbox.x || in.vertex_pos_xy.x > in.bbox.x + in.bbox.z {
+//            discard;
+//        }
+//        if in.vertex_pos_xy.y < in.bbox.y || in.vertex_pos_xy.y > in.bbox.y + in.bbox.w {
+//            discard;
+//        }
+//    }
 
     @if(OUTLINE_DEBUG)
     if(in.outline_flag == 0) {
