@@ -2,7 +2,7 @@ use crate::DEPTH_STENCIL_TEX_FORMAT;
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::RenderableLayer;
 use crate::mesh_layers::layers::Layers;
-use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
+use crate::pass_nodes::{PassNode, BACKGROUND_ATTACHMENT_COLOR, COSMOS_BACKGROUND_ATTACHMENT_COLOR};
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
@@ -246,12 +246,17 @@ impl PassNode for MainPassNode {
             }
         }
         {
+            let clear_color = if global_context.view_projection.uniform.scale > 2000.0 {
+                COSMOS_BACKGROUND_ATTACHMENT_COLOR
+            } else {
+                BACKGROUND_ATTACHMENT_COLOR
+            };
             let output_view = global_context.canvas.create_texture_view();
             let msaa_color_attachment = wgpu::RenderPassColorAttachment {
                 view: &self.msaa_texture_view,
                 resolve_target: Some(&output_view),
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(BACKGROUND_ATTACHMENT_COLOR),
+                    load: wgpu::LoadOp::Clear(clear_color),
                     // FYI!! Discard output! It improves MSAA drastically on low-end devices
                     store: wgpu::StoreOp::Discard,
                 },

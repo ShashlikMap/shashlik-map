@@ -63,7 +63,7 @@ fn vs_main(
 }
 
 const PI: f32 = 3.14159265359;
-const RR: f32 = 636.6197723675;
+const RR: f32 = 3.0 * 636.6197723675;
 @vertex
 fn vs_main_globe(
     model: VertexInput,
@@ -97,31 +97,31 @@ fn vs_main_globe(
 
     if(camera.scale > 2000.0) {
         out.uv = vec2f(model.uv.x, 1.0-model.uv.y);
-//        let flat_pos = vec3<f32>(model.position * RR, 0.0);
         let centered_x = model.position.x - (2000.0 * 0.5);
         let centered_y = model.position.y - (1200.0 * 0.5);
         let flat_pos = vec3<f32>(centered_x, centered_y, 0.0);
 
-//        let lon = model.position.x * (PI / 2.0);
-//        let lat = model.position.y * (PI / 2.0);
-        let lon = (centered_x / (2000.0 * 0.5)) * (PI / 2.0);
-        let lat = (centered_y / (1200.0 * 0.5)) * (PI / 2.0);
-        let hemisphere_pos = vec3<f32>(
+        let mercator_x = (centered_x / (2000.0 * 0.5)) * PI;
+        let mercator_y = (centered_y / (2000.0 * 0.5)) * PI;
+
+        let lon = mercator_x;
+        let lat = 2.0 * atan(exp(mercator_y)) - (PI / 2.0);
+
+        let sphere_pos = vec3<f32>(
             RR * cos(lat) * sin(lon),
             RR * sin(lat),
             RR * cos(lat) * cos(lon) - RR
         );
 
-        
         let start_morph_scale = 2000.0;
-        let full_globe_scale = 2500.0;
+        let full_globe_scale = 3000.0;
 
         let morph_factor = clamp(
             (camera.scale - start_morph_scale) / (full_globe_scale - start_morph_scale),
             0.0,
             1.0
         );
-        let blended_pos = mix(flat_pos, hemisphere_pos, morph_factor) * 100.0;
+        let blended_pos = mix(flat_pos, sphere_pos, morph_factor) * 130.0;
         out.clip_position = camera.view_proj * vec4<f32>(blended_pos, 1.0);
 //        let coord2 = camera.view_proj * vec4<f32>(hemisphere_pos, 1.0);
 //        let blended_pos = mix(out.clip_position.xyz, coord2.xyz, morph_factor);
