@@ -21,6 +21,7 @@ pub(crate) struct ViewProjUniform {
     view: [[f32; 4]; 4],
     proj: [[f32; 4]; 4],
     view_proj: [[f32; 4]; 4],
+    globe_view_proj: [[f32; 4]; 4],
     view_proj_inv: [[f32; 4]; 4],
     light_view_proj: [[f32; 4]; 4],
     view_tr_inv: [[f32; 4]; 4],
@@ -71,6 +72,7 @@ impl ViewProjection {
                 view: Mat4::IDENTITY.to_cols_array_2d(),
                 proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_proj: Mat4::IDENTITY.to_cols_array_2d(),
+                globe_view_proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_proj_inv: Mat4::IDENTITY.to_cols_array_2d(),
                 light_view_proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_tr_inv: Mat4::IDENTITY.to_cols_array_2d(),
@@ -102,6 +104,7 @@ impl ViewProjection {
             .as_mat4()
             .to_cols_array_2d();
         let view_proj = FLIP_Y * data.view_proj_matrix;
+        let globe_view_proj = FLIP_Y * data.globe_view_proj_matrix;
 
         self.shadow_texture_size = render_config.shadow_texture_size();
         self.is_shadow_enabled = render_config.shadow_enabled;
@@ -116,6 +119,10 @@ impl ViewProjection {
         self.uniform.view_proj = view_proj
             .as_mat4()
             .to_cols_array_2d();
+        self.uniform.globe_view_proj = globe_view_proj
+            .as_mat4()
+            .to_cols_array_2d();
+
         let view_proj_inv = view_proj.inverse();
         self.uniform.view_proj_inv = (view_proj_inv * FLIP_Y)
             .as_mat4()

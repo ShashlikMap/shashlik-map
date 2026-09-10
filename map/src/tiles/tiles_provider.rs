@@ -46,7 +46,7 @@ pub struct TileMetersBounds {
 }
 
 const EXTENT: f64 = 8388608.0;
-const MAP_SIZE: f64 = EXTENT * 2.0;
+pub const MAP_SIZE: f64 = EXTENT * 2.0;
 
 pub trait TilesProviderStore: MercatorConverter {
 

@@ -103,14 +103,14 @@ fn vs_main(
     out.uv_dist_scale = vec4f(model.uv, f32(model.dist) / camera.p2_scale, camera.scale);
 
     if(camera.scale > 20000.0) {
-        let lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * modelpos.y))) - (PI * 0.5);
-        let lon = 2.0 * PI * (modelpos.x - 0.5);
+        let lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * (pointPos.y / 16777216.0)))) - (PI * 0.5);
+        let lon = 2.0 * PI * ((pointPos.x / 16777216.0) - 0.5);
         let globe = vec3<f32>(
             cos(lat) * sin(lon),
             cos(lat) * cos(lon),
             sin(lat),
         );
-        out.clip_position = camera.view_proj * vec4<f32>(globe, 1.0);
+        out.clip_position = camera.globe_view_proj * vec4<f32>(globe, 1.0);
     } else  {
         out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     }

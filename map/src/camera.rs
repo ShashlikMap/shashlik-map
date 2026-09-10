@@ -6,6 +6,7 @@ use glam::DVec3;
 use glam::Vec3Swizzles;
 use std::f64::consts::PI;
 use renderer_common::LIGHT_POS;
+use crate::tiles::tiles_provider::MAP_SIZE;
 
 pub struct Camera {
     pub eye: DVec3,
@@ -34,7 +35,7 @@ impl Camera {
             znear: Self::Z_NEAR,
             zfar: Self::Z_FAR,
             perspective_matrix: DMat4::IDENTITY,
-            offset: initial_world.extend(0.0)
+            offset: DVec3::splat(0.0),//initial_world.extend(0.0)
         }
     }
 
@@ -42,7 +43,7 @@ impl Camera {
         let world_offset = world_offset.extend(0.0);
         self.eye += world_offset;
         self.target += world_offset;
-        self.offset += world_offset;
+        // self.offset += world_offset;
     }
 
     /// view + view_proj matrices
@@ -54,6 +55,28 @@ impl Camera {
             target_offset,
             self.up,
         );
+        (view, self.perspective_matrix * view)
+    }
+
+    pub fn build_globe_view_projection_matrix(&mut self) -> (DMat4, DMat4) {
+        // where we're looking, as lon/lat
+        let globe_radius = MAP_SIZE / (2.0 * PI);
+        let merc = (self.target.xy() / MAP_SIZE).clamp(DVec2::ZERO, DVec2::ONE);
+        let lat = 2.0 * (PI * (1.0 - 2.0 * merc.y)).exp().atan() - PI * 0.5;
+        let lon = 2.0 * PI * (merc.x - 0.5);
+
+        // tangent frame at that point
+        let n = DVec3::new(lat.cos() * lon.sin(), lat.cos() * lon.cos(), lat.sin());
+        let east = n.cross(DVec3::Z).normalize();
+        let north = east.cross(n);
+        let y_axis = if true { -north } else { north };
+        let to_globe = DMat3::from_cols(east, y_axis, n);
+
+        // carry pitch, yaw and distance over unchanged; cos(lat) is the sec(lat) zoom fix
+        let target = n * globe_radius;
+        let rig = to_globe * (self.eye - self.target) * lat.cos().max(0.05);
+
+        let view = DMat4::look_at_rh(target + rig, target, to_globe * self.up);
         (view, self.perspective_matrix * view)
     }
 
@@ -151,7 +174,7 @@ impl CameraController {
 
         let distance_from_origin = camera.offset.xy().distance(camera.target.xy());
         if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {
-            camera.offset = camera.target.xy().extend(0.0);
+            // camera.offset = camera.target.xy().extend(0.0);
         }
 
         let rotation_matrix = DMat3::from_rotation_z(self.yaw.to_radians());

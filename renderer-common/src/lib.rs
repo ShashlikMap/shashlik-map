@@ -61,6 +61,7 @@ pub struct RendererUpdateData {
     pub view_light_matrix: DMat4,
     pub proj_matrix: DMat4,
     pub view_proj_matrix: DMat4,
+    pub globe_view_proj_matrix: DMat4,
     pub cs_offset: DVec3,
     pub scale: f32,
     pub eye_direction: DVec3,
