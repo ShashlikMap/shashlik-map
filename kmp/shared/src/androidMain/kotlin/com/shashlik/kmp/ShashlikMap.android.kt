@@ -35,7 +35,7 @@ fun shashlikMapInit() {
 @OptIn(ExperimentalPermissionsApi::class)
 @SuppressLint("MissingPermission")
 @Composable
-actual fun ShashlikMap() {
+actual fun ShashlikMap(withAutoLocationEvent: Boolean) {
     if (LocalInspectionMode.current) {
         Box(modifier = Modifier.fillMaxSize().background(Color.DarkGray)) {
             Text("ShashlikMap Preview", color = Color.White, modifier = Modifier.align(Alignment.Center))
@@ -51,7 +51,7 @@ actual fun ShashlikMap() {
     )
 
     if (locationPermissionState.allPermissionsGranted) {
-        ShashlikMapComp()
+        ShashlikMapComp(withAutoLocationEvent)
     } else {
         LaunchedEffect(Unit) {
             locationPermissionState.launchMultiplePermissionRequest()
@@ -61,7 +61,7 @@ actual fun ShashlikMap() {
 
 @SuppressLint("MissingPermission")
 @Composable
-private fun ShashlikMapComp() {
+private fun ShashlikMapComp(withAutoLocationEvent: Boolean) {
     val ctx = LocalContext.current
     val locationManager = remember {
         val locationCallback: (LocationData) -> Unit = {
@@ -75,9 +75,11 @@ private fun ShashlikMapComp() {
             SimpleLocationManager(ctx, locationCallback)
         }
     }
-    LifecycleStartEffect(Unit) {
-        Timber.d("onStart")
-        locationManager.start()
+    LifecycleStartEffect(withAutoLocationEvent) {
+        Timber.d("onStart, withAutoLocationEvent: $withAutoLocationEvent")
+        if(withAutoLocationEvent) {
+            locationManager.start()
+        }
 
         onStopOrDispose {
             Timber.d( "onStop")

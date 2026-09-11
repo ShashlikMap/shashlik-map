@@ -6,7 +6,7 @@ import uniffi.ffi_run.ShashlikMapApi
 expect val isDebugBuild: Boolean
 
 @Composable
-expect fun ShashlikMap()
+expect fun ShashlikMap(withAutoLocationEvent: Boolean)
 
 object ShashlikMapApiHolder {
     var shashlikMapApi: ShashlikMapApi? = null

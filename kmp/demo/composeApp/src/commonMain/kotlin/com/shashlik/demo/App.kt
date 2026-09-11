@@ -142,7 +142,7 @@ fun App() {
                 }
             }
         ) {
-            ShashlikMap()
+            ShashlikMap(withAutoLocationEvent = true)
             Row(
                 modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter)
                     .background(Color(0, 0, 0, 120)).padding(16.dp),
