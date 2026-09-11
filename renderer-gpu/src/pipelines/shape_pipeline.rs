@@ -8,6 +8,7 @@ use renderer_common::WorldShapeFeatureLayerTag;
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, Device, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
+use wgpu::Face::Back;
 
 pub(crate) struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
@@ -144,7 +145,7 @@ impl ShapePipeline {
         let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context);
         mesh_descriptor.label = Some("Shape Pipeline");
         let mut stencil = mesh_descriptor.depth_stencil.unwrap();
-        stencil.depth_compare = Some(CompareFunction::Always);
+        stencil.depth_compare = Some(CompareFunction::LessEqual);
         stencil.depth_write_enabled = Some(false);
         mesh_descriptor.depth_stencil = Some(stencil);
 
@@ -173,7 +174,7 @@ impl ShapePipeline {
         let fragment = &mut mesh_descriptor.fragment.as_mut().unwrap();
         fragment.module = shader_module;
 
-        mesh_descriptor.primitive.cull_mode = None;
+        mesh_descriptor.primitive.cull_mode = Some(Back);
 
         mesh_descriptor
     }

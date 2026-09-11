@@ -64,6 +64,7 @@ fn style_array_to_mat(out: ptr<function,VertexOutput>, params: mat4x3<f32>) {
 }
 
 const PI: f32 = 3.14159265359;
+const GR: f32 = 2670176.857720436;
 
 @vertex
 fn vs_main(
@@ -109,7 +110,7 @@ fn vs_main(
             cos(lat) * sin(lon),
             cos(lat) * cos(lon),
             sin(lat),
-        );
+        ) * GR;
         out.clip_position = camera.globe_view_proj * vec4<f32>(globe, 1.0);
     } else  {
         out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);

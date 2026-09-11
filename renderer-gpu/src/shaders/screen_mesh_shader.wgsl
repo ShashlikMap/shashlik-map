@@ -30,6 +30,10 @@ struct VertexOutput {
     @location(2) pos_from_light: vec4<f32>,
 }
 
+const PI: f32 = 3.14159265359;
+const GR: f32 = 2670176.857720436;
+
+
 @vertex
 fn vs_main(
     model: VertexInput,
@@ -57,7 +61,21 @@ fn vs_main(
     }
     out.color = vec4f(model.color.rgb, model.color.a * pos.color_alpha);
     out.uv = model.uv;
-    out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
+
+    if(camera.scale > 20000.0) {
+        let lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * (pos.position.y / 16777216.0)))) - (PI * 0.5);
+        let lon = 2.0 * PI * ((pos.position.x / 16777216.0) - 0.5);
+        let globe = vec3<f32>(
+            cos(lat) * sin(lon),
+            cos(lat) * cos(lon),
+            sin(lat),
+        ) * GR;
+        //out.clip_position = camera.globe_view_proj * vec4<f32>(globe, 1.0);
+        let coord = camera.globe_view_proj * vec4<f32>(globe, 1.0);
+        out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
+    } else  {
+        out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
+    }
 
     return out;    
 }
