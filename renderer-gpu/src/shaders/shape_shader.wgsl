@@ -103,7 +103,7 @@ fn vs_main(
     // divide distance to scale, so dash shader works properly
     out.uv_dist_scale = vec4f(model.uv, f32(model.dist) / camera.p2_scale, camera.scale);
 
-    if(camera.scale > 20000.0) {
+    if(camera.scale > 12000.0) {
         let lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * (pointPos.y / 16777216.0)))) - (PI * 0.5);
         let lon = 2.0 * PI * ((pointPos.x / 16777216.0) - 0.5);
         let globe = vec3<f32>(

@@ -53,29 +53,31 @@ fn vs_main(
     var coord = vec4<f32>(pos.position.xy, 0.0, 1.0);
     if pos.screen_space == 0 {
         coord = camera.view_proj * coord;
+
+        if(camera.scale > 12000.0) {
+            let lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * (pos.position.y / 16777216.0)))) - (PI * 0.5);
+            let lon = 2.0 * PI * ((pos.position.x / 16777216.0) - 0.5);
+            let globe = vec3<f32>(
+                cos(lat) * sin(lon),
+                cos(lat) * cos(lon),
+                sin(lat),
+            ) * GR;
+            //out.clip_position = camera.globe_view_proj * vec4<f32>(globe, 1.0);
+            let coord = camera.globe_view_proj * vec4<f32>(globe, 1.0);
+            out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
+        } else  {
+            out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
+        }
     } else {
         coord.x *= camera.inv_screen_size.x;
         coord.x = 2.0*(coord.x - 0.5);
         coord.y *= camera.inv_screen_size.y;
         coord.y = 2.0*(coord.y - 0.5) * -1.0;
+
+        out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
     }
     out.color = vec4f(model.color.rgb, model.color.a * pos.color_alpha);
     out.uv = model.uv;
-
-    if(camera.scale > 20000.0) {
-        let lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * (pos.position.y / 16777216.0)))) - (PI * 0.5);
-        let lon = 2.0 * PI * ((pos.position.x / 16777216.0) - 0.5);
-        let globe = vec3<f32>(
-            cos(lat) * sin(lon),
-            cos(lat) * cos(lon),
-            sin(lat),
-        ) * GR;
-        //out.clip_position = camera.globe_view_proj * vec4<f32>(globe, 1.0);
-        let coord = camera.globe_view_proj * vec4<f32>(globe, 1.0);
-        out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
-    } else  {
-        out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
-    }
 
     return out;    
 }
@@ -93,6 +95,32 @@ var s_compare: sampler_comparison;
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     return in.color;
+}
+
+@fragment
+fn fs_main_globe(in: VertexOutput) -> @location(0) vec4<f32> {
+    let ndc = in.uv * 2.0 - 1.0;
+    let r = vec2f(camera.gr * abs(camera.proj[0][0]), camera.gr * abs(camera.proj[1][1]));
+    let d = length(ndc / r);
+    if(d <= 1.0) {
+        return vec4f(0.957, 0.953, 0.941, 1.0);
+    }
+    return in.color;
+}
+
+@fragment
+fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
+    let ndc = in.uv * 2.0 - 1.0;
+    let r = vec2f(camera.gr * abs(camera.proj[0][0]), camera.gr * abs(camera.proj[1][1])) * 0.995;
+    let d = length(ndc / r);
+    if(d <= 1.0) {
+        discard;
+    }
+    let glow = abs(1.0 - smoothstep(1.0, 1.14, d));
+    if(glow <= 0.0) {
+        discard;
+    }
+    return vec4f(vec3f(0.35, 0.60, 1.00), 0.85 * glow);
 }
 
 const tex_border_x: f32 = 0.01;

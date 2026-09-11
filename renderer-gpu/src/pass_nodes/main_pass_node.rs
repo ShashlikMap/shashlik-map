@@ -10,6 +10,7 @@ use crate::pipelines::x_real_mesh_pipeline::XRealMeshShaderPipeline;
 use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
 use renderer_common::WorldShapeFeatureLayerTag;
 use wgpu::{CommandEncoder, TextureView};
+use crate::buffer_pool::BufferPool;
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
@@ -22,14 +23,17 @@ pub(crate) struct MainPassNode {
     preview_screen_mesh_pipeline: ScreenMeshPipeline,
     text_screen_mesh_pipeline: ScreenMeshPipeline,
     post_process_screen_mesh_pipeline: ScreenMeshPipeline,
+    globe_pipeline: ScreenMeshPipeline,
+    globe_glow_pipeline: ScreenMeshPipeline,
 }
 
 impl MainPassNode {
     pub fn new(
         global_context: &GlobalContext,
         x_real_mesh_shader_pipeline_enabled: bool,
-        layers: &Layers,
+        layers: &mut Layers,
         world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>,
+        buffer_pool: &mut BufferPool
     ) -> Self {
         let size = (
             global_context.config().width,
@@ -87,6 +91,27 @@ impl MainPassNode {
             false,
         );
 
+        let globe_pipeline = ScreenMeshPipeline::new(
+            global_context,
+            TextureInfo {
+                use_texture: false,
+                filterable: false,
+                fs_shader: "fs_main_globe",
+            },
+            false,
+        );
+        layers.globe_layer.set_texture(None, (0.0, 0.0), global_context, buffer_pool);
+
+        let globe_glow_pipeline = ScreenMeshPipeline::new(
+            global_context,
+            TextureInfo {
+                use_texture: false,
+                filterable: false,
+                fs_shader: "fs_main_globe_glow",
+            },
+            false,
+        );
+
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
             depth_texture_view: create_depth_texture(
@@ -103,6 +128,8 @@ impl MainPassNode {
             feature_shape_pipelines,
             preview_screen_mesh_pipeline,
             post_process_screen_mesh_pipeline,
+            globe_pipeline,
+            globe_glow_pipeline
         }
     }
 }
@@ -114,7 +141,7 @@ impl PassNode for MainPassNode {
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {
-        let clear_color = if global_context.view_projection.uniform.scale > 20000.0 {
+        let clear_color = if global_context.view_projection.uniform.scale > 12000.0 {
             COSMOS_BACKGROUND_ATTACHMENT_COLOR
         } else {
             BACKGROUND_ATTACHMENT_COLOR
@@ -153,13 +180,22 @@ impl PassNode for MainPassNode {
         };
 
         let mut render_pass = encoder.begin_render_pass(&descriptor);
-        
+
+        layers.globe_layer.render( &mut render_pass,
+                                   &mut self.globe_pipeline,
+                                   global_context);
+
         layers.shape_layer.disable_skip_mesh_feature = false;
         layers.shape_layer.render(
             &mut render_pass,
             &mut self.default_shape_pipeline,
             global_context,
         );
+
+        layers.globe_layer.render( &mut render_pass,
+                                   &mut self.globe_glow_pipeline,
+                                   global_context);
+
 
         if global_context.x_real_mesh_shader_enabled {
             layers.mesh_layer.render(

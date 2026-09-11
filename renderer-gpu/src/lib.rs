@@ -261,10 +261,12 @@ impl GpuRenderer {
                 .set_texture(Some(texture_view), (-100.0, -100.0), &self.global_context, &mut self.buffer_pool);
         }
 
+        let tag = self.layers.world_shapes_feature_tags.clone();
         let main_node = MainPassNode::new(&mut self.global_context,
                                           self.render_config.x_real_mesh_shader_enabled,
-                                          &self.layers,
-                                          self.layers.world_shapes_feature_tags.clone());
+                                          &mut self.layers,
+                                          tag,
+                                          &mut self.buffer_pool);
         self.pass_nodes.push(Box::new(main_node));
 
         if self.render_config.headless {
