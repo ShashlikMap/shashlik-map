@@ -5,8 +5,8 @@ use glam::DVec2;
 use glam::DVec3;
 use glam::Vec3Swizzles;
 use std::f64::consts::PI;
-use renderer_common::LIGHT_POS;
-use crate::tiles::tiles_provider::{GLOBE_RADIUS, MAP_SIZE};
+use renderer_common::{LIGHT_POS, MAP_SIZE};
+use crate::tiles::tiles_provider::{GLOBE_RADIUS};
 
 pub struct Camera {
     pub eye: DVec3,
@@ -59,17 +59,15 @@ impl Camera {
     }
 
     pub fn build_globe_view_projection_matrix(&mut self) -> (DMat4, DMat4, f32) {
-        // where we're looking, as lon/lat
         let globe_radius = MAP_SIZE / (2.0 * PI);
-        let merc = (self.target.xy() / MAP_SIZE).clamp(DVec2::ZERO, DVec2::ONE);
+        let merc = self.target.xy() / MAP_SIZE;
         let lat = 2.0 * (PI * (1.0 - 2.0 * merc.y)).exp().atan() - PI * 0.5;
         let lon = 2.0 * PI * (merc.x - 0.5);
 
-        // tangent frame at that point
         let n = DVec3::new(lat.cos() * lon.sin(), lat.cos() * lon.cos(), lat.sin());
         let east = n.cross(DVec3::Z).normalize();
         let north = east.cross(n);
-        let y_axis = if true { -north } else { north };
+        let y_axis = -north;
         let to_globe = DMat3::from_cols(east, y_axis, n);
 
         let l = self.eye_direction().length();
@@ -77,9 +75,8 @@ impl Camera {
         let gr = GLOBE_RADIUS;
         let gr = (GLOBE_RADIUS / (d * d - gr * gr).sqrt()) as f32;
 
-        // carry pitch, yaw and distance over unchanged; cos(lat) is the sec(lat) zoom fix
         let target = n * globe_radius;
-        let rig = to_globe * (self.eye - self.target) * lat.cos().max(0.05);
+        let rig = to_globe * self.eye_direction() * lat.cos().max(0.05);
 
         let view = DMat4::look_at_rh(target + rig, target, to_globe * self.up);
         (view, self.perspective_matrix * view, gr)

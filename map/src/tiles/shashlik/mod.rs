@@ -7,6 +7,7 @@ use googleprojection::Mercator;
 use osm::map::{MapGeomObject, MapGeometry};
 use osm::source::TileSource;
 use osm::tiles::{TILES_COUNT, TILE_OVERLAP_PERCENT, TILE_SIZE, TileKey, TileStore, calc_tile_ranges};
+use crate::tiles::CustomTileKey;
 
 impl<S: TileSource> MercatorProvider for TileStore<S> {
     fn mercator(&self) -> Mercator {
@@ -70,20 +71,21 @@ impl <S:TileSource> TilesProviderStore for TileStore<S> {
         res
     }
 
-    fn tile_position_bbox(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect) {
-        let tile_rect = tile_key.calc_tile_boundary(TILE_OVERLAP_PERCENT);
+    // fyi, TilesV0 won't support infinite scroll + it'll be removed anyway soon
+    fn tile_position_bbox(&self, tile_key: &CustomTileKey, bbox_scale: f64) -> (DVec3, Rect) {
+        let tile_rect = tile_key.0.calc_tile_boundary(TILE_OVERLAP_PERCENT);
 
         let tile_rect_origin = self.lon_lat_to_world(&tile_rect.min(), MAX_ZOOM_LEVEL);
         let tile_position = [tile_rect_origin.x, tile_rect_origin.y, 0.0].into();
 
-        let tile_rect_original = tile_key.calc_tile_boundary(1.00);
+        let tile_rect_original = tile_key.0.calc_tile_boundary(1.00);
         let tile_rect_original_min = self.lon_lat_to_world(&tile_rect_original.min(), MAX_ZOOM_LEVEL);
         let tile_rect_original_max = self.lon_lat_to_world(&tile_rect_original.max(), MAX_ZOOM_LEVEL);
         let bbox = Rect::new(tile_rect_original_min, tile_rect_original_max).scale(bbox_scale);
         (tile_position, bbox)
     }
 
-    fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
-        self.load_geometries(tile_key)
+    fn load(&self, tile_key: &CustomTileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
+        self.load_geometries(&tile_key.0)
     }
 }

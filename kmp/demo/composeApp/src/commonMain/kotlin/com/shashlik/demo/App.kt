@@ -25,8 +25,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,6 +39,8 @@ import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.util.fastForEach
+import com.shashlik.kmp.ConvexPolygon
+import com.shashlik.kmp.LineShape
 import com.shashlik.kmp.ShashlikMap
 import com.shashlik.kmp.ShashlikMapApiHolder
 import com.shashlik.kmp.isDebugBuild
@@ -49,6 +51,8 @@ import uniffi.ffi_run.RouteCosting.MOTORBIKE
 import uniffi.ffi_run.RouteCosting.PEDESTRIAN
 import uniffi.ffi_run.RouteCosting.entries
 import uniffi.ffi_run.ShapeType
+import uniffi.ffi_run.ShapeType.LINE
+import uniffi.ffi_run.ShapeType.POLYGON
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -117,19 +121,22 @@ private const val EXTENDED_CONTROLS = false
 @Preview
 fun App() {
     MaterialTheme {
-        Box(modifier = Modifier.fillMaxSize().pointerInput(Unit) {
-            detectTapGestures(onLongPress = { offset ->
-                ShashlikMapApiHolder.shashlikMapApi?.calculateRoute(
-                    offset.x, offset.y, routeCosting.value
-                )
-            })
-        }.pointerInput(Unit) {
-            detectTransformGestures { _, pan, _, _ ->
-                val panX = pan.x
-                val panY = pan.y
-                ShashlikMapApiHolder.shashlikMapApi?.panDelta(-panX, -panY)
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(onLongPress = { offset ->
+                    ShashlikMapApiHolder.shashlikMapApi?.calculateRoute(
+                        offset.x, offset.y, routeCosting.value
+                    )
+                })
             }
-        }
+            .pointerInput(Unit) {
+                detectTransformGestures { _, pan, _, _ ->
+                    val panX = pan.x
+                    val panY = pan.y
+                    ShashlikMapApiHolder.shashlikMapApi?.panDelta(-panX, -panY)
+                }
+            }
             .pointerInput(Unit) {
                 detectTwoFingersScrollZoom { centroid, scroll, zoom ->
                     if (zoom != 1.0f) {
@@ -142,10 +149,28 @@ fun App() {
                 }
             }
         ) {
-            ShashlikMap()
+            var mvtCheckedState by remember { mutableStateOf(false) }
+            val shapes = remember { mutableStateListOf<Triple<List<Point>, ShapeType, Color>>() }
+            ShashlikMap(withAutoLocationEvent = true, mvtTiles = mvtCheckedState) {
+                shapes.forEach { shape ->
+                    when (shape.second) {
+                        LINE -> {
+
+                            LineShape(shape.first, shape.third)
+                        }
+
+                        POLYGON -> {
+                            ConvexPolygon(shape.first.first(), 10.0, 5, Color.Red)
+                        }
+                    }
+                }
+            }
             Row(
-                modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter)
-                    .background(Color(0, 0, 0, 120)).padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(Color(0, 0, 0, 120))
+                    .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Button(onClick = {
@@ -170,31 +195,17 @@ fun App() {
                             })
                         Text("Camera Mode")
 
-                        var mvtCheckedState by remember { mutableStateOf(false) }
                         Checkbox(
                             mvtCheckedState, onCheckedChange = {
-                                ShashlikMapApiHolder.shashlikMapApi?.setMvtTileset(it)
                                 mvtCheckedState = it
                             })
                         Text("MVT")
 
-                        // Just a temporary test for shape creating.
-                        val shapeIds = remember { mutableStateSetOf<String>() }
                         Button({
-                            val (points, shapeType, color) = generateRandomShapeAroundTokyo()
-                            if (shapeIds.size > 5) {
-                                shapeIds.forEach {
-                                    ShashlikMapApiHolder.shashlikMapApi?.removeShape(it)
-                                }
-                                shapeIds.clear()
+                            if (shapes.size > 5) {
+                                shapes.clear()
                             }
-                            ShashlikMapApiHolder.shashlikMapApi?.addOverlayShape(
-                                points,
-                                shapeType,
-                                color
-                            )?.let {
-                                shapeIds += it
-                            }
+                            shapes.add(generateRandomShapeAroundTokyo())
                         }) {
                             Text("Shp")
                         }
@@ -226,13 +237,15 @@ fun App() {
             }
             Text(
                 "Build:${if (isDebugBuild) "Debug" else "Release"}",
-                modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 8.dp, end = 8.dp)
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 8.dp, end = 8.dp)
             )
         }
     }
 }
 
-private fun generateRandomShapeAroundTokyo(): Triple<List<Point>, ShapeType, uniffi.ffi_run.Color> {
+private fun generateRandomShapeAroundTokyo(): Triple<List<Point>, ShapeType, Color> {
     val centerX = 139.757080078125
     val centerY = 35.68798828125
 
@@ -242,7 +255,7 @@ private fun generateRandomShapeAroundTokyo(): Triple<List<Point>, ShapeType, uni
     val points = mutableListOf<Point>()
 
     when (shapeType) {
-        ShapeType.LINE -> {
+        LINE -> {
             for (i in 0 until 5) {
                 val x = centerX + Random.nextDouble(-maxOffset, maxOffset)
                 val y = centerY + Random.nextDouble(-maxOffset, maxOffset)
@@ -250,7 +263,7 @@ private fun generateRandomShapeAroundTokyo(): Triple<List<Point>, ShapeType, uni
             }
         }
 
-        ShapeType.POLYGON -> {
+        POLYGON -> {
             val numVertices = Random.nextInt(3, 7)
             val angles =
                 DoubleArray(numVertices) { Random.nextDouble(0.0, 2 * PI) }.apply { sort() }
@@ -266,10 +279,10 @@ private fun generateRandomShapeAroundTokyo(): Triple<List<Point>, ShapeType, uni
         }
     }
 
-    val randomColor = uniffi.ffi_run.Color(
-        r = Random.nextFloat(),
-        g = Random.nextFloat(),
-        b = Random.nextFloat()
+    val randomColor = Color(
+        red = Random.nextFloat(),
+        green = Random.nextFloat(),
+        blue = Random.nextFloat()
     )
 
     return Triple(points, shapeType, randomColor)

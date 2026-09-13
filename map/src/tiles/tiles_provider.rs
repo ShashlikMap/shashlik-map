@@ -1,14 +1,16 @@
 use crate::tiles::tile_data::TileData;
 use futures::Stream;
-use geo_types::{coord, Coord, Polygon, Rect};
+use geo::{CoordsIter, Scale};
+use geo_types::{Coord, Polygon, Rect, coord};
 use glam::DVec3;
 use googleprojection::Mercator;
 use osm::map::{MapGeomObject, MapGeometry};
-use osm::tiles::{TileKey, TileRanges};
+use osm::tiles::TileKey;
 use std::collections::HashSet;
 use std::f64::consts::PI;
 use std::sync::Arc;
-use geo::{CoordsIter, Scale};
+use renderer_common::MAP_SIZE;
+use crate::tiles::CustomTileKey;
 
 pub enum TilesMessage {
     TilesData(Vec<TileData>),
@@ -46,8 +48,6 @@ pub struct TileMetersBounds {
     pub max_y: f64,
 }
 
-const EXTENT: f64 = 8388608.0;
-pub const MAP_SIZE: f64 = EXTENT * 2.0;
 pub const GLOBE_RADIUS: f64 = MAP_SIZE / (2.0 * PI);
 
 pub trait TilesProviderStore: MercatorConverter {
@@ -55,9 +55,9 @@ pub trait TilesProviderStore: MercatorConverter {
     fn convert_zoom(&self, zoom_level: i32) -> i32 {
         zoom_level
     }
-    fn tile_ranges(&self, area: geo_types::Polygon<f64>, zoom_level: i32) -> Vec<TileKey> {
-        let mut min_x = u32::MAX;
-        let mut max_x = u32::MIN;
+    fn tile_ranges(&self, area: Polygon<f64>, zoom_level: i32) -> Vec<TileKey> {
+        let mut min_x = i32::MAX;
+        let mut max_x = i32::MIN;
         let mut min_y = u32::MAX;
         let mut max_y = u32::MIN;
 
@@ -70,19 +70,11 @@ pub trait TilesProviderStore: MercatorConverter {
             if ty > max_y { max_y = ty; }
         }
 
-
-        let ranges = TileRanges {
-            min_x,
-            max_x,
-            min_y,
-            max_y,
-        };
-
         let mut res = vec![];
-        for tx in ranges.min_x..=ranges.max_x {
-            for ty in ranges.min_y..=ranges.max_y {
+        for tx in min_x..=max_x {
+            for ty in min_y..=max_y {
                 let tile_key = TileKey {
-                    tile_x: tx as i32,
+                    tile_x: tx,
                     tile_y: ty as i32,
                     zoom_level,
                 };
@@ -99,11 +91,11 @@ pub trait TilesProviderStore: MercatorConverter {
         }
         res
     }
-    fn tile_position_bbox(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect) {
+    fn tile_position_bbox(&self, tile_key: &CustomTileKey, bbox_scale: f64) -> (DVec3, Rect) {
         let bounds = self.tile_id_to_mercator_meters(
-            tile_key.tile_x as u32,
-            tile_key.tile_y as u32,
-            tile_key.zoom_level as u32,
+            tile_key.0.tile_x,
+            tile_key.0.tile_y,
+            tile_key.0.zoom_level as u32,
         );
         let tile_position: DVec3 = DVec3::new(bounds.min_x, bounds.min_y, 0.0);
 
@@ -115,22 +107,22 @@ pub trait TilesProviderStore: MercatorConverter {
 
         (tile_position, bbox)
     }
-    fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)>;
+    fn load(&self, tile_key: &CustomTileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)>;
 
-    fn mercator_meters_to_512_tile(&self, mx: f64, my: f64, zoom: u32) -> (u32, u32) {
+    fn mercator_meters_to_512_tile(&self, mx: f64, my: f64, zoom: u32) -> (i32, u32) {
         let norm_x = (mx) / MAP_SIZE;
         let norm_y = (my) / MAP_SIZE; // Flipped because Tile Y increases downwards
 
         let num_tiles = (1 << zoom) as f64;
 
-        let tx = (norm_x * num_tiles).floor() as u32;
+        let tx = (norm_x * num_tiles).floor() as i32;
         let ty = (norm_y * num_tiles).floor() as u32;
 
         let max_tile = (1 << zoom) - 1;
-        (tx.min(max_tile), ty.min(max_tile))
+        (tx, ty.min(max_tile))
     }
 
-    fn tile_id_to_mercator_meters(&self, tx: u32, ty: u32, zoom: u32) -> TileMetersBounds {
+    fn tile_id_to_mercator_meters(&self, tx: i32, ty: i32, zoom: u32) -> TileMetersBounds {
         let num_tiles = (1 << zoom) as f64;
 
         let norm_left = tx as f64 / num_tiles;
