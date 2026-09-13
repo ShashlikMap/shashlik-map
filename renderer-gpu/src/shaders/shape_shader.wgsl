@@ -170,7 +170,20 @@ fn vs_main_indirect(
     out.vertex_pos_xy = pointPos.xy;
     // keep scale 1.0 so route doesn't hide its border
     out.uv_dist_scale = vec4f(model.uv, f32(model.dist), 1.0);
-    out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
+
+    if(camera.scale > 12000.0) {
+        let lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * (pointPos.y / 16777216.0)))) - (PI * 0.5);
+        let lon = 2.0 * PI * ((pointPos.x / 16777216.0) - 0.5);
+        let globe = vec3<f32>(
+            cos(lat) * sin(lon),
+            cos(lat) * cos(lon),
+            sin(lat),
+        ) * GR;
+        out.clip_position = camera.globe_view_proj * vec4<f32>(globe, 1.0);
+    } else  {
+        out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
+    }
+
     return out;
 }
 
