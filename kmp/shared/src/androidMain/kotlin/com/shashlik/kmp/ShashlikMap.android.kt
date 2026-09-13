@@ -26,7 +26,7 @@ import timber.log.Timber
 import timber.log.Timber.DebugTree
 
 @Suppress("KotlinConstantConditions")
-actual val isDebugBuild: Boolean = BuildConfig.DEBUG
+actual val isDebugBuild: Boolean get() = BuildConfig.DEBUG
 
 fun shashlikMapInit() {
     Timber.plant(DebugTree())
@@ -35,7 +35,7 @@ fun shashlikMapInit() {
 @OptIn(ExperimentalPermissionsApi::class)
 @SuppressLint("MissingPermission")
 @Composable
-actual fun ShashlikMap(withAutoLocationEvent: Boolean) {
+internal actual fun ShashlikMapSetup(withAutoLocationEvent: Boolean) {
     if (LocalInspectionMode.current) {
         Box(modifier = Modifier.fillMaxSize().background(Color.DarkGray)) {
             Text("ShashlikMap Preview", color = Color.White, modifier = Modifier.align(Alignment.Center))

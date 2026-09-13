@@ -11,7 +11,7 @@ import androidx.compose.ui.viewinterop.UIKitView
 @OptIn(kotlin.experimental.ExperimentalNativeApi::class)
 actual val isDebugBuild: Boolean get() = Platform.isDebugBinary
 @Composable
-actual fun ShashlikMap(withAutoLocationEvent: Boolean) {
+internal actual fun ShashlikMapSetup(withAutoLocationEvent: Boolean) {
     val iosLocationProvider = remember {
         IOSLocationProvider(
             onLocationUpdated = { lat, lon, bearing ->
