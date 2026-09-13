@@ -11,7 +11,7 @@ import androidx.compose.ui.viewinterop.UIKitView
 @OptIn(kotlin.experimental.ExperimentalNativeApi::class)
 actual val isDebugBuild: Boolean get() = Platform.isDebugBinary
 @Composable
-actual fun ShashlikMap() {
+internal actual fun ShashlikMapSetup(withAutoLocationEvent: Boolean) {
     val iosLocationProvider = remember {
         IOSLocationProvider(
             onLocationUpdated = { lat, lon, bearing ->
@@ -27,9 +27,11 @@ actual fun ShashlikMap() {
             }
         )
     }
-    // TODO DisposableEffect is better
+    // TODO DisposableEffect is better, especially for withAutoLocationEvent
     LaunchedEffect(Unit) {
-        iosLocationProvider.startUpdatingLocation();
+        if(withAutoLocationEvent) {
+            iosLocationProvider.startUpdatingLocation();
+        }
     }
 
     UIKitView(
