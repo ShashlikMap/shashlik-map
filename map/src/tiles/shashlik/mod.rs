@@ -71,6 +71,7 @@ impl <S:TileSource> TilesProviderStore for TileStore<S> {
         res
     }
 
+    // fyi, TilesV0 won't support infinite scroll + it'll be removed anyway soon
     fn tile_position_bbox(&self, tile_key: &CustomTileKey, bbox_scale: f64) -> (DVec3, Rect) {
         let tile_rect = tile_key.0.calc_tile_boundary(TILE_OVERLAP_PERCENT);
 
