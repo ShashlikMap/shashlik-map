@@ -27,7 +27,7 @@ internal actual fun ShashlikMapSetup(withAutoLocationEvent: Boolean) {
             }
         )
     }
-    // TODO DisposableEffect is better
+    // TODO DisposableEffect is better, especially for withAutoLocationEvent
     LaunchedEffect(Unit) {
         if(withAutoLocationEvent) {
             iosLocationProvider.startUpdatingLocation();

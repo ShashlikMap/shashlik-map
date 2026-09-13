@@ -43,7 +43,6 @@ import com.shashlik.kmp.ConvexPolygon
 import com.shashlik.kmp.LineShape
 import com.shashlik.kmp.ShashlikMap
 import com.shashlik.kmp.ShashlikMapApiHolder
-import com.shashlik.kmp.ShashlikShape
 import com.shashlik.kmp.isDebugBuild
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import uniffi.ffi_run.Point
@@ -52,7 +51,8 @@ import uniffi.ffi_run.RouteCosting.MOTORBIKE
 import uniffi.ffi_run.RouteCosting.PEDESTRIAN
 import uniffi.ffi_run.RouteCosting.entries
 import uniffi.ffi_run.ShapeType
-import uniffi.ffi_run.ShapeType.*
+import uniffi.ffi_run.ShapeType.LINE
+import uniffi.ffi_run.ShapeType.POLYGON
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -150,12 +150,13 @@ fun App() {
             }
         ) {
             var mvtCheckedState by remember { mutableStateOf(false) }
-            val shapes = remember { mutableStateListOf<Triple<List<Point>, ShapeType, uniffi.ffi_run.Color>>() }
+            val shapes = remember { mutableStateListOf<Triple<List<Point>, ShapeType, Color>>() }
             ShashlikMap(withAutoLocationEvent = true, mvtTiles = mvtCheckedState) {
                 shapes.forEach { shape ->
                     when (shape.second) {
                         LINE -> {
-                            LineShape(shape.first, Color.Blue)
+
+                            LineShape(shape.first, shape.third)
                         }
 
                         POLYGON -> {
@@ -244,7 +245,7 @@ fun App() {
     }
 }
 
-private fun generateRandomShapeAroundTokyo(): Triple<List<Point>, ShapeType, uniffi.ffi_run.Color> {
+private fun generateRandomShapeAroundTokyo(): Triple<List<Point>, ShapeType, Color> {
     val centerX = 139.757080078125
     val centerY = 35.68798828125
 
@@ -254,7 +255,7 @@ private fun generateRandomShapeAroundTokyo(): Triple<List<Point>, ShapeType, uni
     val points = mutableListOf<Point>()
 
     when (shapeType) {
-        ShapeType.LINE -> {
+        LINE -> {
             for (i in 0 until 5) {
                 val x = centerX + Random.nextDouble(-maxOffset, maxOffset)
                 val y = centerY + Random.nextDouble(-maxOffset, maxOffset)
@@ -262,7 +263,7 @@ private fun generateRandomShapeAroundTokyo(): Triple<List<Point>, ShapeType, uni
             }
         }
 
-        ShapeType.POLYGON -> {
+        POLYGON -> {
             val numVertices = Random.nextInt(3, 7)
             val angles =
                 DoubleArray(numVertices) { Random.nextDouble(0.0, 2 * PI) }.apply { sort() }
@@ -278,10 +279,10 @@ private fun generateRandomShapeAroundTokyo(): Triple<List<Point>, ShapeType, uni
         }
     }
 
-    val randomColor = uniffi.ffi_run.Color(
-        r = Random.nextFloat(),
-        g = Random.nextFloat(),
-        b = Random.nextFloat()
+    val randomColor = Color(
+        red = Random.nextFloat(),
+        green = Random.nextFloat(),
+        blue = Random.nextFloat()
     )
 
     return Triple(points, shapeType, randomColor)
