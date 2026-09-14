@@ -1,13 +1,15 @@
 use crate::CoordConverter;
 use crate::overlay::ShapeType;
 use crate::overlay::overlay_shape_group::OverlayShapeGroup;
-use geo_types::Point;
+use geo_types::{Point, Rect};
 use renderer_common::RendererApi;
 use renderer_common::style_id::StyleId;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use geo::{BoundingRect, Scale};
+use geo_types::Geometry::MultiPoint;
 
 static OVERLAY_SHAPE_ID: AtomicUsize = AtomicUsize::new(0);
 pub struct Overlay<RAPI: RendererApi> {
@@ -15,15 +17,20 @@ pub struct Overlay<RAPI: RendererApi> {
     feature_layer_tag: String,
     shape_ids: FxHashSet<String>,
     styles: FxHashMap<String, StyleId>,
+    points: FxHashMap<String, Vec<Point>>,
+    bbox: Option<Rect>
 }
 
 impl<RAPI: RendererApi> Overlay<RAPI> {
+    const BBOX_SCALE: f64 = 1.5;
     pub fn new(feature_layer_tag: String, api: Arc<RAPI>) -> Overlay<RAPI> {
         Overlay {
             api,
             feature_layer_tag,
             shape_ids: FxHashSet::default(),
             styles: FxHashMap::default(),
+            points: FxHashMap::default(),
+            bbox: None
         }
     }
 
@@ -46,6 +53,10 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
             1.0,
         ]);
         let unique_id = format!("overlay_shape_id_{}", id);
+
+        self.points.insert(unique_id.clone(), points.clone());
+        self.bbox = None;
+
         self.shape_ids.insert(unique_id.clone());
 
         let style_key = format!("overlay_shape_key_{:?}", render_style);
@@ -68,7 +79,17 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         Some(unique_id)
     }
 
+    pub fn bbox(&mut self) -> Option<&Rect> {
+        if self.bbox.is_none() && let Some(bbox) = MultiPoint(self.points.values().cloned().flatten().collect()).bounding_rect() {
+            self.bbox = Some(bbox.scale(Self::BBOX_SCALE));
+        }
+        self.bbox.as_ref()
+    }
+
     pub fn remove_shape(&mut self, key: String) {
+        if self.points.remove(&key).is_some() {
+            self.bbox = None;
+        }
         if self.shape_ids.remove(&key) {
             self.api.clear_render_groups(HashSet::from_iter(vec![key]));
         }
