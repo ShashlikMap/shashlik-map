@@ -29,7 +29,7 @@ pub(crate) struct ViewProjUniform {
     pub(crate) scale: f32,
     p2_scale: f32,
     scale_2d_3d: f32,
-    gr: f32
+    globe_r: f32
 }
 
 #[derive(Clone)]
@@ -81,7 +81,7 @@ impl ViewProjection {
                 scale: 0.0,
                 p2_scale: 1.0,
                 scale_2d_3d: 1.0,
-                gr: 0.0,
+                globe_r: 0.0,
             },
             scale_2d_3d: 0.0,
             screen_size: (0.0, 0.0),
@@ -135,7 +135,7 @@ impl ViewProjection {
             .as_mat4()
             .to_cols_array_2d();
         self.uniform.scale = data.scale;
-        self.uniform.gr = data.gr;
+        self.uniform.globe_r = data.globe_r;
 
         self.uniform.p2_scale = self.p2_scale(data.scale);
         self.uniform.scale_2d_3d = data.scale_2d_3d;

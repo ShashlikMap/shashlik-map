@@ -98,7 +98,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 @fragment
 fn fs_main_globe(in: VertexOutput) -> @location(0) vec4<f32> {
     let ndc = in.uv * 2.0 - 1.0;
-    let r = vec2f(camera.gr * abs(camera.proj[0][0]), camera.gr * abs(camera.proj[1][1]));
+    let r = vec2f(camera.globe_r * abs(camera.proj[0][0]), camera.globe_r * abs(camera.proj[1][1]));
     let d = length(ndc / r);
     if(d <= 1.0) {
         return vec4f(0.957, 0.953, 0.941, 1.0);
@@ -109,7 +109,7 @@ fn fs_main_globe(in: VertexOutput) -> @location(0) vec4<f32> {
 @fragment
 fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
     let ndc = in.uv * 2.0 - 1.0;
-    let r = vec2f(camera.gr * abs(camera.proj[0][0]), camera.gr * abs(camera.proj[1][1])) * 0.995;
+    let r = vec2f(camera.globe_r * abs(camera.proj[0][0]), camera.globe_r * abs(camera.proj[1][1])) * 0.995;
     let d = length(ndc / r);
     if(d <= 1.0) {
         discard;
