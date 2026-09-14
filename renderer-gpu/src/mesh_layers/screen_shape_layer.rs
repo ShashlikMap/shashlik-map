@@ -116,6 +116,7 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
                     let start_index = all_attrs.len() as u32;
                     let mut attrs = Vec::with_capacity(pos_alpha.len());
                     I::fill_attrs(
+                        global_context.view_projection.uniform.scale,
                         &mut attrs,
                         self.attr_map,
                         &cs_offset,

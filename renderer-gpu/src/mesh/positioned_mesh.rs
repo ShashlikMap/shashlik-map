@@ -78,6 +78,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
 
         if update_attrs {
             T::fill_attrs(
+                global_context.view_projection.uniform.scale,
                 &mut self.attrs,
                 self.attr_map,
                 &self.cs_offset,
