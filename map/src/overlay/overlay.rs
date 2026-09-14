@@ -22,6 +22,7 @@ pub struct Overlay<RAPI: RendererApi> {
 }
 
 impl<RAPI: RendererApi> Overlay<RAPI> {
+    const BBOX_SCALE: f64 = 1.5;
     pub fn new(feature_layer_tag: String, api: Arc<RAPI>) -> Overlay<RAPI> {
         Overlay {
             api,
@@ -80,7 +81,7 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
 
     pub fn bbox(&mut self) -> Option<&Rect> {
         if self.bbox.is_none() && let Some(bbox) = MultiPoint(self.points.values().cloned().flatten().collect()).bounding_rect() {
-            self.bbox = Some(bbox.scale(1.5));
+            self.bbox = Some(bbox.scale(Self::BBOX_SCALE));
         }
         self.bbox.as_ref()
     }
