@@ -1,7 +1,5 @@
 import super::common::CameraUniform;
-import super::common::PI;
-import super::common::MAP_SIZE;
-import super::common::GLOBE_R;
+import super::globe_common::transform_to_globe_position;
 
 // Vertex shader
 const PARAMS_COUNT : i32 = 12; // 12 is mat4x3!
@@ -66,6 +64,17 @@ fn style_array_to_mat(out: ptr<function,VertexOutput>, params: mat4x3<f32>) {
     (*out).style4 = params[3];
 }
 
+fn handle_flat_globe(out: ptr<function, VertexOutput>, position: vec3f) {
+    if(camera.scale > 12000.0) {
+        // drop bbox, so it won't be checked in FS
+        (*out).bbox.z = 0.0;
+        (*out).bbox.w = 0.0;
+        (*out).clip_position = camera.globe_view_proj * transform_to_globe_position(position.xy);
+    } else  {
+        (*out).clip_position = camera.view_proj * vec4<f32>(position, 1.0);
+    }
+}
+
 @vertex
 fn vs_main(
     model: VertexInput,
@@ -103,22 +112,8 @@ fn vs_main(
     // divide distance to scale, so dash shader works properly
     out.uv_dist_scale = vec4f(model.uv, f32(model.dist) / camera.p2_scale, camera.scale);
 
-    if(camera.scale > 12000.0) {
-        // drop bbox, so it won't be checked in FS
-        out.bbox.z = 0.0;
-        out.bbox.w = 0.0;
+    handle_flat_globe(&out, pointPos);
 
-        let lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * (pointPos.y / MAP_SIZE)))) - (PI * 0.5);
-        let lon = 2.0 * PI * ((pointPos.x / MAP_SIZE) - 0.5);
-        let globe = vec3<f32>(
-            cos(lat) * sin(lon),
-            cos(lat) * cos(lon),
-            sin(lat),
-        ) * GLOBE_R;
-        out.clip_position = camera.globe_view_proj * vec4<f32>(globe, 1.0);
-    } else  {
-        out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
-    }
     return out;
 }
 
@@ -173,21 +168,7 @@ fn vs_main_indirect(
     // keep scale 1.0 so route doesn't hide its border
     out.uv_dist_scale = vec4f(model.uv, f32(model.dist), 1.0);
 
-    if(camera.scale > 12000.0) {
-        // drop bbox, so it won't be checked in FS
-        out.bbox.z = 0.0;
-        out.bbox.w = 0.0;
-        let lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * (pointPos.y / MAP_SIZE)))) - (PI * 0.5);
-        let lon = 2.0 * PI * ((pointPos.x / MAP_SIZE) - 0.5);
-        let globe = vec3<f32>(
-            cos(lat) * sin(lon),
-            cos(lat) * cos(lon),
-            sin(lat),
-        ) * GLOBE_R;
-        out.clip_position = camera.globe_view_proj * vec4<f32>(globe, 1.0);
-    } else  {
-        out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
-    }
+    handle_flat_globe(&out, pointPos);
 
     return out;
 }

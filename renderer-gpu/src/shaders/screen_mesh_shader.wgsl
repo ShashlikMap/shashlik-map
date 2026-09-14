@@ -1,9 +1,7 @@
 import super::common::CameraUniform;
 import super::textures;
 import super::textures::TextureType;
-import super::common::PI;
-import super::common::MAP_SIZE;
-import super::common::GLOBE_R;
+import super::globe_common::transform_to_globe_position;
 
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
@@ -51,29 +49,18 @@ fn vs_main(
 
     var coord = vec4<f32>(pos.position.xy, 0.0, 1.0);
     if pos.screen_space == 0 {
-        coord = camera.view_proj * coord;
-
         if(camera.scale > 12000.0) {
-            let lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * (pos.position.y / MAP_SIZE)))) - (PI * 0.5);
-            let lon = 2.0 * PI * ((pos.position.x / MAP_SIZE) - 0.5);
-            let globe = vec3<f32>(
-                cos(lat) * sin(lon),
-                cos(lat) * cos(lon),
-                sin(lat),
-            ) * GLOBE_R;
-            let coord = camera.globe_view_proj * vec4<f32>(globe, 1.0);
-            out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
-        } else  {
-            out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
+            coord = camera.globe_view_proj * transform_to_globe_position(pos.position.xy);
+        } else {
+            coord = camera.view_proj * coord;
         }
     } else {
         coord.x *= camera.inv_screen_size.x;
         coord.x = 2.0*(coord.x - 0.5);
         coord.y *= camera.inv_screen_size.y;
         coord.y = 2.0*(coord.y - 0.5) * -1.0;
-
-        out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
     }
+    out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
     out.color = vec4f(model.color.rgb, model.color.a * pos.color_alpha);
     out.uv = model.uv;
 
