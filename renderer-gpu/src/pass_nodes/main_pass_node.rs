@@ -182,9 +182,11 @@ impl PassNode for MainPassNode {
 
         let mut render_pass = encoder.begin_render_pass(&descriptor);
 
-        layers.globe_layer.render( &mut render_pass,
-                                   &mut self.globe_pipeline,
-                                   global_context);
+        if global_context.view_projection.uniform.scale > 12000.0 {
+            layers.globe_layer.render(&mut render_pass,
+                                      &mut self.globe_pipeline,
+                                      global_context);
+        }
 
         layers.shape_layer.disable_skip_mesh_feature = false;
         layers.shape_layer.render(
@@ -193,9 +195,11 @@ impl PassNode for MainPassNode {
             global_context,
         );
 
-        layers.globe_layer.render( &mut render_pass,
-                                   &mut self.globe_glow_pipeline,
-                                   global_context);
+        if global_context.view_projection.uniform.scale > 12000.0 {
+            layers.globe_layer.render(&mut render_pass,
+                                      &mut self.globe_glow_pipeline,
+                                      global_context);
+        }
 
 
         if global_context.x_real_mesh_shader_enabled {

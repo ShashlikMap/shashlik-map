@@ -161,7 +161,9 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                     let is_visible = !is_building || is_visible;
 
                     if is_visible {
-                        let polygons = Self::subdivide_to_grid(tile_key.zoom_level, &poly, 8);
+                        // subdivision is required for globe
+                        // TODO small polygons can be opted out
+                        let polygons = Self::subdivide_to_grid(tile_key.zoom_level, &poly, (12 - tile_key.zoom_level) as u32);
                         for poly in polygons {
                             let (mut line, interiors) = poly.into_inner();
                             let interiors = if is_water {
