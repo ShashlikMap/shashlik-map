@@ -37,7 +37,7 @@ impl RenderToTexturePassNode {
                 global_context.device(),
             ),
             rt_texture_view: create_color_binding_texture(size, global_context),
-            shape_pipeline: ShapePipeline::new(global_context, None, false, true),
+            shape_pipeline: ShapePipeline::new(global_context, None, false, true, None),
             feature_shape_pipelines,
         }
     }

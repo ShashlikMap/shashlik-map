@@ -10,6 +10,7 @@ use crate::pipelines::x_real_mesh_pipeline::XRealMeshShaderPipeline;
 use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
 use renderer_common::WorldShapeFeatureLayerTag;
 use wgpu::{CommandEncoder, TextureView};
+use wgpu::Face::Back;
 use crate::buffer_pool::BufferPool;
 
 pub(crate) struct MainPassNode {
@@ -45,10 +46,10 @@ impl MainPassNode {
         let x_real_mesh_shader_pipeline = XRealMeshShaderPipeline::new(global_context,
                                                                        x_real_mesh_shader_pipeline_enabled);
 
-        let default_shape_pipeline = ShapePipeline::new(global_context, None, false, true);
+        let default_shape_pipeline = ShapePipeline::new(global_context, None, false, true, Some(Back));
 
         let screen_shape_pipeline =
-            ShapePipeline::new(global_context, Some("vs_main_screen"), false, false);
+            ShapePipeline::new(global_context, Some("vs_main_screen"), false, false, None);
 
         let mut preview_screen_mesh_pipeline = ScreenMeshPipeline::new(
             global_context,

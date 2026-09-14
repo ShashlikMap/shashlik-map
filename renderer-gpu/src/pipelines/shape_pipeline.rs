@@ -7,8 +7,7 @@ use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex, VertexAttrib};
 use renderer_common::WorldShapeFeatureLayerTag;
 use std::borrow::Cow;
 use wesl::include_wesl;
-use wgpu::{BindGroup, BindGroupLayout, Buffer, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, Device, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
-use wgpu::Face::Back;
+use wgpu::{BindGroup, BindGroupLayout, Buffer, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, Device, Face, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
 
 pub(crate) struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
@@ -22,6 +21,7 @@ pub(crate) struct ShapePipeline {
     reset_culling_compute_pipeline: ComputePipeline,
     indirect: bool,
     single_instance_step: bool,
+    cull_mode: Option<Face>
 }
 
 impl ShapePipeline {
@@ -40,6 +40,7 @@ impl ShapePipeline {
                     tag.vertex_shader,
                     tag.indirect,
                     tag.single_instance_step,
+                    None
                 );
                 (tag.name.to_string(), pipeline)
             })
@@ -49,7 +50,8 @@ impl ShapePipeline {
     pub fn new(global_context: &GlobalContext,
                vs_func_name: Option<&'static str>,
                indirect: bool,
-               single_instance_step: bool) -> Self {
+               single_instance_step: bool,
+               cull_mode: Option<Face>) -> Self {
         let indirect_render_instances_layout = Self::create_indirect_layout(global_context, false);
         let indirect_compute_instances_layout = Self::create_indirect_layout(global_context, true);
         let indirect_compute_instances_args_layout = global_context.device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -119,6 +121,7 @@ impl ShapePipeline {
             reset_culling_compute_pipeline,
             indirect,
             single_instance_step,
+            cull_mode
         };
         let descriptor = result.prepare(global_context);
         result.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
@@ -174,7 +177,7 @@ impl ShapePipeline {
         let fragment = &mut mesh_descriptor.fragment.as_mut().unwrap();
         fragment.module = shader_module;
 
-        mesh_descriptor.primitive.cull_mode = Some(Back);
+        mesh_descriptor.primitive.cull_mode = self.cull_mode;
 
         mesh_descriptor
     }
