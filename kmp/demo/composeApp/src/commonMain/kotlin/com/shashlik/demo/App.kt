@@ -151,7 +151,7 @@ fun App() {
         ) {
             var mvtCheckedState by remember { mutableStateOf(false) }
             val shapes = remember { mutableStateListOf<Triple<List<Point>, ShapeType, Color>>() }
-            ShashlikMap(withAutoLocationEvent = false, mvtTiles = mvtCheckedState) {
+            ShashlikMap(withAutoLocationEvent = true, mvtTiles = mvtCheckedState) {
                 shapes.forEach { shape ->
                     when (shape.second) {
                         LINE -> {
