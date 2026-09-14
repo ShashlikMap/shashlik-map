@@ -1,7 +1,8 @@
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
-use map::tiles::mvt::mvt_tile_store::MvtTileStore;
 use map::{DEFAULT_FONT_DATA, ShashlikMap};
+use osm::source::reqwest_source::ReqwestSource;
+use osm::tiles::TileStore;
 use renderer_common::feature_layer_tags;
 use renderer_gpu::GpuRenderer;
 use renderer_gpu::render_config::RenderConfig;
@@ -36,7 +37,7 @@ fn main() {
     });
     let canvas = DefaultWgpuCanvas::new(queue.clone(), device.clone(), target_texture);
     let tiles_provider = DefaultTilesProvider::new(
-        Box::new(MvtTileStore::new()),
+        Box::new(TileStore::new(ReqwestSource::new())),
         ShashlikFeatureProcessor::default(),
         1.0,
     );

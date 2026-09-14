@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+osm = { workspace = true }
 map = { path = "../map" }
 renderer-common = { workspace = true }
 pollster = { workspace = true }
