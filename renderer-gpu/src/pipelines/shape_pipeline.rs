@@ -145,8 +145,8 @@ impl ShapePipeline {
         let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context);
         mesh_descriptor.label = Some("Shape Pipeline");
         let mut stencil = mesh_descriptor.depth_stencil.unwrap();
-        stencil.depth_compare = Some(CompareFunction::LessEqual);
-        stencil.depth_write_enabled = Some(true);
+        stencil.depth_compare = Some(CompareFunction::Always);
+        stencil.depth_write_enabled = Some(false);
         mesh_descriptor.depth_stencil = Some(stencil);
 
 

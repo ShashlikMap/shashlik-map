@@ -36,7 +36,7 @@ pub(crate) struct ViewProjUniform {
 pub(crate) struct ViewProjection {
     pub uniform: ViewProjUniform,
     pub scale_2d_3d: f32,
-    pub cs_offset: DVec3,
+    cs_offset: DVec3,
     pub screen_size: (f64, f64),
     inv_view_proj_matrix: DMat4,
     pub uniform_buffer: Buffer,
@@ -247,5 +247,13 @@ impl ViewProjection {
 
     pub fn round_screen_sq_radius(&self) -> Option<f32> {
         self.round_screen_sq_radius
+    }
+
+    pub fn get_cs_offset(&self) -> DVec3 {
+       if self.uniform.scale > 12000.0 {
+            DVec3::splat(0.0)
+        } else {
+            self.cs_offset.clone()
+        }
     }
 }

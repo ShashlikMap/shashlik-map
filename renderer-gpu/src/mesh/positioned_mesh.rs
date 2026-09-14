@@ -67,8 +67,8 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         global_context: &mut GlobalContext,
         indirect: bool,
     ) {
-        let cs_offset_updated = global_context.view_projection.cs_offset != self.cs_offset;
-        self.cs_offset = global_context.view_projection.cs_offset;
+        let cs_offset_updated = global_context.view_projection.get_cs_offset() != self.cs_offset;
+        self.cs_offset = global_context.view_projection.get_cs_offset();
         let mut update_attrs = cs_offset_updated;
 
         if let Ok(spatial_data) = self.spatial_rx.no_lagged() {
