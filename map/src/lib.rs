@@ -155,7 +155,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
                 height: screen_size.1 as u32,
             },
             map_event_receiver,
-            last_interaction: Instant::now(),
+            last_interaction: Instant::now() - Duration::from_millis(Self::FOLLOW_ANIMATION_DELAY_MS),
             world_width_on_screen: 0.0,
             world_height_on_screen: 0.0,
         };
