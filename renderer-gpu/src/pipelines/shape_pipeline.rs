@@ -8,6 +8,7 @@ use renderer_common::WorldShapeFeatureLayerTag;
 use std::borrow::Cow;
 use wesl::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, Device, Face, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
+use wgpu::Face::Back;
 
 pub(crate) struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
@@ -40,7 +41,7 @@ impl ShapePipeline {
                     tag.vertex_shader,
                     tag.indirect,
                     tag.single_instance_step,
-                    None
+                    Some(Back)
                 );
                 (tag.name.to_string(), pipeline)
             })

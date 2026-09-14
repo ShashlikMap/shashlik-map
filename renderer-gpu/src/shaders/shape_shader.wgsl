@@ -104,6 +104,10 @@ fn vs_main(
     out.uv_dist_scale = vec4f(model.uv, f32(model.dist) / camera.p2_scale, camera.scale);
 
     if(camera.scale > 12000.0) {
+        // drop bbox, so it won't be checked in FS
+        out.bbox.z = 0.0;
+        out.bbox.w = 0.0;
+
         let lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * (pointPos.y / 16777216.0)))) - (PI * 0.5);
         let lon = 2.0 * PI * ((pointPos.x / 16777216.0) - 0.5);
         let globe = vec3<f32>(
@@ -115,8 +119,6 @@ fn vs_main(
     } else  {
         out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     }
-
-//    out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
     return out;
 }
 
@@ -235,14 +237,14 @@ fn vs_main_screen(
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // ignore if both are zero
-//    if in.bbox.z > 0.0 || in.bbox.w > 0.0 {
-//        if in.vertex_pos_xy.x < in.bbox.x || in.vertex_pos_xy.x > in.bbox.x + in.bbox.z {
-//            discard;
-//        }
-//        if in.vertex_pos_xy.y < in.bbox.y || in.vertex_pos_xy.y > in.bbox.y + in.bbox.w {
-//            discard;
-//        }
-//    }
+    if in.bbox.z > 0.0 || in.bbox.w > 0.0 {
+        if in.vertex_pos_xy.x < in.bbox.x || in.vertex_pos_xy.x > in.bbox.x + in.bbox.z {
+            discard;
+        }
+        if in.vertex_pos_xy.y < in.bbox.y || in.vertex_pos_xy.y > in.bbox.y + in.bbox.w {
+            discard;
+        }
+    }
 
     @if(OUTLINE_DEBUG)
     if(in.outline_flag == 0) {
