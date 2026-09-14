@@ -13,6 +13,7 @@ pub struct Camera {
     pub target: DVec3,
     pub up: DVec3,
     fovy: f64,
+    aspect: f64,
     znear: f64,
     zfar: f64,
     pub perspective_matrix: DMat4,
@@ -22,7 +23,8 @@ pub struct Camera {
 impl Camera {
     const INITIAL_Z: f64 = 200.0;
     pub(crate) const Z_NEAR: f64 = 1.0;
-    pub(crate) const Z_FAR: f64 = 988000000.0;
+    pub(crate) const Z_FAR: f64 = 8000000.0;
+    pub(crate) const Z_TOO_FAR: f64 = 988000000.0;
     const LIGHT_DISTANCE: f64 = 100.0;
     const DEFAULT_FOV: f64 = 37.87;
 
@@ -32,6 +34,7 @@ impl Camera {
             target: initial_world.extend(0.0),
             up: DVec3::Y,
             fovy: Self::DEFAULT_FOV,
+            aspect: 1.0,
             znear: Self::Z_NEAR,
             zfar: Self::Z_FAR,
             perspective_matrix: DMat4::IDENTITY,
@@ -55,6 +58,11 @@ impl Camera {
             target_offset,
             self.up,
         );
+        if self.scale() > 12000.0 && self.zfar != Self::Z_TOO_FAR {
+            self.update_perspective_matrix(Self::Z_TOO_FAR);
+        } else if self.scale() <= 12000.0 && self.zfar != Self::Z_FAR {
+            self.update_perspective_matrix(Self::Z_FAR);
+        }
         (view, self.perspective_matrix * view)
     }
 
@@ -107,10 +115,17 @@ impl Camera {
         if aspect > 1.0 {
             fovy = 2.0 * ((fovy / 2.0).tan() / aspect).atan();
         }
+        self.fovy = fovy;
+        self.aspect = aspect;
+        self.update_perspective_matrix(self.zfar);
+    }
+
+    fn update_perspective_matrix(&mut self, z_far: f64) {
+        self.zfar = z_far;
         self.perspective_matrix =
             DMat4::perspective_rh(
-                fovy,
-                aspect, self.znear, self.zfar
+                self.fovy,
+                self.aspect, self.znear, self.zfar,
             )
     }
 }
