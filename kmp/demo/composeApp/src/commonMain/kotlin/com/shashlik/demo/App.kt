@@ -155,7 +155,6 @@ fun App() {
                 shapes.forEach { shape ->
                     when (shape.second) {
                         LINE -> {
-
                             LineShape(shape.first, shape.third)
                         }
 
