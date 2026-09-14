@@ -1,6 +1,9 @@
 import super::common::CameraUniform;
 import super::textures;
 import super::textures::TextureType;
+import super::common::PI;
+import super::common::MAP_SIZE;
+import super::common::GLOBE_R;
 
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
@@ -30,10 +33,6 @@ struct VertexOutput {
     @location(2) pos_from_light: vec4<f32>,
 }
 
-const PI: f32 = 3.14159265359;
-const GR: f32 = 2670176.857720436;
-
-
 @vertex
 fn vs_main(
     model: VertexInput,
@@ -55,14 +54,13 @@ fn vs_main(
         coord = camera.view_proj * coord;
 
         if(camera.scale > 12000.0) {
-            let lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * (pos.position.y / 16777216.0)))) - (PI * 0.5);
-            let lon = 2.0 * PI * ((pos.position.x / 16777216.0) - 0.5);
+            let lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * (pos.position.y / MAP_SIZE)))) - (PI * 0.5);
+            let lon = 2.0 * PI * ((pos.position.x / MAP_SIZE) - 0.5);
             let globe = vec3<f32>(
                 cos(lat) * sin(lon),
                 cos(lat) * cos(lon),
                 sin(lat),
-            ) * GR;
-            //out.clip_position = camera.globe_view_proj * vec4<f32>(globe, 1.0);
+            ) * GLOBE_R;
             let coord = camera.globe_view_proj * vec4<f32>(globe, 1.0);
             out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
         } else  {
