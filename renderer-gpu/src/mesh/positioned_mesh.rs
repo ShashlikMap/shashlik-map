@@ -18,6 +18,7 @@ pub(crate) struct PositionedMesh<T: MeshInstanceInput> {
     instance_buffer: InstanceBuffer<T>,
     attrs: Vec<T>,
     cs_offset: DVec3,
+    is_globe_view: bool,
     double_style: bool,
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
@@ -52,6 +53,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             instance_buffer: InstanceBuffer::default(),
             attrs: vec![],
             cs_offset: DVec3::new(0.0, 0.0, 0.0),
+            is_globe_view: false,
             double_style,
             spatial_rx,
             original_spatial_data: SpatialData::new(),
@@ -67,8 +69,10 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         global_context: &mut GlobalContext,
         indirect: bool,
     ) {
-        let cs_offset_updated = global_context.view_projection.get_cs_offset() != self.cs_offset;
+        let cs_offset_updated = global_context.view_projection.get_cs_offset() != self.cs_offset ||
+            global_context.is_globe_view() != self.is_globe_view;
         self.cs_offset = global_context.view_projection.get_cs_offset();
+        self.is_globe_view = global_context.is_globe_view();
         let mut update_attrs = cs_offset_updated;
 
         if let Ok(spatial_data) = self.spatial_rx.no_lagged() {
@@ -78,7 +82,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
 
         if update_attrs {
             T::fill_attrs(
-                global_context.is_globe_view(),
+                self.is_globe_view,
                 &mut self.attrs,
                 self.attr_map,
                 &self.cs_offset,

@@ -164,7 +164,10 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                         // subdivision is required for globe
                         // TODO small polygons can be opted out
                         let polygons = Self::subdivide_to_grid(zoom_level, &poly, (12 - zoom_level) as u32);
-                        for poly in polygons {
+                        if polygons.is_none() {
+                            error!("No polygons after subdivision")
+                        }
+                        for poly in polygons.unwrap_or_default() {
                             let (mut line, interiors) = poly.into_inner();
                             let interiors = if is_water {
                                 interiors
@@ -203,12 +206,12 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         tile_data
     }
 
-    fn subdivide_to_grid(zoom: i32, polygon: &Polygon<f32>, grid_size: u32) -> Vec<Polygon<f32>> {
+    fn subdivide_to_grid(zoom: i32, polygon: &Polygon<f32>, grid_size: u32) -> Option<Vec<Polygon<f32>>> {
         if zoom > 6 {
-            return vec![polygon.clone()];
+            return Some(vec![polygon.clone()]);
         }
 
-        let rect = polygon.bounding_rect().unwrap(); // None only if polygon is empty
+        let rect = polygon.bounding_rect()?; // None only if polygon is empty
         let (min, max) = (rect.min(), rect.max());
         let cell_w = (max.x - min.x) / grid_size as f32;
         let cell_h = (max.y - min.y) / grid_size as f32;
@@ -227,7 +230,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                 cells.extend(polygon.intersection(&cell_rect));
             }
         }
-        cells
+        Some(cells)
     }
 }
 

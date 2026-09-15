@@ -5,6 +5,7 @@ use glam::DVec2;
 use glam::DVec3;
 use glam::Vec3Swizzles;
 use std::f64::consts::PI;
+use num::Float;
 use renderer_common::{GLOBE_SCALE, LIGHT_POS, MAP_SIZE};
 use crate::tiles::tiles_provider::{GLOBE_RADIUS};
 
@@ -12,7 +13,7 @@ pub struct Camera {
     pub eye: DVec3,
     pub target: DVec3,
     pub up: DVec3,
-    fovy: f64,
+    fovy_degree: f64,
     aspect: f64,
     znear: f64,
     zfar: f64,
@@ -35,7 +36,7 @@ impl Camera {
             eye:  initial_world.extend(Self::INITIAL_Z * 2.0),
             target: initial_world.extend(0.0),
             up: DVec3::Y,
-            fovy: Self::DEFAULT_FOV,
+            fovy_degree: Self::DEFAULT_FOV,
             aspect: 1.0,
             znear: Self::Z_NEAR,
             zfar: Self::Z_FAR,
@@ -113,11 +114,12 @@ impl Camera {
 
     pub fn resize(&mut self, width: u32, height: u32) {
         let aspect = width as f64 / height as f64;
-        let mut fovy = self.fovy.to_radians();
+        let mut fovy_rad = self.fovy_degree.to_radians();
         if aspect > 1.0 {
-            fovy = 2.0 * ((fovy / 2.0).tan() / aspect).atan();
+            fovy_rad = 2.0 * ((fovy_rad / 2.0).tan() / aspect).atan();
         }
-        self.fovy = fovy;
+        
+        self.fovy_degree = fovy_rad.to_degrees();
         self.aspect = aspect;
         self.update_perspective_matrix(self.zfar);
     }
@@ -126,7 +128,7 @@ impl Camera {
         self.zfar = z_far;
         self.perspective_matrix =
             DMat4::perspective_rh(
-                self.fovy,
+                self.fovy_degree.to_radians(),
                 self.aspect, self.znear, self.zfar,
             )
     }

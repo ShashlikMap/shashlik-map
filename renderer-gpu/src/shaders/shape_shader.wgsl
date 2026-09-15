@@ -198,6 +198,8 @@ fn vs_main_screen(
 
     var pointPos = ratio_fixed_modelpos.xyz;
 
+    // TODO We may need also use handle_flat_globe here, but there are no cases to verify it
+
     let coord = camera.view_proj * vec4<f32>(pos.position.xy, 0.0, 1.0);
 
     out.clip_position = vec4(pointPos, 0.0) + vec4(coord.xyz/coord.w, 1.0);
