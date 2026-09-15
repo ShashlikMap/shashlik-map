@@ -75,21 +75,21 @@ fn main() {
     map.set_camera_follow_mode(true);
     map.set_cam_follow_zoom_lock(None);
     if is_globe {
-        map.zoom_delta(0.000035, (0.0, 0.0));
+        map.zoom_delta(0.000045, (0.0, 0.0));
         map.set_lon_lat_bearing(105.757080078125, 25.69100828125, None);
     } else {
-        map.zoom_delta(1.15, (0.0, 0.0));
+        map.zoom_delta(1.19, (0.0, 0.0));
         map.set_lon_lat_bearing(139.757080078125, 35.69100828125, None);
         if with_overlay {
             let converter = map.create_location_coord_converter();
             map.overlay().add_overlay_shape(converter, vec![Point::new(139.757080078125, 35.69100828125),
                                                             Point::new(139.757780078125, 35.69190828125),
                                                             Point::new(139.757680078125, 35.69050828125)], ShapeType::Polygon,
-                                            [0.0, 0.0, 1.0]);
+                                            [0.0, 1.0, 1.0]);
             let converter = map.create_location_coord_converter();
             map.overlay().add_overlay_shape(converter, vec![Point::new(139.757080078125, 35.69100828125),
                                                             Point::new(139.757780078125, 35.69190828125)], ShapeType::Line,
-                                            [1.0, 0.0, 0.0]);
+                                            [1.0, 0.0, 1.0]);
         }
     }
 
