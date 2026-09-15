@@ -185,7 +185,7 @@ impl CameraController {
         let new_eye = camera.target + (dir * len);
         // don't go too far to reduce z_far artifacts, or too close
         let new_eye_target_dist = (camera.target - new_eye).length();
-        if new_eye_target_dist <= 0.9 * Camera::Z_FAR && new_eye_target_dist >= 10.0 * Camera::Z_NEAR {
+        if new_eye_target_dist <= 0.02 * Camera::Z_TOO_FAR && new_eye_target_dist >= 10.0 * Camera::Z_NEAR {
             camera.eye = new_eye;
         }
 
