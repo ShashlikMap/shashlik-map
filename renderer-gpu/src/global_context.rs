@@ -131,6 +131,10 @@ impl GlobalContext {
         self.ssao_enabled
     }
 
+    pub fn is_globe_view(&self) -> bool {
+        self.view_projection.is_globe_view()
+    }
+
     pub fn preview_type(&self) -> PreviewType {
         self.preview_type
     }

@@ -1,4 +1,5 @@
 import super::common::CameraUniform;
+import super::globe_common::GLOBE_SCALE;
 import super::globe_common::transform_to_globe_position;
 
 // Vertex shader
@@ -65,7 +66,7 @@ fn style_array_to_mat(out: ptr<function,VertexOutput>, params: mat4x3<f32>) {
 }
 
 fn handle_flat_globe(out: ptr<function, VertexOutput>, position: vec3f) {
-    if(camera.scale > 12000.0) {
+    if(camera.scale > GLOBE_SCALE) {
         // drop bbox, so it won't be checked in FS
         (*out).bbox.z = 0.0;
         (*out).bbox.w = 0.0;

@@ -4,7 +4,7 @@ use crate::render_config::RenderConfig;
 use crate::{GpuRenderer, RendererUpdateData};
 use geo_types::{Coord, coord};
 use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec4Swizzles};
-use renderer_common::{LIGHT_POS, max_f64, min_f64};
+use renderer_common::{max_f64, min_f64, GLOBE_SCALE, LIGHT_POS};
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 
 #[rustfmt::skip]
@@ -249,8 +249,12 @@ impl ViewProjection {
         self.round_screen_sq_radius
     }
 
+    pub fn is_globe_view(&self) -> bool {
+        self.uniform.scale > GLOBE_SCALE
+    }
+
     pub fn get_cs_offset(&self) -> DVec3 {
-       if self.uniform.scale > 12000.0 {
+       if self.is_globe_view() {
             DVec3::splat(0.0)
         } else {
             self.cs_offset.clone()

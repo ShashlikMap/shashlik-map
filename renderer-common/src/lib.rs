@@ -22,6 +22,7 @@ pub mod collision_handler;
 
 /// should be the same as mesh_shader.wgsl
 pub static LIGHT_POS: DVec3 = dvec3(0.84, 1.12, 1.42);
+pub static GLOBE_SCALE: f32 = 12000.0;
 
 const MAP_EXTENT: f64 = 8388608.0;
 pub const MAP_SIZE: f64 = MAP_EXTENT * 2.0; // 16777216.0

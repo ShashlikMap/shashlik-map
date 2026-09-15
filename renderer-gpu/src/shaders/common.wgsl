@@ -1,7 +1,3 @@
-const PI: f32 = 3.14159265359;
-const MAP_SIZE: f32 = 16777216.0;
-const GLOBE_R: f32 = MAP_SIZE / (2.0 * PI);
-
 struct CameraUniform {
     view: mat4x4<f32>,
     proj: mat4x4<f32>,

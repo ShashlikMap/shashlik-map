@@ -1,6 +1,7 @@
 import super::common::CameraUniform;
 import super::textures;
 import super::textures::TextureType;
+import super::globe_common::GLOBE_SCALE;
 import super::globe_common::transform_to_globe_position;
 
 @group(0) @binding(0)
@@ -49,7 +50,7 @@ fn vs_main(
 
     var coord = vec4<f32>(pos.position.xy, 0.0, 1.0);
     if pos.screen_space == 0 {
-        if(camera.scale > 12000.0) {
+        if(camera.scale > GLOBE_SCALE) {
             coord = camera.globe_view_proj * transform_to_globe_position(pos.position.xy);
         } else {
             coord = camera.view_proj * coord;

@@ -2,7 +2,7 @@ use crate::DEPTH_STENCIL_TEX_FORMAT;
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::RenderableLayer;
 use crate::mesh_layers::layers::Layers;
-use crate::pass_nodes::{PassNode, BACKGROUND_ATTACHMENT_COLOR, COSMOS_BACKGROUND_ATTACHMENT_COLOR};
+use crate::pass_nodes::{PassNode, BACKGROUND_ATTACHMENT_COLOR, GLOBE_BACKGROUND_ATTACHMENT_COLOR};
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
@@ -142,8 +142,8 @@ impl PassNode for MainPassNode {
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {
-        let clear_color = if global_context.view_projection.uniform.scale > 12000.0 {
-            COSMOS_BACKGROUND_ATTACHMENT_COLOR
+        let clear_color = if global_context.is_globe_view() {
+            GLOBE_BACKGROUND_ATTACHMENT_COLOR
         } else {
             BACKGROUND_ATTACHMENT_COLOR
         };
@@ -182,7 +182,7 @@ impl PassNode for MainPassNode {
 
         let mut render_pass = encoder.begin_render_pass(&descriptor);
 
-        if global_context.view_projection.uniform.scale > 12000.0 {
+        if global_context.is_globe_view() {
             layers.globe_layer.render(&mut render_pass,
                                       &mut self.globe_pipeline,
                                       global_context);
@@ -195,7 +195,7 @@ impl PassNode for MainPassNode {
             global_context,
         );
 
-        if global_context.view_projection.uniform.scale > 12000.0 {
+        if global_context.is_globe_view() {
             layers.globe_layer.render(&mut render_pass,
                                       &mut self.globe_glow_pipeline,
                                       global_context);

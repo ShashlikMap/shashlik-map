@@ -5,7 +5,7 @@ use glam::DVec2;
 use glam::DVec3;
 use glam::Vec3Swizzles;
 use std::f64::consts::PI;
-use renderer_common::{LIGHT_POS, MAP_SIZE};
+use renderer_common::{GLOBE_SCALE, LIGHT_POS, MAP_SIZE};
 use crate::tiles::tiles_provider::{GLOBE_RADIUS};
 
 pub struct Camera {
@@ -24,6 +24,8 @@ impl Camera {
     const INITIAL_Z: f64 = 200.0;
     pub(crate) const Z_NEAR: f64 = 1.0;
     pub(crate) const Z_FAR: f64 = 8000000.0;
+
+    // TODO Why does it have to be so large?
     pub(crate) const Z_TOO_FAR: f64 = 988000000.0;
     const LIGHT_DISTANCE: f64 = 100.0;
     const DEFAULT_FOV: f64 = 37.87;
@@ -58,9 +60,9 @@ impl Camera {
             target_offset,
             self.up,
         );
-        if self.scale() > 12000.0 && self.zfar != Self::Z_TOO_FAR {
+        if self.scale() > GLOBE_SCALE && self.zfar != Self::Z_TOO_FAR {
             self.update_perspective_matrix(Self::Z_TOO_FAR);
-        } else if self.scale() <= 12000.0 && self.zfar != Self::Z_FAR {
+        } else if self.scale() <= GLOBE_SCALE && self.zfar != Self::Z_FAR {
             self.update_perspective_matrix(Self::Z_FAR);
         }
         (view, self.perspective_matrix * view)
