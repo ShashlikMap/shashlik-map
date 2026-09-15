@@ -25,6 +25,7 @@ impl PrepassNode {
                     tag.vertex_shader,
                     true,// force indirect
                     tag.single_instance_step,
+                    None
                 );
                 (tag.name.to_string(), pipeline)
             })

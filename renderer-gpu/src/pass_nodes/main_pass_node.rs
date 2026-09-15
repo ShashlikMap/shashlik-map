@@ -2,7 +2,7 @@ use crate::DEPTH_STENCIL_TEX_FORMAT;
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::RenderableLayer;
 use crate::mesh_layers::layers::Layers;
-use crate::pass_nodes::{BACKGROUND_ATTACHMENT_COLOR, PassNode};
+use crate::pass_nodes::{PassNode, BACKGROUND_ATTACHMENT_COLOR, GLOBE_BACKGROUND_ATTACHMENT_COLOR};
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
@@ -10,6 +10,8 @@ use crate::pipelines::x_real_mesh_pipeline::XRealMeshShaderPipeline;
 use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
 use renderer_common::WorldShapeFeatureLayerTag;
 use wgpu::{CommandEncoder, TextureView};
+use wgpu::Face::Back;
+use crate::buffer_pool::BufferPool;
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
@@ -22,14 +24,17 @@ pub(crate) struct MainPassNode {
     preview_screen_mesh_pipeline: ScreenMeshPipeline,
     text_screen_mesh_pipeline: ScreenMeshPipeline,
     post_process_screen_mesh_pipeline: ScreenMeshPipeline,
+    globe_pipeline: ScreenMeshPipeline,
+    globe_glow_pipeline: ScreenMeshPipeline,
 }
 
 impl MainPassNode {
     pub fn new(
         global_context: &GlobalContext,
         x_real_mesh_shader_pipeline_enabled: bool,
-        layers: &Layers,
+        layers: &mut Layers,
         world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>,
+        buffer_pool: &mut BufferPool
     ) -> Self {
         let size = (
             global_context.config().width,
@@ -41,10 +46,10 @@ impl MainPassNode {
         let x_real_mesh_shader_pipeline = XRealMeshShaderPipeline::new(global_context,
                                                                        x_real_mesh_shader_pipeline_enabled);
 
-        let default_shape_pipeline = ShapePipeline::new(global_context, None, false, true);
+        let default_shape_pipeline = ShapePipeline::new(global_context, None, false, true, Some(Back));
 
         let screen_shape_pipeline =
-            ShapePipeline::new(global_context, Some("vs_main_screen"), false, false);
+            ShapePipeline::new(global_context, Some("vs_main_screen"), false, false, None);
 
         let mut preview_screen_mesh_pipeline = ScreenMeshPipeline::new(
             global_context,
@@ -87,6 +92,27 @@ impl MainPassNode {
             false,
         );
 
+        let globe_pipeline = ScreenMeshPipeline::new(
+            global_context,
+            TextureInfo {
+                use_texture: false,
+                filterable: false,
+                fs_shader: "fs_main_globe",
+            },
+            false,
+        );
+        layers.globe_layer.set_texture(None, (0.0, 0.0), global_context, buffer_pool);
+
+        let globe_glow_pipeline = ScreenMeshPipeline::new(
+            global_context,
+            TextureInfo {
+                use_texture: false,
+                filterable: false,
+                fs_shader: "fs_main_globe_glow",
+            },
+            false,
+        );
+
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
             depth_texture_view: create_depth_texture(
@@ -103,6 +129,8 @@ impl MainPassNode {
             feature_shape_pipelines,
             preview_screen_mesh_pipeline,
             post_process_screen_mesh_pipeline,
+            globe_pipeline,
+            globe_glow_pipeline
         }
     }
 }
@@ -114,12 +142,17 @@ impl PassNode for MainPassNode {
         layers: &mut Layers,
         global_context: &mut GlobalContext,
     ) {
+        let clear_color = if global_context.is_globe_view() {
+            GLOBE_BACKGROUND_ATTACHMENT_COLOR
+        } else {
+            BACKGROUND_ATTACHMENT_COLOR
+        };
         let output_view = global_context.canvas.create_texture_view();
         let msaa_color_attachment = wgpu::RenderPassColorAttachment {
             view: &self.msaa_texture_view,
             resolve_target: Some(&output_view),
             ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(BACKGROUND_ATTACHMENT_COLOR),
+                load: wgpu::LoadOp::Clear(clear_color),
                 // FYI!! Discard output! It improves MSAA drastically on low-end devices
                 store: wgpu::StoreOp::Discard,
             },
@@ -148,13 +181,26 @@ impl PassNode for MainPassNode {
         };
 
         let mut render_pass = encoder.begin_render_pass(&descriptor);
-        
+
+        if global_context.is_globe_view() {
+            layers.globe_layer.render(&mut render_pass,
+                                      &mut self.globe_pipeline,
+                                      global_context);
+        }
+
         layers.shape_layer.disable_skip_mesh_feature = false;
         layers.shape_layer.render(
             &mut render_pass,
             &mut self.default_shape_pipeline,
             global_context,
         );
+
+        if global_context.is_globe_view() {
+            layers.globe_layer.render(&mut render_pass,
+                                      &mut self.globe_glow_pipeline,
+                                      global_context);
+        }
+
 
         if global_context.x_real_mesh_shader_enabled {
             layers.mesh_layer.render(

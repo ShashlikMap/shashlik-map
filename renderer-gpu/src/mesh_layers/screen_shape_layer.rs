@@ -106,7 +106,7 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
         let Ok(hm) = self.collision_task_controller.receiver.try_recv() else {
             return;
         };
-        let cs_offset = global_context.view_projection.cs_offset;
+        let cs_offset = global_context.view_projection.get_cs_offset();
         let mut all_attrs = vec![];
         self.meshes
             .iter_mut()
@@ -116,6 +116,7 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
                     let start_index = all_attrs.len() as u32;
                     let mut attrs = Vec::with_capacity(pos_alpha.len());
                     I::fill_attrs(
+                        global_context.is_globe_view(),
                         &mut attrs,
                         self.attr_map,
                         &cs_offset,

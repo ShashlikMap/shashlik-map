@@ -76,7 +76,7 @@ impl<I: MeshInstanceInput> TextRenderer<I> {
         global_context: &GlobalContext,
         glyph_data: FxHashMap<GlyphId, Vec<GlyphData>>,
     ) {
-        let cs_offset = global_context.view_projection.cs_offset;
+        let cs_offset = global_context.view_projection.get_cs_offset();
         let cs_offset = dvec3(cs_offset.x, cs_offset.y, 0.0);
         let total_len = glyph_data.iter().map(|it| it.1.len()).sum::<usize>();
         let mut attrs = Vec::with_capacity(total_len);

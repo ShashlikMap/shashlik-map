@@ -7,6 +7,7 @@ use googleprojection::Mercator;
 use osm::map::{MapGeomObject, MapGeometry};
 use osm::tiles::TileKey;
 use std::collections::HashSet;
+use std::f64::consts::PI;
 use std::sync::Arc;
 use renderer_common::MAP_SIZE;
 use crate::tiles::CustomTileKey;
@@ -46,6 +47,8 @@ pub struct TileMetersBounds {
     pub max_x: f64,
     pub max_y: f64,
 }
+
+pub const GLOBE_RADIUS: f64 = MAP_SIZE / (2.0 * PI);
 
 pub trait TilesProviderStore: MercatorConverter {
 

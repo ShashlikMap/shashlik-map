@@ -2,9 +2,9 @@ use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesMessage, TilesProvider, TilesProviderStore};
 use futures::{Stream};
 use futures::channel::mpsc::{UnboundedSender, unbounded};
-use geo::{Area, Convert};
+use geo::{Area, BooleanOps, BoundingRect, Convert};
 use geo::Winding;
-use geo_types::{coord, Coord, LineString, Rect};
+use geo_types::{coord, Coord, LineString, Rect, Polygon};
 use log::error;
 use osm::map::{MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo};
 use osm::tiles::{TileKey, TileStore};
@@ -161,28 +161,36 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                     let is_visible = !is_building || is_visible;
 
                     if is_visible {
-                        let (mut line, interiors) = poly.into_inner();
-                        let interiors = if is_water {
-                            interiors
-                        } else {
-                            vec![]
-                        };
-
-                        if is_building {
-                            // the winding might not be the same for building lines,
-                            // make it as pipelines default
-                            line.make_ccw_winding();
+                        // subdivision is required for globe
+                        // TODO small polygons can be opted out
+                        let polygons = Self::subdivide_to_grid(zoom_level, &poly, (12 - zoom_level) as u32);
+                        if polygons.is_none() {
+                            error!("No polygons after subdivision")
                         }
+                        for poly in polygons.unwrap_or_default() {
+                            let (mut line, interiors) = poly.into_inner();
+                            let interiors = if is_water {
+                                interiors
+                            } else {
+                                vec![]
+                            };
 
-                        feature_processor.process_line(
-                            obj_type.id,
-                            &mut geometry_data,
-                            line,
-                            interiors,
-                            obj_type.kind,
-                            zoom_level,
-                            dpi_scale,
-                        );
+                            if is_building {
+                                // the winding might not be the same for building lines,
+                                // make it as pipelines default
+                                line.make_ccw_winding();
+                            }
+
+                            feature_processor.process_line(
+                                obj_type.id,
+                                &mut geometry_data,
+                                line,
+                                interiors,
+                                obj_type.kind.clone(),
+                                zoom_level,
+                                dpi_scale,
+                            );
+                        }
                     }
                 }
             });
@@ -196,6 +204,33 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         };
 
         tile_data
+    }
+
+    fn subdivide_to_grid(zoom: i32, polygon: &Polygon<f32>, grid_size: u32) -> Option<Vec<Polygon<f32>>> {
+        if zoom > 6 {
+            return Some(vec![polygon.clone()]);
+        }
+
+        let rect = polygon.bounding_rect()?; // None only if polygon is empty
+        let (min, max) = (rect.min(), rect.max());
+        let cell_w = (max.x - min.x) / grid_size as f32;
+        let cell_h = (max.y - min.y) / grid_size as f32;
+
+        let mut cells = Vec::new();
+        for row in 0..grid_size {
+            for col in 0..grid_size {
+                let x0 = min.x + col as f32 * cell_w;
+                let y0 = min.y + row as f32 * cell_h;
+                let cell_rect = Polygon::new(
+                    LineString::from(vec![
+                        (x0, y0), (x0 + cell_w, y0), (x0 + cell_w, y0 + cell_h), (x0, y0 + cell_h),
+                    ]),
+                    vec![],
+                );
+                cells.extend(polygon.intersection(&cell_rect));
+            }
+        }
+        Some(cells)
     }
 }
 

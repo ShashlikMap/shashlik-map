@@ -160,6 +160,10 @@ impl ScreenMeshPipeline {
             vertex.entry_point = Some("vs_main");
             fragment.entry_point = Some(self.texture_info.fs_shader);
         }
+        if !self.texture_info.fs_shader.is_empty() {
+            fragment.entry_point = Some(self.texture_info.fs_shader);
+        }
+
 
         mesh_descriptor.primitive.cull_mode = None;
 

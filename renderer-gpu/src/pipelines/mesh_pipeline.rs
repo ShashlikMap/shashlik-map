@@ -213,19 +213,22 @@ impl RenderPipeline<GeneralInstanceInput> for MeshPipeline {
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
         if let Some(pipeline) = self.pipeline.as_mut() {
             render_pass.set_pipeline(pipeline);
+
+            // immediate should be set only if pipeline is set
+            let mut mask = MeshRenderFlag::None;
+            if global_context.is_shadow_mapping_enabled() {
+                mask = MeshRenderFlag::Shadows;
+            }
+
+            render_pass.set_immediates(
+                0,
+                bytemuck::bytes_of(&(mask as u32)),
+            );
         }
         if self.write_to_stencil {
             render_pass.set_stencil_reference(1);
         }
-        
-        let mut mask = MeshRenderFlag::None;
-        if global_context.is_shadow_mapping_enabled() {
-            mask = MeshRenderFlag::Shadows;
-        }
-        render_pass.set_immediates(
-            0,
-            bytemuck::bytes_of(&(mask as u32)),
-        );
+
         render_pass.set_bind_group(0, &self.bind_group, &[]);
 
 

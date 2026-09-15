@@ -1,6 +1,8 @@
 import super::common::CameraUniform;
 import super::textures;
 import super::textures::TextureType;
+import super::globe_common::GLOBE_SCALE;
+import super::globe_common::transform_to_globe_position;
 
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
@@ -48,16 +50,20 @@ fn vs_main(
 
     var coord = vec4<f32>(pos.position.xy, 0.0, 1.0);
     if pos.screen_space == 0 {
-        coord = camera.view_proj * coord;
+        if(camera.scale > GLOBE_SCALE) {
+            coord = camera.globe_view_proj * transform_to_globe_position(pos.position.xy);
+        } else {
+            coord = camera.view_proj * coord;
+        }
     } else {
         coord.x *= camera.inv_screen_size.x;
         coord.x = 2.0*(coord.x - 0.5);
         coord.y *= camera.inv_screen_size.y;
         coord.y = 2.0*(coord.y - 0.5) * -1.0;
     }
+    out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
     out.color = vec4f(model.color.rgb, model.color.a * pos.color_alpha);
     out.uv = model.uv;
-    out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
 
     return out;    
 }
@@ -75,6 +81,32 @@ var s_compare: sampler_comparison;
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     return in.color;
+}
+
+@fragment
+fn fs_main_globe(in: VertexOutput) -> @location(0) vec4<f32> {
+    let ndc = in.uv * 2.0 - 1.0;
+    let r = vec2f(camera.globe_r * abs(camera.proj[0][0]), camera.globe_r * abs(camera.proj[1][1]));
+    let d = length(ndc / r);
+    if(d <= 1.0) {
+        return vec4f(0.957, 0.953, 0.941, 1.0);
+    }
+    return in.color;
+}
+
+@fragment
+fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
+    let ndc = in.uv * 2.0 - 1.0;
+    let r = vec2f(camera.globe_r * abs(camera.proj[0][0]), camera.globe_r * abs(camera.proj[1][1])) * 0.995;
+    let d = length(ndc / r);
+    if(d <= 1.0) {
+        discard;
+    }
+    let glow = abs(1.0 - smoothstep(1.0, 1.14, d));
+    if(glow <= 0.0) {
+        discard;
+    }
+    return vec4f(vec3f(0.35, 0.60, 1.00), 0.85 * glow);
 }
 
 const tex_border_x: f32 = 0.01;

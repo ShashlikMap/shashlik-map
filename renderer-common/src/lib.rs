@@ -22,6 +22,7 @@ pub mod collision_handler;
 
 /// should be the same as mesh_shader.wgsl
 pub static LIGHT_POS: DVec3 = dvec3(0.84, 1.12, 1.42);
+pub static GLOBE_SCALE: f32 = 12000.0;
 
 const MAP_EXTENT: f64 = 8388608.0;
 pub const MAP_SIZE: f64 = MAP_EXTENT * 2.0; // 16777216.0
@@ -64,11 +65,13 @@ pub struct RendererUpdateData {
     pub view_light_matrix: DMat4,
     pub proj_matrix: DMat4,
     pub view_proj_matrix: DMat4,
+    pub globe_view_proj_matrix: DMat4,
     pub cs_offset: DVec3,
     pub scale: f32,
     pub eye_direction: DVec3,
     pub up: DVec3,
     pub scale_2d_3d: f32,
+    pub globe_r: f32
 }
 
 pub trait Renderer {

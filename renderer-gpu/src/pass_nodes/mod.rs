@@ -18,6 +18,13 @@ const BACKGROUND_ATTACHMENT_COLOR: Color = Color {
     a: 1.0,
 };
 
+const GLOBE_BACKGROUND_ATTACHMENT_COLOR: Color = Color {
+    r: 0.1,
+    g: 0.1,
+    b: 0.1,
+    a: 1.0,
+};
+
 pub trait PassNode {
     fn run(
         &mut self,

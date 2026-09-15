@@ -2,13 +2,15 @@ struct CameraUniform {
     view: mat4x4<f32>,
     proj: mat4x4<f32>,
     view_proj: mat4x4<f32>,
+    globe_view_proj: mat4x4<f32>,
     view_proj_inv: mat4x4<f32>,
     light_view_proj: mat4x4<f32>,
     view_tr_inv: mat4x4<f32>,
     inv_screen_size: vec2<f32>,
     scale: f32,
     p2_scale: f32,
-    scale_2d_3d: f32
+    scale_2d_3d: f32,
+    globe_r: f32
 };
 
 fn shadow_map(t_depth: texture_depth_2d, s_compare: sampler_comparison, coord: vec2f, blur_size: f32, depth_with_bias: f32) -> f32 {

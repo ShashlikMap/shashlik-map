@@ -1,4 +1,6 @@
 import super::common::CameraUniform;
+import super::globe_common::GLOBE_SCALE;
+import super::globe_common::transform_to_globe_position;
 
 // Vertex shader
 const PARAMS_COUNT : i32 = 12; // 12 is mat4x3!
@@ -63,6 +65,17 @@ fn style_array_to_mat(out: ptr<function,VertexOutput>, params: mat4x3<f32>) {
     (*out).style4 = params[3];
 }
 
+fn handle_flat_globe(out: ptr<function, VertexOutput>, position: vec3f) {
+    if(camera.scale > GLOBE_SCALE) {
+        // drop bbox, so it won't be checked in FS
+        (*out).bbox.z = 0.0;
+        (*out).bbox.w = 0.0;
+        (*out).clip_position = camera.globe_view_proj * transform_to_globe_position(position.xy);
+    } else  {
+        (*out).clip_position = camera.view_proj * vec4<f32>(position, 1.0);
+    }
+}
+
 @vertex
 fn vs_main(
     model: VertexInput,
@@ -99,7 +112,9 @@ fn vs_main(
     out.bbox = pos.bbox;
     // divide distance to scale, so dash shader works properly
     out.uv_dist_scale = vec4f(model.uv, f32(model.dist) / camera.p2_scale, camera.scale);
-    out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
+
+    handle_flat_globe(&out, pointPos);
+
     return out;
 }
 
@@ -153,7 +168,9 @@ fn vs_main_indirect(
     out.vertex_pos_xy = pointPos.xy;
     // keep scale 1.0 so route doesn't hide its border
     out.uv_dist_scale = vec4f(model.uv, f32(model.dist), 1.0);
-    out.clip_position = camera.view_proj * vec4<f32>(pointPos, 1.0);
+
+    handle_flat_globe(&out, pointPos);
+
     return out;
 }
 
@@ -180,6 +197,8 @@ fn vs_main_screen(
     out.color_alpha = pos.color_alpha;
 
     var pointPos = ratio_fixed_modelpos.xyz;
+
+    // TODO We may need also use handle_flat_globe here, but there are no cases to verify it
 
     let coord = camera.view_proj * vec4<f32>(pos.position.xy, 0.0, 1.0);
 

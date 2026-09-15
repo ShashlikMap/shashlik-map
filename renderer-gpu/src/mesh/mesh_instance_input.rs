@@ -7,6 +7,7 @@ use crate::mesh_layers::{LayerAttrMapper, LayerAttribute};
 
 pub(crate) trait MeshInstanceInput: Sized + Pod + From<LayerAttribute> {
     fn fill_attrs(
+        is_globe_view: bool,
         attrs: &mut Vec<Self>,
         attr_mapper: LayerAttrMapper<Self>,
         cs_offset: &DVec3,
@@ -24,7 +25,7 @@ pub(crate) trait MeshInstanceInput: Sized + Pod + From<LayerAttribute> {
             let mut transform_with_cs_offset = item.0 + spatial_data.transform - cs_offset;
 
             // TODO Most likely it should not be here
-            if transform_with_cs_offset.x.abs() >= MAP_SIZE * 0.75 {
+            if !is_globe_view && transform_with_cs_offset.x.abs() >= MAP_SIZE * 0.75 {
                 transform_with_cs_offset.x = (transform_with_cs_offset.x + MAP_SIZE * 0.5).rem_euclid(MAP_SIZE) - MAP_SIZE * 0.5;
             }
             let bbox_origin_with_cs_offset = item.0

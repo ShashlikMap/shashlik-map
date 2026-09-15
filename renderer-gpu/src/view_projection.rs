@@ -4,7 +4,7 @@ use crate::render_config::RenderConfig;
 use crate::{GpuRenderer, RendererUpdateData};
 use geo_types::{Coord, coord};
 use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec4Swizzles};
-use renderer_common::{LIGHT_POS, max_f64, min_f64};
+use renderer_common::{max_f64, min_f64, GLOBE_SCALE, LIGHT_POS};
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 
 #[rustfmt::skip]
@@ -21,20 +21,22 @@ pub(crate) struct ViewProjUniform {
     view: [[f32; 4]; 4],
     proj: [[f32; 4]; 4],
     view_proj: [[f32; 4]; 4],
+    globe_view_proj: [[f32; 4]; 4],
     view_proj_inv: [[f32; 4]; 4],
     light_view_proj: [[f32; 4]; 4],
     view_tr_inv: [[f32; 4]; 4],
     inv_screen_size: [f32; 2],
     pub(crate) scale: f32,
     p2_scale: f32,
-    scale_2d_3d: f32
+    scale_2d_3d: f32,
+    globe_r: f32
 }
 
 #[derive(Clone)]
 pub(crate) struct ViewProjection {
     pub uniform: ViewProjUniform,
     pub scale_2d_3d: f32,
-    pub cs_offset: DVec3,
+    cs_offset: DVec3,
     pub screen_size: (f64, f64),
     inv_view_proj_matrix: DMat4,
     pub uniform_buffer: Buffer,
@@ -71,6 +73,7 @@ impl ViewProjection {
                 view: Mat4::IDENTITY.to_cols_array_2d(),
                 proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_proj: Mat4::IDENTITY.to_cols_array_2d(),
+                globe_view_proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_proj_inv: Mat4::IDENTITY.to_cols_array_2d(),
                 light_view_proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_tr_inv: Mat4::IDENTITY.to_cols_array_2d(),
@@ -78,6 +81,7 @@ impl ViewProjection {
                 scale: 0.0,
                 p2_scale: 1.0,
                 scale_2d_3d: 1.0,
+                globe_r: 0.0,
             },
             scale_2d_3d: 0.0,
             screen_size: (0.0, 0.0),
@@ -102,6 +106,7 @@ impl ViewProjection {
             .as_mat4()
             .to_cols_array_2d();
         let view_proj = FLIP_Y * data.view_proj_matrix;
+        let globe_view_proj = FLIP_Y * data.globe_view_proj_matrix;
 
         self.shadow_texture_size = render_config.shadow_texture_size();
         self.is_shadow_enabled = render_config.shadow_enabled;
@@ -116,6 +121,10 @@ impl ViewProjection {
         self.uniform.view_proj = view_proj
             .as_mat4()
             .to_cols_array_2d();
+        self.uniform.globe_view_proj = globe_view_proj
+            .as_mat4()
+            .to_cols_array_2d();
+
         let view_proj_inv = view_proj.inverse();
         self.uniform.view_proj_inv = (view_proj_inv * FLIP_Y)
             .as_mat4()
@@ -126,6 +135,7 @@ impl ViewProjection {
             .as_mat4()
             .to_cols_array_2d();
         self.uniform.scale = data.scale;
+        self.uniform.globe_r = data.globe_r;
 
         self.uniform.p2_scale = self.p2_scale(data.scale);
         self.uniform.scale_2d_3d = data.scale_2d_3d;
@@ -237,5 +247,17 @@ impl ViewProjection {
 
     pub fn round_screen_sq_radius(&self) -> Option<f32> {
         self.round_screen_sq_radius
+    }
+
+    pub fn is_globe_view(&self) -> bool {
+        self.uniform.scale > GLOBE_SCALE
+    }
+
+    pub fn get_cs_offset(&self) -> DVec3 {
+       if self.is_globe_view() {
+            DVec3::splat(0.0)
+        } else {
+            self.cs_offset.clone()
+        }
     }
 }

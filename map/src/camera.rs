@@ -5,13 +5,16 @@ use glam::DVec2;
 use glam::DVec3;
 use glam::Vec3Swizzles;
 use std::f64::consts::PI;
-use renderer_common::LIGHT_POS;
+use num::Float;
+use renderer_common::{GLOBE_SCALE, LIGHT_POS, MAP_SIZE};
+use crate::tiles::tiles_provider::{GLOBE_RADIUS};
 
 pub struct Camera {
     pub eye: DVec3,
     pub target: DVec3,
     pub up: DVec3,
-    fovy: f64,
+    fovy_degree: f64,
+    aspect: f64,
     znear: f64,
     zfar: f64,
     pub perspective_matrix: DMat4,
@@ -22,6 +25,9 @@ impl Camera {
     const INITIAL_Z: f64 = 200.0;
     pub(crate) const Z_NEAR: f64 = 1.0;
     pub(crate) const Z_FAR: f64 = 8000000.0;
+
+    // TODO Why does it have to be so large?
+    pub(crate) const Z_TOO_FAR: f64 = 988000000.0;
     const LIGHT_DISTANCE: f64 = 100.0;
     const DEFAULT_FOV: f64 = 37.87;
 
@@ -30,7 +36,8 @@ impl Camera {
             eye:  initial_world.extend(Self::INITIAL_Z * 2.0),
             target: initial_world.extend(0.0),
             up: DVec3::Y,
-            fovy: Self::DEFAULT_FOV,
+            fovy_degree: Self::DEFAULT_FOV,
+            aspect: 1.0,
             znear: Self::Z_NEAR,
             zfar: Self::Z_FAR,
             perspective_matrix: DMat4::IDENTITY,
@@ -54,7 +61,36 @@ impl Camera {
             target_offset,
             self.up,
         );
+        if self.scale() > GLOBE_SCALE && self.zfar != Self::Z_TOO_FAR {
+            self.update_perspective_matrix(Self::Z_TOO_FAR);
+        } else if self.scale() <= GLOBE_SCALE && self.zfar != Self::Z_FAR {
+            self.update_perspective_matrix(Self::Z_FAR);
+        }
         (view, self.perspective_matrix * view)
+    }
+
+    pub fn build_globe_view_projection_matrix(&mut self) -> (DMat4, DMat4, f32) {
+        let globe_radius = MAP_SIZE / (2.0 * PI);
+        let merc = self.target.xy() / MAP_SIZE;
+        let lat = 2.0 * (PI * (1.0 - 2.0 * merc.y)).exp().atan() - PI * 0.5;
+        let lon = 2.0 * PI * (merc.x - 0.5);
+
+        let n = DVec3::new(lat.cos() * lon.sin(), lat.cos() * lon.cos(), lat.sin());
+        let east = n.cross(DVec3::Z).normalize();
+        let north = east.cross(n);
+        let y_axis = -north;
+        let to_globe = DMat3::from_cols(east, y_axis, n);
+
+        let l = self.eye_direction().length();
+        let d =  GLOBE_RADIUS + l * lat.cos().max(0.05);
+        let gr = GLOBE_RADIUS;
+        let gr = (GLOBE_RADIUS / (d * d - gr * gr).sqrt()) as f32;
+
+        let target = n * globe_radius;
+        let rig = to_globe * self.eye_direction() * lat.cos().max(0.05);
+
+        let view = DMat4::look_at_rh(target + rig, target, to_globe * self.up);
+        (view, self.perspective_matrix * view, gr)
     }
 
     /// view_light
@@ -78,14 +114,22 @@ impl Camera {
 
     pub fn resize(&mut self, width: u32, height: u32) {
         let aspect = width as f64 / height as f64;
-        let mut fovy = self.fovy.to_radians();
+        let mut fovy_rad = self.fovy_degree.to_radians();
         if aspect > 1.0 {
-            fovy = 2.0 * ((fovy / 2.0).tan() / aspect).atan();
+            fovy_rad = 2.0 * ((fovy_rad / 2.0).tan() / aspect).atan();
         }
+        
+        self.fovy_degree = fovy_rad.to_degrees();
+        self.aspect = aspect;
+        self.update_perspective_matrix(self.zfar);
+    }
+
+    fn update_perspective_matrix(&mut self, z_far: f64) {
+        self.zfar = z_far;
         self.perspective_matrix =
             DMat4::perspective_rh(
-                fovy,
-                aspect, self.znear, self.zfar
+                self.fovy_degree.to_radians(),
+                self.aspect, self.znear, self.zfar,
             )
     }
 }
@@ -141,7 +185,7 @@ impl CameraController {
         let new_eye = camera.target + (dir * len);
         // don't go too far to reduce z_far artifacts, or too close
         let new_eye_target_dist = (camera.target - new_eye).length();
-        if new_eye_target_dist <= 0.9 * Camera::Z_FAR && new_eye_target_dist >= 10.0 * Camera::Z_NEAR {
+        if new_eye_target_dist <= 0.02 * Camera::Z_TOO_FAR && new_eye_target_dist >= 10.0 * Camera::Z_NEAR {
             camera.eye = new_eye;
         }
 
