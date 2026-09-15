@@ -16,17 +16,18 @@ env:
   # PIXEL_EAGLE_API_KEY is the name the previous integration used, kept as a fallback.
   PIXEL_EAGLE_TOKEN_EXISTS: ${{ (secrets.PIXEL_EAGLE_TOKEN || secrets.PIXEL_EAGLE_API_KEY) != '' }}
   PIXEL_EAGLE_URL: https://pixel-eagle.com
-  SCREENSHOT_NAME: map-default-view
 
 jobs:
   pixel-eagle:
     runs-on: ubuntu-latest
     if: github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'push'
-
     steps:
       - name: Download screenshot artifact
         uses: actions/download-artifact@v4
         with:
+          # If the render job ever splits its output across several artifacts,
+          # swap `name:` for `pattern: headless-screenshot*` plus
+          # `merge-multiple: true` and everything below keeps working.
           name: headless-screenshot
           path: screenshot
           github-token: ${{ github.token }}
@@ -48,12 +49,17 @@ jobs:
           read_meta() {
             if [ -f "metadata/$1" ]; then tr -d '\r\n' < "metadata/$1"; fi
           }
+
+          # Any number of PNGs is fine; each one becomes a named screenshot.
+          count=$(find screenshot -type f -name '*.png' 2>/dev/null | wc -l)
+
           {
             echo "pr_number=$(read_meta pr_number.txt)"
             echo "head_sha=$(read_meta head_sha.txt)"
             echo "head_ref=$(read_meta head_ref.txt)"
             echo "base_ref=$(read_meta base_ref.txt)"
-            if [ -f screenshot/output.png ]; then
+            echo "screenshot_count=$count"
+            if [ "$count" -gt 0 ]; then
               echo "screenshot=true"
             else
               echo "screenshot=false"
@@ -77,6 +83,7 @@ jobs:
           RUN_URL: ${{ github.event.repository.html_url }}/actions/runs/${{ github.event.workflow_run.id }}
         run: |
           set -euo pipefail
+
           auth="Authorization: Bearer $PIXEL_EAGLE_TOKEN"
           api="$PIXEL_EAGLE_URL"
 
@@ -97,12 +104,33 @@ jobs:
           echo "Created Pixel Eagle run $run_id ($metadata)"
           echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
 
-          curl -sS --fail-with-body --retry 3 --retry-all-errors \
-            -X POST "$api/runs/$run_id" \
-            -H "$auth" \
-            -F "data=@screenshot/output.png" \
-            -F "screenshot=$SCREENSHOT_NAME" > /dev/null
-          echo "Uploaded $SCREENSHOT_NAME"
+          # A run holds any number of screenshots, each identified by the name
+          # it is uploaded under. That name is the key Pixel Eagle matches
+          # against the golden record, and here it is simply the file name
+          # without the extension: map-globe-view.png -> map-globe-view.
+          # So name the files the renderer writes after the view they show,
+          # and adding a screenshot needs no change to this workflow.
+          dupes=$(find screenshot -type f -name '*.png' -printf '%f\n' | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "::error::screenshots in different directories share a file name and would overwrite each other: $dupes"
+            exit 1
+          fi
+
+          uploaded=0
+          while read -r file; do
+            name=$(basename "$file" .png)
+
+            curl -sS --fail-with-body --retry 3 --retry-all-errors \
+              -X POST "$api/runs/$run_id" \
+              -H "$auth" \
+              -F "data=@$file" \
+              -F "screenshot=$name" > /dev/null
+
+            echo "Uploaded $file as $name"
+            uploaded=$((uploaded + 1))
+          done < <(find screenshot -type f -name '*.png' | sort)
+
+          echo "Uploaded $uploaded screenshot(s)"
 
           # Runs on main are only there to be approved into the golden record,
           # there is no pull request to comment on.
@@ -124,7 +152,7 @@ jobs:
                 echo '<!-- pixel-eagle -->'
                 echo '## 📸 Visual Regression (Pixel Eagle)'
                 echo
-                echo "Screenshot uploaded as run \`$run_id\`, but this project has no golden record to compare against yet."
+                echo "$uploaded screenshot(s) uploaded as run \`$run_id\`, but this project has no golden record to compare against yet."
                 echo
                 echo "Open the run in the Pixel Eagle web interface and set it as the golden record to start catching regressions."
                 echo
@@ -150,11 +178,11 @@ jobs:
 
           project_id=$(jq -r '.project_id' compare.json)
           report="$api/project/$project_id/run/$run_id/compare/golden"
+
           changed=$(jq '[.diff[] | select(.diff | type == "object" and has("Done") and (.Done > 0))] | length' compare.json)
           new=$(jq '.new | length' compare.json)
           missing=$(jq '.missing | length' compare.json)
           unchanged=$(jq '.unchanged | length' compare.json)
-
           echo "changed=$changed new=$new missing=$missing unchanged=$unchanged"
 
           # Screenshot and diff images are served without authentication, but only
@@ -162,16 +190,18 @@ jobs:
           # project degrades to the report link instead of broken images.
           details=$(jq -r '
             [ (.diff[] | select((.diff | type == "object") and .diff.Done > 0)
-                         | "- `\(.name)` changed by \((.diff.Done * 10000 | round) / 100)%"),
-              (.new[]     | "- `\(.name)` is new"),
+                 | "- `\(.name)` changed by \((.diff.Done * 10000 | round) / 100)%"),
+              (.new[] | "- `\(.name)` is new"),
               (.missing[] | "- `\(.name)` is missing from this run")
             ] | join("\n")' compare.json)
 
           files="$api/files/$project_id"
+
           # Diff images are rendered per comparison settings; these are the
           # defaults the web interface falls back to when a project sets none.
           diffopts=$(jq -r '(.settings // {})
             | "\(.flip // false)/\(.tolerance // 0)/\(.threshold // 0.0002)/\(.dilate // 0)"' compare.json)
+
           gallery=""
           probe=$(jq -r 'first((.diff[]?.hash), (.new[]?.hash), (.unchanged[]?.hash)) // empty' compare.json)
           if [ -n "$probe" ]; then
@@ -186,13 +216,16 @@ jobs:
                      "**\(.name)**\n\n"
                      + "<table><tr><th>Golden record</th><th>This PR</th><th>Difference</th></tr>"
                      + "<tr><td>\(shot(.previous_hash))</td><td>\(shot(.hash))</td><td>\(diffshot(.hash; .previous_hash))</td></tr></table>"),
-                  (.new[]       | "**\(.name)** (new)\n\n\(shot(.hash))"),
-                  (.unchanged[] | "**\(.name)**\n\n\(shot(.hash))")
+                  (.new[] | "**\(.name)** (new)\n\n\(shot(.hash))"),
+                  # Folded away so that a growing set of passing screenshots
+                  # does not bury the ones that actually changed.
+                  (.unchanged[] | "<details><summary><b>\(.name)</b> (unchanged)</summary>\n\n\(shot(.hash))\n\n</details>")
                 ] | join("\n\n")' compare.json)
             else
               echo "Images are not publicly readable (HTTP $code), embedding the report link only."
             fi
           fi
+
           echo "report=$report" >> "$GITHUB_OUTPUT"
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
 
@@ -220,6 +253,7 @@ jobs:
         if: always() && steps.metadata.outputs.pr_number != '' && hashFiles('comment.md') == ''
         env:
           SCREENSHOT_EXISTS: ${{ steps.metadata.outputs.screenshot }}
+          SCREENSHOT_COUNT: ${{ steps.metadata.outputs.screenshot_count }}
           HEAD_SHA: ${{ steps.metadata.outputs.head_sha }}
           CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           RUN_URL: ${{ github.event.repository.html_url }}/actions/runs/${{ github.event.workflow_run.id }}
@@ -229,11 +263,11 @@ jobs:
             echo '## 📸 Visual Regression (Pixel Eagle)'
             echo
             if [ "$SCREENSHOT_EXISTS" != "true" ]; then
-              echo "⚠️ **No screenshot was produced** — the headless render finished with \`$CONCLUSION\`."
+              echo "⚠️ **No screenshots were produced** — the headless render finished with \`$CONCLUSION\`."
             elif [ "$PIXEL_EAGLE_TOKEN_EXISTS" != "true" ]; then
-              echo "ℹ️ The screenshot was captured but \`PIXEL_EAGLE_TOKEN\` is not configured, so it was not uploaded to Pixel Eagle."
+              echo "ℹ️ $SCREENSHOT_COUNT screenshot(s) were captured but \`PIXEL_EAGLE_TOKEN\` is not configured, so they were not uploaded to Pixel Eagle."
             else
-              echo "⚠️ The screenshot was captured but the upload to Pixel Eagle failed."
+              echo "⚠️ $SCREENSHOT_COUNT screenshot(s) were captured but the upload to Pixel Eagle failed."
             fi
             echo
             echo "[View the workflow run and artifacts]($RUN_URL)"

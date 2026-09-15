@@ -60,16 +60,33 @@ jobs:
           GALLIUM_DRIVER: llvmpipe
         run: |
           cargo run --bin headless --release
-          if [ ! -f output.png ]; then
-            echo "::error::the headless run finished but did not produce output.png"
+          mv output.png map-default-view.png
+          if [ ! -f map-default-view.png ]; then
+            echo "::error::the headless run finished but did not produce map-default-view.png"
             exit 1
           fi
-          ls -l output.png
+          ls -l default.png
+          
+          cargo run --bin headless --release -- -overlay
+          mv output.png map-overlay-view.png
+          if [ ! -f map-overlay-view.png ]; then
+            echo "::error::the headless run finished but did not produce map-overlay-view.png"
+            exit 1
+          fi
+          ls -l map-overlay-view.png
+          
+          cargo run --bin headless --release -- -globe
+          mv output.png map-globe-view.png
+          if [ ! -f map-globe-view.png ]; then
+            echo "::error::the headless run finished but did not produce map-globe-view.png"
+            exit 1
+          fi
+          ls -l map-globe-view.png
 
       - name: Upload Screenshot Artifact
-        if: always() && hashFiles('output.png') != ''
+        if: always() && hashFiles('*.png') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: headless-screenshot
-          path: output.png
+          name: headless-screenshots
+          path: "*.png"
           retention-days: 5
