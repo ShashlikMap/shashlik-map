@@ -12,6 +12,8 @@ Running on macOS and mobile (Android, iOS):
 
 <img width="450" alt="613070008-6cb9f503-2145-41b3-85af-e274d27bfee9" src="https://github.com/user-attachments/assets/ea463fe8-6cc5-49c3-bb4e-b4b8a697b66c" />
 <img width="130" alt="613070241-59d29a03-5443-43f6-9dd1-7a451ee8ef89" src="https://github.com/user-attachments/assets/996a4970-0103-4336-84fa-2e82fda39561" />
+<img width="130" alt="Screenshot_20260915_203821" src="https://github.com/user-attachments/assets/1c4c3cba-8d56-4836-94ce-ef96c1797d00" />
+
 
 ### Linux (via KMS), Raspberry Pi 4
 <img width="450" alt="613070156-10d8f87c-6072-440c-a169-0647b0e88dad" src="https://github.com/user-attachments/assets/16aa69df-ea92-4e0a-9521-635bee83e4dd" />
@@ -48,6 +50,7 @@ with Android/iOS mobile apps(Android is priority for now)
 - [x] Integration with WESL
 - [x] Initial MVT tiles support
 - [x] Initial renderer for CPU-only hardware
+- [x] Globe view
 
 ### Now
 - [ ] _In progress_ General Renderer refactoring
