@@ -65,7 +65,7 @@ jobs:
             echo "::error::the headless run finished but did not produce map-default-view.png"
             exit 1
           fi
-          ls -l default.png
+          ls -l map-default-view.png
           
           cargo run --bin headless --release -- -overlay
           mv output.png map-overlay-view.png

@@ -28,7 +28,7 @@ jobs:
           # If the render job ever splits its output across several artifacts,
           # swap `name:` for `pattern: headless-screenshot*` plus
           # `merge-multiple: true` and everything below keeps working.
-          name: headless-screenshot
+          name: headless-screenshots
           path: screenshot
           github-token: ${{ github.token }}
           run-id: ${{ github.event.workflow_run.id }}
