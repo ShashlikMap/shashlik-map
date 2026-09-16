@@ -5,7 +5,6 @@ use glam::DVec2;
 use glam::DVec3;
 use glam::Vec3Swizzles;
 use std::f64::consts::PI;
-use num::Float;
 use renderer_common::{GLOBE_SCALE, LIGHT_POS, MAP_SIZE};
 use crate::tiles::tiles_provider::{GLOBE_RADIUS};
 

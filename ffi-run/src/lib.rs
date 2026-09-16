@@ -38,7 +38,7 @@ pub enum RouteCosting {
 
 #[derive(uniffi::Enum)]
 pub enum ShapeType {
-    Line,
+    Line(Option<f32>),
     Polygon,
 }
 
@@ -138,7 +138,7 @@ impl ShashlikMapApi {
         }).collect();
 
         let shape_type = match shape_type {
-            ShapeType::Line => map::overlay::ShapeType::Line,
+            ShapeType::Line(width) => map::overlay::ShapeType::Line(width),
             ShapeType::Polygon => map::overlay::ShapeType::Polygon
         };
         let mut shashlik_map = self.shashlik_map.write().unwrap();

@@ -99,7 +99,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                         .collect();
                                     let route: Vec<Point> =
                                         route.iter().map(|p| converter(p)).collect();
-                                    let mut shape_type = ShapeType::Line;
+                                    let mut shape_type: ShapeType = ShapeType::Line(None);
                                     let style_id = match route_costing {
                                         RouteCosting::Pedestrian => {
                                             shape_type = ShapeType::DottedLine;
