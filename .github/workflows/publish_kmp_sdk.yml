@@ -40,7 +40,7 @@ jobs:
           accept-android-sdk-licenses: true
           packages: |
             platforms;android-34
-            ndk;26.1.10909125  
+            ndk;26.1.10909125
 
       - name: Publish to MavenCentral
         run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
