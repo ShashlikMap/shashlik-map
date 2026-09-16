@@ -52,7 +52,6 @@ import uniffi.ffi_run.RouteCosting.MOTORBIKE
 import uniffi.ffi_run.RouteCosting.PEDESTRIAN
 import uniffi.ffi_run.RouteCosting.entries
 import uniffi.ffi_run.ShapeType
-import java.lang.Math.random
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -250,7 +249,7 @@ private fun generateRandomShapeAroundTokyo(): Triple<List<Point>, ShapeType, Col
 
     val maxOffset = 0.01
 
-    val lineWidth = (15.0 * random()).toFloat()
+    val lineWidth = 15f * Random.nextFloat()
     val shapeType = listOf(ShapeType.Line(lineWidth), ShapeType.Polygon).random()
 
     val points = mutableListOf<Point>()
