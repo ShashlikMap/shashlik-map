@@ -103,16 +103,28 @@ impl<T: CanvasApi> RenderGroup<T> for OverlayShapeGroup {
             let is_polygon = matches!(self.shape_type, ShapeType::Polygon);
             path_builder.end(is_polygon);
 
-            let geometry_type = if is_polygon {
-                GeometryType::Polygon
-            } else {
-                let options = PolylineOptions {
-                    width: 1f32,
-                    line_join: LineJoin::Round,
-                    line_cap: LineCap::Round,
-                    tolerance: 0.01f32, // this gives more or less a good round shape for join and caps
-                };
-                GeometryType::Polyline(options)
+            let geometry_type = match self.shape_type {
+                ShapeType::Line(width) => {
+                    let options = PolylineOptions {
+                        width: width.unwrap_or(1.0),
+                        line_join: LineJoin::Round,
+                        line_cap: LineCap::Round,
+                        tolerance: 0.01f32, // this gives more or less a good round shape for join and caps
+                    };
+                    GeometryType::Polyline(options)
+                },
+                ShapeType::Polygon => {
+                    GeometryType::Polygon
+                },
+                ShapeType::DottedLine => {
+                    let options = PolylineOptions {
+                        width: 1.0f32,
+                        line_join: LineJoin::Round,
+                        line_cap: LineCap::Round,
+                        tolerance: 0.01f32, // this gives more or less a good round shape for join and caps
+                    };
+                    GeometryType::Polyline(options)
+                }
             };
 
             canvas.geometry_data(GeometryData::Shape(ShapeData {

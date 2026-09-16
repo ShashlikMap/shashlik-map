@@ -44,6 +44,7 @@ import com.shashlik.kmp.LineShape
 import com.shashlik.kmp.ShashlikMap
 import com.shashlik.kmp.ShashlikMapApiHolder
 import com.shashlik.kmp.isDebugBuild
+import com.shashlik.kmp.width
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import uniffi.ffi_run.Point
 import uniffi.ffi_run.RouteCosting.AUTO
@@ -51,8 +52,6 @@ import uniffi.ffi_run.RouteCosting.MOTORBIKE
 import uniffi.ffi_run.RouteCosting.PEDESTRIAN
 import uniffi.ffi_run.RouteCosting.entries
 import uniffi.ffi_run.ShapeType
-import uniffi.ffi_run.ShapeType.LINE
-import uniffi.ffi_run.ShapeType.POLYGON
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -153,12 +152,12 @@ fun App() {
             val shapes = remember { mutableStateListOf<Triple<List<Point>, ShapeType, Color>>() }
             ShashlikMap(withAutoLocationEvent = true, mvtTiles = mvtCheckedState) {
                 shapes.forEach { shape ->
-                    when (shape.second) {
-                        LINE -> {
-                            LineShape(shape.first, shape.third)
+                    when (val shapeType = shape.second) {
+                        is ShapeType.Line -> {
+                            LineShape(shape.first, shape.third, width = shapeType.width)
                         }
 
-                        POLYGON -> {
+                        ShapeType.Polygon -> {
                             ConvexPolygon(shape.first.first(), 10.0, 5, Color.Red)
                         }
                     }
@@ -250,11 +249,13 @@ private fun generateRandomShapeAroundTokyo(): Triple<List<Point>, ShapeType, Col
 
     val maxOffset = 0.01
 
-    val shapeType = ShapeType.entries.random()
+    val lineWidth = 15f * Random.nextFloat()
+    val shapeType = listOf(ShapeType.Line(lineWidth), ShapeType.Polygon).random()
+
     val points = mutableListOf<Point>()
 
     when (shapeType) {
-        LINE -> {
+        is ShapeType.Line -> {
             for (i in 0 until 5) {
                 val x = centerX + Random.nextDouble(-maxOffset, maxOffset)
                 val y = centerY + Random.nextDouble(-maxOffset, maxOffset)
@@ -262,7 +263,7 @@ private fun generateRandomShapeAroundTokyo(): Triple<List<Point>, ShapeType, Col
             }
         }
 
-        POLYGON -> {
+        ShapeType.Polygon -> {
             val numVertices = Random.nextInt(3, 7)
             val angles =
                 DoubleArray(numVertices) { Random.nextDouble(0.0, 2 * PI) }.apply { sort() }

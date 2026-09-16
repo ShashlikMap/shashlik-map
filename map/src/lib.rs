@@ -11,7 +11,7 @@ use futures::executor::block_on;
 use futures::{pin_mut, Stream, StreamExt};
 use geo_types::{coord, Coord, Point};
 use geo_types::{Polygon};
-use glam::{DMat2, DVec2, DVec3, Vec2};
+use glam::{DMat2, DVec2, DVec3, Vec2, Vec3Swizzles};
 use num::{clamp};
 use osm::styles::style_loader::StyleLoader;
 use osm::styles::{DashStyle, RenderStyle};
@@ -356,8 +356,13 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             let cam_pos = DVec3::new(cam_pos.x, cam_pos.y, cam_pos.z);
 
             let transform_cam_offset = (self.current_world_position) - cam_pos;
-            let transform_cam_offset_anim = transform_cam_offset * Self::TEMP_ANIMATION_SPEED * 2.0;
-            let new_cam_pos = cam_pos + transform_cam_offset_anim;
+            // So far, TELEPORT_THRESHOLD is applied only if the distance is bigger on the surface to keep animation between different zoom levels
+            let transform_cam_offset = if transform_cam_offset.xy().length() >= Self::TELEPORT_THRESHOLD {
+                transform_cam_offset
+            } else {
+                transform_cam_offset * Self::TEMP_ANIMATION_SPEED * 2.0
+            };
+            let new_cam_pos = cam_pos + transform_cam_offset;
             self.camera_controller.set_new_position(new_cam_pos);
         }
 

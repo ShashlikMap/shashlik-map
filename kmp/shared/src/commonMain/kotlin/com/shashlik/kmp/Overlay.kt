@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import uniffi.ffi_run.Color
 import uniffi.ffi_run.Point
 import uniffi.ffi_run.ShapeType
+import kotlin.coroutines.EmptyCoroutineContext.get
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -44,7 +45,7 @@ fun ConvexPolygon(
             y = center.y + dLat * sin(angle),
         )
     }
-    ShashlikShape(points, ShapeType.POLYGON, color.toShashlikColor())
+    ShashlikShape(points, ShapeType.Polygon, color.toShashlikColor())
 }
 
 /**
@@ -52,15 +53,17 @@ fun ConvexPolygon(
  *
  * @param points The list of geographic points defining the path of the line.
  * @param color The color of the line.
+ * @param width The width of the line. Note: this is an abstract unit at this moment;
+ * a proper unit will be provided in a future update.
  */
 @Composable
-fun LineShape(points: List<Point>, color: ComposeColor) {
+fun LineShape(points: List<Point>, color: ComposeColor, width: Float = 1f) {
     if (points.size < 2 || points.distinct().size < 2) {
         return
     }
     ShashlikShape(
         points = points,
-        type = ShapeType.LINE,
+        type = ShapeType.Line(width),
         color = color.toShashlikColor(),
     )
 }
@@ -100,3 +103,8 @@ fun ShashlikShape(
         }
     }
 }
+
+val ShapeType.Line.width: Float
+    get() {
+        return this.v1 ?: 1f
+    }
