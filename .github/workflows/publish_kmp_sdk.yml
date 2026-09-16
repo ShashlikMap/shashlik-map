@@ -35,6 +35,9 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
+        with:
+          api-level: 34
+          ndk-version: 26.1.10909125
 
       - name: Publish to MavenCentral
         run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache

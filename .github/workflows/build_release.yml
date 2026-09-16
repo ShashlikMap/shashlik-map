@@ -60,6 +60,9 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
+        with:
+          api-level: 34
+          ndk-version: 26.1.10909125
 
       - name: Prebuild rustls-platform-verifier-android
         run: cargo build -p rustls-platform-verifier --release --target aarch64-linux-android || true
