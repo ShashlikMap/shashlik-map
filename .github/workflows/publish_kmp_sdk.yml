@@ -35,11 +35,12 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
-        cmdline-tools-version: latest
-        accept-android-sdk-licenses: true
-        packages: |
-          platforms;android-34
-          ndk;26.1.10909125
+        with:
+          cmdline-tools-version: latest
+          accept-android-sdk-licenses: true
+          packages: |
+            platforms;android-34
+            ndk;26.1.10909125  
 
       - name: Publish to MavenCentral
         run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
