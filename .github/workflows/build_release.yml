@@ -65,7 +65,7 @@ jobs:
           accept-android-sdk-licenses: true
           packages: |
             platforms;android-34
-            ndk;26.1.10909125
+            ndk
 
       - name: Prebuild rustls-platform-verifier-android
         run: cargo build -p rustls-platform-verifier --release --target aarch64-linux-android || true
