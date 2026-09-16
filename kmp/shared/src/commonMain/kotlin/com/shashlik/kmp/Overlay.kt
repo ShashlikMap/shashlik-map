@@ -53,6 +53,8 @@ fun ConvexPolygon(
  *
  * @param points The list of geographic points defining the path of the line.
  * @param color The color of the line.
+ * @param width The width of the line. Note: this is an abstract unit at this moment;
+ * a proper unit will be provided in a future update.
  */
 @Composable
 fun LineShape(points: List<Point>, color: ComposeColor, width: Float = 1f) {

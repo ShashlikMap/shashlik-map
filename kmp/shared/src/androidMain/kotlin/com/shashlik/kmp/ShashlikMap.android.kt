@@ -28,6 +28,12 @@ import timber.log.Timber.DebugTree
 @Suppress("KotlinConstantConditions")
 actual val isDebugBuild: Boolean get() = BuildConfig.DEBUG
 
+/**
+ * Initializes the Shashlik Map library on Android.
+ *
+ * This should typically be called in the [android.app.Application.onCreate] method.
+ * It sets up logging and other platform-specific configurations.
+ */
 fun shashlikMapInit() {
     Timber.plant(DebugTree())
 }

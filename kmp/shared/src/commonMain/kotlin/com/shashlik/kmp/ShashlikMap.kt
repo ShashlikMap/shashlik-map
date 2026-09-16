@@ -6,6 +6,9 @@ import kotlinx.coroutines.delay
 import uniffi.ffi_run.ShashlikMapApi
 import kotlin.time.Duration.Companion.milliseconds
 
+/**
+ * Indicates whether the current build is a debug build.
+ */
 expect val isDebugBuild: Boolean
 
 /**
@@ -44,7 +47,15 @@ internal suspend fun awaitApi(): ShashlikMapApi {
     throw NullPointerException("shashlikMapApi never became available; nothing drawn")
 }
 
+/**
+ * A global holder for the [ShashlikMapApi] instance.
+ *
+ * This provides access to the map's low-level API once it has been initialized.
+ */
 object ShashlikMapApiHolder {
+    /**
+     * The active [ShashlikMapApi] instance, or null if not yet initialized.
+     */
     var shashlikMapApi: ShashlikMapApi? = null
 }
 
