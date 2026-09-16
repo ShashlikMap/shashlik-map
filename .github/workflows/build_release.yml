@@ -59,7 +59,7 @@ jobs:
           java-version: '17'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Prebuild rustls-platform-verifier-android
         run: cargo build -p rustls-platform-verifier --release --target aarch64-linux-android || true
