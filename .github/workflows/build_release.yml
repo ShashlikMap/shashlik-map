@@ -61,11 +61,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
         with:
-          cmdline-tools-version: latest
-          accept-android-sdk-licenses: true
-          packages: |
-            platforms;android-34
-            ndk;latest
+          packages: 'platform-tools'
 
       - name: Prebuild rustls-platform-verifier-android
         run: cargo build -p rustls-platform-verifier --release --target aarch64-linux-android || true
