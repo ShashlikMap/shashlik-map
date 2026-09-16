@@ -53,16 +53,18 @@ jobs:
           targets: aarch64-linux-android
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
-        with:
-          api-level: 34
-          ndk-version: 26.1.10909125
+        cmdline-tools-version: latest
+        accept-android-sdk-licenses: true
+        packages: |
+          platforms;android-34
+          ndk;26.1.10909125
 
       - name: Prebuild rustls-platform-verifier-android
         run: cargo build -p rustls-platform-verifier --release --target aarch64-linux-android || true
