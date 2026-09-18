@@ -41,7 +41,9 @@ fun ShashlikMap(
     }
 
     LaunchedEffect(state.latitude, state.longitude, state.bearing) {
-        awaitApi().setLatLonBearing(state.latitude, state.longitude, state.bearing)
+        if(state.latitude != 0.0 || state.longitude != 0.0) {
+            awaitApi().setLatLonBearing(state.latitude, state.longitude, state.bearing)
+        }
     }
 
     ShashlikMapSetup(state, withAutoLocationEvent)

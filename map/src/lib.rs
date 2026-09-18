@@ -439,19 +439,15 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
     pub fn set_lon_lat_bearing(&mut self, lon: f64, lat: f64, bearing: Option<f32>) {
         self.route_controller.set_current_lon_lat((lon, lat));
-        if !self.overlay.has_shapes() {
-            let position = self.tiles_provider.lon_lat_to_world(&coord! {x: lon, y: lat}, MAX_ZOOM_LEVEL);
-            self.location_world_position = DVec3::new(position.x, position.y, 0.0);
+        let position = self.tiles_provider.lon_lat_to_world(&coord! {x: lon, y: lat}, MAX_ZOOM_LEVEL);
+        self.location_world_position = DVec3::new(position.x, position.y, 0.0);
 
-            if let Some(bearing) = bearing {
-                let new_bearing = Self::calc_nearest_bearing(bearing as f64, self.location_bearing);
-                self.location_bearing = new_bearing;
-                if self.cam_follow_mode {
-                    self.camera_bearing = new_bearing;
-                }
+        if let Some(bearing) = bearing {
+            let new_bearing = Self::calc_nearest_bearing(bearing as f64, self.location_bearing);
+            self.location_bearing = new_bearing;
+            if self.cam_follow_mode {
+                self.camera_bearing = new_bearing;
             }
-        } else {
-            self.camera_bearing = 0.0;
         }
     }
 
@@ -579,6 +575,5 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         let world_offset = new_world_coord - prev_world_coord;
         self.camera.global_offset(world_offset);
         self.camera_controller.position += world_offset.extend(0.0);
-        self.set_lon_lat_bearing(prev_lon_lat.x, prev_lon_lat.y, Some(self.location_bearing as f32));
     }
 }

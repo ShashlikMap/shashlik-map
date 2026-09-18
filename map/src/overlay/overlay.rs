@@ -98,7 +98,7 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
     }
 
     pub fn has_shapes(&self) -> bool {
-        self.bbox.is_some()
+        self.shape_ids.len() > 0
     }
 
     pub fn bbox(&mut self) -> Option<&Rect> {
