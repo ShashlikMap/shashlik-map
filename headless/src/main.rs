@@ -72,7 +72,7 @@ fn main() {
     .unwrap();
 
     map.resize(size.width, size.height);
-    map.set_camera_follow_mode(true);
+    map.set_camera_follow_mode(!with_overlay);
     map.set_cam_follow_zoom_lock(None);
     if is_globe {
         map.zoom_delta(0.000035, (0.0, 0.0));
