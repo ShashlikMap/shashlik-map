@@ -2,7 +2,6 @@ extern crate core;
 
 use crate::camera::{Camera, CameraController};
 use crate::kml_viewer_group::KmlGroup;
-use crate::puck_group::SimplePuck;
 use crate::route::RouteCosting;
 use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{TilesProvider};
@@ -116,19 +115,12 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         let camera_offset: DVec3 = (camera_offset.x, camera_offset.y, 0.0).into();
         let cam = Camera::new(camera_offset.truncate());
 
-        let mut puck_spatial_data = SpatialData::transform(DVec3::new(0.0, 0.0, 0.0));
-        puck_spatial_data.scale(DVec3::splat(1.0));
-        renderer.api().add_render_group(
-            "puck".to_string(),
-            puck_spatial_data,
-            Box::new(SimplePuck {}),
-        );
-
         let zero_zoom_level_loaded = Arc::new(AtomicBool::new(false));
         let transition_2d_3d_helper = Transition2d3dHelper::new(zero_zoom_level_loaded.clone());
         Self::run_tiles(renderer.api(), zero_zoom_level_loaded.clone(), tiles_stream);
         Self::load_styles(renderer.api());
         let overlay = Overlay::new("custom_overlay_layer".to_string(), renderer.api());
+        overlay.puck_config(true);
 
         let mut camera_controller = CameraController::new();
         camera_controller.pitch = CameraController::MIN_PITCH;
@@ -349,13 +341,9 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             });
 
         let normal_scale = cam_zoom.max(0.25);
-        self.route_controller.get_active_route_ids().iter().cloned().for_each(|id| {
-            self.renderer
-                .api()
-                .update_spatial_data(id, move |spatial_data| {
-                    spatial_data.normal_scale = normal_scale;
-                });
-        });
+        self.route_controller.update(normal_scale);
+        self.overlay.update(normal_scale);
+
         if self.should_animate() {
             let cam_pos = self.camera_controller.position;
             let cam_pos = DVec3::new(cam_pos.x, cam_pos.y, cam_pos.z);

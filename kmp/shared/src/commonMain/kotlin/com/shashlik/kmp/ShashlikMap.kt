@@ -20,6 +20,7 @@ expect val isDebugBuild: Boolean
  * This composable initializes the map engine and provides a container for map overlays.
  *
  * @param state The [LocationState] to control and observe the map's location.
+ * @param withPuck When true, the map will display a "puck" (location marker) at the current location.
  * @param withAutoLocationEvent When true, the map will automatically track and display the user's location.
  * @param mvtTiles Whether to enable MVT (Mapbox Vector Tile) rendering.
  * @param content The content to be rendered on top of the map, typically map overlays like [ConvexPolygon] or [LineShape].
@@ -27,12 +28,16 @@ expect val isDebugBuild: Boolean
 @Composable
 fun ShashlikMap(
     state: LocationState = rememberLocationState(),
+    withPuck: Boolean = true,
     withAutoLocationEvent: Boolean = true,
     mvtTiles: Boolean = false,
     content: @Composable () -> Unit = {}
 ) {
-    LaunchedEffect(mvtTiles) {
-        awaitApi().setMvtTileset(mvtTiles)
+    LaunchedEffect(mvtTiles, withPuck) {
+        awaitApi().run {
+            puckConfig(withPuck)
+            setMvtTileset(mvtTiles)
+        }
     }
 
     LaunchedEffect(state.latitude, state.longitude, state.bearing) {

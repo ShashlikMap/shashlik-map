@@ -150,4 +150,9 @@ impl ShashlikMapApi {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
         shashlik_map.overlay().remove_shape(key);
     }
+
+    pub fn puck_config(&self, enabled: bool) {
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
+        shashlik_map.overlay().puck_config(enabled);
+    }
 }
