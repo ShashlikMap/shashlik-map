@@ -1,6 +1,7 @@
 import gobley.gradle.cargo.tasks.CargoBuildTask
 import groovy.json.JsonSlurper
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -83,7 +84,7 @@ kotlin {
         iosArm64(),
         iosSimulatorArm64()
     ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
+        iosTarget.binaries.framework(listOf(NativeBuildType.RELEASE)) {
             baseName = "Shared"
             isStatic = true
         }
