@@ -11,16 +11,14 @@ import androidx.compose.ui.viewinterop.UIKitView
 @OptIn(kotlin.experimental.ExperimentalNativeApi::class)
 actual val isDebugBuild: Boolean get() = Platform.isDebugBinary
 @Composable
-internal actual fun ShashlikMapSetup(withAutoLocationEvent: Boolean) {
+internal actual fun ShashlikMapSetup(state: LocationState, withAutoLocationEvent: Boolean) {
     val iosLocationProvider = remember {
         IOSLocationProvider(
             onLocationUpdated = { lat, lon, bearing ->
                 println("Success! GPS Coordinates: Latitude $lat, Longitude $lon, Bearing: $bearing")
-                ShashlikMapApiHolder.shashlikMapApi?.setLatLonBearing(
-                    lat = lat,
-                    lon = lon,
-                    bearing = bearing?.toFloat()
-                )
+                state.latitude = lat
+                state.longitude = lon
+                state.bearing = bearing?.toFloat()
             },
             onError = { errorMessage ->
                 println("Failed to fetch location: $errorMessage")

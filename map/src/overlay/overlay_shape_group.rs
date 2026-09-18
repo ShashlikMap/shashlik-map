@@ -132,7 +132,7 @@ impl<T: CanvasApi> RenderGroup<T> for OverlayShapeGroup {
                 geometry_type,
                 style_id: self.style_id.clone(),
                 index_layer_level: 0,
-                styled_range_info: StyledRangeInfo::default(),
+                styled_range_info: StyledRangeInfo::new(1, true)
             }));
         }
     }

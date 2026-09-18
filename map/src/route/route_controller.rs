@@ -175,7 +175,16 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         api.clear_render_groups(HashSet::from_iter(active_routes));
     }
 
-    pub fn get_active_route_ids(&mut self) -> &Vec<String> {
+    pub fn update(&mut self, normal_scale: f64) {
+        let api = Arc::clone(&self.api);
+        self.get_active_route_ids().iter().cloned().for_each(|id| {
+            api.update_spatial_data(id, move |spatial_data| {
+                spatial_data.normal_scale = normal_scale;
+            });
+        });
+    }
+
+    fn get_active_route_ids(&mut self) -> &Vec<String> {
         if self.active_routes_ids.is_empty() {
             let active_routes = self.active_routes.load(Ordering::Relaxed);
             if active_routes > 0 {

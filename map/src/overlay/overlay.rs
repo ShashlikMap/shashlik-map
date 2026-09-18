@@ -10,6 +10,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use geo::{BoundingRect, Scale};
 use geo_types::Geometry::MultiPoint;
+use glam::DVec3;
+use renderer_common::render_modifier::SpatialData;
+use crate::puck_group::SimplePuck;
 
 static OVERLAY_SHAPE_ID: AtomicUsize = AtomicUsize::new(0);
 pub struct Overlay<RAPI: RendererApi> {
@@ -31,6 +34,21 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
             styles: FxHashMap::default(),
             points: FxHashMap::default(),
             bbox: None
+        }
+    }
+
+    pub fn puck_config(&self, enabled: bool) {
+        let puck_key = "puck".to_string();
+        if enabled {
+            let mut puck_spatial_data = SpatialData::transform(DVec3::new(0.0, 0.0, 0.0));
+            puck_spatial_data.scale(DVec3::splat(1.0));
+            self.api.add_render_group(
+                puck_key,
+                puck_spatial_data,
+                Box::new(SimplePuck {}),
+            );
+        } else {
+            self.api.clear_render_groups(HashSet::from_iter(vec![puck_key]))
         }
     }
 
@@ -79,6 +97,10 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         Some(unique_id)
     }
 
+    pub fn has_shapes(&self) -> bool {
+        self.shape_ids.len() > 0
+    }
+
     pub fn bbox(&mut self) -> Option<&Rect> {
         if self.bbox.is_none() && let Some(bbox) = MultiPoint(self.points.values().cloned().flatten().collect()).bounding_rect() {
             self.bbox = Some(bbox.scale(Self::BBOX_SCALE));
@@ -93,5 +115,14 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         if self.shape_ids.remove(&key) {
             self.api.clear_render_groups(HashSet::from_iter(vec![key]));
         }
+    }
+
+    pub fn update(&mut self, normal_scale: f64) {
+        let api = Arc::clone(&self.api);
+        self.shape_ids.iter().for_each(|shape_id| {
+            api.update_spatial_data(shape_id.clone(), move |spatial_data| {
+                spatial_data.normal_scale = normal_scale;
+            });
+        })
     }
 }
