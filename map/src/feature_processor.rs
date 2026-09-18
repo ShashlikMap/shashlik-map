@@ -2,7 +2,7 @@ use crate::tiles::default_tiles_provider::FeatureProcessor;
 use geo_types::{Coord, LineString};
 use glam::{DVec3, Vec2};
 use lyon::geom::point;
-use lyon::path::Path;
+use lyon::path::{Path, Winding};
 use osm::map::{
     HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapPointInfo, MapPointObjectKind,
     NatureKind,
@@ -11,7 +11,9 @@ use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, Geometry
 use renderer_common::style_id::StyleId;
 use capitalize::Capitalize;
 use geo::Scale;
+use lyon::geom::euclid::{point2, Box2D};
 use lyon::lyon_tessellation::{LineCap, LineJoin};
+use lyon::path::builder::BorderRadii;
 use rand::RngExt;
 use crate::MAX_ZOOM_LEVEL;
 
@@ -142,26 +144,38 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 _ => StyleId::new("poi"),
             };
 
-            let background = if !matches!(poi.kind, MapPointObjectKind::TrafficLight) {
-                Some(SvgBackground {
-                    style_id: StyleId::new(format!("{}_icon_background",style_id.0)),
-                    padding: 7.0 * dpi_scale,
-                })
-            } else {
-                None
-            };
-
             let icon_size = if matches!(poi.kind, MapPointObjectKind::TrafficLight) {
                 33.0
             } else {
                 30.0
+            } * dpi_scale;
+
+            let background = if !matches!(poi.kind, MapPointObjectKind::TrafficLight) {
+                let padding = 7.0 * dpi_scale;
+                Some(SvgBackground {
+                    style_id: StyleId::new(format!("{}_icon_background", style_id.0)),
+                    shape: Box::new(move |data: &SvgData| -> Path {
+                        let mut builder = Path::builder();
+                        let half_size = padding + data.size / 2.0;
+                        let rect =
+                            Box2D::new(point2(-half_size, -half_size), point2(half_size, half_size));
+                        builder.add_rounded_rectangle(
+                            &rect,
+                            &BorderRadii::new(10.0),
+                            Winding::Positive,
+                        );
+                        builder.build()
+                    }),
+                })
+            } else {
+                None
             };
 
             geometry_data.push(GeometryData::Svg(SvgData {
                 id: id as u64,
                 icon,
                 position: DVec3::from((local_position.x, local_position.y, 0.0)),
-                size: icon_size * dpi_scale,
+                size: icon_size,
                 style_id: background.as_ref().map(|_| style_id),
                 with_collision: true,
                 background

@@ -90,7 +90,7 @@ pub struct Mesh3d {
 
 pub struct SvgBackground {
     pub style_id: StyleId,
-    pub padding: f32,
+    pub shape: Box<dyn Fn(&SvgData) -> Path + Send + Sync + 'static>,
 }
 
 pub struct SvgData {

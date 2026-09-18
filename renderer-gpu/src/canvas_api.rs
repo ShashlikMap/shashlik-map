@@ -7,13 +7,11 @@ use crate::styles::style_store::StyleStore;
 use crate::svg::svg_parser::svg_parse;
 use crate::vertex_attrs::ShapeVertex;
 use glam::{DVec3, Vec3};
-use lyon::geom::euclid::{Box2D, point2};
 use lyon::lyon_tessellation::{
     BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator,
     StrokeVertex, VertexBuffers,
 };
-use lyon::path::builder::BorderRadii;
-use lyon::path::{Path, Winding};
+use lyon::path::Path;
 use renderer_common::CanvasApi;
 use renderer_common::geometry_data::{
     ExtrudedPolygonData, GeometryData, GeometryType, MeshVertex, PolylineOptions, ShapeData,
@@ -329,22 +327,11 @@ impl GpuCanvasApi {
             })
             .or_insert_with(|| {
                 let mut mesh: VertexBuffers<ShapeVertex, u32> = VertexBuffers::new();
-                let mut mesh_size = data.size;
-                if let Some(svg_background) = data.background {
-                    mesh_size += 2.0 * svg_background.padding;
+                let mesh_size = data.size;
+                if let Some(svg_background) = data.background.as_ref() {
                     let background_style_index =
                         self.style_store.get_index(&svg_background.style_id);
-
-                    let mut builder = Path::builder();
-                    let half_size = svg_background.padding + data.size / 2.0;
-                    let rect =
-                        Box2D::new(point2(-half_size, -half_size), point2(half_size, half_size));
-                    builder.add_rounded_rectangle(
-                        &rect,
-                        &BorderRadii::new(10.0),
-                        Winding::Positive,
-                    );
-                    let path = builder.build();
+                    let path = (svg_background.shape)(&data);
 
                     Self::tessellate_fill_path(&path, &mut mesh, |vertex| {
                         ShapeVertex::new(
