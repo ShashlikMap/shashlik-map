@@ -54,10 +54,11 @@ pub struct ShashlikMap<R: Renderer, T: TilesProvider> {
     tiles_provider: T,
     overlay: Overlay<R::RAPI>,
     route_controller: RouteController<R::RAPI>,
-    current_world_position: DVec3,
-    current_bearing: f64,
+    location_world_position: DVec3,
+    camera_world_position: DVec3,
+    location_bearing: f64,
     camera_bearing: f64,
-    current_pitch: f64,
+    camera_pitch: f64,
     transition_2d_3d_helper: Transition2d3dHelper,
     cam_follow_mode: bool,
     cam_follow_zoom_lock: Option<f64>,
@@ -143,10 +144,11 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             tiles_provider,
             overlay,
             route_controller,
-            current_world_position: camera_offset,
-            current_bearing: 0.0,
+            location_world_position: camera_offset,
+            camera_world_position: camera_offset,
+            location_bearing: 0.0,
             camera_bearing: 0.0,
-            current_pitch: CameraController::MIN_PITCH,
+            camera_pitch: CameraController::MIN_PITCH,
             transition_2d_3d_helper,
             cam_follow_mode: true,
             cam_follow_zoom_lock: Some(Self::ZOOM_LOCK_DIST),
@@ -297,7 +299,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
     }
 
     fn update_camera_for_overlay(&mut self, polygon: &Polygon) {
-        if let (Some(overlay_bbox), Some(polygon_bbox))  = (self.overlay.bbox(), polygon.bounding_rect()) {
+        if !self.cam_follow_mode && let (Some(overlay_bbox), Some(polygon_bbox))  = (self.overlay.bbox(), polygon.bounding_rect()) {
             let overlay_center = overlay_bbox.centroid();
             let scale_x = overlay_bbox.width() / polygon_bbox.width();
             let scale_y = overlay_bbox.height() / polygon_bbox.height();
@@ -305,7 +307,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             let new_zoom_lock = self.camera_controller.forward_len * scale;
 
             self.set_cam_follow_zoom_lock(Some(new_zoom_lock));
-            self.current_world_position = DVec3::new(overlay_center.x(), overlay_center.y(), 0.0);
+            self.camera_world_position = DVec3::new(overlay_center.x(), overlay_center.y(), 0.0);
 
         }
     }
@@ -321,27 +323,30 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
     }
 
     fn update_entities(&mut self) {
-        let bearing = self.current_bearing;
+        let bearing = self.location_bearing;
         let cam_zoom = self.camera.scale() as f64;
         let cam_yaw = self.camera_controller.yaw;
 
-        if self.overlay.bbox().is_none() {
-            let puck_location = self.current_world_position;
-            self.renderer
-                .api() //  fyi, it seems to be fast enough(need to learn more here)
-                .update_spatial_data("puck".to_string(), move |spatial_data| {
-                    spatial_data.scale = DVec3::splat(cam_zoom);
-                    let puck_location_offset = puck_location - spatial_data.transform;
-                    if puck_location_offset.length() >= Self::TELEPORT_THRESHOLD {
-                        spatial_data.transform = puck_location;
-                    } else {
-                        spatial_data.transform +=
-                            (puck_location - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED;
-                    }
-                    spatial_data.yaw +=
-                        ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
-                });
+        if self.cam_follow_mode {
+            self.camera_bearing = self.location_bearing;
+            self.camera_world_position = self.location_world_position;
         }
+
+        let puck_location = self.location_world_position;
+        self.renderer
+            .api() //  fyi, it seems to be fast enough(need to learn more here)
+            .update_spatial_data("puck".to_string(), move |spatial_data| {
+                spatial_data.scale = DVec3::splat(cam_zoom);
+                let puck_location_offset = puck_location - spatial_data.transform;
+                if puck_location_offset.length() >= Self::TELEPORT_THRESHOLD {
+                    spatial_data.transform = puck_location;
+                } else {
+                    spatial_data.transform +=
+                        (puck_location - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED;
+                }
+                spatial_data.yaw +=
+                    ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
+            });
 
         let normal_scale = cam_zoom.max(0.25);
         self.route_controller.get_active_route_ids().iter().cloned().for_each(|id| {
@@ -355,7 +360,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             let cam_pos = self.camera_controller.position;
             let cam_pos = DVec3::new(cam_pos.x, cam_pos.y, cam_pos.z);
 
-            let transform_cam_offset = (self.current_world_position) - cam_pos;
+            let transform_cam_offset = (self.camera_world_position) - cam_pos;
             // So far, TELEPORT_THRESHOLD is applied only if the distance is bigger on the surface to keep animation between different zoom levels
             let transform_cam_offset = if transform_cam_offset.xy().length() >= Self::TELEPORT_THRESHOLD {
                 transform_cam_offset
@@ -373,7 +378,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
         if self.should_animate() {
             self.camera_controller.pitch +=
-                (self.current_pitch - self.camera_controller.pitch) * Self::TEMP_ANIMATION_SPEED;
+                (self.camera_pitch - self.camera_controller.pitch) * Self::TEMP_ANIMATION_SPEED;
 
             if let Some(zoom_lock) = self.cam_follow_zoom_lock {
                 let current_dist = self.camera_controller.forward_len - zoom_lock;
@@ -418,7 +423,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
     }
 
     fn should_animate(&self) -> bool {
-        self.cam_follow_mode && Instant::now().duration_since(self.last_interaction)
+        (self.cam_follow_mode || self.overlay.has_shapes()) && Instant::now().duration_since(self.last_interaction)
             >= Duration::from_millis(Self::FOLLOW_ANIMATION_DELAY_MS)
     }
 
@@ -427,8 +432,8 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
         if self.cam_follow_mode {
             self.cam_follow_zoom_lock = Some(Self::ZOOM_LOCK_DIST);
-            self.current_pitch = CameraController::MIN_PITCH;
-            self.camera_bearing = self.current_bearing;
+            self.camera_pitch = CameraController::MIN_PITCH;
+            self.camera_bearing = self.location_bearing;
         } else {
             let new_bearing = Self::calc_nearest_bearing(0.0, self.camera_bearing);
             self.camera_bearing = new_bearing;
@@ -436,7 +441,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
     }
 
     pub fn set_current_pitch(&mut self, current_pitch: f64) {
-        self.current_pitch = current_pitch;
+        self.camera_pitch = current_pitch;
         self.camera_controller.pitch = current_pitch;
     }
 
@@ -446,13 +451,13 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
     pub fn set_lon_lat_bearing(&mut self, lon: f64, lat: f64, bearing: Option<f32>) {
         self.route_controller.set_current_lon_lat((lon, lat));
-        if self.overlay.bbox().is_none() {
+        if !self.overlay.has_shapes() {
             let position = self.tiles_provider.lon_lat_to_world(&coord! {x: lon, y: lat}, MAX_ZOOM_LEVEL);
-            self.current_world_position = DVec3::new(position.x, position.y, 0.0);
+            self.location_world_position = DVec3::new(position.x, position.y, 0.0);
 
             if let Some(bearing) = bearing {
-                let new_bearing = Self::calc_nearest_bearing(bearing as f64, self.current_bearing);
-                self.current_bearing = new_bearing;
+                let new_bearing = Self::calc_nearest_bearing(bearing as f64, self.location_bearing);
+                self.location_bearing = new_bearing;
                 if self.cam_follow_mode {
                     self.camera_bearing = new_bearing;
                 }
@@ -576,7 +581,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
     where
         F: FnOnce(&mut T),
     {
-        let prev_world_coord = self.current_world_position.truncate();
+        let prev_world_coord = self.camera_world_position.truncate();
         let prev_lon_lat = self.tiles_provider.world_to_lon_lat(&coord! { x: prev_world_coord.x, y: prev_world_coord.y}, MAX_ZOOM_LEVEL);
 
         block(&mut self.tiles_provider);
@@ -586,6 +591,6 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         let world_offset = new_world_coord - prev_world_coord;
         self.camera.global_offset(world_offset);
         self.camera_controller.position += world_offset.extend(0.0);
-        self.set_lon_lat_bearing(prev_lon_lat.x, prev_lon_lat.y, Some(self.current_bearing as f32));
+        self.set_lon_lat_bearing(prev_lon_lat.x, prev_lon_lat.y, Some(self.location_bearing as f32));
     }
 }

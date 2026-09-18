@@ -79,6 +79,10 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         Some(unique_id)
     }
 
+    pub fn has_shapes(&self) -> bool {
+        self.bbox.is_some()
+    }
+
     pub fn bbox(&mut self) -> Option<&Rect> {
         if self.bbox.is_none() && let Some(bbox) = MultiPoint(self.points.values().cloned().flatten().collect()).bounding_rect() {
             self.bbox = Some(bbox.scale(Self::BBOX_SCALE));
