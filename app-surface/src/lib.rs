@@ -77,7 +77,6 @@ pub trait SurfaceFrame {
     }
     fn create_current_frame_view(
         &self,
-        device: &wgpu::Device,
         surface: &wgpu::Surface,
         config: &wgpu::SurfaceConfiguration,
         view_format: Option<wgpu::TextureFormat>,
@@ -134,7 +133,7 @@ impl SurfaceFrame for AppSurface {
         &self,
         view_format: Option<wgpu::TextureFormat>,
     ) -> (wgpu::SurfaceTexture, wgpu::TextureView) {
-        self.create_current_frame_view(&self.device, &self.surface, &self.config, view_format)
+        self.create_current_frame_view(&self.surface, &self.config, view_format)
     }
 }
 
