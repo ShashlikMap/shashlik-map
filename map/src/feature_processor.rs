@@ -7,7 +7,7 @@ use osm::map::{
     HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapPointInfo, MapPointObjectKind,
     NatureKind,
 };
-use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, LineData, PolylineOptions, ShapeData, StyledRangeInfo, SvgBackground, SvgData, TextData};
+use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, LineData, PolylineOptions, ShapeData, StyledRangeInfo, IconBackground, IconShapeData, TextData, IconData};
 use renderer_common::style_id::StyleId;
 use capitalize::Capitalize;
 use geo::Scale;
@@ -15,6 +15,7 @@ use lyon::geom::euclid::{point2, Box2D};
 use lyon::lyon_tessellation::{LineCap, LineJoin};
 use lyon::path::builder::BorderRadii;
 use rand::RngExt;
+use renderer_common::geometry_data::IconType::SvgBinary;
 use crate::MAX_ZOOM_LEVEL;
 
 pub struct ShashlikFeatureProcessor {
@@ -132,16 +133,16 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             let style_id = match poi.kind {
                 MapPointObjectKind::TrainStation(is_train) => {
                     if is_train {
-                        StyleId::new("train_station")
+                        Some(StyleId::new("train_station"))
                     } else {
-                        StyleId::new("railway_station")
+                        Some(StyleId::new("railway_station"))
                     }
                 }
-                MapPointObjectKind::TrafficLight => StyleId::new("poi_traffic_light"),
-                MapPointObjectKind::EVCharging => StyleId::new("poi_ev_station"),
-                MapPointObjectKind::Parking => StyleId::new("poi_parking"),
-                MapPointObjectKind::Toilet => StyleId::new("poi_toilet"),
-                _ => StyleId::new("poi"),
+                MapPointObjectKind::TrafficLight => None,
+                MapPointObjectKind::EVCharging => Some(StyleId::new("poi_ev_station")),
+                MapPointObjectKind::Parking => Some(StyleId::new("poi_parking")),
+                MapPointObjectKind::Toilet => Some(StyleId::new("poi_toilet")),
+                _ => Some(StyleId::new("poi")),
             };
 
             let icon_size = if matches!(poi.kind, MapPointObjectKind::TrafficLight) {
@@ -150,11 +151,11 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 30.0
             } * dpi_scale;
 
-            let background = if !matches!(poi.kind, MapPointObjectKind::TrafficLight) {
+            let background = style_id.as_ref().map(|style_id| {
                 let padding = 7.0 * dpi_scale;
-                Some(SvgBackground {
+                IconBackground {
                     style_id: StyleId::new(format!("{}_icon_background", style_id.0)),
-                    shape: Box::new(move |data: &SvgData| -> Path {
+                    shape: Box::new(move |data: &IconShapeData| -> Path {
                         let mut builder = Path::builder();
                         let half_size = padding + data.size / 2.0;
                         let rect =
@@ -166,17 +167,18 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         );
                         builder.build()
                     }),
-                })
-            } else {
-                None
-            };
+                }
+            });
 
-            geometry_data.push(GeometryData::Svg(SvgData {
+            let icon_data = IconData {
+                id: icon.0,
+                icon_type: SvgBinary(style_id, icon.1),
+            };
+            geometry_data.push(GeometryData::Svg(IconShapeData {
                 id: id as u64,
-                icon,
+                icon_data,
                 position: DVec3::from((local_position.x, local_position.y, 0.0)),
                 size: icon_size,
-                style_id: background.as_ref().map(|_| style_id),
                 with_collision: true,
                 background
             }));

@@ -1,7 +1,7 @@
 use geo_types::{Geometry, GeometryCollection, Point};
 use kml::KmlReader;
 use log::error;
-use renderer_common::geometry_data::{GeometryData, SvgData};
+use renderer_common::geometry_data::{GeometryData, IconType, IconShapeData, IconData};
 use renderer_common::render_group::RenderGroup;
 use renderer_common::style_id::StyleId;
 use std::path::PathBuf;
@@ -47,12 +47,14 @@ impl KmlGroup {
     ) {
         collection.iter().for_each(|geom| match geom {
             Geometry::Point(point) => {
-                geometry_data.push(GeometryData::Svg(SvgData {
+                geometry_data.push(GeometryData::Svg(IconShapeData {
                     id: 0,
-                    icon: ("kml", Self::CIRCLE_SVG),
+                    icon_data: IconData {
+                        id: "kml",
+                        icon_type: IconType::SvgBinary(Some(StyleId::new("kml_dots")), Self::CIRCLE_SVG),
+                    },
                     position: DVec3::new(point.x(), point.y(), 0.0),
                     size: 2.0,
-                    style_id: Some(StyleId::new("kml_dots")),
                     with_collision: false,
                     background: None
                 }));
