@@ -7,18 +7,13 @@ use crate::styles::style_store::StyleStore;
 use crate::svg::svg_parser::svg_parse;
 use crate::vertex_attrs::ShapeVertex;
 use glam::{DVec3, Vec3};
-use lyon::geom::euclid::{Box2D, point2};
 use lyon::lyon_tessellation::{
     BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator,
     StrokeVertex, VertexBuffers,
 };
-use lyon::path::builder::BorderRadii;
-use lyon::path::{Path, Winding};
+use lyon::path::Path;
 use renderer_common::CanvasApi;
-use renderer_common::geometry_data::{
-    ExtrudedPolygonData, GeometryData, GeometryType, MeshVertex, PolylineOptions, ShapeData,
-    StyledRangeInfo, SvgData, TextData,
-};
+use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, IconType, MeshVertex, PolylineOptions, ShapeData, StyledRangeInfo, IconShapeData, TextData};
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
@@ -107,7 +102,7 @@ impl GpuCanvasApi {
                 self.extruded_polygon(data);
             }
             GeometryData::Svg(data) => {
-                self.svg(data);
+                self.icon(data);
             }
             GeometryData::Text(data) => {
                 self.text(data);
@@ -317,9 +312,13 @@ impl GpuCanvasApi {
         }
     }
 
-    fn svg(&mut self, data: SvgData) {
+    fn icon(&mut self, data: IconShapeData) {
+        let key_style_id = match &data.icon_data.icon_type {
+            IconType::SvgBinary(style_id, _) => style_id.clone(),
+            IconType::None => data.background.as_ref().map(|bg| bg.style_id.clone()),
+        };
         self.mesh_info_cache
-            .entry((data.icon.0, data.style_id.clone()))
+            .entry((data.icon_data.id, key_style_id))
             .and_modify(|(_, mesh_info)| {
                 mesh_info
                     .instance_positions
@@ -329,44 +328,39 @@ impl GpuCanvasApi {
             })
             .or_insert_with(|| {
                 let mut mesh: VertexBuffers<ShapeVertex, u32> = VertexBuffers::new();
-                let mut mesh_size = data.size;
-                if let Some(svg_background) = data.background {
-                    mesh_size += 2.0 * svg_background.padding;
+                let mesh_size = data.size;
+                if let Some(icon_background) = data.background.as_ref() {
                     let background_style_index =
-                        self.style_store.get_index(&svg_background.style_id);
-
-                    let mut builder = Path::builder();
-                    let half_size = svg_background.padding + data.size / 2.0;
-                    let rect =
-                        Box2D::new(point2(-half_size, -half_size), point2(half_size, half_size));
-                    builder.add_rounded_rectangle(
-                        &rect,
-                        &BorderRadii::new(10.0),
-                        Winding::Positive,
-                    );
-                    let path = builder.build();
-
+                        self.style_store.get_index(&icon_background.style_id);
+                    let path = (icon_background.shape)(&data);
                     Self::tessellate_fill_path(&path, &mut mesh, |vertex| {
+                        let pos_x = vertex.position().x;
+                        let pos_y = vertex.position().y;
                         ShapeVertex::new(
-                            [vertex.position().x, vertex.position().y],
+                            [pos_x, pos_y],
                             [0.0, 0.0],
-                            [0.0, 0.0],
+                            [pos_x / (data.size * 0.5),
+                                pos_y / (data.size * 0.5)],
                             0.0,
                             background_style_index as u8,
                         )
                     });
                 }
 
-                let style_index = data
-                    .style_id
-                    .map(|id| self.style_store.get_index(&id) as u32);
-                svg_parse(
-                    data.icon.1,
-                    &mut mesh,
-                    data.size,
-                    &mut self.style_store,
-                    style_index,
-                );
+                match data.icon_data.icon_type {
+                    IconType::SvgBinary(style_id, binary) => {
+                        let style_index = style_id
+                            .map(|id| self.style_store.get_index(&id) as u32);
+                        svg_parse(
+                            binary,
+                            &mut mesh,
+                            data.size,
+                            &mut self.style_store,
+                            style_index,
+                        );
+                    }
+                    IconType::None => {}
+                }
 
                 (
                     mesh,
@@ -374,7 +368,7 @@ impl GpuCanvasApi {
                         instance_positions: Some(vec![(data.id, data.position)]),
                         size: Some(mesh_size),
                         with_collision: data.with_collision,
-                        instance_key: data.icon.0.to_string(),
+                        instance_key: data.icon_data.id.to_string(),
                         double_style: false,
                     },
                 )

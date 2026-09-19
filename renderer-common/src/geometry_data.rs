@@ -67,7 +67,7 @@ impl Default for PolylineOptions {
 pub enum GeometryData {
     Shape(ShapeData),
     ExtrudedPolygon(ExtrudedPolygonData),
-    Svg(SvgData),
+    Svg(IconShapeData),
     Text(TextData),
 }
 
@@ -88,19 +88,27 @@ pub struct Mesh3d {
     pub mesh_data: VertexBuffers<MeshVertex, u32>,
 }
 
-pub struct SvgBackground {
+pub struct IconBackground {
     pub style_id: StyleId,
-    pub padding: f32,
+    pub shape: Box<dyn Fn(&IconShapeData) -> Path + Send + Sync + 'static>,
 }
 
-pub struct SvgData {
+pub enum IconType {
+    SvgBinary(Option<StyleId>, &'static [u8]),
+    None
+}
+pub struct IconData {
+    pub id: &'static str,
+    pub icon_type: IconType
+}
+
+pub struct IconShapeData {
     pub id: u64,
-    pub icon: (&'static str, &'static [u8]),
+    pub icon_data: IconData,
     pub position: DVec3,
     pub size: f32,
-    pub style_id: Option<StyleId>,
     pub with_collision: bool,
-    pub background: Option<SvgBackground>,
+    pub background: Option<IconBackground>,
 }
 
 pub struct LineData {

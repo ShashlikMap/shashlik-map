@@ -1,13 +1,12 @@
 use geo::{Distance, Euclidean};
 use geo_types::Point;
 use glam::{DVec3, Vec2, Vec3};
-use lyon::geom::point;
+use lyon::geom::{point, Box2D};
+use lyon::geom::euclid::{point2, Size2D};
 use lyon::lyon_tessellation::{LineCap, LineJoin};
-use lyon::path::Path;
+use lyon::path::{Path, Winding};
 use renderer_common::CanvasApi;
-use renderer_common::geometry_data::{
-    GeometryData, GeometryType, PolylineOptions, ShapeData, StyledRangeInfo, SvgData,
-};
+use renderer_common::geometry_data::{GeometryData, GeometryType, IconType, PolylineOptions, ShapeData, StyledRangeInfo, IconBackground, IconShapeData, IconData};
 use renderer_common::render_group::RenderGroup;
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::style_id::StyleId;
@@ -21,7 +20,6 @@ pub struct OverlayShapeGroup {
 }
 
 impl OverlayShapeGroup {
-    pub const SQUARE_SVG: &'static [u8] = include_bytes!("../../svg/just_square.svg");
     pub fn new(
         shape: Vec<Point>,
         feature_layer_tag: String,
@@ -66,21 +64,32 @@ impl<T: CanvasApi> RenderGroup<T> for OverlayShapeGroup {
                 if let Some(vect) = vect {
                     let koef = (dist - (sum_line_dist - vect.length())) / vect.length();
                     let pos = vect * koef;
-
-                    canvas.geometry_data(GeometryData::Svg(SvgData {
+                    let size = 2.5;
+                    canvas.geometry_data(GeometryData::Svg(IconShapeData {
                         id: 0,
-                        // TODO shape instead of SVG
-                        icon: ("shape_dot", Self::SQUARE_SVG),
+                        icon_data: IconData {
+                            id: "shape_dot",
+                            icon_type: IconType::None
+                        },
                         position: Vec3::new(
                             (prev_point.x() - first_shape_point.x()) as f32 + pos.x,
                             (prev_point.y() - first_shape_point.y()) as f32 + pos.y,
                             0.0,
                         )
                         .as_dvec3(),
-                        size: 2.5,
-                        style_id: Some(self.style_id.clone()),
+                        size,
                         with_collision: false,
-                        background: None,
+                        background: Some(IconBackground {
+                            style_id: self.style_id.clone(),
+                            shape: Box::new(move |_| {
+                                let mut path_builder = Path::builder();
+                                let bb = Box2D::from_origin_and_size(
+                                    point2(-size * 0.5, -size * 0.5),
+                                    Size2D::splat(size));
+                                path_builder.add_rectangle(&bb, Winding::Negative);
+                                path_builder.build()
+                            }),
+                        }),
                     }));
                 }
 
