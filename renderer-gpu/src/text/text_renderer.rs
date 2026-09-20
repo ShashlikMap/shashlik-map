@@ -217,7 +217,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                 let length_remainder = total_length - face_text_params.width * 0.5;
 
                 // skip if the text is about to exceed the line and the text already invisible
-                if data.alpha == 0.0 {
+                if !skip_process && data.alpha == 0.0 {
                     skip_process = total_length - face_text_params.width * 0.5 < 0.0;
                     if !skip_process {
                         let mmm = collision_handler.point_within_screen(projected.first().unwrap())
