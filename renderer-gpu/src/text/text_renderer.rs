@@ -191,10 +191,15 @@ impl ColliderTask for TextRendererCollisionHandler {
 
             if data.line_data.positions.len() > 1 {
                 let mut index_of_center_segment = data.line_data.get_center_segment_index();
-
+                let mut skip_process = false;
                 let projected: Vec<_> = data.line_data.positions.iter()
                     .map(|&p| {
-                        let c = view_projection.screen_position(&p);
+                        let (c, side) = view_projection.screen_position(&p);
+                        // fyi, there are no these labels on the globe view yet
+                        // so this is just very simple check to remove it if any of points is hidden
+                        if !side {
+                            skip_process = true;
+                        }
                         Vec2::new(c.x as f32, c.y as f32)
                     })
                     .collect();
@@ -211,7 +216,6 @@ impl ColliderTask for TextRendererCollisionHandler {
                 };
                 let length_remainder = total_length - face_text_params.width * 0.5;
 
-                let mut skip_process = false;
                 // skip if the text is about to exceed the line and the text already invisible
                 if data.alpha == 0.0 {
                     skip_process = total_length - face_text_params.width * 0.5 < 0.0;
@@ -342,8 +346,9 @@ impl ColliderTask for TextRendererCollisionHandler {
                     .positions
                     .get(middle_point_index)
                     .unwrap();
-                let origin = view_projection.screen_position(&initial_position)
-                    + coord! { x: data.screen_offset.x as f64, y: data.screen_offset.y as f64};
+
+                let (origin, side) = view_projection.screen_position(&initial_position);
+                let origin = origin + coord! { x: data.screen_offset.x as f64, y: data.screen_offset.y as f64};
 
                 let origin = origin + coord! { x: (-face_text_params.width/2.0) as f64, y: 0.0 };
 
@@ -355,7 +360,7 @@ impl ColliderTask for TextRendererCollisionHandler {
                 );
 
                 let within_screen = collision_handler.within_screen(section_rect);
-                if data.screen_space || within_screen {
+                if side && (data.screen_space || within_screen) {
                     let mut alpha = data.alpha; //*self.id_to_alpha_map.get(&data.id).unwrap_or(&0.0f32);
                     // calc only for non screen space
                     if !data.screen_space {
