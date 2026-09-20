@@ -225,7 +225,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         let scale_2d_3d = self.transition_2d_3d_helper.update(cam_zoom, Self::TEMP_ANIMATION_SPEED as f32);
 
         let (view, view_proj) = self.camera.build_view_projection_matrix();
-        let (_, globe_view_proj, globe_r) = self.camera.build_globe_view_projection_matrix();
+        let (globe_view, globe_view_proj, globe_r) = self.camera.build_globe_view_projection_matrix();
         let view_light = self.camera.build_view_light_matrix();
 
         let update_data = RendererUpdateData {
@@ -233,6 +233,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             view_light_matrix: view_light,
             proj_matrix: self.camera.perspective_matrix,
             view_proj_matrix: view_proj,
+            globe_view,
             globe_view_proj_matrix: globe_view_proj,
             cs_offset: self.camera.offset,
             scale: self.camera.scale(),

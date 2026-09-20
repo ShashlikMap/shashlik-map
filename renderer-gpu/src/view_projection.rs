@@ -1,10 +1,11 @@
-use std::cmp::min;
 use crate::Renderer;
 use crate::render_config::RenderConfig;
 use crate::{GpuRenderer, RendererUpdateData};
 use geo_types::{Coord, coord};
-use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec4Swizzles};
-use renderer_common::{max_f64, min_f64, GLOBE_SCALE, LIGHT_POS};
+use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec3Swizzles, Vec4Swizzles};
+use renderer_common::{max_f64, min_f64, GLOBE_R, GLOBE_SCALE, LIGHT_POS, MAP_SIZE};
+use std::cmp::min;
+use std::f64::consts::PI;
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
 
 #[rustfmt::skip]
@@ -38,6 +39,7 @@ pub(crate) struct ViewProjection {
     pub scale_2d_3d: f32,
     cs_offset: DVec3,
     pub screen_size: (f64, f64),
+    globe_view: DMat4,
     inv_view_proj_matrix: DMat4,
     pub uniform_buffer: Buffer,
     ortho: DMat4,
@@ -50,6 +52,9 @@ impl ViewProjection {
     const MAX_MESH_HEIGHT: f64 = 40.0;
 
     const ORTHO_STEP: f64 = 5.0;
+
+    // don't use 0.0 or close to that to reduce amount of points on the globe edge
+    const GLOBE_HIDDEN_SIZE_THRESHOLD: f64 = 150000.0;
 
     pub fn new(device: &Device, render_config: &RenderConfig) -> Self {
         // ViewProjection align is 16byte since vec4 is used
@@ -86,6 +91,7 @@ impl ViewProjection {
             scale_2d_3d: 0.0,
             screen_size: (0.0, 0.0),
             cs_offset: DVec3::new(0.0, 0.0, 0.0),
+            globe_view: DMat4::IDENTITY,
             inv_view_proj_matrix: DMat4::IDENTITY,
             uniform_buffer,
             ortho,
@@ -121,6 +127,8 @@ impl ViewProjection {
         self.uniform.view_proj = view_proj
             .as_mat4()
             .to_cols_array_2d();
+
+        self.globe_view = data.globe_view;
         self.uniform.globe_view_proj = globe_view_proj
             .as_mat4()
             .to_cols_array_2d();
@@ -206,17 +214,42 @@ impl ViewProjection {
         p2_scale as f32
     }
 
-    pub fn screen_position(&self, world_position: &DVec3) -> Coord<f64> {
-        let matrix: Mat4 = Mat4::from_cols_array_2d(&self.uniform.view_proj);
-        let world_position = world_position - self.cs_offset;
-        let pos = matrix.as_dmat4() * DVec4::new(world_position.x, world_position.y, 0.0, 1.0);
+    fn transform_to_globe_position(position: DVec2) -> DVec3 {
+        let merc = position / MAP_SIZE;
+        let lat = 2.0 * (PI * (1.0 - 2.0 * merc.y)).exp().atan() - PI * 0.5;
+        let lon = 2.0 * PI * (merc.x - 0.5);
+        DVec3::new(lat.cos() * lon.sin(), lat.cos() * lon.cos(), lat.sin())
+    }
+
+    /// Coordinate on the screen + visibility on the globe.
+    /// For flat screen it's always true
+    pub fn screen_position(&self, world_position: &DVec3) -> (Coord<f64>, bool) {
+        let matrix: Mat4 = if self.is_globe_view() {
+            Mat4::from_cols_array_2d(&self.uniform.globe_view_proj)
+        } else {
+            Mat4::from_cols_array_2d(&self.uniform.view_proj)
+        };
+        let world_position = world_position - self.get_cs_offset();
+        let mut visible_on_globe = true;
+        let world_position = if self.is_globe_view() {
+            let ret = Self::transform_to_globe_position(world_position.xy()) * GLOBE_R;
+            let relative_to_target = self.globe_view.transform_vector3(ret);
+            if relative_to_target.z <= Self::GLOBE_HIDDEN_SIZE_THRESHOLD {
+                visible_on_globe = false
+            }
+            ret.extend(1.0)
+        } else {
+            DVec4::new(world_position.x, world_position.y, 0.0, 1.0)
+        };
+
+        let pos = matrix.as_dmat4() * world_position;
         let clip_pos_x = pos.x / pos.w;
         let clip_pos_y = pos.y / pos.w;
 
-        coord! {
+        (coord! {
             x: self.screen_size.0 * (clip_pos_x + 1.0) / 2.0,
-            y: self.screen_size.1 - (self.screen_size.1 * (clip_pos_y + 1.0) / 2.0)
-        }
+            y: self.screen_size.1 - (self.screen_size.1 * (clip_pos_y + 1.0) / 2.0),
+        }, visible_on_globe)
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
