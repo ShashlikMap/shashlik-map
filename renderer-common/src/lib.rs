@@ -93,7 +93,7 @@ pub trait Renderer {
     fn clip_to_world_at_ground(
         clip_coords: &DVec2,
         inverted_view_proj: &DMat4,
-    ) -> Option<DVec2> {
+    ) -> Option<DVec3> {
         let near_world = Self::clip_to_world_internal(
             &clip_coords.extend(0.0),
             inverted_view_proj,
@@ -112,7 +112,7 @@ pub trait Renderer {
             u = 1.0 - u;
         }
         let result = near_world + u * (far_world - near_world);
-        Some(result.truncate())
+        Some(result)
     }
 
     fn clip_to_world_internal(

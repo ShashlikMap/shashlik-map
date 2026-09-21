@@ -41,6 +41,7 @@ pub(crate) struct ViewProjection {
     pub screen_size: (f64, f64),
     globe_view: DMat4,
     inv_view_proj_matrix: DMat4,
+    inv_globe_view_proj_matrix: DMat4,
     pub uniform_buffer: Buffer,
     ortho: DMat4,
     is_shadow_enabled: bool,
@@ -93,6 +94,7 @@ impl ViewProjection {
             cs_offset: DVec3::new(0.0, 0.0, 0.0),
             globe_view: DMat4::IDENTITY,
             inv_view_proj_matrix: DMat4::IDENTITY,
+            inv_globe_view_proj_matrix: DMat4::IDENTITY,
             uniform_buffer,
             ortho,
             is_shadow_enabled: render_config.shadow_enabled,
@@ -132,6 +134,7 @@ impl ViewProjection {
         self.uniform.globe_view_proj = globe_view_proj
             .as_mat4()
             .to_cols_array_2d();
+        self.inv_globe_view_proj_matrix = globe_view_proj.inverse();
 
         let view_proj_inv = view_proj.inverse();
         self.uniform.view_proj_inv = (view_proj_inv * FLIP_Y)
@@ -266,11 +269,27 @@ impl ViewProjection {
     }
 
     pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<DVec2> {
+        let inv_view_proj_matrix = if self.is_globe_view() {
+            &self.inv_globe_view_proj_matrix
+        } else {
+            &self.inv_view_proj_matrix
+        };
         <GpuRenderer as Renderer>::clip_to_world_at_ground(
             &DVec2::new(coord.x, coord.y),
-            &self.inv_view_proj_matrix,
+            inv_view_proj_matrix,
         ).map(|coord| {
-            coord + self.cs_offset.truncate()
+            if self.is_globe_view() {
+                // basically, it's opposite of transform_to_globe_position
+                // It's needed because this conversion happens in shaders
+                let n = coord.normalize();
+                let lat = n.z.asin();
+                let lon = n.x.atan2(n.y);
+                let merc_x = (lon / (2.0 * PI)) + 0.5;
+                let merc_y = 0.5 - (((lat + PI * 0.5) * 0.5).tan().ln() / (2.0 * PI));
+                DVec2::new(merc_x, merc_y) * MAP_SIZE
+            } else {
+                coord.truncate() + self.get_cs_offset().truncate()
+            }
         })
     }
 
