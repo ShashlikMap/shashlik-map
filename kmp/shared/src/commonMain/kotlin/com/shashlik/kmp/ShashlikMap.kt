@@ -29,14 +29,16 @@ expect val isDebugBuild: Boolean
 fun ShashlikMap(
     state: LocationState = rememberLocationState(),
     withPuck: Boolean = true,
+    followModeEnabled: Boolean = true,
     withAutoLocationEvent: Boolean = true,
     mvtTiles: Boolean = false,
     content: @Composable () -> Unit = {}
 ) {
-    LaunchedEffect(mvtTiles, withPuck) {
+    LaunchedEffect(mvtTiles, withPuck, followModeEnabled) {
         awaitApi().run {
             puckConfig(withPuck)
             setMvtTileset(mvtTiles)
+            setCamFollowMode(followModeEnabled)
         }
     }
 
