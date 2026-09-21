@@ -87,8 +87,7 @@ fun ShashlikShape(
     DisposableEffect(points, type, color) {
         var shapeId: String? = null
 
-        // Main.immediate will add shape before than the previous is removed
-        val job = CoroutineScope(Dispatchers.Main.immediate).launch {
+        val job = CoroutineScope(Dispatchers.Main).launch {
             val api = awaitApi()
             shapeId = api.addOverlayShape(points, type, color)
         }
