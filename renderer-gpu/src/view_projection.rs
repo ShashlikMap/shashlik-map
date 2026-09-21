@@ -277,6 +277,7 @@ impl ViewProjection {
                 // basically, it's opposite of transform_to_globe_position
                 // It's needed because this conversion happens in shaders
                 let n = coord.normalize();
+                // TODO Potentially we need to clamp it
                 let lat = n.z.asin();
                 let lon = n.x.atan2(n.y);
                 let merc_x = (lon / (2.0 * PI)) + 0.5;
