@@ -162,8 +162,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
 
                     if is_visible {
                         // subdivision is required for globe
-                        // TODO small polygons can be opted out
-                        let polygons = Self::subdivide_to_grid(zoom_level, &poly, (12 - zoom_level) as u32);
+                        let polygons = Self::subdivide_to_grid(zoom_level, poly, (13 - zoom_level) as u32);
                         if polygons.is_none() {
                             error!("No polygons after subdivision")
                         }
@@ -206,9 +205,9 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         tile_data
     }
 
-    fn subdivide_to_grid(zoom: i32, polygon: &Polygon<f32>, grid_size: u32) -> Option<Vec<Polygon<f32>>> {
-        if zoom > 6 {
-            return Some(vec![polygon.clone()]);
+    fn subdivide_to_grid(zoom: i32, polygon: Polygon<f32>, grid_size: u32) -> Option<Vec<Polygon<f32>>> {
+        if zoom >= 4 || polygon.unsigned_area() < 9999999999.0 {
+            return Some(vec![polygon]);
         }
 
         let rect = polygon.bounding_rect()?; // None only if polygon is empty

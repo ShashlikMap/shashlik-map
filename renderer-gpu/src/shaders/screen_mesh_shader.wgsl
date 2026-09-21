@@ -97,16 +97,22 @@ fn fs_main_globe(in: VertexOutput) -> @location(0) vec4<f32> {
 @fragment
 fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
     let ndc = in.uv * 2.0 - 1.0;
-    let r = vec2f(camera.globe_r * abs(camera.proj[0][0]), camera.globe_r * abs(camera.proj[1][1])) * 0.995;
+    let r = vec2f(camera.globe_r * abs(camera.proj[0][0]), camera.globe_r * abs(camera.proj[1][1]));
     let d = length(ndc / r);
-    if(d <= 1.0) {
+    if(d <= 0.9) {
         discard;
     }
-    let glow = abs(1.0 - smoothstep(1.0, 1.14, d));
-    if(glow <= 0.0) {
-        discard;
+    let glow_color = vec4f(0.35, 0.60, 1.00, 1.0);
+    if d <= 1.0 {
+        let white = vec4f(1.0, 1.0, 1.0, 1.0);
+        let factor = (d - 0.9) / 0.1;
+        let final_factor = factor * factor;
+        let blendedColor = mix(white, glow_color, final_factor);
+        return vec4f(blendedColor.rgb, final_factor);
     }
-    return vec4f(vec3f(0.35, 0.60, 1.00), 0.85 * glow);
+
+    let glow = abs(1.0 - smoothstep(1.0, 1.15, d));
+    return vec4f(glow_color.rgb, 0.85 * glow);
 }
 
 const tex_border_x: f32 = 0.01;
