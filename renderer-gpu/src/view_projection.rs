@@ -269,16 +269,11 @@ impl ViewProjection {
     }
 
     pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<DVec2> {
-        let inv_view_proj_matrix = if self.is_globe_view() {
-            &self.inv_globe_view_proj_matrix
-        } else {
-            &self.inv_view_proj_matrix
-        };
-        <GpuRenderer as Renderer>::clip_to_world_at_ground(
-            &DVec2::new(coord.x, coord.y),
-            inv_view_proj_matrix,
-        ).map(|coord| {
-            if self.is_globe_view() {
+        if self.is_globe_view() {
+            <GpuRenderer as Renderer>::clip_to_world_at_globe(
+                &DVec2::new(coord.x, coord.y),
+                &self.inv_globe_view_proj_matrix,
+            ).map(|coord| {
                 // basically, it's opposite of transform_to_globe_position
                 // It's needed because this conversion happens in shaders
                 let n = coord.normalize();
@@ -287,10 +282,18 @@ impl ViewProjection {
                 let merc_x = (lon / (2.0 * PI)) + 0.5;
                 let merc_y = 0.5 - (((lat + PI * 0.5) * 0.5).tan().ln() / (2.0 * PI));
                 DVec2::new(merc_x, merc_y) * MAP_SIZE
-            } else {
-                coord.truncate() + self.get_cs_offset().truncate()
-            }
-        })
+            }).or_else(|| {
+                // if now result then the ray misses planet, return the closest result to map
+                Some(MAP_SIZE * (DVec2::new(coord.x, coord.y) + 1.0) * 0.5)
+            })
+        } else {
+            <GpuRenderer as Renderer>::clip_to_world_at_ground(
+                &DVec2::new(coord.x, coord.y),
+                &self.inv_view_proj_matrix,
+            ).map(|coord| {
+                coord.truncate() + self.cs_offset.truncate()
+            })
+        }
     }
 
     pub fn is_shadow_mapping_enabled(&self) -> bool {

@@ -94,14 +94,12 @@ pub trait Renderer {
         clip_coords: &DVec2,
         inverted_view_proj: &DMat4,
     ) -> Option<DVec3> {
-        let near_world = Self::clip_to_world_internal(
-            &clip_coords.extend(0.0),
-            inverted_view_proj,
+        let near_world = Self::clip_to_world_internal(&clip_coords.extend(0.0),
+                                                      inverted_view_proj,
         );
 
-        let far_world = Self::clip_to_world_internal(
-            &clip_coords.extend(1.0),
-            inverted_view_proj,
+        let far_world = Self::clip_to_world_internal(&clip_coords.extend(1.0),
+                                                     inverted_view_proj,
         );
 
         let mut u = -near_world.z / (far_world.z - near_world.z);
@@ -112,6 +110,35 @@ pub trait Renderer {
             u = 1.0 - u;
         }
         let result = near_world + u * (far_world - near_world);
+        Some(result)
+    }
+
+    fn clip_to_world_at_globe(
+        clip_coords: &DVec2,
+        inverted_view_proj: &DMat4,
+    ) -> Option<DVec3> {
+        let near_world = Self::clip_to_world_internal(&clip_coords.extend(0.0),
+                                                      inverted_view_proj);
+        let far_world = Self::clip_to_world_internal(&clip_coords.extend(1.0),
+                                                     inverted_view_proj);
+
+        let ray_origin = near_world;
+        let ray_dir = (far_world - near_world).normalize();
+
+        let b = 2.0 * ray_origin.dot(ray_dir);
+        let c = ray_origin.dot(ray_origin) - (GLOBE_R * GLOBE_R);
+        let dmnt = b * b - 4.0 * c;
+
+        if dmnt < 0.0 {
+            return None;
+        }
+
+        let t0 = (-b - dmnt.sqrt()) / 2.0;
+        let t1 = (-b + dmnt.sqrt()) / 2.0;
+
+        let u = if t0 >= 0.0 { t0 } else if t1 >= 0.0 { t1 } else { return None; };
+
+        let result = ray_origin + u * ray_dir;
         Some(result)
     }
 
