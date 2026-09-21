@@ -24,6 +24,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -149,8 +150,9 @@ fun App() {
             }
         ) {
             var mvtCheckedState by remember { mutableStateOf(true) }
-            val shapes = remember { mutableStateListOf<Triple<List<Point>, ShapeType, Color>>() }
-            ShashlikMap(withAutoLocationEvent = true, mvtTiles = mvtCheckedState) {
+            var camFollowModeState by remember { mutableStateOf(true) }
+            val shapes = remember { mutableStateListOf(generateRandomShapeAroundTokyo()) }
+            ShashlikMap(withAutoLocationEvent = true, withPuck=true, followModeEnabled = camFollowModeState, mvtTiles = mvtCheckedState) {
                 shapes.forEach { shape ->
                     when (val shapeType = shape.second) {
                         is ShapeType.Line -> {
@@ -185,11 +187,9 @@ fun App() {
                 Spacer(modifier = Modifier.width(8.dp))
                 Column(verticalArrangement = Arrangement.Center) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        var checkedState by remember { mutableStateOf(true) }
                         Checkbox(
-                            checkedState, onCheckedChange = {
-                                ShashlikMapApiHolder.shashlikMapApi?.setCamFollowMode(it)
-                                checkedState = it
+                            camFollowModeState, onCheckedChange = {
+                                camFollowModeState = it
                             })
                         Text("Camera Mode")
 

@@ -8,7 +8,6 @@ import kotlinx.coroutines.launch
 import uniffi.ffi_run.Color
 import uniffi.ffi_run.Point
 import uniffi.ffi_run.ShapeType
-import kotlin.coroutines.EmptyCoroutineContext.get
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin

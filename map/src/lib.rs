@@ -292,16 +292,17 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
     }
 
     fn update_camera_for_overlay(&mut self, polygon: &Polygon) {
-        if !self.cam_follow_mode && let (Some(overlay_bbox), Some(polygon_bbox))  = (self.overlay.bbox(), polygon.bounding_rect()) {
+        if !self.cam_follow_mode
+            && let (Some(overlay_bbox), Some(polygon_bbox)) = (self.overlay.bbox(), polygon.bounding_rect()) {
             let overlay_center = overlay_bbox.centroid();
             let scale_x = overlay_bbox.width() / polygon_bbox.width();
             let scale_y = overlay_bbox.height() / polygon_bbox.height();
             let scale = scale_x.max(scale_y);
+
             let new_zoom_lock = self.camera_controller.forward_len * scale;
 
             self.set_cam_follow_zoom_lock(Some(new_zoom_lock));
             self.camera_world_position = DVec3::new(overlay_center.x(), overlay_center.y(), 0.0);
-
         }
     }
 
@@ -371,9 +372,17 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
             if let Some(zoom_lock) = self.cam_follow_zoom_lock {
                 let current_dist = self.camera_controller.forward_len - zoom_lock;
-                if current_dist.abs() > 0.0 {
-                    let delta = 1.0 / (1.0 - (current_dist * 0.005 * Self::TEMP_ANIMATION_SPEED).min(0.05));
-                    self.camera_controller.zoom_delta = delta;
+                let current_dist_abs = current_dist.abs();
+                if current_dist_abs > 0.0 {
+                    let delta = self.camera_controller.forward_len.max(zoom_lock) / self.camera_controller.forward_len.min(zoom_lock);
+                    let delta = (delta * Self::TEMP_ANIMATION_SPEED).min(0.05);
+                    let zoom_delta = 1.0 + delta * current_dist.signum();
+                    let actual_dist = (self.camera.eye_direction().length() * (1.0 / zoom_delta) - self.camera_controller.forward_len).abs();
+                    if actual_dist <= current_dist_abs {
+                        self.camera_controller.zoom_delta = zoom_delta;
+                    } else {
+                        self.camera_controller.zoom_delta = 1.0 + delta * current_dist.signum() * (current_dist_abs / actual_dist);
+                    }
                 }
             }
         }
