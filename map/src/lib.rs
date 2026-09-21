@@ -30,7 +30,7 @@ use std::time::{Duration, Instant};
 use fast_mvt::serde_json;
 use geo::{BoundingRect, Centroid};
 use log::error;
-use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData};
+use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData, MAP_SIZE};
 use crate::overlay::overlay::Overlay;
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
@@ -399,7 +399,9 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         self.reset_last_interaction();
         let ax = (delta_x / self.screen_params.width as f32) as f64;
         let ay = (delta_y / self.screen_params.height as f32) as f64;
-        self.camera_controller.pan_delta = DVec2::new(self.world_width_on_screen * ax, self.world_height_on_screen * ay);
+        // TODO Need to have a better approach, panning speed isn't very correct for a globe view
+        self.camera_controller.pan_delta = DVec2::new(self.world_width_on_screen.min(MAP_SIZE * 0.5) * ax,
+                                                      self.world_height_on_screen.min(MAP_SIZE * 0.25) * ay);
     }
 
     pub fn pitch_delta(&mut self, delta: f32) {
