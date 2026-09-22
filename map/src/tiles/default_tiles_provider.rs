@@ -171,7 +171,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                     if is_visible {
                         // subdivision is required for globe
                         let t1 = Instant::now();
-                        let polygons = Self::subdivide_to_grid(zoom_level, poly, (7 - zoom_level) as u32);
+                        let polygons = Self::subdivide_to_grid(zoom_level, poly, (20 - zoom_level).max(0) as u32);
                         qq += t1.elapsed().as_micros() as usize;
                         if polygons.is_none() {
                             error!("No polygons after subdivision")
@@ -222,35 +222,98 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         }
 
         let mut ttt = vec![];
-        subdivide(polygon, 4096.0, grid_size, &mut ttt);
-        println!("zoom: {}, grid_size = {}, l ={}", zoom, grid_size, ttt.len());
+        subdivide_grid(polygon, grid_size, &mut ttt);
 
-
-        // let rect = polygon.bounding_rect()?; // None only if polygon is empty
-        // let (min, max) = (rect.min(), rect.max());
-        // let cell_w = (max.x - min.x) / grid_size as f32;
-        // let cell_h = (max.y - min.y) / grid_size as f32;
-        //
-        // let mut cells = Vec::new();
-        // for row in 0..grid_size {
-        //     for col in 0..grid_size {
-        //         let x0 = min.x + col as f32 * cell_w;
-        //         let y0 = min.y + row as f32 * cell_h;
-        //         let cell_rect = Polygon::new(
-        //             LineString::from(vec![
-        //                 (x0, y0), (x0 + cell_w, y0), (x0 + cell_w, y0 + cell_h), (x0, y0 + cell_h),
-        //             ]),
-        //             vec![],
-        //         );
-        //         cells.extend(polygon.intersection(&cell_rect));
-        //     }
-        // }
         Some(ttt)
     }
 }
 
-/// Clip an open ring (no repeated last point) against a single axis-aligned
-/// half-plane. axis: 0 = x, 1 = y.
+pub fn subdivide_grid(poly: Polygon<f32>, level: u32, out: &mut Vec<Polygon<f32>>) {
+    if level <= 1 {
+        out.push(poly);
+        return;
+    }
+
+    let r = match poly.bounding_rect() {
+        Some(r) => r,
+        None => return,
+    };
+    let (min, max) = (r.min(), r.max());
+    let cw = (max.x - min.x) / level as f32;
+    let ch = (max.y - min.y) / level as f32;
+    if !(cw > 0.0) || !(ch > 0.0) {
+        out.push(poly);
+        return;
+    }
+
+    let mut buf = Vec::new();
+
+    let mut cols: Vec<Polygon<f32>> = Vec::with_capacity(level as usize);
+    let mut rest = Some(poly);
+    for i in 1..level {
+        let cur = match rest.take() {
+            Some(c) => c,
+            None => break,
+        };
+        let k = min.x + i as f32 * cw;
+        if let Some(lo) = clip_poly(&cur, 0, k, Side::Low, &mut buf) {
+            cols.push(lo);
+        }
+        rest = clip_poly(&cur, 0, k, Side::High, &mut buf);
+    }
+    if let Some(last) = rest {
+        cols.push(last);
+    }
+
+    for col in cols {
+        let mut rest = Some(col);
+        for j in 1..level {
+            let cur = match rest.take() {
+                Some(c) => c,
+                None => break,
+            };
+            let k = min.y + j as f32 * ch;
+            if let Some(lo) = clip_poly(&cur, 1, k, Side::Low, &mut buf) {
+                out.push(lo);
+            }
+            rest = clip_poly(&cur, 1, k, Side::High, &mut buf);
+        }
+        if let Some(last) = rest {
+            out.push(last);
+        }
+    }
+}
+
+fn clip_poly(
+    poly: &Polygon<f32>,
+    axis: u8,
+    k: f32,
+    side: Side,
+    buf: &mut Vec<Coord<f32>>,
+) -> Option<Polygon<f32>> {
+    let src = open_ring(poly.exterior());
+    clip_ring(&src, axis, k, side, buf);
+    if buf.len() < 3 {
+        return None;
+    }
+
+    let mut exterior = buf.clone();
+    exterior.push(exterior[0]);
+
+    let mut holes = Vec::new();
+    for h in poly.interiors() {
+        let src = open_ring(h);
+        clip_ring(&src, axis, k, side, buf);
+        if buf.len() >= 3 {
+            let mut ring = buf.clone();
+            ring.push(ring[0]);
+            holes.push(LineString::from(ring));
+        }
+    }
+
+    Some(Polygon::new(LineString::from(exterior), holes))
+}
+
 fn clip_ring(
     ring: &[Coord<f32>],
     axis: u8,
@@ -286,12 +349,11 @@ fn clip_ring(
         }
         if ai != bi {
             let (ca, cb) = (c(&a), c(&b));
-            let t = (k - ca) / (cb - ca); // safe: sides differ, so ca != cb
+            let t = (k - ca) / (cb - ca);
             let mut p = Coord {
                 x: a.x + (b.x - a.x) * t,
                 y: a.y + (b.y - a.y) * t,
             };
-            // snap the cut axis exactly onto the grid line
             if axis == 0 {
                 p.x = k
             } else {
@@ -301,7 +363,6 @@ fn clip_ring(
         }
     }
 
-    // drop wrap-around duplicate
     if out.len() > 1 && out[0] == *out.last().unwrap() {
         out.pop();
     }
@@ -313,136 +374,6 @@ fn open_ring(ls: &LineString<f32>) -> Vec<Coord<f32>> {
         v.pop();
     }
     v
-}
-
-/// Shoelace, accumulated in f64 to survive large tile coordinates.
-fn abs_area(ring: &[Coord<f32>]) -> f64 {
-    let n = ring.len();
-    if n < 3 {
-        return 0.0;
-    }
-    let mut s = 0.0f64;
-    for i in 0..n {
-        let a = ring[i];
-        let b = ring[(i + 1) % n];
-        s += a.x as f64 * b.y as f64 - b.x as f64 * a.y as f64;
-    }
-    (s * 0.5).abs()
-}
-
-fn clip_quadrant(
-    poly: &Polygon<f32>,
-    mid_x: f32,
-    x_side: Side,
-    mid_y: f32,
-    y_side: Side,
-    area_eps: f64,
-    tmp: &mut Vec<Coord<f32>>,
-    acc: &mut Vec<Coord<f32>>,
-) -> Option<Polygon<f32>> {
-    let ext = open_ring(poly.exterior());
-    clip_ring(&ext, 0, mid_x, x_side, tmp);
-    clip_ring(tmp, 1, mid_y, y_side, acc);
-
-    let outer_area = abs_area(acc);
-    if acc.len() < 3 || outer_area <= area_eps {
-        return None;
-    }
-
-    let mut exterior = acc.clone();
-    exterior.push(exterior[0]); // geo wants closed rings
-
-    let mut holes = Vec::new();
-    let mut hole_area = 0.0f64;
-    for h in poly.interiors() {
-        let ring = open_ring(h);
-        clip_ring(&ring, 0, mid_x, x_side, tmp);
-        clip_ring(tmp, 1, mid_y, y_side, acc);
-
-        let a = abs_area(acc);
-        if acc.len() >= 3 && a > area_eps {
-            hole_area += a;
-            let mut hole = acc.clone();
-            hole.push(hole[0]);
-            holes.push(LineString::from(hole));
-        }
-    }
-
-    // quadrant sits entirely inside a hole -> nothing to draw
-    if hole_area >= outer_area - area_eps {
-        return None;
-    }
-
-    Some(Polygon::new(LineString::from(exterior), holes))
-}
-
-/// Split a polygon into the four quadrants defined by the lines
-/// x = mid_x and y = mid_y. Empty and degenerate pieces are dropped.
-pub fn split_2x2(
-    poly: &Polygon<f32>,
-    mid_x: f32,
-    mid_y: f32,
-    area_eps: f64,
-) -> Vec<Polygon<f32>> {
-    // cheap reject: polygon doesn't straddle either cut
-    if let Some(r) = poly.bounding_rect() {
-        let spans_x = r.min().x < mid_x && r.max().x > mid_x;
-        let spans_y = r.min().y < mid_y && r.max().y > mid_y;
-        if !spans_x && !spans_y {
-            return vec![poly.clone()];
-        }
-    } else {
-        return Vec::new();
-    }
-
-    let mut tmp = Vec::new();
-    let mut acc = Vec::new();
-    let mut out = Vec::with_capacity(4);
-
-    for (xs, ys) in [
-        (Side::Low, Side::Low),
-        (Side::High, Side::Low),
-        (Side::Low, Side::High),
-        (Side::High, Side::High),
-    ] {
-        if let Some(p) =
-            clip_quadrant(poly, mid_x, xs, mid_y, ys, area_eps, &mut tmp, &mut acc)
-        {
-            out.push(p);
-        }
-    }
-    out
-}
-
-// -----------------------------------------------------------------------------
-// Recursive driver
-// -----------------------------------------------------------------------------
-
-/// Build a 2^depth x 2^depth grid. `cell` is the finest cell size; cuts are
-/// anchored to multiples of it so all polygons in a tile split consistently.
-pub fn subdivide(
-    poly: Polygon<f32>,
-    extent: f32,
-    depth: u32,
-    out: &mut Vec<Polygon<f32>>,
-) {
-    if depth == 0 {
-        out.push(poly);
-        return;
-    }
-    let cell = extent / ((1u32 << (depth - 1)) as f32);
-
-    let step = cell * (1u32 << (depth - 1)) as f32;
-    let r = match poly.bounding_rect() {
-        Some(r) => r,
-        None => return,
-    };
-    let mid_x = ((r.min().x / step).floor() + 1.0) * step;
-    let mid_y = ((r.min().y / step).floor() + 1.0) * step;
-
-    for part in split_2x2(&poly, mid_x, mid_y, 0f64) {
-        subdivide(part, cell, depth - 1, out);
-    }
 }
 
 impl<FP: FeatureProcessor + 'static> MercatorProvider for DefaultTilesProvider<FP> {
