@@ -127,7 +127,6 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         }
 
         let mut geometry_data: Vec<GeometryData> = vec![];
-        let mut qq = 0;
         geom.into_iter()
             .for_each(|(obj_type, geometry)| match geometry {
                 MapGeometry::Coord(coord) => {
@@ -169,9 +168,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
 
                     if is_visible {
                         // subdivision is required for globe
-                        let t1 = Instant::now();
                         let polygons = Self::subdivide_to_grid(zoom_level, poly, (Self::MAX_SUBDIVISION_LEVEL - zoom_level).max(0) as u32);
-                        qq += t1.elapsed().as_micros() as usize;
 
                         for poly in polygons {
                             let (mut line, interiors) = poly.into_inner();
@@ -201,7 +198,6 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                 }
             });
 
-        println!("tile: {:?}, qq ={:?}",tile_key, qq as f64 / 1000.0);
         let tile_data = TileData {
             key: tile_key.as_string_key(),
             position: tile_position,
