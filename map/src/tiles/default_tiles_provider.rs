@@ -2,7 +2,7 @@ use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesMessage, TilesProvider, TilesProviderStore};
 use futures::{Stream};
 use futures::channel::mpsc::{UnboundedSender, unbounded};
-use geo::{Area, BooleanOps, BoundingRect, Convert, Densify, DensifyHaversine, Haversine};
+use geo::{Area, BoundingRect, Convert };
 use geo::Winding;
 use geo_types::{coord, Coord, LineString, Rect, Polygon};
 use log::error;
@@ -16,7 +16,6 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 use std::time::{Instant, SystemTime};
-use geo::line_measures::Densifiable;
 use googleprojection::Mercator;
 use osm::map::NatureKind::Water;
 use osm::source::reqwest_source::ReqwestSource;
@@ -173,10 +172,8 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                         let t1 = Instant::now();
                         let polygons = Self::subdivide_to_grid(zoom_level, poly, (20 - zoom_level).max(0) as u32);
                         qq += t1.elapsed().as_micros() as usize;
-                        if polygons.is_none() {
-                            error!("No polygons after subdivision")
-                        }
-                        for poly in polygons.unwrap_or_default() {
+
+                        for poly in polygons {
                             let (mut line, interiors) = poly.into_inner();
                             let interiors = if is_water {
                                 interiors
@@ -216,72 +213,59 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         tile_data
     }
 
-    fn subdivide_to_grid(zoom: i32, polygon: Polygon<f32>, grid_size: u32) -> Option<Vec<Polygon<f32>>> {
+    fn subdivide_to_grid(zoom: i32, polygon: Polygon<f32>, grid_size: u32) -> Vec<Polygon<f32>> {
         if zoom >= 4 {
-            return Some(vec![polygon]);
+            return vec![polygon];
         }
 
-        let mut ttt = vec![];
-        subdivide_grid(polygon, grid_size, &mut ttt);
-
-        Some(ttt)
+        subdivide_grid(polygon, grid_size)
     }
 }
 
-pub fn subdivide_grid(poly: Polygon<f32>, level: u32, out: &mut Vec<Polygon<f32>>) {
+pub fn subdivide_grid(poly: Polygon<f32>, level: u32) -> Vec<Polygon<f32>> {
+    let mut out = vec![];
     if level <= 1 {
         out.push(poly);
-        return;
+        return out;
     }
 
-    let r = match poly.bounding_rect() {
+    let bbox = match poly.bounding_rect() {
         Some(r) => r,
-        None => return,
+        None => return out,
     };
-    let (min, max) = (r.min(), r.max());
+    let (min, max) = (bbox.min(), bbox.max());
     let cw = (max.x - min.x) / level as f32;
     let ch = (max.y - min.y) / level as f32;
     if !(cw > 0.0) || !(ch > 0.0) {
         out.push(poly);
-        return;
+        return out;
     }
 
-    let mut buf = Vec::new();
-
-    let mut cols: Vec<Polygon<f32>> = Vec::with_capacity(level as usize);
-    let mut rest = Some(poly);
-    for i in 1..level {
-        let cur = match rest.take() {
-            Some(c) => c,
-            None => break,
-        };
-        let k = min.x + i as f32 * cw;
-        if let Some(lo) = clip_poly(&cur, 0, k, Side::Low, &mut buf) {
-            cols.push(lo);
-        }
-        rest = clip_poly(&cur, 0, k, Side::High, &mut buf);
-    }
-    if let Some(last) = rest {
-        cols.push(last);
-    }
-
-    for col in cols {
-        let mut rest = Some(col);
-        for j in 1..level {
+    let cutter = |axis: u8, origin: f32, size: f32, poly: Polygon<f32>| -> Vec<Polygon<f32>> {
+        let mut out = vec![];
+        let mut rest = Some(poly);
+        for i in 1..level {
             let cur = match rest.take() {
                 Some(c) => c,
                 None => break,
             };
-            let k = min.y + j as f32 * ch;
-            if let Some(lo) = clip_poly(&cur, 1, k, Side::Low, &mut buf) {
+            let k = origin + i as f32 * size;
+            if let Some(lo) = clip_poly(&cur, axis, k, Side::Low) {
                 out.push(lo);
             }
-            rest = clip_poly(&cur, 1, k, Side::High, &mut buf);
+            rest = clip_poly(&cur, axis, k, Side::High);
         }
         if let Some(last) = rest {
             out.push(last);
         }
+        out
+    };
+
+    let cols = cutter(0, min.x, cw, poly);
+    for col_poly in cols {
+        out.extend(cutter(1, min.y, ch, col_poly));
     }
+    out
 }
 
 fn clip_poly(
@@ -289,25 +273,15 @@ fn clip_poly(
     axis: u8,
     k: f32,
     side: Side,
-    buf: &mut Vec<Coord<f32>>,
 ) -> Option<Polygon<f32>> {
     let src = open_ring(poly.exterior());
-    clip_ring(&src, axis, k, side, buf);
-    if buf.len() < 3 {
-        return None;
-    }
-
-    let mut exterior = buf.clone();
-    exterior.push(exterior[0]);
+    let exterior = clip_ring(&src, axis, k, side)?;
 
     let mut holes = Vec::new();
-    for h in poly.interiors() {
-        let src = open_ring(h);
-        clip_ring(&src, axis, k, side, buf);
-        if buf.len() >= 3 {
-            let mut ring = buf.clone();
-            ring.push(ring[0]);
-            holes.push(LineString::from(ring));
+    for ring in poly.interiors() {
+        let src = open_ring(ring);
+        if let Some(hole) = clip_ring(&src, axis, k, side) {
+            holes.push(LineString::from(hole));
         }
     }
 
@@ -319,11 +293,10 @@ fn clip_ring(
     axis: u8,
     k: f32,
     side: Side,
-    out: &mut Vec<Coord<f32>>,
-) {
-    out.clear();
+) -> Option<Vec<Coord<f32>>> {
+    let mut out = vec![];
     if ring.len() < 3 {
-        return;
+        return None;
     }
 
     let c = |p: &Coord<f32>| if axis == 0 { p.x } else { p.y };
@@ -345,7 +318,7 @@ fn clip_ring(
         let (ai, bi) = (inside(&a), inside(&b));
 
         if ai {
-            push(out, a);
+            push(&mut out, a);
         }
         if ai != bi {
             let (ca, cb) = (c(&a), c(&b));
@@ -359,13 +332,14 @@ fn clip_ring(
             } else {
                 p.y = k
             }
-            push(out, p);
+            push(&mut out, p);
         }
     }
 
     if out.len() > 1 && out[0] == *out.last().unwrap() {
         out.pop();
     }
+    Some(out)
 }
 
 fn open_ring(ls: &LineString<f32>) -> Vec<Coord<f32>> {
