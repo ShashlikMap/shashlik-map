@@ -52,6 +52,8 @@ pub(crate) fn subdivide_grid(poly: Polygon<f32>, level: u32) -> Vec<Polygon<f32>
     out
 }
 
+/// TODO it may drop extra components for exterior/holes. So far, it's hard to say if there are any issues
+/// because of that thus JFYI
 fn clip_poly(poly: &Polygon<f32>, axis: u8, k: f32, side: Side) -> Option<Polygon<f32>> {
     let exterior = clip_ring(&poly.exterior(), axis, k, side)?;
     let holes = poly
@@ -110,6 +112,9 @@ fn clip_ring(ring: &LineString<f32>, axis: u8, k: f32, side: Side) -> Option<Vec
 
     if out.len() > 1 && out[0] == *out.last().unwrap() {
         out.pop();
+    }
+    if out.len() < 3 {
+        return None;
     }
     Some(out)
 }
