@@ -2,7 +2,7 @@ use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesMessage, TilesProvider, TilesProviderStore};
 use futures::{Stream};
 use futures::channel::mpsc::{UnboundedSender, unbounded};
-use geo::{Area, BoundingRect, Convert };
+use geo::{Area, Convert };
 use geo::Winding;
 use geo_types::{coord, Coord, LineString, Rect, Polygon};
 use log::error;
@@ -22,14 +22,10 @@ use osm::source::reqwest_source::ReqwestSource;
 use renderer_common::TilesType;
 use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::CustomTileKey;
+use crate::tiles::grid_divider::subdivide_grid;
 use crate::tiles::mvt::mvt_tile_store::MvtTileStore;
 use crate::tiles::shashlik_v1::ShashlikV1TileStore;
 
-#[derive(Copy, Clone)]
-enum Side {
-    Low,
-    High,
-}
 
 pub trait FeatureProcessor: Send + Sync {
     fn process_poi(
@@ -217,137 +213,8 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         if zoom >= 4 {
             return vec![polygon];
         }
-
         subdivide_grid(polygon, grid_size)
     }
-}
-
-pub fn subdivide_grid(poly: Polygon<f32>, level: u32) -> Vec<Polygon<f32>> {
-    let mut out = vec![];
-    if level <= 1 {
-        out.push(poly);
-        return out;
-    }
-
-    let bbox = match poly.bounding_rect() {
-        Some(r) => r,
-        None => return out,
-    };
-    let (min, max) = (bbox.min(), bbox.max());
-    let cw = (max.x - min.x) / level as f32;
-    let ch = (max.y - min.y) / level as f32;
-    if !(cw > 0.0) || !(ch > 0.0) {
-        out.push(poly);
-        return out;
-    }
-
-    let cutter = |axis: u8, origin: f32, size: f32, poly: Polygon<f32>| -> Vec<Polygon<f32>> {
-        let mut out = vec![];
-        let mut rest = Some(poly);
-        for i in 1..level {
-            let cur = match rest.take() {
-                Some(c) => c,
-                None => break,
-            };
-            let k = origin + i as f32 * size;
-            if let Some(lo) = clip_poly(&cur, axis, k, Side::Low) {
-                out.push(lo);
-            }
-            rest = clip_poly(&cur, axis, k, Side::High);
-        }
-        if let Some(last) = rest {
-            out.push(last);
-        }
-        out
-    };
-
-    let cols = cutter(0, min.x, cw, poly);
-    for col_poly in cols {
-        out.extend(cutter(1, min.y, ch, col_poly));
-    }
-    out
-}
-
-fn clip_poly(
-    poly: &Polygon<f32>,
-    axis: u8,
-    k: f32,
-    side: Side,
-) -> Option<Polygon<f32>> {
-    let src = open_ring(poly.exterior());
-    let exterior = clip_ring(&src, axis, k, side)?;
-
-    let mut holes = Vec::new();
-    for ring in poly.interiors() {
-        let src = open_ring(ring);
-        if let Some(hole) = clip_ring(&src, axis, k, side) {
-            holes.push(LineString::from(hole));
-        }
-    }
-
-    Some(Polygon::new(LineString::from(exterior), holes))
-}
-
-fn clip_ring(
-    ring: &[Coord<f32>],
-    axis: u8,
-    k: f32,
-    side: Side,
-) -> Option<Vec<Coord<f32>>> {
-    let mut out = vec![];
-    if ring.len() < 3 {
-        return None;
-    }
-
-    let c = |p: &Coord<f32>| if axis == 0 { p.x } else { p.y };
-    let inside = |p: &Coord<f32>| match side {
-        Side::Low => c(p) <= k,
-        Side::High => c(p) >= k,
-    };
-
-    fn push(out: &mut Vec<Coord<f32>>, p: Coord<f32>) {
-        if out.last().map_or(true, |l| l.x != p.x || l.y != p.y) {
-            out.push(p);
-        }
-    }
-
-    let n = ring.len();
-    for i in 0..n {
-        let a = ring[i];
-        let b = ring[(i + 1) % n];
-        let (ai, bi) = (inside(&a), inside(&b));
-
-        if ai {
-            push(&mut out, a);
-        }
-        if ai != bi {
-            let (ca, cb) = (c(&a), c(&b));
-            let t = (k - ca) / (cb - ca);
-            let mut p = Coord {
-                x: a.x + (b.x - a.x) * t,
-                y: a.y + (b.y - a.y) * t,
-            };
-            if axis == 0 {
-                p.x = k
-            } else {
-                p.y = k
-            }
-            push(&mut out, p);
-        }
-    }
-
-    if out.len() > 1 && out[0] == *out.last().unwrap() {
-        out.pop();
-    }
-    Some(out)
-}
-
-fn open_ring(ls: &LineString<f32>) -> Vec<Coord<f32>> {
-    let mut v = ls.0.clone();
-    if v.len() > 1 && v[0] == v[v.len() - 1] {
-        v.pop();
-    }
-    v
 }
 
 impl<FP: FeatureProcessor + 'static> MercatorProvider for DefaultTilesProvider<FP> {
