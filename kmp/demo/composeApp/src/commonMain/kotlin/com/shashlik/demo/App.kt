@@ -152,7 +152,14 @@ fun App() {
             var mvtCheckedState by remember { mutableStateOf(true) }
             var camFollowModeState by remember { mutableStateOf(true) }
             val shapes = remember { mutableStateListOf(generateRandomShapeAroundTokyo()) }
-            ShashlikMap(withAutoLocationEvent = true, withPuck=true, followModeEnabled = camFollowModeState, mvtTiles = mvtCheckedState) {
+            ShashlikMap(
+                withAutoLocationEvent = true,
+                withPuck = true,
+                followModeEnabled = camFollowModeState,
+                camAnimationEnabled = true,
+                puckAnimationEnabled = true,
+                mvtTiles = mvtCheckedState
+            ) {
                 shapes.forEach { shape ->
                     when (val shapeType = shape.second) {
                         is ShapeType.Line -> {
