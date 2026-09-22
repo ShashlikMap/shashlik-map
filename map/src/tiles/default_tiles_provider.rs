@@ -63,7 +63,11 @@ pub struct DefaultTilesProvider<FP: FeatureProcessor> {
 }
 
 impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
+
     const BBOX_OVERLAP_OFFSET_SCALE: f64 = 1.005;
+
+    const MAX_SUBDIVISION_LEVEL: i32 = 20;
+
     pub fn new(tiles_provider_store: Box<dyn TilesProviderStore>, feature_processor: FP, dpi_scale: f32) -> DefaultTilesProvider<FP> {
         Self {
             sender: None,
@@ -166,7 +170,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                     if is_visible {
                         // subdivision is required for globe
                         let t1 = Instant::now();
-                        let polygons = Self::subdivide_to_grid(zoom_level, poly, (20 - zoom_level).max(0) as u32);
+                        let polygons = Self::subdivide_to_grid(zoom_level, poly, (Self::MAX_SUBDIVISION_LEVEL - zoom_level).max(0) as u32);
                         qq += t1.elapsed().as_micros() as usize;
 
                         for poly in polygons {
