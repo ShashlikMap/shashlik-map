@@ -21,7 +21,8 @@ pub struct Overlay<RAPI: RendererApi> {
     shape_ids: FxHashSet<String>,
     styles: FxHashMap<String, StyleId>,
     points: FxHashMap<String, Vec<Point>>,
-    bbox: Option<Rect>
+    bbox: Option<Rect>,
+    last_normal_scale: Option<f64>
 }
 
 impl<RAPI: RendererApi> Overlay<RAPI> {
@@ -33,7 +34,8 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
             shape_ids: FxHashSet::default(),
             styles: FxHashMap::default(),
             points: FxHashMap::default(),
-            bbox: None
+            bbox: None,
+            last_normal_scale: None
         }
     }
 
@@ -93,7 +95,7 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         ));
 
         self.api
-            .add_render_group(unique_id.clone(), shape.spatial_data(), shape);
+            .add_render_group(unique_id.clone(), shape.spatial_data(self.last_normal_scale), shape);
         Some(unique_id)
     }
 
@@ -118,6 +120,7 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
     }
 
     pub fn update(&mut self, normal_scale: f64) {
+        self.last_normal_scale = Some(normal_scale);
         let api = Arc::clone(&self.api);
         self.shape_ids.iter().for_each(|shape_id| {
             api.update_spatial_data(shape_id.clone(), move |spatial_data| {

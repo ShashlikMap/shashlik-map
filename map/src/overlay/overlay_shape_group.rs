@@ -34,9 +34,11 @@ impl OverlayShapeGroup {
         }
     }
 
-    pub fn spatial_data(&self) -> SpatialData {
+    pub fn spatial_data(&self, normal_scale: Option<f64>) -> SpatialData {
         let point = DVec3::new(self.shape[0].x(), self.shape[0].y(), 0.0);
-        SpatialData::transform(point)
+        let mut data = SpatialData::transform(point);
+        data.normal_scale = normal_scale.unwrap_or(1.0);
+        data
     }
 }
 
