@@ -46,6 +46,29 @@ pub mod overlay;
 
 type CoordConverter = Box<dyn (Fn(&Point) -> Point) + Send>;
 
+#[derive(Default)]
+struct AnimConfig {
+    pub cam_anim_enabled: bool,
+    pub puck_anim_enabled: bool,
+}
+
+impl AnimConfig {
+    const DEFAULT_ANIMATION_SPEED: f64 = 0.03;
+    fn get_cam_anim_speed(&self) -> f64 {
+        if self.cam_anim_enabled {
+            return Self::DEFAULT_ANIMATION_SPEED
+        }
+        1.0
+    }
+
+    fn get_puck_anim_speed(&self) -> f64 {
+        if self.puck_anim_enabled {
+            return Self::DEFAULT_ANIMATION_SPEED
+        }
+        1.0
+    }
+}
+
 pub struct ShashlikMap<R: Renderer, T: TilesProvider> {
     pub renderer: R,
     camera: Camera,
@@ -66,6 +89,7 @@ pub struct ShashlikMap<R: Renderer, T: TilesProvider> {
     last_interaction: Instant,
     world_width_on_screen: f64,
     world_height_on_screen: f64,
+    anim_config: AnimConfig,
 }
 
 enum MapEvent {
@@ -100,7 +124,6 @@ pub static DEFAULT_FONT_DATA: LazyLock<&[u8], fn() -> &'static [u8]> =
 const MAX_ZOOM_LEVEL: i32 = 15;
 
 impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
-    const TEMP_ANIMATION_SPEED: f64 = 0.03;
 
     const FOLLOW_ANIMATION_DELAY_MS: u64 = 2000;
     const TELEPORT_THRESHOLD: f64 = 300.0;
@@ -152,6 +175,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             last_interaction: Instant::now() - Duration::from_millis(Self::FOLLOW_ANIMATION_DELAY_MS),
             world_width_on_screen: 0.0,
             world_height_on_screen: 0.0,
+            anim_config: Default::default(),
         };
         map.set_lon_lat_bearing(initial_coord.x, initial_coord.y, Some(0f32));
 
@@ -222,7 +246,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         self.update_entities();
 
         let cam_zoom = self.camera.scale();
-        let scale_2d_3d = self.transition_2d_3d_helper.update(cam_zoom, Self::TEMP_ANIMATION_SPEED as f32);
+        let scale_2d_3d = self.transition_2d_3d_helper.update(cam_zoom, AnimConfig::DEFAULT_ANIMATION_SPEED as f32);
 
         let (view, view_proj) = self.camera.build_view_projection_matrix();
         let (globe_view, globe_view_proj, globe_r) = self.camera.build_globe_view_projection_matrix();
@@ -327,6 +351,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         }
 
         let puck_location = self.location_world_position;
+        let puck_anim_speed = self.anim_config.get_puck_anim_speed();
         self.renderer
             .api() //  fyi, it seems to be fast enough(need to learn more here)
             .update_spatial_data("puck".to_string(), move |spatial_data| {
@@ -336,10 +361,10 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
                     spatial_data.transform = puck_location;
                 } else {
                     spatial_data.transform +=
-                        (puck_location - spatial_data.transform) * Self::TEMP_ANIMATION_SPEED;
+                        (puck_location - spatial_data.transform) * puck_anim_speed;
                 }
                 spatial_data.yaw +=
-                    ((bearing - spatial_data.yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
+                    ((bearing - spatial_data.yaw) % 360.0) * puck_anim_speed;
             });
 
         let normal_scale = cam_zoom.max(0.25);
@@ -355,33 +380,38 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             let transform_cam_offset = if transform_cam_offset.xy().length() >= Self::TELEPORT_THRESHOLD {
                 transform_cam_offset
             } else {
-                transform_cam_offset * Self::TEMP_ANIMATION_SPEED * 2.0
+                transform_cam_offset * (self.anim_config.get_cam_anim_speed() * 2.0).min(1.0)
             };
             let new_cam_pos = cam_pos + transform_cam_offset;
             self.camera_controller.set_new_position(new_cam_pos);
         }
 
         if self.should_animate() || !self.cam_follow_mode {
-            let new_cam_yaw = cam_yaw + ((self.camera_bearing - cam_yaw) % 360.0) * Self::TEMP_ANIMATION_SPEED;
+            let new_cam_yaw = cam_yaw + ((self.camera_bearing - cam_yaw) % 360.0) * self.anim_config.get_cam_anim_speed();
             self.camera_controller.yaw = new_cam_yaw;
         }
 
         if self.should_animate() {
             self.camera_controller.pitch +=
-                (self.camera_pitch - self.camera_controller.pitch) * Self::TEMP_ANIMATION_SPEED;
+                (self.camera_pitch - self.camera_controller.pitch) * self.anim_config.get_cam_anim_speed();
 
             if let Some(zoom_lock) = self.cam_follow_zoom_lock {
-                let current_dist = self.camera_controller.forward_len - zoom_lock;
-                let current_dist_abs = current_dist.abs();
-                if current_dist_abs > 0.0 {
-                    let delta = self.camera_controller.forward_len.max(zoom_lock) / self.camera_controller.forward_len.min(zoom_lock);
-                    let delta = (delta * Self::TEMP_ANIMATION_SPEED).min(0.05);
-                    let zoom_delta = 1.0 + delta * current_dist.signum();
-                    let actual_dist = (self.camera.eye_direction().length() * (1.0 / zoom_delta) - self.camera_controller.forward_len).abs();
-                    if actual_dist <= current_dist_abs {
-                        self.camera_controller.zoom_delta = zoom_delta;
-                    } else {
-                        self.camera_controller.zoom_delta = 1.0 + delta * current_dist.signum() * (current_dist_abs / actual_dist);
+                let anim_speed = self.anim_config.get_cam_anim_speed();
+                if anim_speed == 1.0 {
+                    self.camera_controller.zoom_delta = self.camera_controller.forward_len / zoom_lock;
+                } else {
+                    let current_dist = self.camera_controller.forward_len - zoom_lock;
+                    let current_dist_abs = current_dist.abs();
+                    if current_dist_abs > 0.0 {
+                        let delta = self.camera_controller.forward_len.max(zoom_lock) / self.camera_controller.forward_len.min(zoom_lock);
+                        let delta = (delta * anim_speed).min(0.05);
+                        let zoom_delta = 1.0 + delta * current_dist.signum();
+                        let actual_dist = (self.camera.eye_direction().length() * (1.0 / zoom_delta) - self.camera_controller.forward_len).abs();
+                        if actual_dist <= current_dist_abs {
+                            self.camera_controller.zoom_delta = zoom_delta;
+                        } else {
+                            self.camera_controller.zoom_delta = 1.0 + delta * current_dist.signum() * (current_dist_abs / actual_dist);
+                        }
                     }
                 }
             }
@@ -571,6 +601,13 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         start_sgnss(move |lat, lon| {
             map_sender.send(MapEvent::LatLon(lat, lon)).unwrap();
         });
+    }
+
+    pub fn set_anim_enabled(&mut self, cam_anim_enabled: bool, puck_anim_enabled: bool) {
+        self.anim_config = AnimConfig {
+            cam_anim_enabled,
+            puck_anim_enabled,
+        }
     }
 
     pub fn update_tile_store<F>(&mut self, block: F)

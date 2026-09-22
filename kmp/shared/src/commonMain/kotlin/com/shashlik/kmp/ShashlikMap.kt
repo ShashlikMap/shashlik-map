@@ -23,6 +23,9 @@ expect val isDebugBuild: Boolean
  * @param withPuck When true, the map will display a "puck" (location marker) at the current location.
  * @param withAutoLocationEvent When true, the map will automatically track and display the user's location.
  * @param mvtTiles Whether to enable MVT (Mapbox Vector Tile) rendering.
+ * @param followModeEnabled Whether the camera should follow the location puck automatically.
+ * @param camAnimationEnabled Whether camera position updates should be animated.
+ * @param puckAnimationEnabled Whether location puck updates should be animated.
  * @param content The content to be rendered on top of the map, typically map overlays like [ConvexPolygon] or [LineShape].
  */
 @Composable
@@ -32,19 +35,21 @@ fun ShashlikMap(
     withAutoLocationEvent: Boolean = true,
     mvtTiles: Boolean = false,
     followModeEnabled: Boolean = true,
+    camAnimationEnabled: Boolean = true,
+    puckAnimationEnabled: Boolean = true,
     content: @Composable () -> Unit = {}
 ) {
     LaunchedEffect(mvtTiles, withPuck) {
         awaitApi().run {
             puckConfig(withPuck)
             setMvtTileset(mvtTiles)
-            setCamFollowMode(followModeEnabled)
         }
     }
 
-    LaunchedEffect(followModeEnabled) {
+    LaunchedEffect(followModeEnabled, camAnimationEnabled, puckAnimationEnabled) {
         awaitApi().run {
             setCamFollowMode(followModeEnabled)
+            setAnimEnabled(camAnimationEnabled, puckAnimationEnabled)
         }
     }
 

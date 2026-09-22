@@ -15,7 +15,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
-use std::time::{Instant, SystemTime};
+use std::time::{SystemTime};
 use googleprojection::Mercator;
 use osm::map::NatureKind::Water;
 use osm::source::reqwest_source::ReqwestSource;

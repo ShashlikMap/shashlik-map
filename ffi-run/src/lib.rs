@@ -109,6 +109,11 @@ impl ShashlikMapApi {
         });
     }
 
+    fn set_anim_enabled(&self, cam_anim_enabled: bool, puck_anim_enabled: bool) {
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
+        shashlik_map.set_anim_enabled(cam_anim_enabled, puck_anim_enabled);
+    }
+
     fn set_mvt_tileset(&self, enabled: bool) {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
         shashlik_map.update_tile_store(|tile_store| {
