@@ -57,10 +57,8 @@ fn main() {
     );
 
     let mut map = pollster::block_on(async {
-        let mut render_config = RenderConfig::default();
-        render_config.headless = true;
         let renderer = GpuRenderer::new_with_config(
-            render_config,
+            RenderConfig::default(),
             feature_layer_tags(),
             Box::new(canvas),
             &DEFAULT_FONT_DATA,
@@ -74,12 +72,11 @@ fn main() {
     map.resize(size.width, size.height);
     map.set_camera_follow_mode(!with_overlay);
     map.set_cam_follow_zoom_lock(None);
+    map.set_lon_lat_bearing(139.757080078125, 35.69100828125, None);
     if is_globe {
         map.zoom_delta(0.000035, (0.0, 0.0));
-        map.set_lon_lat_bearing(105.757080078125, 25.69100828125, None);
     } else {
         map.zoom_delta(1.15, (0.0, 0.0));
-        map.set_lon_lat_bearing(139.757080078125, 35.69100828125, None);
         if with_overlay {
             let converter = map.create_location_coord_converter();
             map.overlay().add_overlay_shape(converter, vec![Point::new(139.757080078125, 35.69100828125),
@@ -94,13 +91,19 @@ fn main() {
     }
 
     println!("Headless mode. Run frames");
-    let frames_to_run = if is_globe { 300 } else { 120 };
+    let frames_to_run = if is_globe { 240 } else { 120 };
     sleep(Duration::from_secs(1));
     map.update_and_render(());
     for _ in 0..frames_to_run {
         sleep(Duration::from_millis(16));
         map.update_and_render(());
     }
+    sleep(Duration::from_millis(16));
+    map.renderer.update_config(|a| {
+        a.headless = true;
+    });
+    sleep(Duration::from_millis(16));
+    map.update_and_render(());
     println!("Headless mode completed");
 }
 
