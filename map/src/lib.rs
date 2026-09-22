@@ -396,18 +396,22 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
                 (self.camera_pitch - self.camera_controller.pitch) * self.anim_config.get_cam_anim_speed();
 
             if let Some(zoom_lock) = self.cam_follow_zoom_lock {
-                let current_dist = self.camera_controller.forward_len - zoom_lock;
-                let current_dist_abs = current_dist.abs();
-                if current_dist_abs > 0.0 {
-                    let delta = self.camera_controller.forward_len.max(zoom_lock) / self.camera_controller.forward_len.min(zoom_lock);
-                    let anim_speed = self.anim_config.get_cam_anim_speed();
-                    let delta = if anim_speed == 1.0 { delta } else { (delta * anim_speed).min(0.05) };
-                    let zoom_delta = 1.0 + delta * current_dist.signum();
-                    let actual_dist = (self.camera.eye_direction().length() * (1.0 / zoom_delta) - self.camera_controller.forward_len).abs();
-                    if actual_dist <= current_dist_abs {
-                        self.camera_controller.zoom_delta = zoom_delta.clamp(0.1, 5.0);
-                    } else {
-                        self.camera_controller.zoom_delta = (1.0 + delta * current_dist.signum() * (current_dist_abs / actual_dist)).clamp(0.1, 5.0);
+                let anim_speed = self.anim_config.get_cam_anim_speed();
+                if anim_speed == 1.0 {
+                    self.camera_controller.zoom_delta = self.camera_controller.forward_len / zoom_lock;
+                } else {
+                    let current_dist = self.camera_controller.forward_len - zoom_lock;
+                    let current_dist_abs = current_dist.abs();
+                    if current_dist_abs > 0.0 {
+                        let delta = self.camera_controller.forward_len.max(zoom_lock) / self.camera_controller.forward_len.min(zoom_lock);
+                        let delta = (delta * anim_speed).min(0.05);
+                        let zoom_delta = 1.0 + delta * current_dist.signum();
+                        let actual_dist = (self.camera.eye_direction().length() * (1.0 / zoom_delta) - self.camera_controller.forward_len).abs();
+                        if actual_dist <= current_dist_abs {
+                            self.camera_controller.zoom_delta = zoom_delta;
+                        } else {
+                            self.camera_controller.zoom_delta = 1.0 + delta * current_dist.signum() * (current_dist_abs / actual_dist);
+                        }
                     }
                 }
             }
