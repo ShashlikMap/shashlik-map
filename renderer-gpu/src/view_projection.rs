@@ -119,7 +119,6 @@ impl ViewProjection {
         self.shadow_texture_size = render_config.shadow_texture_size();
         self.is_shadow_enabled = render_config.shadow_enabled;
         self.scale_2d_3d = data.scale_2d_3d;
-        // println!("scale = {:?}",data.scale);
 
         self.ortho_for_shadow_map(&mut data.view_light_matrix, data.scale);
 
@@ -265,13 +264,13 @@ impl ViewProjection {
     }
 
     pub fn screen_to_world(&self, coord: &Vec2) -> Option<DVec2> {
-        let qq = if self.is_globe_view() {
+        let factor = if self.is_globe_view() {
             -1.0
         } else {
             1.0
         };
         self.clip_to_world(&coord! { x : (coord.x as f64 / self.screen_size.0) * 2.0 - 1.0,
-            y : qq * ((coord.y as f64 / self.screen_size.1) * 2.0 - 1.0) })
+            y : factor * ((coord.y as f64 / self.screen_size.1) * 2.0 - 1.0) })
     }
 
     pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<DVec2> {
