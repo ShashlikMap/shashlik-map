@@ -66,7 +66,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
 
     const BBOX_OVERLAP_OFFSET_SCALE: f64 = 1.005;
 
-    const MAX_SUBDIVISION_LEVEL: i32 = 20;
+    const MAX_SUBDIVISION_LEVEL: i32 = 18;
 
     pub fn new(tiles_provider_store: Box<dyn TilesProviderStore>, feature_processor: FP, dpi_scale: f32) -> DefaultTilesProvider<FP> {
         Self {
@@ -210,7 +210,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
     }
 
     fn subdivide_to_grid(zoom: i32, polygon: Polygon<f32>, grid_size: u32) -> Vec<Polygon<f32>> {
-        if zoom >= 4 {
+        if zoom >= 4 || polygon.unsigned_area() < 9999999999.0 {
             return vec![polygon];
         }
         subdivide_grid(polygon, grid_size)
