@@ -2,7 +2,7 @@ use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesMessage, TilesProvider, TilesProviderStore};
 use futures::{Stream};
 use futures::channel::mpsc::{UnboundedSender, unbounded};
-use geo::{Area, BooleanOps, BoundingRect, Convert};
+use geo::{Area, Convert };
 use geo::Winding;
 use geo_types::{coord, Coord, LineString, Rect, Polygon};
 use log::error;
@@ -15,15 +15,17 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread::spawn;
-use std::time::SystemTime;
+use std::time::{Instant, SystemTime};
 use googleprojection::Mercator;
 use osm::map::NatureKind::Water;
 use osm::source::reqwest_source::ReqwestSource;
 use renderer_common::TilesType;
 use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::CustomTileKey;
+use crate::tiles::grid_divider::subdivide_grid;
 use crate::tiles::mvt::mvt_tile_store::MvtTileStore;
 use crate::tiles::shashlik_v1::ShashlikV1TileStore;
+
 
 pub trait FeatureProcessor: Send + Sync {
     fn process_poi(
@@ -61,7 +63,11 @@ pub struct DefaultTilesProvider<FP: FeatureProcessor> {
 }
 
 impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
+
     const BBOX_OVERLAP_OFFSET_SCALE: f64 = 1.005;
+
+    const MAX_SUBDIVISION_LEVEL: i32 = 18;
+
     pub fn new(tiles_provider_store: Box<dyn TilesProviderStore>, feature_processor: FP, dpi_scale: f32) -> DefaultTilesProvider<FP> {
         Self {
             sender: None,
@@ -162,11 +168,9 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
 
                     if is_visible {
                         // subdivision is required for globe
-                        let polygons = Self::subdivide_to_grid(zoom_level, poly, (13 - zoom_level) as u32);
-                        if polygons.is_none() {
-                            error!("No polygons after subdivision")
-                        }
-                        for poly in polygons.unwrap_or_default() {
+                        let polygons = Self::subdivide_to_grid(zoom_level, poly, (Self::MAX_SUBDIVISION_LEVEL - zoom_level).max(0) as u32);
+
+                        for poly in polygons {
                             let (mut line, interiors) = poly.into_inner();
                             let interiors = if is_water {
                                 interiors
@@ -205,31 +209,11 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         tile_data
     }
 
-    fn subdivide_to_grid(zoom: i32, polygon: Polygon<f32>, grid_size: u32) -> Option<Vec<Polygon<f32>>> {
+    fn subdivide_to_grid(zoom: i32, polygon: Polygon<f32>, grid_size: u32) -> Vec<Polygon<f32>> {
         if zoom >= 4 || polygon.unsigned_area() < 9999999999.0 {
-            return Some(vec![polygon]);
+            return vec![polygon];
         }
-
-        let rect = polygon.bounding_rect()?; // None only if polygon is empty
-        let (min, max) = (rect.min(), rect.max());
-        let cell_w = (max.x - min.x) / grid_size as f32;
-        let cell_h = (max.y - min.y) / grid_size as f32;
-
-        let mut cells = Vec::new();
-        for row in 0..grid_size {
-            for col in 0..grid_size {
-                let x0 = min.x + col as f32 * cell_w;
-                let y0 = min.y + row as f32 * cell_h;
-                let cell_rect = Polygon::new(
-                    LineString::from(vec![
-                        (x0, y0), (x0 + cell_w, y0), (x0 + cell_w, y0 + cell_h), (x0, y0 + cell_h),
-                    ]),
-                    vec![],
-                );
-                cells.extend(polygon.intersection(&cell_rect));
-            }
-        }
-        Some(cells)
+        subdivide_grid(polygon, grid_size)
     }
 }
 

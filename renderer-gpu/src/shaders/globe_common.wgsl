@@ -1,6 +1,6 @@
 
 // TODO this has to come from Rust, maybe push constants?
-const GLOBE_SCALE: f32 = 12000.0;
+const GLOBE_SCALE: f32 = 500.0;
 
 const PI: f32 = 3.14159265359;
 const MAP_SIZE: f32 = 16777216.0;

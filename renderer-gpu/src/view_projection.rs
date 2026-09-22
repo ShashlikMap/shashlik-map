@@ -134,7 +134,7 @@ impl ViewProjection {
         self.uniform.globe_view_proj = globe_view_proj
             .as_mat4()
             .to_cols_array_2d();
-        self.inv_globe_view_proj_matrix = globe_view_proj.inverse();
+        self.inv_globe_view_proj_matrix = data.globe_view_proj_matrix.inverse();
 
         let view_proj_inv = view_proj.inverse();
         self.uniform.view_proj_inv = (view_proj_inv * FLIP_Y)
@@ -265,7 +265,7 @@ impl ViewProjection {
 
     pub fn screen_to_world(&self, coord: &Vec2) -> Option<DVec2> {
         self.clip_to_world(&coord! { x : (coord.x as f64 / self.screen_size.0) * 2.0 - 1.0,
-            y : (coord.y as f64 / self.screen_size.1) * 2.0 - 1.0})
+            y : (coord.y as f64 / self.screen_size.1) * 2.0 - 1.0 })
     }
 
     pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<DVec2> {

@@ -7,6 +7,7 @@ pub mod shashlik_v1;
 pub mod tile_data;
 mod tile_parser;
 pub mod tiles_provider;
+mod grid_divider;
 
 pub struct CustomTileKey<'a>(&'a TileKey);
 
