@@ -2,6 +2,11 @@ package com.shashlik.kmp
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,12 +37,14 @@ fun ConvexPolygon(
     color: ComposeColor,
 ) {
     val radiusDp = radius.value.toDouble()
-    val points = (0 until sides).map { i ->
-        val angle = 2.0 * PI * i / sides
-        Point(
-            x = cos(angle) * radiusDp,
-            y = sin(angle) * radiusDp,
-        )
+    val points = remember(radiusDp, sides) {
+        (0 until sides).map { i ->
+            val angle = 2.0 * PI * i / sides
+            Point(
+                x = cos(angle) * radiusDp,
+                y = sin(angle) * radiusDp,
+            )
+        }
     }
     ShashlikShape(
         points = points,
@@ -57,7 +64,10 @@ fun ConvexPolygon(
  */
 @Composable
 fun LineShape(points: List<Point>, color: ComposeColor, width: Float = 1f) {
-    if (points.size < 2 || points.distinct().size < 2) {
+    val isValid = remember(points) {
+        points.size >= 2 && points.distinct().size >= 2
+    }
+    if (!isValid) {
         return
     }
     ShashlikShape(
@@ -89,22 +99,37 @@ fun ShashlikShape(
     type: ShapeType,
     color: Color
 ) {
-    DisposableEffect(points, type, color) {
-        var shapeId: String? = null
+    var shapeId by remember { mutableStateOf<String?>(null) }
+    var lastUpdatedAnchor by remember { mutableStateOf<Point?>(null) }
 
+    DisposableEffect(points, type, color) {
         val job = CoroutineScope(Dispatchers.Main).launch {
             val api = awaitApi()
-            shapeId = api.addOverlayShape(points, anchor,type, color)
+            val id = api.addOverlayShape(points, anchor, type, color)
+            lastUpdatedAnchor = anchor
+            shapeId = id
         }
 
         onDispose {
             job.cancel()
-            CoroutineScope(Dispatchers.Main).launch {
-                shapeId?.let { id ->
+            val currentShapeId = shapeId
+            shapeId = null
+            lastUpdatedAnchor = null
+            if (currentShapeId != null) {
+                CoroutineScope(Dispatchers.Main).launch {
                     val api = awaitApi()
-                    api.removeShape(id)
+                    api.removeShape(currentShapeId)
                 }
             }
+        }
+    }
+
+    LaunchedEffect(anchor, shapeId) {
+        val currentShapeId = shapeId
+        if (currentShapeId != null && anchor != null && anchor != lastUpdatedAnchor) {
+            val api = awaitApi()
+            api.updateShape(currentShapeId, anchor)
+            lastUpdatedAnchor = anchor
         }
     }
 }
