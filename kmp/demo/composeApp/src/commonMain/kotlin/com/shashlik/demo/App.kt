@@ -167,7 +167,7 @@ fun App() {
                         }
 
                         ShapeType.Polygon -> {
-                            ConvexPolygon(shape.first.first(), 10.0, 5, Color.Red)
+                            ConvexPolygon(shape.first.first(), 10.dp, 5, Color.Red)
                         }
                     }
                 }

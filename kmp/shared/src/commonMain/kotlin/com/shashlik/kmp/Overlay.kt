@@ -2,6 +2,7 @@ package com.shashlik.kmp
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -13,32 +14,29 @@ import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.ui.graphics.Color as ComposeColor
 
-private const val DEG_TO_RAD = PI / 180.0
-private const val METERS_PER_DEGREE_LAT = 111_320.0
-private const val MIN_COS_LAT = 0.01
-
 internal fun ComposeColor.toShashlikColor(): Color = Color(r = red, g = green, b = blue)
 
 /**
  * Draws a convex polygon overlay on the map.
  *
  * @param center The geographic center point of the polygon.
- * @param radiusMeters The distance from the center to each vertex in meters.
+ * @param radius The distance from the center to each vertex as a [Dp] value.
  * @param sides The number of sides (vertices) of the polygon. Must be at least 3.
  * @param color The color used to fill the polygon.
  */
 @Composable
 fun ConvexPolygon(
     center: Point,
-    radiusMeters: Double,
+    radius: Dp,
     sides: Int,
     color: ComposeColor,
 ) {
+    val radiusDp = radius.value.toDouble()
     val points = (0 until sides).map { i ->
         val angle = 2.0 * PI * i / sides
         Point(
-            x = cos(angle) * radiusMeters,
-            y = sin(angle) * radiusMeters,
+            x = cos(angle) * radiusDp,
+            y = sin(angle) * radiusDp,
         )
     }
     ShashlikShape(
@@ -52,7 +50,7 @@ fun ConvexPolygon(
 /**
  * Draws a line overlay connecting a series of geographic points on the map.
  *
- * @param points The list of geographic points defining the path of the line.
+ * @param points The list of geographic points defining the path of the line in Mercator coordinates.
  * @param color The color of the line.
  * @param width The width of the line. Note: this is an abstract unit at this moment;
  * a proper unit will be provided in a future update.
@@ -76,7 +74,11 @@ fun LineShape(points: List<Point>, color: ComposeColor, width: Float = 1f) {
  * It manages the lifecycle of a shape overlay, adding it to the map when entered
  * and removing it when disposed.
  *
- * @param points The geographic points defining the shape.
+ * @param points The points defining the shape. If [anchor] is null, these points are
+ * treated as Mercator coordinates. If [anchor] is provided, these points are treated
+ * as relative offset points in dp from the anchor.
+ * @param anchor The optional geographic anchor point for the shape. If null, [points] are
+ * Mercator coordinates; otherwise [points] are relative offset points from this anchor.
  * @param type The type of shape to render (e.g., POLYGON, LINE).
  * @param color The color of the shape.
  */

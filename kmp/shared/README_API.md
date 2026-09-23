@@ -103,7 +103,7 @@ Draws a completely filled convex polygon on the map layer centered at a specific
 @Composable
 fun ConvexPolygon(
     center: uniffi.ffi_run.Point,
-    radiusMeters: Double,
+    radius: androidx.compose.ui.unit.Dp,
     sides: Int,
     color: androidx.compose.ui.graphics.Color
 )
@@ -129,10 +129,12 @@ Low-level component managing underlying shapes. Handles automatic instantiation 
 @Composable
 fun ShashlikShape(
     points: List<uniffi.ffi_run.Point>,
+    anchor: uniffi.ffi_run.Point?,
     type: uniffi.ffi_run.ShapeType,
     color: uniffi.ffi_run.Color
 )
 ```
+> **Note on `points` and `anchor`**: When `anchor` is `null`, `points` are interpreted as Mercator coordinates. When `anchor` is provided, `points` are interpreted as relative offset points in dp from the `anchor`.
 
 ---
 
