@@ -352,19 +352,22 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
         let puck_location = self.location_world_position;
         let puck_anim_speed = self.anim_config.get_puck_anim_speed();
+        let puck_anim_enabled = self.anim_config.puck_anim_enabled;
         self.renderer
             .api() //  fyi, it seems to be fast enough(need to learn more here)
             .update_spatial_data("puck".to_string(), move |spatial_data| {
                 spatial_data.scale = DVec3::splat(cam_zoom);
-                let puck_location_offset = puck_location - spatial_data.transform;
-                if puck_location_offset.length() >= Self::TELEPORT_THRESHOLD {
-                    spatial_data.transform = puck_location;
-                } else {
-                    spatial_data.transform +=
-                        (puck_location - spatial_data.transform) * puck_anim_speed;
+                if puck_anim_enabled {
+                    let puck_location_offset = puck_location - spatial_data.transform;
+                    if puck_location_offset.length() >= Self::TELEPORT_THRESHOLD {
+                        spatial_data.transform = puck_location;
+                    } else {
+                        spatial_data.transform +=
+                            (puck_location - spatial_data.transform) * puck_anim_speed;
+                    }
+                    spatial_data.yaw +=
+                        ((bearing - spatial_data.yaw) % 360.0) * puck_anim_speed;
                 }
-                spatial_data.yaw +=
-                    ((bearing - spatial_data.yaw) % 360.0) * puck_anim_speed;
             });
 
         let normal_scale = cam_zoom.max(0.25);
@@ -396,13 +399,13 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
                 (self.camera_pitch - self.camera_controller.pitch) * self.anim_config.get_cam_anim_speed();
 
             if let Some(zoom_lock) = self.cam_follow_zoom_lock {
-                let anim_speed = self.anim_config.get_cam_anim_speed();
-                if anim_speed == 1.0 {
+                if !self.anim_config.cam_anim_enabled {
                     self.camera_controller.zoom_delta = self.camera_controller.forward_len / zoom_lock;
                 } else {
                     let current_dist = self.camera_controller.forward_len - zoom_lock;
                     let current_dist_abs = current_dist.abs();
                     if current_dist_abs > 0.0 {
+                        let anim_speed = self.anim_config.get_cam_anim_speed();
                         let delta = self.camera_controller.forward_len.max(zoom_lock) / self.camera_controller.forward_len.min(zoom_lock);
                         let delta = (delta * anim_speed).min(0.05);
                         let zoom_delta = 1.0 + delta * current_dist.signum();
@@ -492,8 +495,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             }
         }
 
-        let puck_anim_speed = self.anim_config.get_puck_anim_speed();
-        if puck_anim_speed == 1.0 {
+        if !self.anim_config.puck_anim_enabled {
             let puck_location = self.location_world_position;
             let bearing = self.location_bearing;
             self.renderer

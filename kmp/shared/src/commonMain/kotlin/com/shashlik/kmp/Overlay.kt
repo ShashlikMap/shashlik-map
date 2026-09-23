@@ -103,7 +103,7 @@ fun ShashlikShape(
     var shapeId by remember { mutableStateOf<String?>(null) }
     var lastUpdatedAnchor by remember { mutableStateOf<Point?>(null) }
 
-    DisposableEffect(points, type, color) {
+    DisposableEffect(points, anchor, type, color) {
         val job = CoroutineScope(Dispatchers.Main).launch {
             val api = awaitApi()
             val id = api.addOverlayShape(points, anchor, type, color)
@@ -125,14 +125,15 @@ fun ShashlikShape(
         }
     }
 
-    LaunchedEffect(anchor, shapeId) {
-        val currentShapeId = shapeId
-        if (currentShapeId != null && anchor != null && anchor != lastUpdatedAnchor) {
-            val api = awaitApi()
-            api.updateShape(currentShapeId, anchor)
-            lastUpdatedAnchor = anchor
-        }
-    }
+    // TODO Temporary disable since underlying and Compose subsystems has to be better refactored to support layers
+//    LaunchedEffect(anchor, shapeId) {
+//        val currentShapeId = shapeId
+//        if (currentShapeId != null && anchor != null && anchor != lastUpdatedAnchor) {
+//            val api = awaitApi()
+//            api.updateShape(currentShapeId, anchor)
+//            lastUpdatedAnchor = anchor
+//        }
+//    }
 }
 
 val ShapeType.Line.width: Float
