@@ -141,6 +141,7 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         updater: F,
     ) {
         self.api.update_spatial_data(key, updater);
+        // TODO Potentially we need to reset bbox
     }
 
     pub fn update(&mut self, normal_scale: f64) {

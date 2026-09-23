@@ -72,7 +72,7 @@ ShashlikMap(
         color = Color.Red
     )
 
-    // Polyline connecting Mercator coordinates
+    // Polyline connecting geographic coordinates
     LineShape(
         points = listOf(
             Point(x = 139.75, y = 35.68),
@@ -157,7 +157,7 @@ fun LineShape(
 ```
 
 #### Parameters:
-- **`points`**: The list of geographic points in Mercator coordinates defining the path of the line.
+- **`points`**: The list of geographic points defining the path of the line.
 - **`color`**: The color of the line.
 - **`width`**: The width of the line. *(Note: abstract unit at this moment; a resolution-independent coordinate unit will be provided in a future iteration).*
 
@@ -175,7 +175,7 @@ fun ShashlikShape(
 ```
 
 #### Parameters:
-- **`points`**: The points defining the shape. If `anchor` is `null`, `points` are interpreted as Mercator coordinates. If `anchor` is provided, `points` are interpreted as relative offset points in dp from the `anchor`.
+- **`points`**: The points defining the shape. If `anchor` is `null`, `points` are interpreted as geographic coordinates. If `anchor` is provided, `points` are interpreted as relative offset points in dp from the `anchor`.
 - **`anchor`**: Optional geographic anchor point. When provided, changes to `anchor` dynamically update the shape's position on the map without re-creating the underlying shape.
 - **`type`**: The type of shape to render (`ShapeType.Polygon` or `ShapeType.Line`).
 - **`color`**: The color of the shape.
