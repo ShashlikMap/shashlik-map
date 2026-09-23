@@ -80,15 +80,15 @@ kotlin {
     // TODO iOS targe temporary disabled.
     //  It takes a lot of time to build locally and on CI and produces huge binaries(MVN complains)
     //  Need to figure out the reason later.
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework(listOf(NativeBuildType.RELEASE)) {
-            baseName = "Shared"
-            isStatic = true
-        }
-    }
+//    listOf(
+//        iosArm64(),
+//        iosSimulatorArm64()
+//    ).forEach { iosTarget ->
+//        iosTarget.binaries.framework(listOf(NativeBuildType.RELEASE)) {
+//            baseName = "Shared"
+//            isStatic = true
+//        }
+//    }
 
     sourceSets {
         androidMain.dependencies {
@@ -137,7 +137,7 @@ android {
 }
 
 group = "io.github.shashlikmap"
-version = "0.3.17"
+version = "0.3.18"
 
 mavenPublishing {
     publishToMavenCentral()
