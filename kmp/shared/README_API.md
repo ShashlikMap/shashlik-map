@@ -109,6 +109,12 @@ fun ConvexPolygon(
 )
 ```
 
+#### Parameters:
+- **`center`**: The geographic center anchor point of the polygon.
+- **`radius`**: The distance from the center to each vertex as a `Dp` value.
+- **`sides`**: The number of sides (vertices) of the polygon. Must be at least 3.
+- **`color`**: The color used to fill the polygon.
+
 ### `LineShape`
 Draws a connected path overlay passing through an array of geographic coordinates.
 
@@ -120,10 +126,14 @@ fun LineShape(
     width: Float = 1f
 )
 ```
-> **Note on `width`**: The line width parameter currently accepts an abstract unit. A standard resolution-independent coordinate unit will be provided in a later framework iteration.
+
+#### Parameters:
+- **`points`**: The list of geographic points in Mercator coordinates defining the path of the line.
+- **`color`**: The color of the line.
+- **`width`**: The width of the line. *(Note: abstract unit at this moment; a resolution-independent coordinate unit will be provided in a future iteration).*
 
 ### `ShashlikShape`
-Low-level component managing underlying shapes. Handles automatic instantiation on addition and resource cleanup on disposal.
+Low-level component managing underlying shapes. Handles automatic shape instantiation on addition, dynamic anchor position updates via `updateShape`, and resource cleanup on disposal.
 
 ```kotlin
 @Composable
@@ -134,7 +144,12 @@ fun ShashlikShape(
     color: uniffi.ffi_run.Color
 )
 ```
-> **Note on `points` and `anchor`**: When `anchor` is `null`, `points` are interpreted as Mercator coordinates. When `anchor` is provided, `points` are interpreted as relative offset points in dp from the `anchor`.
+
+#### Parameters:
+- **`points`**: The points defining the shape. If `anchor` is `null`, `points` are interpreted as Mercator coordinates. If `anchor` is provided, `points` are interpreted as relative offset points in dp from the `anchor`.
+- **`anchor`**: Optional geographic anchor point. When provided, changes to `anchor` dynamically update the shape's position on the map without re-creating the underlying shape.
+- **`type`**: The type of shape to render (`ShapeType.Polygon` or `ShapeType.Line`).
+- **`color`**: The color of the shape.
 
 ---
 
