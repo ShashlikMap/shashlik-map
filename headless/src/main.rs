@@ -81,11 +81,11 @@ fn main() {
             let converter = map.create_location_coord_converter();
             map.overlay().add_overlay_shape(converter, vec![Point::new(139.757080078125, 35.69100828125),
                                                             Point::new(139.757780078125, 35.69190828125),
-                                                            Point::new(139.757680078125, 35.69050828125)], ShapeType::Polygon,
+                                                            Point::new(139.757680078125, 35.69050828125)], None, ShapeType::Polygon,
                                             [0.0, 0.0, 1.0]);
             let converter = map.create_location_coord_converter();
             map.overlay().add_overlay_shape(converter, vec![Point::new(139.757080078125, 35.69100828125),
-                                                            Point::new(139.757780078125, 35.69190828125)], ShapeType::Line(None),
+                                                            Point::new(139.757780078125, 35.69190828125)], None, ShapeType::Line(None),
                                             [1.0, 0.0, 0.0]);
         }
     }

@@ -46,6 +46,7 @@ import com.shashlik.kmp.ShashlikMap
 import com.shashlik.kmp.ShashlikMapApiHolder
 import com.shashlik.kmp.isDebugBuild
 import com.shashlik.kmp.width
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import uniffi.ffi_run.Point
 import uniffi.ffi_run.RouteCosting.AUTO
@@ -58,8 +59,13 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
 
 var routeCosting = mutableStateOf(AUTO)
+
+private const val TOKYO_CENTER_X = 139.757080078125
+private const val TOKYO_CENTER_Y = 35.68798828125
+private const val TOKYO_MAX_OFFSET = 0.01
 
 /**
  * Slightly modified version of PointerInputScope.detectTransformGestures
@@ -152,6 +158,19 @@ fun App() {
             var mvtCheckedState by remember { mutableStateOf(true) }
             var camFollowModeState by remember { mutableStateOf(true) }
             val shapes = remember { mutableStateListOf(generateRandomShapeAroundTokyo()) }
+
+            var movingPoint by remember { mutableStateOf(Point(TOKYO_CENTER_X, TOKYO_CENTER_Y)) }
+            LaunchedEffect(Unit) {
+                var angle = 0.0
+                while (true) {
+                    delay(16.milliseconds)
+                    angle += 0.005
+                    val x = TOKYO_CENTER_X + (TOKYO_MAX_OFFSET * 0.8) * cos(angle)
+                    val y = TOKYO_CENTER_Y + (TOKYO_MAX_OFFSET * 0.8) * sin(angle * 0.7)
+                    movingPoint = Point(x, y)
+                }
+            }
+
             ShashlikMap(
                 withAutoLocationEvent = true,
                 withPuck = true,
@@ -160,6 +179,18 @@ fun App() {
                 puckAnimationEnabled = true,
                 mvtTiles = mvtCheckedState
             ) {
+                ConvexPolygon(
+                    center = movingPoint,
+                    radius = 6.dp,
+                    sides = 5,
+                    color = Color.White
+                )
+                ConvexPolygon(
+                    center = movingPoint,
+                    radius = 5.dp,
+                    sides = 5,
+                    color = Color.Blue
+                )
                 shapes.forEach { shape ->
                     when (val shapeType = shape.second) {
                         is ShapeType.Line -> {
@@ -167,7 +198,7 @@ fun App() {
                         }
 
                         ShapeType.Polygon -> {
-                            ConvexPolygon(shape.first.first(), 10.0, 5, Color.Red)
+                            ConvexPolygon(shape.first.first(), 10.dp, 5, Color.Red)
                         }
                     }
                 }
@@ -251,10 +282,10 @@ fun App() {
 }
 
 private fun generateRandomShapeAroundTokyo(): Triple<List<Point>, ShapeType, Color> {
-    val centerX = 139.757080078125
-    val centerY = 35.68798828125
+    val centerX = TOKYO_CENTER_X
+    val centerY = TOKYO_CENTER_Y
 
-    val maxOffset = 0.01
+    val maxOffset = TOKYO_MAX_OFFSET
 
     val lineWidth = 15f * Random.nextFloat()
     val shapeType = listOf(ShapeType.Line(lineWidth), ShapeType.Polygon).random()

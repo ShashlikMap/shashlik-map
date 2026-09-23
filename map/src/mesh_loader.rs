@@ -1,5 +1,5 @@
-use lyon::geom::euclid::Point2D;
-use lyon::geom::point;
+use lyon::geom::euclid::{Point2D};
+use lyon::geom::{point, Scale};
 use lyon::lyon_tessellation::VertexBuffers;
 use lyon::path::{Path, Winding};
 use std::io::BufReader;
@@ -9,8 +9,8 @@ use renderer_common::geometry_data::MeshVertex;
 pub struct MeshLoader {}
 
 impl MeshLoader {
-    pub fn load_simple_puck() -> Path {
-        let mut builder = Path::builder();
+    pub fn load_simple_puck(scale: f32) -> Path {
+        let mut builder = Path::builder().transformed(Scale::new(scale));
         builder.begin(point(0.0, -3.0));
         builder.line_to(point(2.0, 2.0));
         builder.line_to(point(-2.0, 2.0));

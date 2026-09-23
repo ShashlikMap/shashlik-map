@@ -49,9 +49,9 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         #[cfg(target_os = "linux")]
         {
             let route: Vec<Point> = vec![point!(x:0.0, y:0.0), point!(x: 1.0, y:0.0)];
-            let route = Box::new(OverlayShapeGroup::new(route, "route_layer".to_string(), StyleId::new("route"), ShapeType::Line(None)));
+            let route = Box::new(OverlayShapeGroup::new(route, "route_layer".to_string(), StyleId::new("route"), ShapeType::Line(None), None, None));
             self.api
-                .add_render_group("route".to_string(), route.spatial_data(None), route);
+                .add_render_group("route".to_string(), route.spatial_data(), route);
         }
     }
 
@@ -122,12 +122,13 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                         route,
                                         "route_layer".to_string(),
                                         style_id,
-                                        shape_type
+                                        shape_type,
+                                        None, None
                                     ));
 
                                     api.add_render_group(
                                         Self::create_route_id(index),
-                                        route.spatial_data(None),
+                                        route.spatial_data(),
                                         route,
                                     );
                                 } else {

@@ -8,6 +8,7 @@ use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use renderer_common::{PreviewType, TilesType};
 use renderer_gpu::GpuRenderer;
 use std::sync::RwLock;
+use glam::DVec3;
 
 #[derive(uniffi::Object)]
 pub struct ShashlikMapApi {
@@ -137,7 +138,7 @@ impl ShashlikMapApi {
         shashlik_map.create_route_to_screen_point(point_x, point_y, route_costing.into());
     }
 
-    pub fn add_overlay_shape(&self, points: Vec<Point>, shape_type: ShapeType, color: Color) -> Option<String> {
+    pub fn add_overlay_shape(&self, points: Vec<Point>, anchor: Option<Point>, shape_type: ShapeType, color: Color) -> Option<String> {
         let points = points.into_iter().map(|point| {
             geo_types::Point::new(point.x, point.y)
         }).collect();
@@ -148,12 +149,25 @@ impl ShashlikMapApi {
         };
         let mut shashlik_map = self.shashlik_map.write().unwrap();
         let converter = shashlik_map.create_location_coord_converter();
-        shashlik_map.overlay().add_overlay_shape(converter, points, shape_type, [color.r, color.g, color.b])
+        let anchor = anchor.map(|anchor| {
+            geo_types::Point::new(anchor.x, anchor.y)
+        });
+        shashlik_map.overlay().add_overlay_shape(converter, points, anchor, shape_type, [color.r, color.g, color.b])
     }
 
     pub fn remove_shape(&self, key: String) {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
         shashlik_map.overlay().remove_shape(key);
+    }
+
+    pub fn update_shape(&self, key: String, position: Point) {
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
+        let converter = shashlik_map.create_location_coord_converter();
+
+        let p = converter(&geo_types::Point::new(position.x, position.y));
+        shashlik_map.overlay().update_spatial_data(key, move |spatial_data| {
+            spatial_data.transform = DVec3::new(p.x(), p.y(), 0.0);
+        });
     }
 
     pub fn puck_config(&self, enabled: bool) {

@@ -1,26 +1,25 @@
 use crate::CoordConverter;
 use crate::overlay::ShapeType;
 use crate::overlay::overlay_shape_group::OverlayShapeGroup;
-use geo_types::{Point, Rect};
+use crate::puck_group::SimplePuck;
+use geo::{BoundingRect, Scale, Translate};
+use geo_types::{GeometryCollection, MultiPoint, Point, Rect};
+use glam::DVec3;
 use renderer_common::RendererApi;
+use renderer_common::render_modifier::SpatialData;
 use renderer_common::style_id::StyleId;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use geo::{BoundingRect, Scale};
-use geo_types::Geometry::MultiPoint;
-use glam::DVec3;
-use renderer_common::render_modifier::SpatialData;
-use crate::puck_group::SimplePuck;
 
 static OVERLAY_SHAPE_ID: AtomicUsize = AtomicUsize::new(0);
 pub struct Overlay<RAPI: RendererApi> {
     api: Arc<RAPI>,
     feature_layer_tag: String,
-    shape_ids: FxHashSet<String>,
+    shapes: FxHashMap<String, ShapeType>,
     styles: FxHashMap<String, StyleId>,
-    points: FxHashMap<String, Vec<Point>>,
+    rects: FxHashMap<String, Rect<f64>>,
     bbox: Option<Rect>,
     last_normal_scale: Option<f64>
 }
@@ -31,9 +30,9 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         Overlay {
             api,
             feature_layer_tag,
-            shape_ids: FxHashSet::default(),
+            shapes: FxHashMap::default(),
             styles: FxHashMap::default(),
-            points: FxHashMap::default(),
+            rects: FxHashMap::default(),
             bbox: None,
             last_normal_scale: None
         }
@@ -58,13 +57,22 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         &mut self,
         converter: CoordConverter,
         points: Vec<Point>,
+        anchor: Option<Point>,
         shape_type: ShapeType,
         fill_color: [f32; 3],
     ) -> Option<String> {
         if !shape_type.are_points_valid(&points) {
             return None;
         }
-        let points: Vec<Point> = points.iter().map(|p| converter(p)).collect();
+        let points: Vec<Point> = if anchor.is_some() {
+            points
+        } else {
+            points.iter().map(|p| converter(p)).collect()
+        };
+        let anchor = anchor.map(|p| {
+            let p = converter(&p);
+            DVec3::new(p.x(), p.y(), 0.0)
+        });
         let id = OVERLAY_SHAPE_ID.fetch_add(1, Ordering::Relaxed);
         let render_style = renderer_common::render_style::RenderStyle::fill([
             fill_color[0],
@@ -74,10 +82,12 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         ]);
         let unique_id = format!("overlay_shape_id_{}", id);
 
-        self.points.insert(unique_id.clone(), points.clone());
+        let bbox_offset = anchor.unwrap_or(DVec3::splat(0.0));
+        let bbox = MultiPoint(points.clone()).bounding_rect().unwrap().translate(bbox_offset.x, bbox_offset.y);
+        self.rects.insert(unique_id.clone(), bbox);
         self.bbox = None;
 
-        self.shape_ids.insert(unique_id.clone());
+        self.shapes.insert(unique_id.clone(), shape_type);
 
         let style_key = format!("overlay_shape_key_{:?}", render_style);
         let style_id = self.styles.entry(style_key.clone()).or_insert_with(|| {
@@ -88,43 +98,62 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         });
 
         let shape = Box::new(OverlayShapeGroup::new(
-            points,
+            points.clone(),
             self.feature_layer_tag.clone(),
             style_id.clone(),
             shape_type,
+            anchor,
+            self.last_normal_scale
         ));
 
         self.api
-            .add_render_group(unique_id.clone(), shape.spatial_data(self.last_normal_scale), shape);
+            .add_render_group(unique_id.clone(), shape.spatial_data(), shape);
+
         Some(unique_id)
     }
 
     pub fn has_shapes(&self) -> bool {
-        self.shape_ids.len() > 0
+        self.shapes.len() > 0
     }
 
     pub fn bbox(&mut self) -> Option<&Rect> {
-        if self.bbox.is_none() && let Some(bbox) = MultiPoint(self.points.values().cloned().flatten().collect()).bounding_rect() {
+        if self.bbox.is_none() && let Some(bbox) = {
+            let geometry = GeometryCollection::from(self.rects.values().cloned().collect::<Vec<_>>());
+            geometry.bounding_rect()
+        } {
             self.bbox = Some(bbox.scale(Self::BBOX_SCALE));
         }
         self.bbox.as_ref()
     }
 
     pub fn remove_shape(&mut self, key: String) {
-        if self.points.remove(&key).is_some() {
+        if self.rects.remove(&key).is_some() {
             self.bbox = None;
         }
-        if self.shape_ids.remove(&key) {
+        if self.shapes.remove(&key).is_some() {
             self.api.clear_render_groups(HashSet::from_iter(vec![key]));
         }
+    }
+
+    pub fn update_spatial_data<F: FnOnce(&mut SpatialData) + Send + 'static>(
+        &self,
+        key: String,
+        updater: F,
+    ) {
+        self.api.update_spatial_data(key, updater);
+        // TODO Potentially we need to reset bbox
     }
 
     pub fn update(&mut self, normal_scale: f64) {
         self.last_normal_scale = Some(normal_scale);
         let api = Arc::clone(&self.api);
-        self.shape_ids.iter().for_each(|shape_id| {
+        self.shapes.iter().for_each(|(shape_id, shape_type)| {
+            let is_polygon = matches!(shape_type, ShapeType::Polygon);
             api.update_spatial_data(shape_id.clone(), move |spatial_data| {
                 spatial_data.normal_scale = normal_scale;
+                if is_polygon {
+                    spatial_data.scale = DVec3::splat(normal_scale);
+                }
             });
         })
     }

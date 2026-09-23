@@ -11,7 +11,16 @@ impl <T: CanvasApi> RenderGroup<T> for SimplePuck {
         canvas.set_feature_layer_tag(Some("puck".to_string()));
         canvas.geometry_data(GeometryData::Shape(
             ShapeData {
-                path: MeshLoader::load_simple_puck(),
+                path: MeshLoader::load_simple_puck(1.2),
+                geometry_type: GeometryType::Polygon,
+                style_id: StyleId::new("ground"),
+                index_layer_level: 0,
+                styled_range_info: StyledRangeInfo::new(1, false)
+            },
+        ));
+        canvas.geometry_data(GeometryData::Shape(
+            ShapeData {
+                path: MeshLoader::load_simple_puck(1.0),
                 geometry_type: GeometryType::Polygon,
                 style_id: StyleId::new("puck_style"),
                 index_layer_level: 0,

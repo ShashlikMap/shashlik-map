@@ -58,6 +58,35 @@ fun ShashlikMap(
 - **`puckAnimationEnabled`**: Enables smooth positional interpolations for the location puck.
 - **`content`**: Composable lambda slot to draw overlays/shapes (`ConvexPolygon`, `LineShape`) directly on top of the map layer.
 
+#### Quick Start Usage Example:
+```kotlin
+ShashlikMap(
+    state = rememberLocationState(latitude = 35.6879, longitude = 139.7570),
+    withPuck = true
+) {
+    // Convex polygon centered at Tokyo with a 10.dp radius
+    ConvexPolygon(
+        center = Point(x = 139.7570, y = 35.6879),
+        radius = 10.dp,
+        sides = 5,
+        color = Color.Red
+    )
+
+    // Polyline connecting geographic coordinates
+    LineShape(
+        points = listOf(
+            Point(x = 139.75, y = 35.68),
+            Point(x = 139.76, y = 35.69)
+        ),
+        color = Color.Blue,
+        width = 2f
+    )
+}
+```
+
+### `isDebugBuild`
+A multiplatform build flag property (`expect val isDebugBuild: Boolean`) that returns `true` when running on a debug build variant.
+
 ---
 
 ## 2. State Hoisting & Management
@@ -103,11 +132,17 @@ Draws a completely filled convex polygon on the map layer centered at a specific
 @Composable
 fun ConvexPolygon(
     center: uniffi.ffi_run.Point,
-    radiusMeters: Double,
+    radius: androidx.compose.ui.unit.Dp,
     sides: Int,
     color: androidx.compose.ui.graphics.Color
 )
 ```
+
+#### Parameters:
+- **`center`**: The geographic center anchor point of the polygon.
+- **`radius`**: The distance from the center to each vertex as a `Dp` value.
+- **`sides`**: The number of sides (vertices) of the polygon. Must be at least 3.
+- **`color`**: The color used to fill the polygon.
 
 ### `LineShape`
 Draws a connected path overlay passing through an array of geographic coordinates.
@@ -120,19 +155,30 @@ fun LineShape(
     width: Float = 1f
 )
 ```
-> **Note on `width`**: The line width parameter currently accepts an abstract unit. A standard resolution-independent coordinate unit will be provided in a later framework iteration.
+
+#### Parameters:
+- **`points`**: The list of geographic points defining the path of the line.
+- **`color`**: The color of the line.
+- **`width`**: The width of the line. *(Note: abstract unit at this moment; a resolution-independent coordinate unit will be provided in a future iteration).*
 
 ### `ShashlikShape`
-Low-level component managing underlying shapes. Handles automatic instantiation on addition and resource cleanup on disposal.
+Low-level component managing underlying shapes. Handles automatic shape instantiation on addition, dynamic anchor position updates via `updateShape`, and resource cleanup on disposal.
 
 ```kotlin
 @Composable
 fun ShashlikShape(
     points: List<uniffi.ffi_run.Point>,
+    anchor: uniffi.ffi_run.Point?,
     type: uniffi.ffi_run.ShapeType,
     color: uniffi.ffi_run.Color
 )
 ```
+
+#### Parameters:
+- **`points`**: The points defining the shape. If `anchor` is `null`, `points` are interpreted as geographic coordinates. If `anchor` is provided, `points` are interpreted as relative offset points in dp from the `anchor`.
+- **`anchor`**: Optional geographic anchor point. When provided, changes to `anchor` dynamically update the shape's position on the map without re-creating the underlying shape.
+- **`type`**: The type of shape to render (`ShapeType.Polygon` or `ShapeType.Line`).
+- **`color`**: The color of the shape.
 
 ---
 
