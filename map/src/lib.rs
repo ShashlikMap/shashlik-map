@@ -491,6 +491,18 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
                 self.camera_bearing = new_bearing;
             }
         }
+
+        let puck_anim_speed = self.anim_config.get_puck_anim_speed();
+        if puck_anim_speed == 1.0 {
+            let puck_location = self.location_world_position;
+            let bearing = self.location_bearing;
+            self.renderer
+                .api()
+                .update_spatial_data("puck".to_string(), move |spatial_data| {
+                    spatial_data.transform = puck_location;
+                    spatial_data.yaw = bearing % 360.0;
+                });
+        }
     }
 
     fn calc_nearest_bearing(new_bearing: f64, prev_bearing: f64) -> f64 {
