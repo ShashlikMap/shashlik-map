@@ -69,9 +69,9 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         } else {
             points.iter().map(|p| converter(p)).collect()
         };
-        let anchor = anchor.map(|qq| {
-            let qq = converter(&qq);
-            DVec3::new(qq.x(), qq.y(), 0.0)
+        let anchor = anchor.map(|p| {
+            let p = converter(&p);
+            DVec3::new(p.x(), p.y(), 0.0)
         });
         let id = OVERLAY_SHAPE_ID.fetch_add(1, Ordering::Relaxed);
         let render_style = renderer_common::render_style::RenderStyle::fill([

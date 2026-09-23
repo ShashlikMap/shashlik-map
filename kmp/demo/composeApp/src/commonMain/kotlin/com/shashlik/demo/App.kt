@@ -172,11 +172,11 @@ fun App() {
             }
 
             ShashlikMap(
-                withAutoLocationEvent = false,
+                withAutoLocationEvent = true,
                 withPuck = true,
-                followModeEnabled = false,
-                camAnimationEnabled = false,
-                puckAnimationEnabled = false,
+                followModeEnabled = camFollowModeState,
+                camAnimationEnabled = true,
+                puckAnimationEnabled = true,
                 mvtTiles = mvtCheckedState
             ) {
                 ConvexPolygon(

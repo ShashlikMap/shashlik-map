@@ -164,9 +164,9 @@ impl ShashlikMapApi {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
         let converter = shashlik_map.create_location_coord_converter();
 
-        let hh = converter(&geo_types::Point::new(position.x, position.y));
+        let p = converter(&geo_types::Point::new(position.x, position.y));
         shashlik_map.overlay().update_spatial_data(key, move |spatial_data| {
-            spatial_data.transform = DVec3::new(hh.x(), hh.y(), 0.0);
+            spatial_data.transform = DVec3::new(p.x(), p.y(), 0.0);
         });
     }
 
