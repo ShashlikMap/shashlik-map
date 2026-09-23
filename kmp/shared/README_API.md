@@ -58,6 +58,35 @@ fun ShashlikMap(
 - **`puckAnimationEnabled`**: Enables smooth positional interpolations for the location puck.
 - **`content`**: Composable lambda slot to draw overlays/shapes (`ConvexPolygon`, `LineShape`) directly on top of the map layer.
 
+#### Quick Start Usage Example:
+```kotlin
+ShashlikMap(
+    state = rememberLocationState(latitude = 35.6879, longitude = 139.7570),
+    withPuck = true
+) {
+    // Convex polygon centered at Tokyo with a 10.dp radius
+    ConvexPolygon(
+        center = Point(x = 139.7570, y = 35.6879),
+        radius = 10.dp,
+        sides = 5,
+        color = Color.Red
+    )
+
+    // Polyline connecting Mercator coordinates
+    LineShape(
+        points = listOf(
+            Point(x = 139.75, y = 35.68),
+            Point(x = 139.76, y = 35.69)
+        ),
+        color = Color.Blue,
+        width = 2f
+    )
+}
+```
+
+### `isDebugBuild`
+A multiplatform build flag property (`expect val isDebugBuild: Boolean`) that returns `true` when running on a debug build variant.
+
 ---
 
 ## 2. State Hoisting & Management
