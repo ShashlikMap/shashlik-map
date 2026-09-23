@@ -153,11 +153,11 @@ fun App() {
             var camFollowModeState by remember { mutableStateOf(true) }
             val shapes = remember { mutableStateListOf(generateRandomShapeAroundTokyo()) }
             ShashlikMap(
-                withAutoLocationEvent = true,
+                withAutoLocationEvent = false,
                 withPuck = true,
-                followModeEnabled = camFollowModeState,
-                camAnimationEnabled = true,
-                puckAnimationEnabled = true,
+                followModeEnabled = false,
+                camAnimationEnabled = false,
+                puckAnimationEnabled = false,
                 mvtTiles = mvtCheckedState
             ) {
                 shapes.forEach { shape ->

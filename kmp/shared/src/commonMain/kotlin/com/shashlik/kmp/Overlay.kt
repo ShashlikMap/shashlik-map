@@ -34,17 +34,19 @@ fun ConvexPolygon(
     sides: Int,
     color: ComposeColor,
 ) {
-    val dLat = radiusMeters / METERS_PER_DEGREE_LAT
-    val cosLat = cos(center.y * DEG_TO_RAD).coerceAtLeast(MIN_COS_LAT)
-    val dLon = dLat / cosLat
     val points = (0 until sides).map { i ->
         val angle = 2.0 * PI * i / sides
         Point(
-            x = center.x + dLon * cos(angle),
-            y = center.y + dLat * sin(angle),
+            x = cos(angle) * radiusMeters,
+            y = sin(angle) * radiusMeters,
         )
     }
-    ShashlikShape(points, ShapeType.Polygon, color.toShashlikColor())
+    ShashlikShape(
+        points = points,
+        anchor = center,
+        type = ShapeType.Polygon,
+        color = color.toShashlikColor()
+    )
 }
 
 /**
@@ -62,6 +64,7 @@ fun LineShape(points: List<Point>, color: ComposeColor, width: Float = 1f) {
     }
     ShashlikShape(
         points = points,
+        anchor = null,
         type = ShapeType.Line(width),
         color = color.toShashlikColor(),
     )
@@ -80,6 +83,7 @@ fun LineShape(points: List<Point>, color: ComposeColor, width: Float = 1f) {
 @Composable
 fun ShashlikShape(
     points: List<Point>,
+    anchor: Point?,
     type: ShapeType,
     color: Color
 ) {
@@ -88,7 +92,7 @@ fun ShashlikShape(
 
         val job = CoroutineScope(Dispatchers.Main).launch {
             val api = awaitApi()
-            shapeId = api.addOverlayShape(points, type, color)
+            shapeId = api.addOverlayShape(points, anchor,type, color)
         }
 
         onDispose {
