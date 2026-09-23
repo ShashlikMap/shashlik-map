@@ -2,7 +2,7 @@ use crate::CoordConverter;
 use crate::overlay::ShapeType;
 use crate::overlay::overlay_shape_group::OverlayShapeGroup;
 use crate::puck_group::SimplePuck;
-use geo::{BoundingRect, Centroid, Scale, Translate};
+use geo::{BoundingRect, Scale, Translate};
 use geo_types::{GeometryCollection, MultiPoint, Point, Rect};
 use glam::DVec3;
 use renderer_common::RendererApi;
@@ -102,10 +102,12 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
             self.feature_layer_tag.clone(),
             style_id.clone(),
             shape_type,
+            anchor,
+            self.last_normal_scale
         ));
 
         self.api
-            .add_render_group(unique_id.clone(), shape.spatial_data(anchor, Some(1.0)), shape);
+            .add_render_group(unique_id.clone(), shape.spatial_data(), shape);
 
         Some(unique_id)
     }

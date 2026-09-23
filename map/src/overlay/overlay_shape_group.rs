@@ -1,22 +1,26 @@
+use crate::overlay::ShapeType;
 use geo::{Distance, Euclidean};
 use geo_types::Point;
 use glam::{DVec3, Vec2, Vec3};
-use lyon::geom::{point, Box2D};
-use lyon::geom::euclid::{point2, Size2D};
+use lyon::geom::euclid::{Size2D, point2};
+use lyon::geom::{Box2D, point};
 use lyon::lyon_tessellation::{LineCap, LineJoin};
 use lyon::path::{Path, Winding};
 use renderer_common::CanvasApi;
-use renderer_common::geometry_data::{GeometryData, GeometryType, IconType, PolylineOptions, ShapeData, StyledRangeInfo, IconBackground, IconShapeData, IconData};
+use renderer_common::geometry_data::{
+    GeometryData, GeometryType, IconBackground, IconData, IconShapeData, IconType, PolylineOptions,
+    ShapeData, StyledRangeInfo,
+};
 use renderer_common::render_group::RenderGroup;
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::style_id::StyleId;
-use crate::overlay::ShapeType;
 
 pub struct OverlayShapeGroup {
     shape: Vec<Point>,
     feature_layer_tag: String,
     style_id: StyleId,
     shape_type: ShapeType,
+    spatial_data: SpatialData,
 }
 
 impl OverlayShapeGroup {
@@ -25,32 +29,42 @@ impl OverlayShapeGroup {
         feature_layer_tag: String,
         style_id: StyleId,
         shape_type: ShapeType,
+        anchor: Option<DVec3>,
+        normal_scale: Option<f64>,
     ) -> OverlayShapeGroup {
+        let point = anchor.unwrap_or(DVec3::new(shape[0].x(), shape[0].y(), 0.0));
+        let mut spatial_data = SpatialData::transform(point);
+        let scale = normal_scale.unwrap_or(1.0);
+        spatial_data.normal_scale = scale;
+        let is_polygon = matches!(shape_type, ShapeType::Polygon);
+        if is_polygon {
+            spatial_data.scale = DVec3::splat(scale);
+        }
+        let shape = if anchor.is_some() {
+            shape
+        } else {
+            let first_shape_point = shape[0];
+            shape.into_iter().map(|p| {
+                p - first_shape_point
+            }).collect()
+        };
         OverlayShapeGroup {
             shape,
             feature_layer_tag,
             style_id,
             shape_type,
+            spatial_data,
         }
     }
 
-    pub fn spatial_data(&self, anchor: Option<DVec3>, normal_scale: Option<f64>) -> SpatialData {
-        let point = anchor.unwrap_or(DVec3::new(self.shape[0].x(), self.shape[0].y(), 0.0));
-        let mut data = SpatialData::transform(point);
-        let scale = normal_scale.unwrap_or(1.0);
-        data.normal_scale = scale;
-        let is_polygon = matches!(self.shape_type, ShapeType::Polygon);
-        if is_polygon {
-            data.scale = DVec3::splat(scale);
-        }
-        data
+    pub fn spatial_data(&self) -> SpatialData {
+        self.spatial_data.clone()
     }
 }
 
 impl<T: CanvasApi> RenderGroup<T> for OverlayShapeGroup {
     fn content(&mut self, canvas: &mut T) {
         canvas.set_feature_layer_tag(Some(self.feature_layer_tag.clone()));
-        let first_shape_point = self.shape[0];
 
         if matches!(self.shape_type, ShapeType::DottedLine) {
             let mut dist = 0f32;
@@ -76,11 +90,11 @@ impl<T: CanvasApi> RenderGroup<T> for OverlayShapeGroup {
                         id: 0,
                         icon_data: IconData {
                             id: "shape_dot",
-                            icon_type: IconType::None
+                            icon_type: IconType::None,
                         },
                         position: Vec3::new(
-                            (prev_point.x() - first_shape_point.x()) as f32 + pos.x,
-                            (prev_point.y() - first_shape_point.y()) as f32 + pos.y,
+                            (prev_point.x()) as f32 + pos.x,
+                            (prev_point.y()) as f32 + pos.y,
                             0.0,
                         )
                         .as_dvec3(),
@@ -92,7 +106,8 @@ impl<T: CanvasApi> RenderGroup<T> for OverlayShapeGroup {
                                 let mut path_builder = Path::builder();
                                 let bb = Box2D::from_origin_and_size(
                                     point2(-size * 0.5, -size * 0.5),
-                                    Size2D::splat(size));
+                                    Size2D::splat(size),
+                                );
                                 path_builder.add_rectangle(&bb, Winding::Negative);
                                 path_builder.build()
                             }),
@@ -107,13 +122,12 @@ impl<T: CanvasApi> RenderGroup<T> for OverlayShapeGroup {
             }
         } else {
             let mut path_builder = Path::builder();
-            path_builder.begin(point(0.0f32, 0.0f32));
+            path_builder.begin(point(self.shape[0].x() as f32, self.shape[0].y() as f32));
 
-            // TODO Should relative coords calc for the shape be the shape responsibility?
             for &p in self.shape[1..].iter() {
                 path_builder.line_to(point(
-                    (p.x() - first_shape_point.x()) as f32,
-                    (p.y() - first_shape_point.y()) as f32,
+                    p.x() as f32,
+                    p.y() as f32,
                 ));
             }
             let is_polygon = matches!(self.shape_type, ShapeType::Polygon);
@@ -128,10 +142,8 @@ impl<T: CanvasApi> RenderGroup<T> for OverlayShapeGroup {
                         tolerance: 0.01f32, // this gives more or less a good round shape for join and caps
                     };
                     GeometryType::Polyline(options)
-                },
-                ShapeType::Polygon => {
-                    GeometryType::Polygon
-                },
+                }
+                ShapeType::Polygon => GeometryType::Polygon,
                 ShapeType::DottedLine => {
                     let options = PolylineOptions {
                         width: 1.0f32,
@@ -148,7 +160,7 @@ impl<T: CanvasApi> RenderGroup<T> for OverlayShapeGroup {
                 geometry_type,
                 style_id: self.style_id.clone(),
                 index_layer_level: 0,
-                styled_range_info: StyledRangeInfo::new(1, true)
+                styled_range_info: StyledRangeInfo::new(1, true),
             }));
         }
     }

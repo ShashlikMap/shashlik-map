@@ -122,12 +122,13 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                         route,
                                         "route_layer".to_string(),
                                         style_id,
-                                        shape_type
+                                        shape_type,
+                                        None, None
                                     ));
 
                                     api.add_render_group(
                                         Self::create_route_id(index),
-                                        route.spatial_data(None, None),
+                                        route.spatial_data(),
                                         route,
                                     );
                                 } else {

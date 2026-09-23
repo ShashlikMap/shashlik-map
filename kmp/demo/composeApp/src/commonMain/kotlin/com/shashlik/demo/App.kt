@@ -181,6 +181,12 @@ fun App() {
             ) {
                 ConvexPolygon(
                     center = movingPoint,
+                    radius = 6.dp,
+                    sides = 5,
+                    color = Color.White
+                )
+                ConvexPolygon(
+                    center = movingPoint,
                     radius = 5.dp,
                     sides = 5,
                     color = Color.Blue
