@@ -109,7 +109,7 @@ Execute *kms_deploy.sh* script:
 
 ```
 [versions]
-shashlikMap = "0.2.1"
+shashlikMap = "0.3.21"
 
 [libraries]
 shashlikmap = { module = "io.github.shashlikmap:mapshared", version.ref = "shashlikMap" }

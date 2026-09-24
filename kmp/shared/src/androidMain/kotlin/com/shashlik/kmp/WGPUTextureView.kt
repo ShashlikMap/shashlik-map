@@ -13,7 +13,7 @@ import uniffi.ffi_run.toPointer
 
 
 @SuppressLint("ClickableViewAccessibility")
-class WGPUTextureView : TextureView {
+internal class WGPUTextureView : TextureView {
     companion object {
         @JvmStatic external fun initRustlsPlatformVerifier(context: Context)
     }

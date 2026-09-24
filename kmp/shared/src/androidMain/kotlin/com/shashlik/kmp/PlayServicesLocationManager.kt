@@ -10,7 +10,7 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 
-class PlayServicesLocationManager(
+internal class PlayServicesLocationManager(
     context: Context,
     callback: (LocationData) -> Unit
 ) : BaseLocationManager(callback) {

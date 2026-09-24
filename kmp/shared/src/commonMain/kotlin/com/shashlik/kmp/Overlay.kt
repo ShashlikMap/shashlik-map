@@ -2,7 +2,6 @@ package com.shashlik.kmp
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,7 +49,7 @@ fun ConvexPolygon(
         points = points,
         anchor = center,
         type = ShapeType.Polygon,
-        color = color.toShashlikColor()
+        color = color
     )
 }
 
@@ -74,7 +73,7 @@ fun LineShape(points: List<Point>, color: ComposeColor, width: Float = 1f) {
         points = points,
         anchor = null,
         type = ShapeType.Line(width),
-        color = color.toShashlikColor(),
+        color = color,
     )
 }
 
@@ -98,7 +97,7 @@ fun ShashlikShape(
     points: List<Point>,
     anchor: Point?,
     type: ShapeType,
-    color: Color
+    color: ComposeColor
 ) {
     var shapeId by remember { mutableStateOf<String?>(null) }
     var lastUpdatedAnchor by remember { mutableStateOf<Point?>(null) }
@@ -106,7 +105,7 @@ fun ShashlikShape(
     DisposableEffect(points, anchor, type, color) {
         val job = CoroutineScope(Dispatchers.Main).launch {
             val api = awaitApi()
-            val id = api.addOverlayShape(points, anchor, type, color)
+            val id = api.addOverlayShape(points, anchor, type, color.toShashlikColor())
             lastUpdatedAnchor = anchor
             shapeId = id
         }
