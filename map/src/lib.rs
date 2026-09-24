@@ -28,9 +28,9 @@ use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use fast_mvt::serde_json;
-use geo::{BoundingRect, Centroid};
+use geo::{BoundingRect, Centroid, Winding};
 use log::error;
-use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData, MAP_SIZE};
+use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData, MAP_SIZE, GLOBE_SCALE};
 use crate::overlay::overlay::Overlay;
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
@@ -303,8 +303,8 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
                                world_on_ground_right_bottom,
                                world_on_ground_left_bottom];
 
-        // check if edges are curved line(skip a full planter view)
-        if world_on_ground_center_left.y != world_on_ground_center_right.y {
+        // extra check is only for Globe
+        if self.camera.scale() > GLOBE_SCALE {
             // check what half of the planet
             let extra_coord = if world_on_ground_center.y >= MAP_SIZE * 0.5 {
                 self.renderer.clip_to_world(&coord! {x: 0.0, y: 1.0}).unwrap()
@@ -318,7 +318,15 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             coord! {x: coord.x, y: coord.y}
         }).collect();
 
-        Polygon::new(poly_coords.into(), Vec::new())
+        let mut poly = Polygon::new(poly_coords.into(), Vec::new());
+        // since the extra check might be added for Globe we provide a proper order just in case
+        // later we calc only bounding rect, order doesn't matter
+        if self.camera.scale() > GLOBE_SCALE {
+            poly.exterior_mut(|line| {
+                line.make_ccw_winding();
+            });
+        }
+        poly
     }
 
     fn fetch_tiles(&mut self, polygon: Polygon) {

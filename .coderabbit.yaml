@@ -10,6 +10,8 @@ reviews:
 
   # Global instructions for CodeRabbit AI reviewers
   instructions: |
+    Keep your tone friendly, casual, and easy to understand. Use plain, everyday English instead of overly academic or dense technical jargon. Explain things simply, like a helpful peer.
+
     Read comments around changes carefully. Some comments may indicate that a solution or code change is a temporary fix, hotfix, or workaround. Do not flag or review these instances as issues.
 
   path_instructions:

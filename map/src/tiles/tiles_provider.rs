@@ -75,6 +75,10 @@ pub trait TilesProviderStore: MercatorConverter {
         for tx in min_x..=max_x {
             for ty in min_y..=max_y {
                 let tile_key = TileKey {
+                    // TODO TileKey now is the same for loading and for rendering.
+                    //  But rendering doesn't know where exactly renders the tile if it's on the map edge.
+                    //  It's an issue, but given that we start Globe quite early it might be quite hard to catch exact visual problem.
+                    //  Let's keep it as known limitation.
                     tile_x: tx.rem_euclid(max_tiles),
                     tile_y: ty as i32,
                     zoom_level,
