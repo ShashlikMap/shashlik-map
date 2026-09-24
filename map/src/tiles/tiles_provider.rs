@@ -10,7 +10,6 @@ use std::collections::HashSet;
 use std::f64::consts::PI;
 use std::sync::Arc;
 use renderer_common::MAP_SIZE;
-use crate::tiles::CustomTileKey;
 
 pub enum TilesMessage {
     TilesData(Vec<TileData>),
@@ -55,7 +54,7 @@ pub trait TilesProviderStore: MercatorConverter {
     fn convert_zoom(&self, zoom_level: i32) -> i32 {
         zoom_level
     }
-    fn tile_ranges(&self, area: Polygon<f64>, zoom_level: i32) -> Vec<TileKey> {
+    fn tile_ranges(&self, area: Polygon<f64>, zoom_level: i32) -> HashSet<TileKey> {
         let mut min_x = i32::MAX;
         let mut max_x = i32::MIN;
         let mut min_y = u32::MAX;
@@ -70,16 +69,22 @@ pub trait TilesProviderStore: MercatorConverter {
             if ty > max_y { max_y = ty; }
         }
 
-        let mut res = vec![];
+        let max_tiles = 1 << zoom_level;
+
+        let mut res = HashSet::new();
         for tx in min_x..=max_x {
             for ty in min_y..=max_y {
                 let tile_key = TileKey {
-                    tile_x: tx,
+                    // TODO TileKey now is the same for loading and for rendering.
+                    //  But rendering doesn't know where exactly renders the tile if it's on the map edge.
+                    //  It's an issue, but given that we start Globe quite early it might be quite hard to catch exact visual problem.
+                    //  Let's keep it as known limitation.
+                    tile_x: tx.rem_euclid(max_tiles),
                     tile_y: ty as i32,
                     zoom_level,
                 };
 
-                res.push(tile_key);
+                res.insert(tile_key);
 
                 // TODO check intersection!
                 // // FIXME Maybe move "calc_tile_boundary" to tile generator? since we need to calculate all the time and twice(+ before loading)
@@ -91,11 +96,11 @@ pub trait TilesProviderStore: MercatorConverter {
         }
         res
     }
-    fn tile_position_bbox(&self, tile_key: &CustomTileKey, bbox_scale: f64) -> (DVec3, Rect) {
+    fn tile_position_bbox(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect) {
         let bounds = self.tile_id_to_mercator_meters(
-            tile_key.0.tile_x,
-            tile_key.0.tile_y,
-            tile_key.0.zoom_level as u32,
+            tile_key.tile_x,
+            tile_key.tile_y,
+            tile_key.zoom_level as u32,
         );
         let tile_position: DVec3 = DVec3::new(bounds.min_x, bounds.min_y, 0.0);
 
@@ -107,7 +112,7 @@ pub trait TilesProviderStore: MercatorConverter {
 
         (tile_position, bbox)
     }
-    fn load(&self, tile_key: &CustomTileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)>;
+    fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)>;
 
     fn mercator_meters_to_512_tile(&self, mx: f64, my: f64, zoom: u32) -> (i32, u32) {
         let norm_x = (mx) / MAP_SIZE;

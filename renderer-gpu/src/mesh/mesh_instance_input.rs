@@ -1,13 +1,11 @@
+use crate::mesh_layers::{LayerAttrMapper, LayerAttribute};
 use crate::vertex_attrs::{GeneralInstanceInput, ScreenShapeInstanceInput, ShapeInstanceInput};
 use bytemuck::Pod;
 use glam::DVec3;
-use renderer_common::MAP_SIZE;
 use renderer_common::render_modifier::SpatialData;
-use crate::mesh_layers::{LayerAttrMapper, LayerAttribute};
 
 pub(crate) trait MeshInstanceInput: Sized + Pod + From<LayerAttribute> {
     fn fill_attrs(
-        is_globe_view: bool,
         attrs: &mut Vec<Self>,
         attr_mapper: LayerAttrMapper<Self>,
         cs_offset: &DVec3,
@@ -22,12 +20,8 @@ pub(crate) trait MeshInstanceInput: Sized + Pod + From<LayerAttribute> {
                 continue;
             }
 
-            let mut transform_with_cs_offset = item.0 + spatial_data.transform - cs_offset;
+            let transform_with_cs_offset = item.0 + spatial_data.transform - cs_offset;
 
-            // TODO Most likely it should not be here
-            if !is_globe_view && transform_with_cs_offset.x.abs() >= MAP_SIZE * 0.75 {
-                transform_with_cs_offset.x = (transform_with_cs_offset.x + MAP_SIZE * 0.5).rem_euclid(MAP_SIZE) - MAP_SIZE * 0.5;
-            }
             let bbox_origin_with_cs_offset = item.0
                 + DVec3::new(spatial_data.bbox.min().x, spatial_data.bbox.min().y, 0.0)
                 - cs_offset;

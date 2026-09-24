@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesProviderStore};
 use geo::{BoundingRect, Intersects, MapCoordsInPlace, Scale};
@@ -7,7 +8,6 @@ use googleprojection::Mercator;
 use osm::map::{MapGeomObject, MapGeometry};
 use osm::source::TileSource;
 use osm::tiles::{TILES_COUNT, TILE_OVERLAP_PERCENT, TILE_SIZE, TileKey, TileStore, calc_tile_ranges};
-use crate::tiles::CustomTileKey;
 
 impl<S: TileSource> MercatorProvider for TileStore<S> {
     fn mercator(&self) -> Mercator {
@@ -41,7 +41,7 @@ impl <S:TileSource> TilesProviderStore for TileStore<S> {
         MAX_ZOOM_LEVEL - zoom_level
     }
 
-    fn tile_ranges(&self, mut area: Polygon<f64>, zoom_level: i32) -> Vec<TileKey> {
+    fn tile_ranges(&self, mut area: Polygon<f64>, zoom_level: i32) -> HashSet<TileKey> {
         let zoom_level = self.convert_zoom(zoom_level);
 
         area.map_coords_in_place(|coord| {
@@ -52,7 +52,7 @@ impl <S:TileSource> TilesProviderStore for TileStore<S> {
         let area_lon_lat = area.exterior().bounding_rect().unwrap();
 
         let ranges = calc_tile_ranges(TILES_COUNT, zoom_level, &area_lon_lat);
-        let mut res = vec![];
+        let mut res = HashSet::new();
         for tx in ranges.min_x..=ranges.max_x {
             for ty in ranges.min_y..=ranges.max_y {
                 let tile_key = TileKey {
@@ -64,7 +64,7 @@ impl <S:TileSource> TilesProviderStore for TileStore<S> {
                 // FIXME Maybe move "calc_tile_boundary" to tile generator? since we need to calculate all the time and twice(+ before loading)
                 let tile_rect = tile_key.calc_tile_boundary(1.0);
                 if area.intersects(&tile_rect) {
-                    res.push(tile_key);
+                    res.insert(tile_key);
                 }
             }
         }
@@ -72,20 +72,20 @@ impl <S:TileSource> TilesProviderStore for TileStore<S> {
     }
 
     // fyi, TilesV0 won't support infinite scroll + it'll be removed anyway soon
-    fn tile_position_bbox(&self, tile_key: &CustomTileKey, bbox_scale: f64) -> (DVec3, Rect) {
-        let tile_rect = tile_key.0.calc_tile_boundary(TILE_OVERLAP_PERCENT);
+    fn tile_position_bbox(&self, tile_key: &TileKey, bbox_scale: f64) -> (DVec3, Rect) {
+        let tile_rect = tile_key.calc_tile_boundary(TILE_OVERLAP_PERCENT);
 
         let tile_rect_origin = self.lon_lat_to_world(&tile_rect.min(), MAX_ZOOM_LEVEL);
         let tile_position = [tile_rect_origin.x, tile_rect_origin.y, 0.0].into();
 
-        let tile_rect_original = tile_key.0.calc_tile_boundary(1.00);
+        let tile_rect_original = tile_key.calc_tile_boundary(1.00);
         let tile_rect_original_min = self.lon_lat_to_world(&tile_rect_original.min(), MAX_ZOOM_LEVEL);
         let tile_rect_original_max = self.lon_lat_to_world(&tile_rect_original.max(), MAX_ZOOM_LEVEL);
         let bbox = Rect::new(tile_rect_original_min, tile_rect_original_max).scale(bbox_scale);
         (tile_position, bbox)
     }
 
-    fn load(&self, tile_key: &CustomTileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
-        self.load_geometries(&tile_key.0)
+    fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
+        self.load_geometries(tile_key)
     }
 }

@@ -46,7 +46,8 @@ pub(crate) struct ViewProjection {
     ortho: DMat4,
     is_shadow_enabled: bool,
     shadow_texture_size: (u32, u32),
-    round_screen_sq_radius: Option<f32>
+    round_screen_sq_radius: Option<f32>,
+    lon_lat_center: Option<(f64, f64)>
 }
 
 impl ViewProjection {
@@ -100,6 +101,7 @@ impl ViewProjection {
             is_shadow_enabled: render_config.shadow_enabled,
             shadow_texture_size: render_config.shadow_texture_size(),
             round_screen_sq_radius: render_config.round_screen().then_some(0.0f32),
+            lon_lat_center: None,
         }
     }
 
@@ -157,6 +159,8 @@ impl ViewProjection {
         if let Some(ref mut radius_sq) = self.round_screen_sq_radius {
             *radius_sq = ((min(config.width, config.height) as f32) * 0.5f32).powf(2f32);
         }
+
+        self.calc_lon_lat_center();
 
         queue.write_buffer(
             &self.uniform_buffer,
@@ -268,6 +272,22 @@ impl ViewProjection {
             y : (coord.y as f64 / self.screen_size.1) * 2.0 - 1.0 })
     }
 
+    fn calc_lon_lat_center(&mut self) {
+        if self.is_globe_view() {
+            self.lon_lat_center = <GpuRenderer as Renderer>::clip_to_world_at_globe(
+                &DVec2::new(0.0, 0.0),
+                &self.inv_globe_view_proj_matrix,
+            ).map(|coord| {
+                let n = coord.normalize();
+                let lat = n.z.asin();
+                let lon = n.x.atan2(n.y);
+                (lon, lat)
+            });
+        } else {
+            self.lon_lat_center = None
+        }
+    }
+
     pub fn clip_to_world(&self, coord: &Coord<f64>) -> Option<DVec2> {
         if self.is_globe_view() {
             <GpuRenderer as Renderer>::clip_to_world_at_globe(
@@ -279,7 +299,16 @@ impl ViewProjection {
                 let n = coord.normalize();
                 // TODO Potentially we need to clamp it
                 let lat = n.z.asin();
-                let lon = n.x.atan2(n.y);
+                let mut lon = n.x.atan2(n.y);
+                if let Some(lon_lat_center) = self.lon_lat_center {
+                    let diff = lon - lon_lat_center.0;
+                    if diff > PI {
+                        lon -= 2.0 * PI;
+                    } else if diff < -PI {
+                        lon += 2.0 * PI;
+                    }
+                }
+
                 let merc_x = (lon / (2.0 * PI)) + 0.5;
                 let merc_y = 0.5 - (((lat + PI * 0.5) * 0.5).tan().ln() / (2.0 * PI));
                 DVec2::new(merc_x, merc_y) * MAP_SIZE

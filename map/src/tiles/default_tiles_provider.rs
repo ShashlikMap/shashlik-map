@@ -21,7 +21,6 @@ use osm::map::NatureKind::Water;
 use osm::source::reqwest_source::ReqwestSource;
 use renderer_common::TilesType;
 use crate::MAX_ZOOM_LEVEL;
-use crate::tiles::CustomTileKey;
 use crate::tiles::grid_divider::subdivide_grid;
 use crate::tiles::mvt::mvt_tile_store::MvtTileStore;
 use crate::tiles::shashlik_v1::ShashlikV1TileStore;
@@ -112,9 +111,9 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         let zoom_level = tile_store.convert_zoom(tile_key.zoom_level);
 
         
-        let (tile_position, bbox) = tile_store.tile_position_bbox(&CustomTileKey(tile_key), Self::BBOX_OVERLAP_OFFSET_SCALE);
+        let (tile_position, bbox) = tile_store.tile_position_bbox(&tile_key, Self::BBOX_OVERLAP_OFFSET_SCALE);
 
-        let mut geom = tile_store.load(&CustomTileKey(tile_key));
+        let mut geom = tile_store.load(&tile_key);
 
         // A quick workaround for missing water shape tiles since they are not generated if there is no other data
         if geom.is_empty() {
@@ -242,13 +241,12 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
     }
 
     fn load(&mut self, area_poly: geo_types::Polygon<f64>, zoom_level: i32) {
-        let mut current_visible_tiles: HashSet<TileKey> = HashSet::new();
+        let current_visible_tiles = self.tile_store.tile_ranges(area_poly, zoom_level);
         let mut to_load: HashSet<TileKey> = HashSet::new();
 
-        self.tile_store.tile_ranges(area_poly, zoom_level).into_iter().for_each(|tile_key| {
-            current_visible_tiles.insert(tile_key);
-            if self.per_frame_cache.insert(tile_key) {
-                to_load.insert(tile_key);
+        current_visible_tiles.iter().for_each(|tile_key| {
+            if self.per_frame_cache.insert(*tile_key) {
+                to_load.insert(*tile_key);
             }
         });
 
@@ -262,16 +260,17 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
 
             let removed: HashSet<TileKey> = actual_cache
                 .extract_if(|key| {
-                    (key.zoom_level == zoom_level && !current_visible_tiles.contains(&key))
+                    (key.zoom_level == zoom_level && !current_visible_tiles.contains(key))
                         || (key.zoom_level != last_loaded_zoom_level
                             && last_loaded_zoom_level == zoom_level)
                 })
                 .collect();
 
             if !removed.is_empty() {
+                let keys = removed.iter().map(|item| item.as_string_key()).collect();
                 sender
                     .unbounded_send(TilesMessage::ToRemove(
-                        removed.iter().map(|item| item.as_string_key()).collect()
+                        keys
                     ))
                     .unwrap();
             }

@@ -1,12 +1,12 @@
+use crate::tiles::tiles_provider::GLOBE_RADIUS;
 use glam::DMat2;
 use glam::DMat3;
 use glam::DMat4;
 use glam::DVec2;
 use glam::DVec3;
 use glam::Vec3Swizzles;
-use std::f64::consts::PI;
 use renderer_common::{GLOBE_SCALE, LIGHT_POS, MAP_SIZE};
-use crate::tiles::tiles_provider::{GLOBE_RADIUS};
+use std::f64::consts::PI;
 
 pub struct Camera {
     pub eye: DVec3,
@@ -194,6 +194,10 @@ impl CameraController {
         let pan_vec = (DMat2::from_angle(self.yaw.to_radians() - PI) * self.pan_delta).extend(0.0);
         camera.eye -= pan_vec;
         camera.target -= pan_vec;
+        // TODO It's possible that camera.eye.x might be on the one side of the edge and camera.target.x on another side.
+        //  It may lead to weird glitch with a distance
+        camera.eye.x = camera.eye.x.rem_euclid(MAP_SIZE);
+        camera.target.x = camera.target.x.rem_euclid(MAP_SIZE);
 
         let distance_from_origin = camera.offset.xy().distance(camera.target.xy());
         if distance_from_origin >= Self::ORIGIN_REBASE_THRESHOLD {
