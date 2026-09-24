@@ -55,7 +55,7 @@ pub trait TilesProviderStore: MercatorConverter {
     fn convert_zoom(&self, zoom_level: i32) -> i32 {
         zoom_level
     }
-    fn tile_ranges(&self, area: Polygon<f64>, zoom_level: i32) -> Vec<TileKey> {
+    fn tile_ranges(&self, area: Polygon<f64>, zoom_level: i32) -> HashSet<TileKey> {
         let mut min_x = i32::MAX;
         let mut max_x = i32::MIN;
         let mut min_y = u32::MAX;
@@ -70,7 +70,7 @@ pub trait TilesProviderStore: MercatorConverter {
             if ty > max_y { max_y = ty; }
         }
 
-        let mut res = vec![];
+        let mut res = HashSet::new();
         for tx in min_x..=max_x {
             for ty in min_y..=max_y {
                 let tile_key = TileKey {
@@ -85,7 +85,7 @@ pub trait TilesProviderStore: MercatorConverter {
                     zoom_level: ctk.get_zoom_level(),
                 };
 
-                res.push(tile_key);
+                res.insert(tile_key);
 
                 // TODO check intersection!
                 // // FIXME Maybe move "calc_tile_boundary" to tile generator? since we need to calculate all the time and twice(+ before loading)

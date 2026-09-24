@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesProviderStore};
 use geo::{BoundingRect, Intersects, MapCoordsInPlace, Scale};
@@ -41,7 +42,7 @@ impl <S:TileSource> TilesProviderStore for TileStore<S> {
         MAX_ZOOM_LEVEL - zoom_level
     }
 
-    fn tile_ranges(&self, mut area: Polygon<f64>, zoom_level: i32) -> Vec<TileKey> {
+    fn tile_ranges(&self, mut area: Polygon<f64>, zoom_level: i32) -> HashSet<TileKey> {
         let zoom_level = self.convert_zoom(zoom_level);
 
         area.map_coords_in_place(|coord| {
@@ -52,7 +53,7 @@ impl <S:TileSource> TilesProviderStore for TileStore<S> {
         let area_lon_lat = area.exterior().bounding_rect().unwrap();
 
         let ranges = calc_tile_ranges(TILES_COUNT, zoom_level, &area_lon_lat);
-        let mut res = vec![];
+        let mut res = HashSet::new();
         for tx in ranges.min_x..=ranges.max_x {
             for ty in ranges.min_y..=ranges.max_y {
                 let tile_key = TileKey {
@@ -64,7 +65,7 @@ impl <S:TileSource> TilesProviderStore for TileStore<S> {
                 // FIXME Maybe move "calc_tile_boundary" to tile generator? since we need to calculate all the time and twice(+ before loading)
                 let tile_rect = tile_key.calc_tile_boundary(1.0);
                 if area.intersects(&tile_rect) {
-                    res.push(tile_key);
+                    res.insert(tile_key);
                 }
             }
         }

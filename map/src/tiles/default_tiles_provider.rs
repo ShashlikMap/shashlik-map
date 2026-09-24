@@ -242,13 +242,12 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
     }
 
     fn load(&mut self, area_poly: geo_types::Polygon<f64>, zoom_level: i32) {
-        let mut current_visible_tiles: HashSet<TileKey> = HashSet::new();
+        let current_visible_tiles = self.tile_store.tile_ranges(area_poly, zoom_level);
         let mut to_load: HashSet<TileKey> = HashSet::new();
 
-        self.tile_store.tile_ranges(area_poly, zoom_level).into_iter().for_each(|tile_key| {
-            current_visible_tiles.insert(tile_key);
-            if self.per_frame_cache.insert(tile_key) {
-                to_load.insert(tile_key);
+        current_visible_tiles.iter().for_each(|tile_key| {
+            if self.per_frame_cache.insert(*tile_key) {
+                to_load.insert(*tile_key);
             }
         });
 
@@ -262,7 +261,7 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
 
             let removed: HashSet<TileKey> = actual_cache
                 .extract_if(|key| {
-                    (key.zoom_level == zoom_level && !current_visible_tiles.contains(&key))
+                    (key.zoom_level == zoom_level && !current_visible_tiles.contains(key))
                         || (key.zoom_level != last_loaded_zoom_level
                             && last_loaded_zoom_level == zoom_level)
                 })
