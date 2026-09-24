@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 
-class SimpleLocationManager(context: Context, callback: (LocationData) -> Unit) :
+internal class SimpleLocationManager(context: Context, callback: (LocationData) -> Unit) :
     BaseLocationManager(callback) {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
