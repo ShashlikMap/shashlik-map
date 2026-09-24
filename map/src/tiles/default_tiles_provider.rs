@@ -269,9 +269,11 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
                 .collect();
 
             if !removed.is_empty() {
+                let keys = removed.iter().map(|item| item.as_string_key()).collect();
+                println!("remove keys: {:?}", keys);
                 sender
                     .unbounded_send(TilesMessage::ToRemove(
-                        removed.iter().map(|item| item.as_string_key()).collect()
+                        keys
                     ))
                     .unwrap();
             }

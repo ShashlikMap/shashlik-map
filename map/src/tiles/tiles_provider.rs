@@ -78,6 +78,12 @@ pub trait TilesProviderStore: MercatorConverter {
                     tile_y: ty as i32,
                     zoom_level,
                 };
+                let ctk = CustomTileKey(&tile_key);
+                let tile_key = TileKey {
+                    tile_x: ctk.get_tile_x(),
+                    tile_y: ctk.get_tile_y(),
+                    zoom_level: ctk.get_zoom_level(),
+                };
 
                 res.push(tile_key);
 
