@@ -1,14 +1,7 @@
 package com.shashlik.demo
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.calculateCentroid
-import androidx.compose.foundation.gestures.calculateCentroidSize
-import androidx.compose.foundation.gestures.calculatePan
-import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,19 +25,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastAny
-import androidx.compose.ui.util.fastForEach
 import com.shashlik.kmp.ConvexPolygon
 import com.shashlik.kmp.LineShape
 import com.shashlik.kmp.ShashlikMap
 import com.shashlik.kmp.ShashlikMapApiHolder
 import com.shashlik.kmp.isDebugBuild
+import com.shashlik.kmp.mapGestures
 import com.shashlik.kmp.width
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -55,7 +44,6 @@ import uniffi.ffi_run.RouteCosting.PEDESTRIAN
 import uniffi.ffi_run.RouteCosting.entries
 import uniffi.ffi_run.ShapeType
 import kotlin.math.PI
-import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -66,61 +54,6 @@ var routeCosting = mutableStateOf(AUTO)
 private const val TOKYO_CENTER_X = 139.757080078125
 private const val TOKYO_CENTER_Y = 35.68798828125
 private const val TOKYO_MAX_OFFSET = 0.01
-
-/**
- * Slightly modified version of PointerInputScope.detectTransformGestures
- */
-suspend fun PointerInputScope.detectTwoFingersScrollZoom(
-    onGesture: (centroid: Offset, scroll: Float, zoom: Float) -> Unit,
-) {
-    awaitEachGesture {
-        var zoom = 1f
-        var pan = Offset.Zero
-        var pastTouchSlop = false
-        val touchSlop = viewConfiguration.touchSlop
-        var lockedToPan = false
-
-        awaitFirstDown(requireUnconsumed = false)
-        do {
-            val event = awaitPointerEvent()
-            val canceled = event.changes.fastAny { it.isConsumed }
-            if (!canceled && event.changes.size == 2) {
-                val zoomChange = event.calculateZoom()
-                val panChange = event.calculatePan()
-
-                if (!pastTouchSlop) {
-                    zoom *= zoomChange
-                    pan += panChange
-
-                    val centroidSize = event.calculateCentroidSize(useCurrent = false)
-                    val zoomMotion = abs(1 - zoom) * centroidSize
-                    val panMotion = pan.getDistance()
-
-                    if (zoomMotion > touchSlop) {
-                        lockedToPan = false
-                        pastTouchSlop = true
-                    } else if (panMotion > touchSlop) {
-                        lockedToPan = true
-                        pastTouchSlop = true
-                    }
-                }
-
-                if (pastTouchSlop) {
-                    val centroid = event.calculateCentroid(useCurrent = false)
-                    val effectiveZoom = if (lockedToPan) 1.0f else zoomChange
-                    val effectivePan = if (lockedToPan) panChange else Offset.Zero
-                    onGesture(centroid, effectivePan.y, effectiveZoom)
-                    event.changes.fastForEach {
-                        if (it.positionChanged()) {
-                            it.consume()
-                        }
-                    }
-                }
-            }
-        } while (!canceled && event.changes.fastAny { it.pressed })
-    }
-}
-
 private const val EXTENDED_CONTROLS = false
 
 @Composable
@@ -135,24 +68,6 @@ fun App() {
                         offset.x, offset.y, routeCosting.value
                     )
                 })
-            }
-            .pointerInput(Unit) {
-                detectTransformGestures { _, pan, _, _ ->
-                    val panX = pan.x
-                    val panY = pan.y
-                    ShashlikMapApiHolder.shashlikMapApi?.panDelta(-panX, -panY)
-                }
-            }
-            .pointerInput(Unit) {
-                detectTwoFingersScrollZoom { centroid, scroll, zoom ->
-                    if (zoom != 1.0f) {
-                        ShashlikMapApiHolder.shashlikMapApi?.zoomDelta(
-                            zoom, centroid.x, centroid.y
-                        )
-                    } else if (scroll != 0.0f) {
-                        ShashlikMapApiHolder.shashlikMapApi?.pitchDelta(scroll / 10.0f)
-                    }
-                }
             }
         ) {
             var mvtCheckedState by remember { mutableStateOf(true) }
@@ -172,6 +87,7 @@ fun App() {
             }
 
             ShashlikMap(
+                modifier = Modifier.mapGestures(),
                 withAutoLocationEvent = true,
                 withPuck = true,
                 followModeEnabled = camFollowModeState,

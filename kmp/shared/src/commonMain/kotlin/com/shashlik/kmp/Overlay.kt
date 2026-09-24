@@ -136,6 +136,10 @@ fun ShashlikShape(
 //    }
 }
 
+/**
+ * Extension property to retrieve the line width from a [ShapeType.Line] instance.
+ * Returns the width value if specified, or default `1f`.
+ */
 val ShapeType.Line.width: Float
     get() {
         return this.v1 ?: 1f
