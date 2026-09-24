@@ -37,6 +37,7 @@ The main visual entry point for the map component. It integrates the underlying 
 ```kotlin
 @Composable
 fun ShashlikMap(
+    modifier: Modifier = Modifier,
     state: LocationState = rememberLocationState(),
     withPuck: Boolean = true,
     withAutoLocationEvent: Boolean = true,
@@ -49,6 +50,7 @@ fun ShashlikMap(
 ```
 
 #### Parameters:
+- **`modifier`**: The `Modifier` to be applied to the map layout container.
 - **`state`**: The hoisted `LocationState` governing the location coordinates and bearing of the marker.
 - **`withPuck`**: When `true`, displays a location marker puck at the current coordinates.
 - **`withAutoLocationEvent`**: Automatically listens to and updates the user's current GPS location.
@@ -57,6 +59,16 @@ fun ShashlikMap(
 - **`camAnimationEnabled`**: Enables smooth transitions and fluid animations for camera view changes.
 - **`puckAnimationEnabled`**: Enables smooth positional interpolations for the location puck.
 - **`content`**: Composable lambda slot to draw overlays/shapes (`ConvexPolygon`, `LineShape`) directly on top of the map layer.
+
+### `Modifier.mapGestures`
+An extension modifier that attaches interactive gesture detection (single-finger pan/drag, two-finger pinch zoom, two-finger scroll pitch) directly to the map container.
+
+```kotlin
+fun Modifier.mapGestures(onGesture: () -> Unit = {}): Modifier
+```
+
+#### Parameters:
+- **`onGesture`**: Optional callback lambda triggered whenever a user gesture is detected (useful for disabling automatic camera follow mode during user interaction).
 
 #### Quick Start Usage Example:
 ```kotlin
@@ -162,7 +174,7 @@ fun LineShape(
 - **`width`**: The width of the line. *(Note: abstract unit at this moment; a resolution-independent coordinate unit will be provided in a future iteration).*
 
 ### `ShashlikShape`
-Low-level component managing underlying shapes. Handles automatic shape instantiation on addition, dynamic anchor position updates via `updateShape`, and resource cleanup on disposal.
+Low-level component managing underlying shapes. Handles automatic shape instantiation on addition and resource cleanup on disposal.
 
 ```kotlin
 @Composable
@@ -176,9 +188,16 @@ fun ShashlikShape(
 
 #### Parameters:
 - **`points`**: The points defining the shape. If `anchor` is `null`, `points` are interpreted as geographic coordinates. If `anchor` is provided, `points` are interpreted as relative offset points in dp from the `anchor`.
-- **`anchor`**: Optional geographic anchor point. When provided, changes to `anchor` dynamically update the shape's position on the map without re-creating the underlying shape.
+- **`anchor`**: Optional geographic anchor point for the shape.
 - **`type`**: The type of shape to render (`ShapeType.Polygon` or `ShapeType.Line`).
 - **`color`**: The color of the shape.
+
+### `ShapeType.Line.width`
+Extension property providing convenient access to the width value of a `ShapeType.Line` instance, falling back to default `1f` if unset.
+
+```kotlin
+val ShapeType.Line.width: Float
+```
 
 ---
 
