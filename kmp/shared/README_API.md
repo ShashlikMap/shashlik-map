@@ -37,6 +37,7 @@ The main visual entry point for the map component. It integrates the underlying 
 ```kotlin
 @Composable
 fun ShashlikMap(
+    modifier: Modifier = Modifier,
     state: LocationState = rememberLocationState(),
     withPuck: Boolean = true,
     withAutoLocationEvent: Boolean = true,
@@ -49,6 +50,7 @@ fun ShashlikMap(
 ```
 
 #### Parameters:
+- **`modifier`**: The `Modifier` to be applied to the map layout container.
 - **`state`**: The hoisted `LocationState` governing the location coordinates and bearing of the marker.
 - **`withPuck`**: When `true`, displays a location marker puck at the current coordinates.
 - **`withAutoLocationEvent`**: Automatically listens to and updates the user's current GPS location.

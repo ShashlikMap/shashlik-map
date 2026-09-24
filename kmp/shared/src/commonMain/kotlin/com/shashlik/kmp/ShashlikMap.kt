@@ -97,14 +97,14 @@ private suspend fun PointerInputScope.detectTwoFingersScrollZoom(
  * @param onGesture Optional callback invoked whenever a user gesture is detected (e.g., to disable camera follow mode).
  * @return A [Modifier] with map gesture input processing attached.
  */
-fun Modifier.mapGestures(onGesture: () -> Unit = {}): Modifier = pointerInput(Unit) {
+fun Modifier.mapGestures(onGesture: () -> Unit = {}): Modifier = pointerInput(onGesture) {
     detectTransformGestures { _, pan, _, _ ->
         val panX = pan.x
         val panY = pan.y
         onGesture()
         ShashlikMapApiHolder.shashlikMapApi?.panDelta(-panX, -panY)
     }
-}.pointerInput(Unit) {
+}.pointerInput(onGesture) {
     detectTwoFingersScrollZoom { centroid, scroll, zoom ->
         onGesture()
         if (zoom != 1.0f) {
@@ -122,6 +122,7 @@ fun Modifier.mapGestures(onGesture: () -> Unit = {}): Modifier = pointerInput(Un
  *
  * This composable initializes the map engine and provides a container for map overlays.
  *
+ * @param modifier The [Modifier] to be applied to the map container.
  * @param state The [LocationState] to control and observe the map's location.
  * @param withPuck When true, the map will display a "puck" (location marker) at the current location.
  * @param withAutoLocationEvent When true, the map will automatically track and display the user's location.
