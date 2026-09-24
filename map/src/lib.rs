@@ -306,10 +306,13 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         // extra check is only for Globe
         if self.camera.scale() > GLOBE_SCALE {
             // check what half of the planet
+            // when camera is rotated > 90deg, we swap the edges to check
+            // ...should we include also left/right?
+            let up_sign = self.camera.up.y.signum();
             let extra_coord = if world_on_ground_center.y >= MAP_SIZE * 0.5 {
-                self.renderer.clip_to_world(&coord! {x: 0.0, y: 1.0}).unwrap()
+                self.renderer.clip_to_world(&coord! {x: 0.0, y: up_sign}).unwrap()
             } else {
-                self.renderer.clip_to_world(&coord! {x: 0.0, y: -1.0}).unwrap()
+                self.renderer.clip_to_world(&coord! {x: 0.0, y: -up_sign}).unwrap()
             };
             poly_coords.push(extra_coord);
         }
