@@ -21,7 +21,6 @@ use osm::map::NatureKind::Water;
 use osm::source::reqwest_source::ReqwestSource;
 use renderer_common::TilesType;
 use crate::MAX_ZOOM_LEVEL;
-use crate::tiles::CustomTileKey;
 use crate::tiles::grid_divider::subdivide_grid;
 use crate::tiles::mvt::mvt_tile_store::MvtTileStore;
 use crate::tiles::shashlik_v1::ShashlikV1TileStore;
@@ -112,9 +111,9 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         let zoom_level = tile_store.convert_zoom(tile_key.zoom_level);
 
         
-        let (tile_position, bbox) = tile_store.tile_position_bbox(&CustomTileKey(tile_key), Self::BBOX_OVERLAP_OFFSET_SCALE);
+        let (tile_position, bbox) = tile_store.tile_position_bbox(&tile_key, Self::BBOX_OVERLAP_OFFSET_SCALE);
 
-        let mut geom = tile_store.load(&CustomTileKey(tile_key));
+        let mut geom = tile_store.load(&tile_key);
 
         // A quick workaround for missing water shape tiles since they are not generated if there is no other data
         if geom.is_empty() {

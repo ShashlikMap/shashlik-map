@@ -82,7 +82,6 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
 
         if update_attrs {
             T::fill_attrs(
-                self.is_globe_view,
                 &mut self.attrs,
                 self.attr_map,
                 &self.cs_offset,
