@@ -297,11 +297,24 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         self.world_width_on_screen = (world_on_ground_center_left.x - world_on_ground_center_right.x).abs();
         self.world_height_on_screen = (world_on_ground_rotated_left_top.y - world_on_ground_rotated_bottom_right.y).abs();
 
+        let mut poly_coords = vec![
+                               world_on_ground_left_top,
+                               world_on_ground_right_top,
+                               world_on_ground_right_bottom,
+                               world_on_ground_left_bottom];
 
-        let poly_coords: Vec<Coord> = vec![world_on_ground_left_top,
-                                           world_on_ground_right_top,
-                                           world_on_ground_right_bottom,
-                                           world_on_ground_left_bottom].into_iter().map(|coord| {
+        // check if edges are curved line(skip a full planter view)
+        if world_on_ground_center_left.y != world_on_ground_center_right.y {
+            // check what half of the planet
+            let extra_coord = if world_on_ground_center.y >= MAP_SIZE * 0.5 {
+                self.renderer.clip_to_world(&coord! {x: 0.0, y: 1.0}).unwrap()
+            } else {
+                self.renderer.clip_to_world(&coord! {x: 0.0, y: -1.0}).unwrap()
+            };
+            poly_coords.push(extra_coord);
+        }
+
+        let poly_coords: Vec<Coord> = poly_coords.into_iter().map(|coord| {
             coord! {x: coord.x, y: coord.y}
         }).collect();
 
