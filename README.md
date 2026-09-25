@@ -105,29 +105,46 @@ Execute *kms_deploy.sh* script:
 - `TARGET_HOST=admin@raspberrypi.local ./kms_deploy.sh`. Note: Replace with your actual device user and address.
 
 ## Integration with KMP apps
-1. Add dependency to the version catalog
 
-```
+Using an AI coding agent? Point it at [llms.txt](llms.txt) first — it indexes the
+version-stamped API reference, build facts and known limitations.
+
+Add the dependency to your version catalog:
+
+```toml
 [versions]
 shashlikMap = "0.3.21"
 
 [libraries]
 shashlikmap = { module = "io.github.shashlikmap:mapshared", version.ref = "shashlikMap" }
 ```
-In build.gradle.kts(KMP or Android):
-```
+
+In `build.gradle.kts`:
+
+```kotlin
 implementation(libs.shashlikmap)
 ```
-2. Include Composable function `ShashlikMap { _, _ -> }` anywhere in your Compose UI
+
+Requires `mavenCentral()`, Android minSdk 26, and an arm64-v8a device or
+emulator. Android only — there is no iOS artifact.
+
+Then place the composable anywhere in your Compose UI:
+
 ```kotlin
-   @Composable
-   fun App() {
-       MaterialTheme {
-           ShashlikMap { _, _ -> }
-       }
-   }
+@Composable
+fun App() {
+    MaterialTheme {
+        ShashlikMap(
+            state = rememberLocationState(latitude = 35.6879, longitude = 139.7570),
+        )
+    }
+}
 ```
-- Note: Android app will ask for locations permissions.
+
+Full API reference: [kmp/shared/README_API.md](kmp/shared/README_API.md).
+
+- The SDK requests location permissions itself; you do not need to declare them.
+- It must be hosted in an `Activity` context.
 
 ## Known issues
 - Tileset on the Web Service is generated only for Japan and USA(Bay Area)

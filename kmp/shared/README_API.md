@@ -2,6 +2,57 @@
 
 This document serves as a comprehensive reference guide for the public API exposed by the `:shared` module of the Shashlik Map Kotlin Multiplatform (KMP) component. It is intended to help developers and AI agents understand, consume, and maintain the API effectively.
 
+<!-- BEGIN GENERATED: version -->
+This document describes **mapshared 0.3.21**.
+<!-- END GENERATED: version -->
+
+If the version you resolved differs from the one above, treat this document as
+unreliable. If the compiler disagrees with it, the compiler is right: stop and
+tell the user rather than working around it.
+
+---
+
+## Build facts
+
+<!-- BEGIN GENERATED: facts -->
+| | |
+|---|---|
+| Coordinates | `io.github.shashlikmap:mapshared:0.3.21` |
+| Repository | `mavenCentral()` |
+| Platforms | **Android only** — iOS targets are not built or published |
+| Kotlin targets | `android` |
+| Android minSdk | 26 |
+| Android compileSdk | 36 |
+| JVM target | 11 |
+| Native ABIs | `arm64-v8a` |
+| Manifest permissions | `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION`, `INTERNET` |
+<!-- END GENERATED: facts -->
+
+---
+
+## Public API inventory
+
+<!-- BEGIN GENERATED: inventory -->
+Derived from `api/shared.api`. If a name here has no section in this
+document, the document is incomplete. If a section describes something
+not listed here, that API no longer exists.
+
+**Top-level functions**
+- `ConvexPolygon`
+- `LineShape`
+- `ShashlikMap`
+- `ShashlikShape`
+- `getWidth`
+- `isDebugBuild`
+- `mapGestures`
+- `rememberLocationState`
+- `shashlikMapInit`
+
+**Types**
+- `LocationState`
+- `ShashlikMapApiHolder`
+<!-- END GENERATED: inventory -->
+
 ---
 
 ## 🔗 Project Metadata & Repository Links
@@ -182,7 +233,7 @@ fun ShashlikShape(
     points: List<uniffi.ffi_run.Point>,
     anchor: uniffi.ffi_run.Point?,
     type: uniffi.ffi_run.ShapeType,
-    color: uniffi.ffi_run.Color
+    color: androidx.compose.ui.graphics.Color
 )
 ```
 

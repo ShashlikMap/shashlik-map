@@ -1,0 +1,23 @@
+# Shashlik Map SDK
+
+> Android map SDK powered by a Rust/WGPU engine, with a Compose-first API:
+> a `ShashlikMap` composable, overlays declared in its content slot.
+> Published as `io.github.shashlikmap:mapshared` on Maven Central.
+
+This describes **mapshared 0.3.21**. If the version you resolved
+differs, treat these documents as unreliable. If the compiler disagrees
+with them, the compiler is right: stop and tell the user rather than
+working around it. Do not use any API that is absent from the reference
+below, even if it seems like it should exist.
+
+Important:
+- `Point(x, y)` means x = longitude, y = latitude. `LocationState` uses
+  named `latitude` / `longitude`. Double-check every coordinate.
+- Android only, `arm64-v8a` only, minSdk 26. There is no iOS artifact.
+- Map tiles cover Japan and the SF Bay Area only. Test with coordinates there.
+
+## Docs
+- [API reference](https://raw.githubusercontent.com/ShashlikMap/shashlik-map/main/kmp/shared/README_API.md): public API of the `:shared` module, with examples
+- [Build facts](https://raw.githubusercontent.com/ShashlikMap/shashlik-map/main/kmp/shared/agent/FACTS.md): coordinates, minSdk, ABIs, permissions
+- [Public API surface](https://raw.githubusercontent.com/ShashlikMap/shashlik-map/main/kmp/shared/api/shared.api): exact signatures, machine-generated
+- [Demo app](https://github.com/ShashlikMap/shashlik-map/tree/main/kmp/demo): runnable reference integration

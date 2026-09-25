@@ -70,6 +70,12 @@ val rustlsPlatformVerifierJar = files(
 ).builtBy(unpackRustlsPlatformVerifier)
 
 kotlin {
+    // Selects the JDK that runs kotlinc/javac, independently of the JDK used to
+    // launch Gradle. Without this, AGP's JdkImageTransform runs jlink from
+    // whatever JDK you happen to have (it fails on GraalVM 21). Published
+    // bytecode is unaffected: jvmTarget and compileOptions below stay at 11.
+    jvmToolchain(17)
+
     androidTarget {
         publishLibraryVariants("release")
         compilerOptions {
@@ -249,5 +255,182 @@ val agentFacts by tasks.registering {
             }
         )
         logger.lifecycle("Wrote $outFile")
+    }
+}
+
+/**
+ * Substitutes the machine-generated regions of README_API.md.
+ *
+ * Only text between the BEGIN/END GENERATED markers is touched. Prose outside
+ * the markers is hand-written and is never rewritten here, so this task can run
+ * on every release without risking the curated sections.
+ */
+val agentDocs by tasks.registering {
+    group = "documentation"
+    description = "Refreshes the generated regions of README_API.md."
+
+    dependsOn(agentFacts, tasks.named("apiDump"))
+
+    val readme = layout.projectDirectory.file("README_API.md").asFile
+    val factsFile = layout.projectDirectory.file("agent/FACTS.md").asFile
+    val apiFile = layout.projectDirectory.file("api/shared.api").asFile
+    val versionValue = "${project.version}"
+    // The Gradle root is `kmp/`; llms.txt belongs at the repository root.
+    val llmsTxt = File(rootDir.parentFile, "llms.txt")
+    val rootReadme = File(rootDir.parentFile, "README.md")
+    val groupValue = "${project.group}"
+    val minSdkForDocs = libs.versions.android.minSdk.get()
+    val abisForDocs = android.defaultConfig.ndk.abiFilters.sorted().joinToString(", ")
+
+    inputs.files(factsFile, apiFile)
+    outputs.file(readme)
+
+    doLast {
+        // --- collect the real public surface from the BCV dump ---
+        val topLevelFunctions = sortedSetOf<String>()
+        val types = sortedSetOf<String>()
+        var inKtFacade = false
+
+        apiFile.readLines().forEach { raw ->
+            val line = raw.trim()
+            when {
+                line.startsWith("public") && line.contains(" class ") -> {
+                    val fqcn = line.substringAfter(" class ")
+                        .substringBefore(" ")
+                        .removeSuffix("{")
+                        .trim()
+                        .replace('/', '.')
+                    val simple = fqcn.substringAfterLast('.')
+                    inKtFacade = simple.endsWith("Kt")
+                    if (!inKtFacade && !simple.contains('$')) {
+                        types += simple
+                    }
+                }
+                inKtFacade && line.contains(" fun ") -> {
+                    val name = line.substringAfter(" fun ")
+                        .substringBefore(" ")
+                        .substringBefore("(")
+                        .substringBefore("-")   // drop value-class mangling
+                        .trim()
+                    if (!name.endsWith("\$default") && !name.startsWith("access\$")) {
+                        topLevelFunctions += name
+                    }
+                }
+            }
+        }
+
+        // --- build the replacement blocks ---
+        val factsTable = factsFile.readLines()
+            .dropWhile { !it.startsWith("|") }
+            .takeWhile { it.startsWith("|") }
+            .joinToString("\n")
+
+        val inventory = buildString {
+            appendLine("Derived from `api/shared.api`. If a name here has no section in this")
+            appendLine("document, the document is incomplete. If a section describes something")
+            appendLine("not listed here, that API no longer exists.")
+            appendLine()
+            appendLine("**Top-level functions**")
+            topLevelFunctions.forEach { appendLine("- `$it`") }
+            appendLine()
+            appendLine("**Types**")
+            types.forEach { appendLine("- `$it`") }
+        }.trim()
+
+        // --- substitute ---
+        var replaced = 0
+
+        fun substitute(source: String, file: File, name: String, body: String): String {
+            val begin = "<!-- BEGIN GENERATED: $name -->"
+            val end = "<!-- END GENERATED: $name -->"
+            val pattern = Regex(
+                Regex.escape(begin) + ".*?" + Regex.escape(end),
+                RegexOption.DOT_MATCHES_ALL
+            )
+            if (!pattern.containsMatchIn(source)) {
+                logger.warn("agentDocs: marker '$name' not found in ${file.name}; skipped")
+                return source
+            }
+            replaced++
+            return pattern.replace(source) { "$begin\n$body\n$end" }
+        }
+
+        var text = readme.readText()
+
+        text = substitute(text, readme, "version", "This document describes **mapshared $versionValue**.")
+        text = substitute(text, readme, "facts", factsTable)
+        text = substitute(text, readme, "inventory", inventory)
+
+        readme.writeText(text)
+        logger.lifecycle("agentDocs: refreshed $replaced generated region(s) in ${readme.name}")
+
+        // Entry point for foreign agents. Links raw URLs: GitHub HTML pages are
+        // mostly navigation noise once a model is reading them.
+        val raw = "https://raw.githubusercontent.com/ShashlikMap/shashlik-map/main"
+        llmsTxt.writeText(
+            """
+            # Shashlik Map SDK
+
+            > Android map SDK powered by a Rust/WGPU engine, with a Compose-first API:
+            > a `ShashlikMap` composable, overlays declared in its content slot.
+            > Published as `io.github.shashlikmap:mapshared` on Maven Central.
+
+            This describes **mapshared $versionValue**. If the version you resolved
+            differs, treat these documents as unreliable. If the compiler disagrees
+            with them, the compiler is right: stop and tell the user rather than
+            working around it. Do not use any API that is absent from the reference
+            below, even if it seems like it should exist.
+
+            Important:
+            - `Point(x, y)` means x = longitude, y = latitude. `LocationState` uses
+              named `latitude` / `longitude`. Double-check every coordinate.
+            - Android only, `arm64-v8a` only, minSdk 26. There is no iOS artifact.
+            - Map tiles cover Japan and the SF Bay Area only. Test with coordinates there.
+
+            ## Docs
+            - [API reference]($raw/kmp/shared/README_API.md): public API of the `:shared` module, with examples
+            - [Build facts]($raw/kmp/shared/agent/FACTS.md): coordinates, minSdk, ABIs, permissions
+            - [Public API surface]($raw/kmp/shared/api/shared.api): exact signatures, machine-generated
+            - [Demo app](https://github.com/ShashlikMap/shashlik-map/tree/main/kmp/demo): runnable reference integration
+            """.trimIndent() + "\n"
+        )
+        logger.lifecycle("agentDocs: wrote ${llmsTxt.path}")
+
+        // Root README is public-facing and hand-edited, so it carries no
+        // BEGIN/END markers. Instead we rewrite the few machine-owned values in
+        // place. Each pattern must match exactly once: if someone reformats the
+        // section, this fails loudly rather than silently leaving a stale version.
+        var readmeText = rootReadme.readText()
+
+        fun rewrite(pattern: Regex, replacement: String) {
+            val hits = pattern.findAll(readmeText).count()
+            require(hits == 1) {
+                "agentDocs: expected exactly 1 match for /${pattern.pattern}/ in " +
+                    "${rootReadme.name}, found $hits. The integration section was " +
+                    "edited in a way this task no longer recognises - fix the " +
+                    "pattern in shared/build.gradle.kts or restore the wording."
+            }
+            readmeText = pattern.replace(readmeText, replacement)
+        }
+
+        rewrite(
+            Regex("""shashlikMap = "[^"]+""""),
+            "shashlikMap = \"$versionValue\""
+        )
+        rewrite(
+            Regex("""module = "[^"]*:mapshared""""),
+            "module = \"$groupValue:mapshared\""
+        )
+        rewrite(
+            Regex("""Android minSdk \d+"""),
+            "Android minSdk $minSdkForDocs"
+        )
+        rewrite(
+            Regex("""an [a-z0-9-]+ device or\n?\s*emulator"""),
+            "an $abisForDocs device or\nemulator"
+        )
+
+        rootReadme.writeText(readmeText)
+        logger.lifecycle("agentDocs: refreshed 4 value(s) in ${rootReadme.name}")
     }
 }

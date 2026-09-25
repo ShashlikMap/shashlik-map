@@ -38,6 +38,21 @@ jobs:
         with:
           packages: 'platform-tools'
 
+      - name: Verify agent docs match the code
+        # The published artifact is the contract, so this is the only gate.
+        # `main` is free to be broken between releases.
+        run: |
+          ./gradlew :shared:agentDocs --no-configuration-cache
+          git diff --exit-code -- \
+            ../llms.txt \
+            ../README.md \
+            shared/README_API.md \
+            shared/agent/FACTS.md \
+            shared/api/shared.api \
+          || { echo "::error::Agent docs are stale. Run ./gradlew :shared:agentDocs and commit."; exit 1; }
+        env:
+          MAPTILER_API_KEY: ${{ secrets.MAPTILER_API_KEY }}
+
       - name: Publish to MavenCentral
         run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
         env:

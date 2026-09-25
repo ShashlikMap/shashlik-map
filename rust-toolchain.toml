@@ -1,0 +1,13 @@
+# Pinned so every machine and CI run build with the same compiler.
+#
+# Why pinned exactly rather than "stable": gobley 0.3.7 reads cargo build-script
+# output from `target/<triple>/release/build/<crate>-<hash>/output`. Newer cargo
+# moved that to `<crate>/<hash>/run/stdout`, which makes the Gradle build fail
+# with a FileNotFoundException. 1.98.1 predates that change.
+#
+# To bump: raise the version, run `./gradlew :shared:apiDump`, and only keep the
+# new version if the cargo build still succeeds.
+[toolchain]
+channel = "1.98.1"
+# gobley adds this itself, but listing it keeps a fresh clone one step shorter.
+targets = ["aarch64-linux-android"]
