@@ -26,9 +26,17 @@ guess. You only owe maintenance on what you assert.
 
 ## Workflow
 
+**Run every command below from the repository root.** They are written so no step
+changes your working directory — an earlier version used `cd kmp`, which left the
+shell in `kmp/` and made the Step 2 paths silently resolve to nothing.
+
+```bash
+cd "$(git rev-parse --show-toplevel)"
+```
+
 ### 1. Regenerate
 ```bash
-cd kmp && ./gradlew :shared:agentDocs
+./kmp/gradlew -p kmp :shared:agentDocs
 ```
 Rewrites every generated region: three in `README_API.md`, the dependency
 block in the root `README.md`, plus `FACTS.md`, `shared.api` and `llms.txt`. No env
@@ -38,7 +46,7 @@ It is idempotent; running twice changes nothing.
 ### 2. See what actually changed
 ```bash
 git diff kmp/shared/api/shared.api kmp/shared/agent/FACTS.md
-.claude/skills/update-agent-docs/scripts/scan-known-issues.sh
+bash .claude/skills/update-agent-docs/scripts/scan-known-issues.sh
 ```
 The dump diff is the authority on API change — commit messages are not. A
 signature gaining a mangled suffix (`ShashlikShape-Bx497Mc`) means a value-class
@@ -47,14 +55,27 @@ parameter changed type; that is a breaking change even though the name is intact
 ### 3. Reconcile the prose
 Work the generated **inventory** list as a checklist:
 - A name in the inventory with no section here → the doc is incomplete, add one.
-- A section describing something not in the inventory → that API is gone, delete it.
+- A section describing something not in the inventory → **inconclusive, investigate;
+  do not delete on this basis alone.** The inventory is not an exhaustive list of
+  supported API. It omits everything in `uniffi.ffi_run` (`Point`, `Color`,
+  `ShapeType`, `ShashlikMapApi`), which is excluded from `shared.api`. Confirm
+  against `ffi-run/src/lib.rs` and the Kotlin sources before removing anything.
 - A signature in the prose that disagrees with `shared.api` → the prose is wrong.
 
-Then fold the scan output into **Known broken** / **Not supported yet**. Only
-include things a consumer would hit; internal TODOs stay out.
+Note that Kotlin extension properties appear in `shared.api` as JVM accessors
+(`getWidth` for `ShapeType.Line.width`). The inventory lists them under
+**Extension properties** under their Kotlin name; never document them as functions.
+
+Then fold the scan output into the **Known limitations** section of
+`README_API.md` (subsections: *Broken or disabled*, *Not supported yet*). Only
+include things a consumer would hit; internal TODOs stay out. **If that section
+does not exist, create it** — a previous run found it missing and nearly dropped
+the scan results on the floor.
 
 ### 4. Verify before finishing
-- Every Kotlin snippet in the doc uses only names present in the inventory.
+- Every Kotlin snippet uses names that exist — checked against the inventory *and*
+  the `uniffi.ffi_run` types, which the inventory does not list. A name missing from
+  the inventory is not by itself proof the snippet is wrong.
 - No snippet imports `uniffi.ffi_run.Color` (overlays take Compose `Color`).
 - The version stamp matches `version` in `kmp/shared/build.gradle.kts`.
 - The root `README.md` usage example still compiles against the inventory. It sits

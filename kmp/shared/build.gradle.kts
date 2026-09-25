@@ -174,6 +174,8 @@ val agentFacts by tasks.registering {
     inputs.file(manifest)
     inputs.property("coordinates", coordinates)
     inputs.property("minSdk", minSdkValue)
+    inputs.property("compileSdk", compileSdkValue)
+    inputs.property("jvmTarget", jvmTargetValue)
     inputs.property("abis", abis)
     inputs.property("targets", targetNames)
     outputs.file(outFile)
@@ -250,11 +252,19 @@ val agentDocs by tasks.registering {
     val abisForDocs = android.defaultConfig.ndk.abiFilters.sorted().joinToString(", ")
 
     inputs.files(factsFile, apiFile)
-    outputs.file(readme)
+    inputs.property("version", versionValue)
+    inputs.property("group", groupValue)
+    inputs.property("minSdk", minSdkForDocs)
+    inputs.property("abis", abisForDocs)
+    // All three are rewritten by this task. Declaring only README_API.md let a
+    // deleted or edited llms.txt / root README survive an UP-TO-DATE run, which
+    // would then pass the publish gate while stale.
+    outputs.files(readme, llmsTxt, rootReadme)
 
     doLast {
         // --- collect the real public surface from the BCV dump ---
         val topLevelFunctions = sortedSetOf<String>()
+        val extensionProperties = sortedSetOf<String>()
         val types = sortedSetOf<String>()
         var inKtFacade = false
 
@@ -279,8 +289,15 @@ val agentDocs by tasks.registering {
                         .substringBefore("(")
                         .substringBefore("-")   // drop value-class mangling
                         .trim()
-                    if (!name.endsWith("\$default") && !name.startsWith("access\$")) {
-                        topLevelFunctions += name
+                    val accessor = Regex("^(get|set)([A-Z].*)").find(name)
+                    when {
+                        name.endsWith("\$default") || name.startsWith("access\$") -> Unit
+                        // A Kotlin extension property appears in the JVM dump as a
+                        // getX/setX accessor. Listing it as a function invites callers
+                        // to write `getWidth(shape)` instead of `shape.width`.
+                        accessor != null -> extensionProperties +=
+                            accessor.groupValues[2].replaceFirstChar { it.lowercase() }
+                        else -> topLevelFunctions += name
                     }
                 }
             }
@@ -293,15 +310,26 @@ val agentDocs by tasks.registering {
             .joinToString("\n")
 
         val inventory = buildString {
-            appendLine("Derived from `api/shared.api`. If a name here has no section in this")
-            appendLine("document, the document is incomplete. If a section describes something")
-            appendLine("not listed here, that API no longer exists.")
+            appendLine("Derived from `api/shared.api`. A name here with no section in this")
+            appendLine("document means the document is incomplete. The reverse does **not**")
+            appendLine("hold: this is not an exhaustive list of supported API (see the note")
+            appendLine("at the end), so never delete a section merely because it is absent here.")
             appendLine()
             appendLine("**Top-level functions**")
             topLevelFunctions.forEach { appendLine("- `$it`") }
+            if (extensionProperties.isNotEmpty()) {
+                appendLine()
+                appendLine("**Extension properties** — call these as properties, not functions.")
+                appendLine("They appear in `shared.api` as JVM `getX`/`setX` accessors.")
+                extensionProperties.forEach { appendLine("- `$it`") }
+            }
             appendLine()
             appendLine("**Types**")
             types.forEach { appendLine("- `$it`") }
+            appendLine()
+            appendLine("Not listed: `uniffi.ffi_run` types (`Point`, `Color`, `ShapeType`,")
+            appendLine("`ShashlikMapApi`) are excluded from `shared.api`, so their absence here")
+            appendLine("does **not** mean they are unsupported. See Known limitations.")
         }.trim()
 
         // --- substitute ---
@@ -314,9 +342,11 @@ val agentDocs by tasks.registering {
                 Regex.escape(begin) + ".*?" + Regex.escape(end),
                 RegexOption.DOT_MATCHES_ALL
             )
-            if (!pattern.containsMatchIn(source)) {
-                logger.warn("agentDocs: marker '$name' not found in ${file.name}; skipped")
-                return source
+            require(pattern.containsMatchIn(source)) {
+                "agentDocs: generated marker '$name' is missing from ${file.name}. " +
+                    "Restore the '$begin' / '$end' pair. Warning and continuing here " +
+                    "would leave a stale region that the publish gate cannot detect, " +
+                    "because an unchanged file produces no diff."
             }
             replaced++
             return pattern.replace(source) { "$begin\n$body\n$end" }

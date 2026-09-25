@@ -23,8 +23,16 @@ grep -rnE '^\s*//\s*(LaunchedEffect|fun |listOf\(|ios[A-Za-z]+\(|api\.)' \
 echo
 
 echo "### 3. FFI surface changes (blind spot: uniffi is excluded from shared.api)"
+echo
+echo "Changes to \`Point\`, \`Color\`, \`ShapeType\` and \`ShashlikMapApi\` break consumers"
+echo "but never appear in the shared.api diff. Read the declarations below, not just"
+echo "the file names."
+echo
 if [ -n "$SINCE" ]; then
-  git diff --stat "$SINCE" -- ffi-run/src/lib.rs 2>/dev/null || echo "_ref '$SINCE' not usable_"
+  # Declaration-level lines only: a full diff of lib.rs is mostly bodies.
+  git diff "$SINCE" -- ffi-run/src/lib.rs 2>/dev/null \
+    | grep -E '^[+-]\s*(pub (fn|struct|enum)|fn |#\[uniffi|    (pub )?fn )' \
+    || echo "_no FFI declaration changes_"
 else
   echo "_no mapshared-* tag yet; tag a release so this diff has an anchor_"
 fi

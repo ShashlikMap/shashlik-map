@@ -104,24 +104,32 @@ Nothing outside the inventory above exists. Specifically:
 ## Public API inventory
 
 <!-- BEGIN GENERATED: inventory -->
-Derived from `api/shared.api`. If a name here has no section in this
-document, the document is incomplete. If a section describes something
-not listed here, that API no longer exists.
+Derived from `api/shared.api`. A name here with no section in this
+document means the document is incomplete. The reverse does **not**
+hold: this is not an exhaustive list of supported API (see the note
+at the end), so never delete a section merely because it is absent here.
 
 **Top-level functions**
 - `ConvexPolygon`
 - `LineShape`
 - `ShashlikMap`
 - `ShashlikShape`
-- `getWidth`
 - `isDebugBuild`
 - `mapGestures`
 - `rememberLocationState`
 - `shashlikMapInit`
 
+**Extension properties** — call these as properties, not functions.
+They appear in `shared.api` as JVM `getX`/`setX` accessors.
+- `width`
+
 **Types**
 - `LocationState`
 - `ShashlikMapApiHolder`
+
+Not listed: `uniffi.ffi_run` types (`Point`, `Color`, `ShapeType`,
+`ShashlikMapApi`) are excluded from `shared.api`, so their absence here
+does **not** mean they are unsupported. See Known limitations.
 <!-- END GENERATED: inventory -->
 
 ---
