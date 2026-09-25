@@ -3,7 +3,7 @@
 This document serves as a comprehensive reference guide for the public API exposed by the `:shared` module of the Shashlik Map Kotlin Multiplatform (KMP) component. It is intended to help developers and AI agents understand, consume, and maintain the API effectively.
 
 <!-- BEGIN GENERATED: version -->
-This document describes **mapshared 0.3.21**.
+This document describes **mapshared 0.3.22**.
 <!-- END GENERATED: version -->
 
 If the version you resolved differs from the one above, treat this document as
@@ -17,7 +17,7 @@ tell the user rather than working around it.
 <!-- BEGIN GENERATED: facts -->
 | | |
 |---|---|
-| Coordinates | `io.github.shashlikmap:mapshared:0.3.21` |
+| Coordinates | `io.github.shashlikmap:mapshared:0.3.22` |
 | Repository | `mavenCentral()` |
 | Platforms | **Android only** — iOS targets are not built or published |
 | Kotlin targets | `android` |
@@ -54,7 +54,7 @@ Without it the build fails to resolve `org.rustls:rustls-platform-verifier`.
 
 Never choose this version yourself. The support library must stay SemVer-compatible
 with the Rust crate inside `libffi_run.so`; a mismatch crashes at runtime instead
-of failing resolution. 0.3.21 pins `0.2.0`, read from the
+of failing resolution. 0.3.22 pins `0.2.0`, read from the
 `rustls-platform-verifier-android` entry in `Cargo.lock`.
 
 Versions before 0.3.21 needed none of this — the verifier was a JNI method inside
@@ -68,7 +68,7 @@ itself.
 
 ## Known limitations
 
-Verified against 0.3.21. If you need something listed here, it does not exist yet —
+Verified against 0.3.22. If you need something listed here, it does not exist yet —
 tell the user rather than reaching for an undocumented API.
 
 ### Broken or disabled
