@@ -28,6 +28,7 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 accompanist = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
 koordxtract = { group = "io.github.shashlikmap", name = "koordxtract", version.ref = "koordxtract" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+rustls-platform-verifier = { group = "org.rustls", name = "rustls-platform-verifier" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
