@@ -66,6 +66,41 @@ itself.
 
 ---
 
+## Known limitations
+
+Verified against 0.3.21. If you need something listed here, it does not exist yet —
+tell the user rather than reaching for an undocumented API.
+
+### Broken or disabled
+
+- **`ShashlikShape` `anchor` does not move an existing shape.** The `updateShape`
+  call is commented out (`Overlay.kt:128`) and `DisposableEffect` keys on `anchor`,
+  so changing it destroys and recreates the shape. Do not rely on cheap live
+  anchor updates, and do not write examples that imply them.
+- **No iOS artifact.** iOS targets are commented out
+  (`kmp/shared/build.gradle.kts:57`). Android only, `arm64-v8a` only.
+- **Location permission revocation is not handled.** `SimpleLocationManager.start()`
+  is annotated `@SuppressLint("MissingPermission")` (`SimpleLocationManager.kt:38`);
+  revoking permission while the map runs is untested.
+
+### Not supported yet
+
+Nothing outside the inventory above exists. Specifically:
+
+- **No tap callback carrying map coordinates.** `Modifier.mapGestures` takes
+  `onGesture: () -> Unit` — it reports only *that* a gesture happened, with no
+  position and no gesture type.
+- **Gestures are opt-in.** Pan, zoom and pitch only work if you apply
+  `Modifier.mapGestures()` yourself; `ShashlikMap` does not add it for you.
+- **No custom marker icons and no style API.**
+- **`LineShape` fails silently** when given fewer than two distinct points — it
+  draws nothing and reports nothing (`Overlay.kt:66`).
+- **Tiles cover Japan and the SF Bay Area only.** Test with coordinates there.
+- The Android emulator may need GPU mode `Software`, and debug builds are much
+  slower than release.
+
+---
+
 ## Public API inventory
 
 <!-- BEGIN GENERATED: inventory -->
