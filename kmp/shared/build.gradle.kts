@@ -15,6 +15,9 @@ plugins {
     alias(libs.plugins.vanniktech.mavenPublish)
 }
 
+@Suppress("UNCHECKED_CAST")
+val rustlsPlatformVerifierVersion = rootProject.extra["rustlsPlatformVerifierVersion"] as Provider<String>
+
 cargo {
     // The Cargo package is located in a `rust` subdirectory.
     packageDirectory = layout.projectDirectory.dir("../../ffi-run")
@@ -63,7 +66,7 @@ kotlin {
             implementation(libs.androidx.material3)
             implementation(libs.accompanist)
             implementation(libs.play.services.location)
-            implementation(libs.rustls.platform.verifier)
+            implementation("org.rustls:rustls-platform-verifier:${rustlsPlatformVerifierVersion.get()}")
             implementation("net.java.dev.jna:jna:5.18.1@aar")
             implementation("com.jakewharton.timber:timber:5.0.1")
         }

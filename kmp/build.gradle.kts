@@ -40,6 +40,8 @@ val rustlsPlatformVerifierVersion = providers.of(RustlsVersion::class.java) {
     parameters.lockFile.set(layout.projectDirectory.file("../Cargo.lock"))
 }
 
+extra["rustlsPlatformVerifierVersion"] = rustlsPlatformVerifierVersion
+
 allprojects {
     configurations.configureEach {
         resolutionStrategy.eachDependency {
