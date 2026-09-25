@@ -113,7 +113,7 @@ android {
 }
 
 group = "io.github.shashlikmap"
-version = "0.3.23"
+version = "0.3.24"
 
 mavenPublishing {
     publishToMavenCentral()
