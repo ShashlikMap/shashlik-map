@@ -93,6 +93,7 @@ Nothing outside the inventory above exists. Specifically:
 - **Gestures are opt-in.** Pan, zoom and pitch only work if you apply
   `Modifier.mapGestures()` yourself; `ShashlikMap` does not add it for you.
 - **No custom marker icons and no style API.**
+- **No custom puck.** Only the built-in triangle puck with a white border is available.
 - **`LineShape` fails silently** when given fewer than two distinct points — it
   draws nothing and reports nothing (`Overlay.kt:66`).
 - **Tiles cover Japan and the SF Bay Area only.** Test with coordinates there.
@@ -124,6 +125,7 @@ They appear in `shared.api` as JVM `getX`/`setX` accessors.
 - `width`
 
 **Types**
+- `InternalShashlikMapApi`
 - `LocationState`
 - `ShashlikMapApiHolder`
 
@@ -146,7 +148,7 @@ does **not** mean they are unsupported. See Known limitations.
 Contains the core multiplatform business logic, location management abstractions, and the interface mapping to the underlying Rust WGPU map rendering engine.
 
 ### 2. `:composeApp` (Demo Module)
-A functional usage showcase located inside `kmp/demo`. It serves as a ready-to-run reference sandbox implementing interactive gestures (scroll, pan, zoom, pitch), route calculations via `ShashlikMapApiHolder`, and toggle buttons for features like vector tiles (MVT) or camera configurations.
+A functional usage showcase located inside `kmp/demo`. It serves as a ready-to-run reference sandbox implementing interactive gestures (scroll, pan, zoom, pitch), route calculations via `ShashlikMapApiHolder` (the demo enables the `InternalShashlikMapApi` opt-in in its `build.gradle.kts`), and toggle buttons for features like vector tiles (MVT) or camera configurations.
 
 ---
 
@@ -171,7 +173,7 @@ fun ShashlikMap(
     state: LocationState = rememberLocationState(),
     withPuck: Boolean = true,
     withAutoLocationEvent: Boolean = true,
-    mvtTiles: Boolean = false,
+    mvtTiles: Boolean = true,
     followModeEnabled: Boolean = true,
     camAnimationEnabled: Boolean = true,
     puckAnimationEnabled: Boolean = true,
@@ -182,10 +184,10 @@ fun ShashlikMap(
 #### Parameters:
 - **`modifier`**: The `Modifier` to be applied to the map layout container.
 - **`state`**: The hoisted `LocationState` governing the location coordinates and bearing of the marker.
-- **`withPuck`**: When `true`, displays a location marker puck at the current coordinates.
-- **`withAutoLocationEvent`**: Automatically listens to and updates the user's current GPS location.
-- **`mvtTiles`**: Activates Mapbox Vector Tile (MVT) rendering mode when set to `true`.
-- **`followModeEnabled`**: When `true`, automatically locks and centers the map camera on the location puck.
+- **`withPuck`**: When `true`, displays the built-in location puck at the `state` coordinates. The puck is a triangle with a white border, pointing along the bearing. It cannot be customized.
+- **`withAutoLocationEvent`**: When `true`, the SDK listens to GPS and writes location updates into `state`. When `false`, the app must update `state` itself.
+- **`mvtTiles`**: Uses MVT (vector tiles) rendering. Defaults to `true`. Non-MVT tiles (`false`) are not recommended.
+- **`followModeEnabled`**: When `true`, the camera follows `state` (the `LocationState` latitude, longitude and bearing), not the puck. It follows even when `withPuck = false`. When `false` and there are custom shapes in `content`, the camera fits the viewport to the bounding box of all shapes.
 - **`camAnimationEnabled`**: Enables smooth transitions and fluid animations for camera view changes.
 - **`puckAnimationEnabled`**: Enables smooth positional interpolations for the location puck.
 - **`content`**: Composable lambda slot to draw overlays/shapes (`ConvexPolygon`, `LineShape`) directly on top of the map layer.
@@ -333,10 +335,29 @@ val ShapeType.Line.width: Float
 
 ## 4. Low-Level API Access
 
-### `ShashlikMapApiHolder`
-A global singleton holder offering access to the low-level rust FFI bindings (`ShashlikMapApi`) after successful layout initialization.
+### `InternalShashlikMapApi`
+A `@RequiresOptIn(level = ERROR)` marker annotation. Anything annotated with it is **not a supported SDK API**: it is intended only for the `:shared` module itself and the `kmp/demo` app, and may change or break without notice. Using it without opting in is a compile error.
+
+Opt in with an explicit compiler option:
 
 ```kotlin
+// build.gradle.kts
+kotlin {
+    sourceSets {
+        all {
+            languageSettings.optIn("com.shashlik.kmp.InternalShashlikMapApi")
+        }
+    }
+}
+```
+
+Coding agents: do not add this opt-in to a consumer project on your own; ask the user first. Kotlin also accepts `@OptIn(InternalShashlikMapApi::class)` at a call site, but that is equally unsupported.
+
+### `ShashlikMapApiHolder`
+A global singleton holder offering access to the low-level rust FFI bindings (`ShashlikMapApi`) after successful layout initialization. Annotated with `@InternalShashlikMapApi` — see above.
+
+```kotlin
+@InternalShashlikMapApi
 object ShashlikMapApiHolder {
     var shashlikMapApi: ShashlikMapApi?
 }

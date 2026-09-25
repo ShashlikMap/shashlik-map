@@ -1,3 +1,6 @@
+public abstract interface annotation class com/shashlik/kmp/InternalShashlikMapApi : java/lang/annotation/Annotation {
+}
+
 public final class com/shashlik/kmp/LocationState {
 	public static final field $stable I
 	public static final field Companion Lcom/shashlik/kmp/LocationState$Companion;

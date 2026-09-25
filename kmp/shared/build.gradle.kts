@@ -64,6 +64,9 @@ kotlin {
 //    }
 
     sourceSets {
+        all {
+            languageSettings.optIn("com.shashlik.kmp.InternalShashlikMapApi")
+        }
         androidMain.dependencies {
             implementation(libs.androidx.core.ktx)
             implementation(project.dependencies.platform(libs.androidx.compose.bom))

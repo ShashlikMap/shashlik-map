@@ -124,10 +124,14 @@ fun Modifier.mapGestures(onGesture: () -> Unit = {}): Modifier = pointerInput(on
  *
  * @param modifier The [Modifier] to be applied to the map container.
  * @param state The [LocationState] to control and observe the map's location.
- * @param withPuck When true, the map will display a "puck" (location marker) at the current location.
- * @param withAutoLocationEvent When true, the map will automatically track and display the user's location.
- * @param mvtTiles Whether to enable MVT (Mapbox Vector Tile) rendering.
- * @param followModeEnabled Whether the camera should follow the location puck automatically.
+ * @param withPuck When true, the map will display a built-in "puck" (location marker) at the [state] location.
+ * The puck is a triangle with a white border, pointing along the bearing. It cannot be customized.
+ * @param withAutoLocationEvent When true, the SDK listens to GPS and writes location updates into [state].
+ * When false, the app is responsible for updating [state] itself.
+ * @param mvtTiles Whether to use MVT (vector tiles) rendering. Defaults to true; non-MVT tiles are not recommended.
+ * @param followModeEnabled Whether the camera should follow [state] (latitude, longitude and bearing) automatically.
+ * The camera follows [LocationState], not the puck, so it works even when [withPuck] is false.
+ * When false and there are custom shapes in [content], the camera fits the viewport to the bounding box of all shapes.
  * @param camAnimationEnabled Whether camera position updates should be animated.
  * @param puckAnimationEnabled Whether location puck updates should be animated.
  * @param content The content to be rendered on top of the map, typically map overlays like [ConvexPolygon] or [LineShape].
@@ -138,7 +142,7 @@ fun ShashlikMap(
     state: LocationState = rememberLocationState(),
     withPuck: Boolean = true,
     withAutoLocationEvent: Boolean = true,
-    mvtTiles: Boolean = false,
+    mvtTiles: Boolean = true,
     followModeEnabled: Boolean = true,
     camAnimationEnabled: Boolean = true,
     puckAnimationEnabled: Boolean = true,
@@ -191,7 +195,11 @@ internal suspend fun awaitApi(): ShashlikMapApi {
  * A global holder for the [ShashlikMapApi] instance.
  *
  * This provides access to the map's low-level API once it has been initialized.
+ *
+ * Internal: intended only for the `:shared` module and the demo app. Requires the
+ * `-opt-in=com.shashlik.kmp.InternalShashlikMapApi` compiler option, see [InternalShashlikMapApi].
  */
+@InternalShashlikMapApi
 object ShashlikMapApiHolder {
     /**
      * The active [ShashlikMapApi] instance, or null if not yet initialized.

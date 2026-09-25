@@ -26,6 +26,9 @@ kotlin {
 //    }
 
     sourceSets {
+        all {
+            languageSettings.optIn("com.shashlik.kmp.InternalShashlikMapApi")
+        }
         androidMain.dependencies {
             implementation(compose.uiTooling)
             implementation(compose.preview)
