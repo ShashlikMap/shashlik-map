@@ -16,6 +16,7 @@ accompanist = "0.37.3"
 koordxtract = "0.4.4"
 vanniktechMavenPublish = "0.34.0"
 playServicesLocation = "21.3.0"
+binaryCompatibilityValidator = "0.18.1"
 rustlsPlatformVerifier = "0.2.0"
 
 [libraries]
@@ -43,3 +44,4 @@ gobleyCargo = { id = "dev.gobley.cargo", version.ref = "gobley" }
 gobleyUniffi = { id = "dev.gobley.uniffi", version.ref = "gobley" }
 kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 vanniktech-mavenPublish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktechMavenPublish" }
+binaryCompatibilityValidator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version.ref = "binaryCompatibilityValidator" }

@@ -105,29 +105,79 @@ Execute *kms_deploy.sh* script:
 - `TARGET_HOST=admin@raspberrypi.local ./kms_deploy.sh`. Note: Replace with your actual device user and address.
 
 ## Integration with KMP apps
-1. Add dependency to the version catalog
 
-```
+Using an AI coding agent? Point it at [llms.txt](llms.txt) first — it indexes the
+version-stamped API reference, build facts and known limitations.
+
+Add the dependency to your version catalog:
+
+```toml
 [versions]
 shashlikMap = "0.3.21"
 
 [libraries]
 shashlikmap = { module = "io.github.shashlikmap:mapshared", version.ref = "shashlikMap" }
 ```
-In build.gradle.kts(KMP or Android):
-```
+
+In `build.gradle.kts`:
+
+```kotlin
 implementation(libs.shashlikmap)
 ```
-2. Include Composable function `ShashlikMap { _, _ -> }` anywhere in your Compose UI
+
+Requires `mavenCentral()`, Android minSdk 26, and an arm64-v8a device or
+emulator. Android only — there is no iOS artifact.
+
+### Add the rustls repository (required from 0.3.21)
+
+From 0.3.21 the SDK declares `org.rustls:rustls-platform-verifier` in its POM.
+Earlier versions carried the verifier as a JNI method inside `libffi_run.so`,
+with no Maven coordinate at all, so nothing extra was needed.
+
+That artifact is **not on Maven Central, Google, JitPack or Sonatype**. rustls
+distributes the Android support library from a Maven archive in their own
+repository, which is the setup their README documents. Add it to your
+`settings.gradle.kts`:
+
 ```kotlin
-   @Composable
-   fun App() {
-       MaterialTheme {
-           ShashlikMap { _, _ -> }
-       }
-   }
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        maven("https://github.com/rustls/rustls-platform-verifier/raw/maven-archive/android-release-support/maven/") {
+            name = "RustlsAndroidSupport"
+            // Scoped like the others: a GitHub-backed repo should never be
+            // consulted for anything but the one group it exists to serve.
+            content { includeGroup("org.rustls") }
+        }
+    }
+}
 ```
-- Note: Android app will ask for locations permissions.
+
+Without it the build fails to resolve `org.rustls:rustls-platform-verifier`.
+
+Do not pick a version by hand. The support library must stay SemVer-compatible
+with the Rust crate compiled into the `.so`, and a mismatch causes **runtime
+crashes rather than resolution failures**. Take whatever version the SDK's POM
+pins — 0.3.21 pins `0.2.0`, read from the `rustls-platform-verifier-android`
+entry in `Cargo.lock`.
+
+Then place the composable anywhere in your Compose UI:
+
+```kotlin
+@Composable
+fun App() {
+    MaterialTheme {
+        ShashlikMap(
+            state = rememberLocationState(latitude = 35.6879, longitude = 139.7570),
+        )
+    }
+}
+```
+
+Full API reference: [kmp/shared/README_API.md](kmp/shared/README_API.md).
+
+- The SDK requests location permissions itself; you do not need to declare them.
+- It must be hosted in an `Activity` context.
 
 ## Known issues
 - Tileset on the Web Service is generated only for Japan and USA(Bay Area)

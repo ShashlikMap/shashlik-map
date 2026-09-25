@@ -2,6 +2,136 @@
 
 This document serves as a comprehensive reference guide for the public API exposed by the `:shared` module of the Shashlik Map Kotlin Multiplatform (KMP) component. It is intended to help developers and AI agents understand, consume, and maintain the API effectively.
 
+<!-- BEGIN GENERATED: version -->
+This document describes **mapshared 0.3.21**.
+<!-- END GENERATED: version -->
+
+If the version you resolved differs from the one above, treat this document as
+unreliable. If the compiler disagrees with it, the compiler is right: stop and
+tell the user rather than working around it.
+
+---
+
+## Build facts
+
+<!-- BEGIN GENERATED: facts -->
+| | |
+|---|---|
+| Coordinates | `io.github.shashlikmap:mapshared:0.3.21` |
+| Repository | `mavenCentral()` |
+| Platforms | **Android only** — iOS targets are not built or published |
+| Kotlin targets | `android` |
+| Android minSdk | 26 |
+| Android compileSdk | 36 |
+| JVM target | 11 |
+| Native ABIs | `arm64-v8a` |
+| Manifest permissions | `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION`, `INTERNET` |
+<!-- END GENERATED: facts -->
+
+---
+
+## Setup
+
+**Required from 0.3.21.** The SDK declares `org.rustls:rustls-platform-verifier`
+in its POM. That artifact is not on Maven Central, Google, JitPack or Sonatype —
+rustls publishes the Android support library from a Maven archive in their own
+repository, so consumers must add it explicitly:
+
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        maven("https://github.com/rustls/rustls-platform-verifier/raw/maven-archive/android-release-support/maven/") {
+            name = "RustlsAndroidSupport"
+            content { includeGroup("org.rustls") }
+        }
+    }
+}
+```
+
+Without it the build fails to resolve `org.rustls:rustls-platform-verifier`.
+
+Never choose this version yourself. The support library must stay SemVer-compatible
+with the Rust crate inside `libffi_run.so`; a mismatch crashes at runtime instead
+of failing resolution. 0.3.21 pins `0.2.0`, read from the
+`rustls-platform-verifier-android` entry in `Cargo.lock`.
+
+Versions before 0.3.21 needed none of this — the verifier was a JNI method inside
+`libffi_run.so` with no Maven coordinate.
+
+Also required: `mavenCentral()`, `shashlikMapInit()` in `Application.onCreate()`,
+and an `Activity` host. Location permissions are declared and requested by the SDK
+itself.
+
+---
+
+## Known limitations
+
+Verified against 0.3.21. If you need something listed here, it does not exist yet —
+tell the user rather than reaching for an undocumented API.
+
+### Broken or disabled
+
+- **`ShashlikShape` `anchor` does not move an existing shape.** The `updateShape`
+  call is commented out (`Overlay.kt:128`) and `DisposableEffect` keys on `anchor`,
+  so changing it destroys and recreates the shape. Do not rely on cheap live
+  anchor updates, and do not write examples that imply them.
+- **No iOS artifact.** iOS targets are commented out
+  (`kmp/shared/build.gradle.kts:57`). Android only, `arm64-v8a` only.
+- **Location permission revocation is not handled.** `SimpleLocationManager.start()`
+  is annotated `@SuppressLint("MissingPermission")` (`SimpleLocationManager.kt:38`);
+  revoking permission while the map runs is untested.
+
+### Not supported yet
+
+Nothing outside the inventory above exists. Specifically:
+
+- **No tap callback carrying map coordinates.** `Modifier.mapGestures` takes
+  `onGesture: () -> Unit` — it reports only *that* a gesture happened, with no
+  position and no gesture type.
+- **Gestures are opt-in.** Pan, zoom and pitch only work if you apply
+  `Modifier.mapGestures()` yourself; `ShashlikMap` does not add it for you.
+- **No custom marker icons and no style API.**
+- **`LineShape` fails silently** when given fewer than two distinct points — it
+  draws nothing and reports nothing (`Overlay.kt:66`).
+- **Tiles cover Japan and the SF Bay Area only.** Test with coordinates there.
+- The Android emulator may need GPU mode `Software`, and debug builds are much
+  slower than release.
+
+---
+
+## Public API inventory
+
+<!-- BEGIN GENERATED: inventory -->
+Derived from `api/shared.api`. A name here with no section in this
+document means the document is incomplete. The reverse does **not**
+hold: this is not an exhaustive list of supported API (see the note
+at the end), so never delete a section merely because it is absent here.
+
+**Top-level functions**
+- `ConvexPolygon`
+- `LineShape`
+- `ShashlikMap`
+- `ShashlikShape`
+- `isDebugBuild`
+- `mapGestures`
+- `rememberLocationState`
+- `shashlikMapInit`
+
+**Extension properties** — call these as properties, not functions.
+They appear in `shared.api` as JVM `getX`/`setX` accessors.
+- `width`
+
+**Types**
+- `LocationState`
+- `ShashlikMapApiHolder`
+
+Not listed: `uniffi.ffi_run` types (`Point`, `Color`, `ShapeType`,
+`ShashlikMapApi`) are excluded from `shared.api`, so their absence here
+does **not** mean they are unsupported. See Known limitations.
+<!-- END GENERATED: inventory -->
+
 ---
 
 ## 🔗 Project Metadata & Repository Links
@@ -182,7 +312,7 @@ fun ShashlikShape(
     points: List<uniffi.ffi_run.Point>,
     anchor: uniffi.ffi_run.Point?,
     type: uniffi.ffi_run.ShapeType,
-    color: uniffi.ffi_run.Color
+    color: androidx.compose.ui.graphics.Color
 )
 ```
 
