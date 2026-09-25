@@ -98,5 +98,5 @@ Verify these each run; do not silently drop them.
   call is commented out (`Overlay.kt:128`), and `DisposableEffect` keys on
   `anchor`, so the shape is destroyed and recreated. Do not document or write
   examples for live anchor updates.
-- **No iOS artifact.** iOS targets are commented out (`shared/build.gradle.kts:89`).
+- **No iOS artifact.** iOS targets are commented out (`shared/build.gradle.kts:55`).
   The published library is Android-only, `arm64-v8a` only.
