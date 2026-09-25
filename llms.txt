@@ -15,6 +15,10 @@ Important:
   named `latitude` / `longitude`. Double-check every coordinate.
 - Android only, `arm64-v8a` only, minSdk 26. There is no iOS artifact.
 - Map tiles cover Japan and the SF Bay Area only. Test with coordinates there.
+- **From 0.3.21 you must add the rustls Maven repository** to
+  `settings.gradle.kts`, or the build cannot resolve
+  `org.rustls:rustls-platform-verifier`. It is on none of the usual
+  repositories. See the Setup section of the API reference.
 
 ## Docs
 - [API reference](https://raw.githubusercontent.com/ShashlikMap/shashlik-map/main/kmp/shared/README_API.md): public API of the `:shared` module, with examples

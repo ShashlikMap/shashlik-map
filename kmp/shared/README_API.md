@@ -30,6 +30,42 @@ tell the user rather than working around it.
 
 ---
 
+## Setup
+
+**Required from 0.3.21.** The SDK declares `org.rustls:rustls-platform-verifier`
+in its POM. That artifact is not on Maven Central, Google, JitPack or Sonatype —
+rustls publishes the Android support library from a Maven archive in their own
+repository, so consumers must add it explicitly:
+
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        maven("https://github.com/rustls/rustls-platform-verifier/raw/maven-archive/android-release-support/maven/") {
+            name = "RustlsAndroidSupport"
+            content { includeGroup("org.rustls") }
+        }
+    }
+}
+```
+
+Without it the build fails to resolve `org.rustls:rustls-platform-verifier`.
+
+Never choose this version yourself. The support library must stay SemVer-compatible
+with the Rust crate inside `libffi_run.so`; a mismatch crashes at runtime instead
+of failing resolution. 0.3.21 pins `0.2.0`, read from the
+`rustls-platform-verifier-android` entry in `Cargo.lock`.
+
+Versions before 0.3.21 needed none of this — the verifier was a JNI method inside
+`libffi_run.so` with no Maven coordinate.
+
+Also required: `mavenCentral()`, `shashlikMapInit()` in `Application.onCreate()`,
+and an `Activity` host. Location permissions are declared and requested by the SDK
+itself.
+
+---
+
 ## Public API inventory
 
 <!-- BEGIN GENERATED: inventory -->

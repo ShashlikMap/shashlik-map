@@ -128,6 +128,39 @@ implementation(libs.shashlikmap)
 Requires `mavenCentral()`, Android minSdk 26, and an arm64-v8a device or
 emulator. Android only — there is no iOS artifact.
 
+### Add the rustls repository (required from 0.3.21)
+
+From 0.3.21 the SDK declares `org.rustls:rustls-platform-verifier` in its POM.
+Earlier versions carried the verifier as a JNI method inside `libffi_run.so`,
+with no Maven coordinate at all, so nothing extra was needed.
+
+That artifact is **not on Maven Central, Google, JitPack or Sonatype**. rustls
+distributes the Android support library from a Maven archive in their own
+repository, which is the setup their README documents. Add it to your
+`settings.gradle.kts`:
+
+```kotlin
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        maven("https://github.com/rustls/rustls-platform-verifier/raw/maven-archive/android-release-support/maven/") {
+            name = "RustlsAndroidSupport"
+            // Scoped like the others: a GitHub-backed repo should never be
+            // consulted for anything but the one group it exists to serve.
+            content { includeGroup("org.rustls") }
+        }
+    }
+}
+```
+
+Without it the build fails to resolve `org.rustls:rustls-platform-verifier`.
+
+Do not pick a version by hand. The support library must stay SemVer-compatible
+with the Rust crate compiled into the `.so`, and a mismatch causes **runtime
+crashes rather than resolution failures**. Take whatever version the SDK's POM
+pins — 0.3.21 pins `0.2.0`, read from the `rustls-platform-verifier-android`
+entry in `Cargo.lock`.
+
 Then place the composable anywhere in your Compose UI:
 
 ```kotlin
