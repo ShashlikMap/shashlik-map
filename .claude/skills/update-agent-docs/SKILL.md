@@ -94,9 +94,11 @@ four types are wrapped in hand-written Kotlin.
 
 Verify these each run; do not silently drop them.
 
-- **`ShashlikShape` `anchor` does not move an existing shape.** The `updateShape`
+- **Changing `ShashlikShape` `anchor` recreates the shape.** The `updateShape`
   call is commented out (`Overlay.kt:128`), and `DisposableEffect` keys on
-  `anchor`, so the shape is destroyed and recreated. Do not document or write
-  examples for live anchor updates.
+  `anchor`, so the shape is destroyed and recreated. Keep it under *Temporary,
+  non-blocking* in `README_API.md`, not *Broken or disabled*: the cost is small,
+  it is temporary, and consumer agents previously read the stronger wording as a
+  blocker and refused to use anchored shapes.
 - **No iOS artifact.** iOS targets are commented out (`shared/build.gradle.kts:55`).
   The published library is Android-only, `arm64-v8a` only.

@@ -71,12 +71,17 @@ itself.
 Verified against 0.3.23. If you need something listed here, it does not exist yet —
 tell the user rather than reaching for an undocumented API.
 
+### Temporary, non-blocking
+
+- **Changing `anchor` recreates the shape.** An anchor change currently removes the
+  shape and adds it again instead of moving it in place (the `updateShape` call is
+  commented out, `Overlay.kt:128`). This is a temporary limitation of a WIP/POC SDK;
+  the overhead is small and acceptable. It is **not** a reason to avoid anchored
+  shapes, including ones whose anchor changes frequently. In-place updates will
+  return in a later version without API changes.
+
 ### Broken or disabled
 
-- **`ShashlikShape` `anchor` does not move an existing shape.** The `updateShape`
-  call is commented out (`Overlay.kt:128`) and `DisposableEffect` keys on `anchor`,
-  so changing it destroys and recreates the shape. Do not rely on cheap live
-  anchor updates, and do not write examples that imply them.
 - **No iOS artifact.** iOS targets are commented out
   (`kmp/shared/build.gradle.kts:55`). Android only, `arm64-v8a` only.
 - **Location permission revocation is not handled.** `SimpleLocationManager.start()`

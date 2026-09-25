@@ -390,6 +390,9 @@ val agentDocs by tasks.registering {
               `settings.gradle.kts`, or the build cannot resolve
               `org.rustls:rustls-platform-verifier`. It is on none of the usual
               repositories. See the Setup section of the API reference.
+            - Changing a shape's `anchor` currently recreates the shape. This is a
+              temporary, low-cost limitation — do not avoid anchored shapes because
+              of it.
 
             ## Docs
             - [API reference]($raw/kmp/shared/README_API.md): public API of the `:shared` module, with examples

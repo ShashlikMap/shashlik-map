@@ -81,14 +81,14 @@ fun LineShape(points: List<Point>, color: ComposeColor, width: Float = 1f) {
  * A low-level component for rendering custom shapes on the map.
  *
  * It manages the lifecycle of a shape overlay, adding it to the map when entered,
- * dynamically updating its position via [anchor] changes, and removing it when disposed.
+ * re-creating it when [anchor] changes, and removing it when disposed.
  *
  * @param points The points defining the shape. If [anchor] is null, these points are
  * treated as geographic coordinates. If [anchor] is provided, these points are treated
  * as relative offset points in dp from the anchor.
  * @param anchor The optional geographic anchor point for the shape. If null, [points] are
  * geographic coordinates; otherwise [points] are relative offset points from this anchor.
- * Changes to [anchor] dynamically update the shape's position on the map without re-creating the shape.
+ * Changing [anchor] currently re-creates the shape (temporary, low overhead); in-place updates will return later.
  * @param type The type of shape to render (e.g., POLYGON, LINE).
  * @param color The color of the shape.
  */
