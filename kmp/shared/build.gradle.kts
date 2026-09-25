@@ -15,6 +15,9 @@ plugins {
     alias(libs.plugins.vanniktech.mavenPublish)
 }
 
+@Suppress("UNCHECKED_CAST")
+val rustlsPlatformVerifierVersion = rootProject.extra["rustlsPlatformVerifierVersion"] as Provider<String>
+
 cargo {
     // The Cargo package is located in a `rust` subdirectory.
     packageDirectory = layout.projectDirectory.dir("../../ffi-run")
@@ -32,42 +35,6 @@ uniffi {
         variant = gobley.gradle.Variant.Release
     }
 }
-
-val rustlsPlatformVerifierAar = providers.exec {
-    val cargoExecutable = System.getProperty("user.home")?.let { home ->
-        File(home, ".cargo/bin/cargo").takeIf { it.exists() }?.absolutePath
-    } ?: "cargo"
-
-    workingDir = rootDir.parentFile
-    commandLine(
-        cargoExecutable, "metadata",
-        "--format-version", "1",
-        "--filter-platform", "aarch64-linux-android",
-    )
-}.standardOutput.asText.map { metadata ->
-    @Suppress("UNCHECKED_CAST")
-    val packages = (JsonSlurper().parseText(metadata) as Map<String, Any>)
-        .getValue("packages") as List<Map<String, Any>>
-    val crate = packages.firstOrNull { it["name"] == "rustls-platform-verifier-android" }
-        ?: error("rustls-platform-verifier-android is not in the Cargo graph for aarch64-linux-android")
-    val version = crate.getValue("version") as String
-    val crateDir = File(crate.getValue("manifest_path") as String).parentFile
-    File(crateDir, "maven/rustls/rustls-platform-verifier/$version/rustls-platform-verifier-$version.aar")
-        .also { require(it.isFile) { "Expected the rustls-platform-verifier AAR at $it" } }
-}
-
-val unpackRustlsPlatformVerifier by tasks.registering(Copy::class) {
-    description = "Extracts the Kotlin component bundled in the rustls-platform-verifier-android crate."
-    from(zipTree(rustlsPlatformVerifierAar)) {
-        include("classes.jar")
-    }
-    into(layout.buildDirectory.dir("rustlsPlatformVerifier"))
-    rename("classes.jar", "rustls-platform-verifier.jar")
-}
-
-val rustlsPlatformVerifierJar = files(
-    layout.buildDirectory.file("rustlsPlatformVerifier/rustls-platform-verifier.jar")
-).builtBy(unpackRustlsPlatformVerifier)
 
 kotlin {
     androidTarget {
@@ -99,7 +66,7 @@ kotlin {
             implementation(libs.androidx.material3)
             implementation(libs.accompanist)
             implementation(libs.play.services.location)
-            implementation(rustlsPlatformVerifierJar)
+            implementation("org.rustls:rustls-platform-verifier:${rustlsPlatformVerifierVersion.get()}")
             implementation("net.java.dev.jna:jna:5.18.1@aar")
             implementation("com.jakewharton.timber:timber:5.0.1")
         }
