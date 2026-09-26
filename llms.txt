@@ -4,7 +4,7 @@
 > a `ShashlikMap` composable, overlays declared in its content slot.
 > Published as `io.github.shashlikmap:mapshared` on Maven Central.
 
-This describes **mapshared 0.3.27**. If the version you resolved
+This describes **mapshared 0.3.28**. If the version you resolved
 differs, treat these documents as unreliable. If the compiler disagrees
 with them, the compiler is right: stop and tell the user rather than
 working around it. Do not use any API that is absent from the reference

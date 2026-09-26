@@ -11,4 +11,3 @@ anchor-recreates-shape	kmp/shared/src/commonMain/kotlin/com/shashlik/kmp/Overlay
 ios-targets-disabled	kmp/shared/build.gradle.kts	//    listOf(
 permission-revocation	kmp/shared/src/androidMain/kotlin/com/shashlik/kmp/SimpleLocationManager.kt	@SuppressLint("MissingPermission")
 lineshape-silent-fail	kmp/shared/src/commonMain/kotlin/com/shashlik/kmp/Overlay.kt	if (!isValid) {
-anchored-polygon-first-point	map/src/overlay/overlay.rs	DVec2::new(points[0].x(), points[0].y()).length()

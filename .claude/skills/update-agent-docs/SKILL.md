@@ -57,7 +57,10 @@ For every breaking change, add a one-line "Changed in X.Y.Z" note next to the
 parameter with the old and new form. Consumer agents trained on older docs keep
 writing the old form otherwise.
 
-Read scan **section 6** too: it lists `map/src` files changed since the anchor.
+Read scan **section 6** too: it lists files changed since the anchor in `map/src`,
+`renderer-common/src` and `renderer-gpu/src` (shaders included). It covered only
+`map/src` until the 0.3.28 scaling work landed half in `shape_shader.wgsl` and
+`render_modifier.rs`, which the scan never showed.
 The engine changes overlay behaviour (scaling, validation) without touching any
 signature, so sections 3 and 4 stay empty. A previous run nearly missed the
 0.3.27 anchored-polygon scaling change: it lived only in `map/src/overlay`, and
@@ -119,6 +122,10 @@ docs. Do not just mention it in your report.
 - **A tracked anchor reported MISSING**: the issue was probably fixed. Confirm in
   the code, then update the doc entry, the TSV row and the matching bullet under
   *Current known-broken items* together.
+- **A tracked anchor that still matches is not proof the issue remains.** Re-read
+  the code around it whenever scan section 6 shows that file changed. In 0.3.28 the
+  anchored-polygon division by `d` was removed, but the tracked `points[0]` line
+  survived, so the scan still reported the fixed bug as present.
 - **A new consumer-facing limitation you added to the docs**: add its bullet under
   *Current known-broken items*. If the docs cite it by line, add a TSV row too.
 - **A command, path or assumption in this file that failed or misled you**: fix it
@@ -134,8 +141,9 @@ though they break consumers. Section 3 of the scan script diffs
 `ffi-run/src/lib.rs` as a substitute — read it. This blind spot closes once those
 four types are wrapped in hand-written Kotlin.
 
-The same applies to the Rust engine in `map/src`: behaviour changes there never
-reach either diff. Scan section 6 lists the changed files; read the overlay ones.
+The same applies to the Rust engine (`map/src`) and the renderers
+(`renderer-common/src`, `renderer-gpu/src`): behaviour changes there never reach
+either diff. Scan section 6 lists the changed files. Read the overlay and shader ones.
 
 ## Current known-broken items
 
@@ -161,13 +169,6 @@ anchor's current line, or MISSING if the pattern is gone.
 - **`LineShape` fails silently** with fewer than two distinct points: the
   `if (!isValid)` early return in `Overlay.kt` (anchor `lineshape-silent-fail`).
   Keep under *Not supported yet*.
-- **An anchored polygon whose first point is the anchor gets infinite scale.**
-  `map/src/overlay/overlay.rs` computes the anchored-polygon scale as
-  `(d + normal_scale) / d`, where `d` is the length of `points[0]` (anchor
-  `anchored-polygon-first-point`). `are_points_valid` only counts points, so
-  `Point(0.0, 0.0)` first gives `d = 0`. Keep under *Broken or disabled*. The code
-  calls this a workaround until proper polygon normals exist; expect the anchor
-  to go MISSING when that lands.
 
 Every row in `tracked-items.tsv` should have a bullet here. A previous run found
 two anchors tracked in the TSV with no bullet, so nothing told a later run to

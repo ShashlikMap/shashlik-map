@@ -116,13 +116,13 @@ grep -noE '`[A-Za-z0-9_./-]+\.(kt|kts|rs|toml):[0-9]+`' $DOCS 2>/dev/null \
 done
 echo
 
-echo "### 6. Engine behaviour changes (map/src; invisible to sections 3 and 4)"
+echo "### 6. Engine behaviour changes (map, renderer-common, renderer-gpu; invisible to sections 3 and 4)"
 echo
-echo "The renderer in map/ changes what overlays *do* without touching any"
+echo "The Rust engine and its shaders change what overlays *do* without touching any"
 echo "signature. Read the overlay diffs: scaling and validation live there."
 echo
 if [ -n "$SINCE" ]; then
-  git diff --stat "$SINCE" -- map/src 2>/dev/null | grep -v 'changed,' || echo "_no engine changes_"
+  git diff --stat "$SINCE" -- map/src renderer-common/src renderer-gpu/src 2>/dev/null | grep -v 'changed,' || echo "_no engine changes_"
 else
   echo "_no diff anchor_"
 fi
