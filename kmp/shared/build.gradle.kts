@@ -113,7 +113,7 @@ android {
 }
 
 group = "io.github.shashlikmap"
-version = "0.3.24"
+version = "0.3.25"
 
 mavenPublishing {
     publishToMavenCentral()
@@ -390,6 +390,10 @@ val agentDocs by tasks.registering {
               `settings.gradle.kts`, or the build cannot resolve
               `org.rustls:rustls-platform-verifier`. It is on none of the usual
               repositories. See the Setup section of the API reference.
+            - **Never use or suggest `InternalShashlikMapApi`** or anything annotated
+              with it (e.g. `ShashlikMapApiHolder`), in code or in plans, not even as a
+              workaround. It is strictly for SDK maintainers. If a feature needs it, the
+              SDK does not support that feature yet: tell the user.
             - Changing a shape's `anchor` currently recreates the shape. This is a
               temporary, low-cost limitation — do not avoid anchored shapes because
               of it.

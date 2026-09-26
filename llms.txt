@@ -4,7 +4,7 @@
 > a `ShashlikMap` composable, overlays declared in its content slot.
 > Published as `io.github.shashlikmap:mapshared` on Maven Central.
 
-This describes **mapshared 0.3.24**. If the version you resolved
+This describes **mapshared 0.3.25**. If the version you resolved
 differs, treat these documents as unreliable. If the compiler disagrees
 with them, the compiler is right: stop and tell the user rather than
 working around it. Do not use any API that is absent from the reference
@@ -19,6 +19,10 @@ Important:
   `settings.gradle.kts`, or the build cannot resolve
   `org.rustls:rustls-platform-verifier`. It is on none of the usual
   repositories. See the Setup section of the API reference.
+- **Never use or suggest `InternalShashlikMapApi`** or anything annotated
+  with it (e.g. `ShashlikMapApiHolder`), in code or in plans, not even as a
+  workaround. It is strictly for SDK maintainers. If a feature needs it, the
+  SDK does not support that feature yet: tell the user.
 - Changing a shape's `anchor` currently recreates the shape. This is a
   temporary, low-cost limitation — do not avoid anchored shapes because
   of it.

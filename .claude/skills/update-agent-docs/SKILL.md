@@ -100,5 +100,9 @@ Verify these each run; do not silently drop them.
   non-blocking* in `README_API.md`, not *Broken or disabled*: the cost is small,
   it is temporary, and consumer agents previously read the stronger wording as a
   blocker and refused to use anchored shapes.
+- **`InternalShashlikMapApi` is maintainer-only.** Keep the "never use or suggest"
+  rule in `README_API.md` §4, the demo module note, and the `llms.txt` template.
+  Never add opt-in instructions or examples that use `ShashlikMapApiHolder`: a consumer
+  agent once proposed the opt-in as the recommended approach while planning.
 - **No iOS artifact.** iOS targets are commented out (`shared/build.gradle.kts:55`).
   The published library is Android-only, `arm64-v8a` only.

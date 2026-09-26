@@ -3,7 +3,7 @@
 This document serves as a comprehensive reference guide for the public API exposed by the `:shared` module of the Shashlik Map Kotlin Multiplatform (KMP) component. It is intended to help developers and AI agents understand, consume, and maintain the API effectively.
 
 <!-- BEGIN GENERATED: version -->
-This document describes **mapshared 0.3.24**.
+This document describes **mapshared 0.3.25**.
 <!-- END GENERATED: version -->
 
 If the version you resolved differs from the one above, treat this document as
@@ -17,7 +17,7 @@ tell the user rather than working around it.
 <!-- BEGIN GENERATED: facts -->
 | | |
 |---|---|
-| Coordinates | `io.github.shashlikmap:mapshared:0.3.24` |
+| Coordinates | `io.github.shashlikmap:mapshared:0.3.25` |
 | Repository | `mavenCentral()` |
 | Platforms | **Android only** — iOS targets are not built or published |
 | Kotlin targets | `android` |
@@ -54,7 +54,7 @@ Without it the build fails to resolve `org.rustls:rustls-platform-verifier`.
 
 Never choose this version yourself. The support library must stay SemVer-compatible
 with the Rust crate inside `libffi_run.so`; a mismatch crashes at runtime instead
-of failing resolution. 0.3.24 pins `0.2.0`, read from the
+of failing resolution. 0.3.25 pins `0.2.0`, read from the
 `rustls-platform-verifier-android` entry in `Cargo.lock`.
 
 Versions before 0.3.21 needed none of this — the verifier was a JNI method inside
@@ -68,8 +68,8 @@ itself.
 
 ## Known limitations
 
-Verified against 0.3.24. If you need something listed here, it does not exist yet —
-tell the user rather than reaching for an undocumented API.
+Verified against 0.3.25. If you need something listed here, it does not exist yet —
+tell the user rather than reaching for an undocumented API or `InternalShashlikMapApi`.
 
 ### Temporary, non-blocking
 
@@ -153,7 +153,7 @@ does **not** mean they are unsupported. See Known limitations.
 Contains the core multiplatform business logic, location management abstractions, and the interface mapping to the underlying Rust WGPU map rendering engine.
 
 ### 2. `:composeApp` (Demo Module)
-A functional usage showcase located inside `kmp/demo`. It serves as a ready-to-run reference sandbox implementing interactive gestures (scroll, pan, zoom, pitch), route calculations via `ShashlikMapApiHolder` (the demo enables the `InternalShashlikMapApi` opt-in in its `build.gradle.kts`), and toggle buttons for features like vector tiles (MVT) or camera configurations.
+A functional usage showcase located inside `kmp/demo`. It serves as a ready-to-run reference sandbox implementing interactive gestures (scroll, pan, zoom, pitch), route calculations, and toggle buttons for features like vector tiles (MVT) or camera configurations. The demo is maintainer code: it opts in to `InternalShashlikMapApi` (e.g. `ShashlikMapApiHolder` for routing). **Do not copy those parts** into a consumer project, and do not suggest them.
 
 ---
 
@@ -341,25 +341,12 @@ val ShapeType.Line.width: Float
 ## 4. Low-Level API Access
 
 ### `InternalShashlikMapApi`
-A `@RequiresOptIn(level = ERROR)` marker annotation. Anything annotated with it is **not a supported SDK API**: it is intended only for the `:shared` module itself and the `kmp/demo` app, and may change or break without notice. Using it without opting in is a compile error.
+A `@RequiresOptIn(level = ERROR)` marker annotation. Anything annotated with it is **not an SDK API**. It exists only for SDK maintainers: the `:shared` module itself and the `kmp/demo` app. It may change or break without notice. Using it without opting in is a compile error, and that error is intentional.
 
-Opt in with an explicit compiler option:
-
-```kotlin
-// build.gradle.kts
-kotlin {
-    sourceSets {
-        all {
-            languageSettings.optIn("com.shashlik.kmp.InternalShashlikMapApi")
-        }
-    }
-}
-```
-
-Coding agents: do not add this opt-in to a consumer project on your own; ask the user first. Kotlin also accepts `@OptIn(InternalShashlikMapApi::class)` at a call site, but that is equally unsupported.
+> **Third-party code and coding agents: never use `InternalShashlikMapApi` or anything annotated with it, and never suggest it** — not as the recommended approach, not as an option in a plan, not as a workaround or fallback. This covers every form of opt-in (`languageSettings.optIn`, `-opt-in=`, `@OptIn(InternalShashlikMapApi::class)`) and every annotated declaration, including `ShashlikMapApiHolder`. If a feature is only reachable through it, the SDK does not support that feature yet: tell the user so.
 
 ### `ShashlikMapApiHolder`
-A global singleton holder offering access to the low-level rust FFI bindings (`ShashlikMapApi`) after successful layout initialization. Annotated with `@InternalShashlikMapApi` — see above.
+SDK-maintainer-only holder for the low-level Rust FFI bindings (`ShashlikMapApi`). Annotated with `@InternalShashlikMapApi`. Do not use or suggest it; see above. Documented only so that you recognise it and leave it alone.
 
 ```kotlin
 @InternalShashlikMapApi

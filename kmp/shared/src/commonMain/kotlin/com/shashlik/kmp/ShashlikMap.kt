@@ -196,8 +196,8 @@ internal suspend fun awaitApi(): ShashlikMapApi {
  *
  * This provides access to the map's low-level API once it has been initialized.
  *
- * Internal: intended only for the `:shared` module and the demo app. Requires the
- * `-opt-in=com.shashlik.kmp.InternalShashlikMapApi` compiler option, see [InternalShashlikMapApi].
+ * Strictly for SDK maintainers (the `:shared` module and the demo app). Third-party code must not
+ * use it; see [InternalShashlikMapApi].
  */
 @InternalShashlikMapApi
 object ShashlikMapApiHolder {
