@@ -4,7 +4,7 @@ use crate::overlay::overlay_shape_group::OverlayShapeGroup;
 use crate::puck_group::SimplePuck;
 use geo::{BoundingRect, Scale, Translate};
 use geo_types::{GeometryCollection, MultiPoint, Point, Rect};
-use glam::DVec3;
+use glam::{DVec2, DVec3};
 use renderer_common::RendererApi;
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::style_id::StyleId;
@@ -14,10 +14,15 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 static OVERLAY_SHAPE_ID: AtomicUsize = AtomicUsize::new(0);
+
+struct ShapeValue {
+    shape_type: ShapeType,
+    anchor_distance: Option<f64>
+}
 pub struct Overlay<RAPI: RendererApi> {
     api: Arc<RAPI>,
     feature_layer_tag: String,
-    shapes: FxHashMap<String, ShapeType>,
+    shapes: FxHashMap<String, ShapeValue>,
     styles: FxHashMap<String, StyleId>,
     rects: FxHashMap<String, Rect<f64>>,
     bbox: Option<Rect>,
@@ -73,6 +78,15 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
             let p = converter(&p);
             DVec3::new(p.x(), p.y(), 0.0)
         });
+        let anchor_distance = anchor.map(|_| {
+            // This is a workaround to calculate scaling, the proper normals has to be created for polygons later
+            DVec2::new(points[0].x(), points[0].y()).length()
+        }).or_else(|| {
+            match shape_type {
+                ShapeType::Line(width) => width.map(|w| (w * 0.5) as f64),
+                _ => None
+            }
+        });
         let id = OVERLAY_SHAPE_ID.fetch_add(1, Ordering::Relaxed);
         let render_style = renderer_common::render_style::RenderStyle::fill([
             fill_color[0],
@@ -87,7 +101,10 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         self.rects.insert(unique_id.clone(), bbox);
         self.bbox = None;
 
-        self.shapes.insert(unique_id.clone(), shape_type);
+        self.shapes.insert(unique_id.clone(), ShapeValue {
+            shape_type,
+            anchor_distance
+        });
 
         let style_key = format!("overlay_shape_key_{:?}", render_style);
         let style_id = self.styles.entry(style_key.clone()).or_insert_with(|| {
@@ -98,11 +115,12 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         });
 
         let shape = Box::new(OverlayShapeGroup::new(
-            points.clone(),
+            points,
             self.feature_layer_tag.clone(),
             style_id.clone(),
             shape_type,
             anchor,
+            anchor_distance,
             self.last_normal_scale
         ));
 
@@ -147,14 +165,16 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
     pub fn update(&mut self, normal_scale: f64) {
         self.last_normal_scale = Some(normal_scale);
         let api = Arc::clone(&self.api);
-        self.shapes.iter().for_each(|(shape_id, shape_type)| {
-            let is_polygon = matches!(shape_type, ShapeType::Polygon);
-            api.update_spatial_data(shape_id.clone(), move |spatial_data| {
-                spatial_data.normal_scale = normal_scale;
-                if is_polygon {
-                    spatial_data.scale = DVec3::splat(normal_scale);
-                }
-            });
+        self.shapes.iter().for_each(|(shape_id, shape)| {
+            if let Some(anchor_distance) = shape.anchor_distance {
+                let is_polygon = matches!(shape.shape_type, ShapeType::Polygon);
+                api.update_spatial_data(shape_id.clone(), move |spatial_data| {
+                    spatial_data.normal_scale = (normal_scale - 1.0) * anchor_distance;
+                    if is_polygon {
+                        spatial_data.scale = DVec3::splat(normal_scale);
+                    }
+                });
+            }
         })
     }
 }

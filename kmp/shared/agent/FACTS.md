@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Coordinates | `io.github.shashlikmap:mapshared:0.3.25` |
+| Coordinates | `io.github.shashlikmap:mapshared:0.3.28` |
 | Repository | `mavenCentral()` |
 | Platforms | **Android only** — iOS targets are not built or published |
 | Kotlin targets | `android` |

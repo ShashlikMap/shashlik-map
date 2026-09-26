@@ -394,9 +394,8 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
                 }
             });
 
-        let normal_scale = cam_zoom.max(0.25);
-        self.route_controller.update(normal_scale);
-        self.overlay.update(normal_scale);
+        self.route_controller.update(cam_zoom);
+        self.overlay.update(cam_zoom);
 
         if self.should_animate() {
             let cam_pos = self.camera_controller.position;

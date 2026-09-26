@@ -107,10 +107,9 @@ fn vs_main(
     }
 
     var pointPos = modelpos.xyz + normal_scale.xyz;
-
-    // TODO This is not the best option. Now all shapes will have this branching regardless normal_scale value..
-    if(pos.normal_scale > 1.0) {
-        pointPos += vec3(normalize(model.normal) * (pos.normal_scale - 1.0), 0.0);
+    // we can't inlince it. If normal and normal_scale are 0, then some GPU can't handle NaN * 0 properly
+    if(pos.normal_scale != 0.0) {
+        pointPos += vec3(normalize(model.normal) * (pos.normal_scale), 0.0);
     }
 
     out.vertex_pos_xy = pointPos.xy;

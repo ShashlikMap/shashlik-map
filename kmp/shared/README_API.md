@@ -3,7 +3,7 @@
 This document serves as a comprehensive reference guide for the public API exposed by the `:shared` module of the Shashlik Map Kotlin Multiplatform (KMP) component. It is intended to help developers and AI agents understand, consume, and maintain the API effectively.
 
 <!-- BEGIN GENERATED: version -->
-This document describes **mapshared 0.3.25**.
+This document describes **mapshared 0.3.28**.
 <!-- END GENERATED: version -->
 
 If the version you resolved differs from the one above, treat this document as
@@ -17,7 +17,7 @@ tell the user rather than working around it.
 <!-- BEGIN GENERATED: facts -->
 | | |
 |---|---|
-| Coordinates | `io.github.shashlikmap:mapshared:0.3.25` |
+| Coordinates | `io.github.shashlikmap:mapshared:0.3.28` |
 | Repository | `mavenCentral()` |
 | Platforms | **Android only** — iOS targets are not built or published |
 | Kotlin targets | `android` |
@@ -54,7 +54,7 @@ Without it the build fails to resolve `org.rustls:rustls-platform-verifier`.
 
 Never choose this version yourself. The support library must stay SemVer-compatible
 with the Rust crate inside `libffi_run.so`; a mismatch crashes at runtime instead
-of failing resolution. 0.3.25 pins `0.2.0`, read from the
+of failing resolution. 0.3.28 pins `0.2.0`, read from the
 `rustls-platform-verifier-android` entry in `Cargo.lock`.
 
 Versions before 0.3.21 needed none of this — the verifier was a JNI method inside
@@ -68,14 +68,14 @@ itself.
 
 ## Known limitations
 
-Verified against 0.3.25. If you need something listed here, it does not exist yet —
+Verified against 0.3.28. If you need something listed here, it does not exist yet —
 tell the user rather than reaching for an undocumented API or `InternalShashlikMapApi`.
 
 ### Temporary, non-blocking
 
 - **Changing `anchor` recreates the shape.** An anchor change currently removes the
   shape and adds it again instead of moving it in place (the `updateShape` call is
-  commented out, `Overlay.kt:128`). This is a temporary limitation of a WIP/POC SDK;
+  commented out, `Overlay.kt:130`). This is a temporary limitation of a WIP/POC SDK;
   the overhead is small and acceptable. It is **not** a reason to avoid anchored
   shapes, including ones whose anchor changes frequently. In-place updates will
   return in a later version without API changes.
@@ -83,7 +83,7 @@ tell the user rather than reaching for an undocumented API or `InternalShashlikM
 ### Broken or disabled
 
 - **No iOS artifact.** iOS targets are commented out
-  (`kmp/shared/build.gradle.kts:55`). Android only, `arm64-v8a` only.
+  (`kmp/shared/build.gradle.kts:56`). Android only, `arm64-v8a` only.
 - **Location permission revocation is not handled.** `SimpleLocationManager.start()`
   is annotated `@SuppressLint("MissingPermission")` (`SimpleLocationManager.kt:39`);
   revoking permission while the map runs is untested.
@@ -213,10 +213,10 @@ ShashlikMap(
     state = rememberLocationState(latitude = 35.6879, longitude = 139.7570),
     withPuck = true
 ) {
-    // Convex polygon centered at Tokyo with a 10.dp radius
+    // Convex polygon centered at Tokyo with a 10 unit radius (around 15 meters)
     ConvexPolygon(
         center = Point(x = 139.7570, y = 35.6879),
-        radius = 10.dp,
+        radius = 10f,
         sides = 5,
         color = Color.Red
     )
@@ -281,7 +281,7 @@ Draws a completely filled convex polygon on the map layer centered at a specific
 @Composable
 fun ConvexPolygon(
     center: uniffi.ffi_run.Point,
-    radius: androidx.compose.ui.unit.Dp,
+    radius: Float,
     sides: Int,
     color: androidx.compose.ui.graphics.Color
 )
@@ -289,7 +289,8 @@ fun ConvexPolygon(
 
 #### Parameters:
 - **`center`**: The geographic center anchor point of the polygon.
-- **`radius`**: The distance from the center to each vertex as a `Dp` value.
+- **`radius`**: The distance from the center to each vertex in abstract units (where 1 unit is approximately 1.5 meters, or around half of average road width / a width of one lane). As an anchored polygon, it automatically scales depending on camera zoom/scale level.
+  **Changed in 0.3.26:** `radius` was `Dp` in 0.3.25 and earlier; it is now `Float`. Write `radius = 10f`, not `radius = 10.dp`.
 - **`sides`**: The number of sides (vertices) of the polygon. Must be at least 3.
 - **`color`**: The color used to fill the polygon.
 
@@ -308,7 +309,7 @@ fun LineShape(
 #### Parameters:
 - **`points`**: The list of geographic points defining the path of the line.
 - **`color`**: The color of the line.
-- **`width`**: The width of the line. *(Note: abstract unit at this moment; a resolution-independent coordinate unit will be provided in a future iteration).*
+- **`width`**: The width of the line in abstract units (where 1 unit is approximately 1.5 meters, or around half of average road width / a width of one lane). Lines automatically scale depending on camera zoom/scale level.
 
 ### `ShashlikShape`
 Low-level component managing underlying shapes. Handles automatic shape instantiation on addition and resource cleanup on disposal.
@@ -324,8 +325,8 @@ fun ShashlikShape(
 ```
 
 #### Parameters:
-- **`points`**: The points defining the shape. If `anchor` is `null`, `points` are interpreted as geographic coordinates. If `anchor` is provided, `points` are interpreted as relative offset points in dp from the `anchor`.
-- **`anchor`**: Optional geographic anchor point for the shape.
+- **`points`**: The points defining the shape. If `anchor` is `null`, `points` are interpreted as geographic coordinates. If `anchor` is provided, `points` are interpreted as relative offset points in abstract units from the `anchor`.
+- **`anchor`**: Optional geographic anchor point for the shape. If `null`, `points` are geographic coordinates; otherwise `points` are relative offset points from this anchor. Auto scale with camera zoom applies to anchored polygons and to non-anchored lines with a non-null width. Non-anchored polygons and `ShapeType.Line(null)` without an anchor do not scale. How an *anchored* line's width scales is undocumented. See `anchor_distance` in `map/src/overlay/overlay.rs`.
 - **`type`**: The type of shape to render (`ShapeType.Polygon` or `ShapeType.Line`).
 - **`color`**: The color of the shape.
 
