@@ -6,7 +6,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -24,7 +23,7 @@ internal fun ComposeColor.toShashlikColor(): Color = Color(r = red, g = green, b
  * Draws a convex polygon overlay on the map.
  *
  * @param center The geographic center point of the polygon.
- * @param radius The distance from the center to each vertex as a [Dp] value.
+ * @param radius The distance from the center to each vertex in abstract units (where 1 unit is approximately 1.5 meters, or around half of average road width / a width of one lane). As an anchored polygon, it receives auto scale depending on camera zoom/scale level.
  * @param sides The number of sides (vertices) of the polygon. Must be at least 3.
  * @param color The color used to fill the polygon.
  */
@@ -57,8 +56,7 @@ fun ConvexPolygon(
  *
  * @param points The list of geographic points defining the path of the line.
  * @param color The color of the line.
- * @param width The width of the line. Note: this is an abstract unit at this moment;
- * a proper unit will be provided in a future update.
+ * @param width The width of the line in abstract units (where 1 unit is approximately 1.5 meters, or around half of average road width / a width of one lane). Lines receive auto scale depending on camera zoom/scale level.
  */
 @Composable
 fun LineShape(points: List<Point>, color: ComposeColor, width: Float = 1f) {
@@ -84,9 +82,10 @@ fun LineShape(points: List<Point>, color: ComposeColor, width: Float = 1f) {
  *
  * @param points The points defining the shape. If [anchor] is null, these points are
  * treated as geographic coordinates. If [anchor] is provided, these points are treated
- * as relative offset points in dp from the anchor.
+ * as relative offset points in abstract units from the anchor.
  * @param anchor The optional geographic anchor point for the shape. If null, [points] are
  * geographic coordinates; otherwise [points] are relative offset points from this anchor.
+ * Only anchored polygons and lines receive auto scale depending on camera zoom/scale level (non-anchored polygons do not).
  * Changing [anchor] currently re-creates the shape (temporary, low overhead); in-place updates will return later.
  * @param type The type of shape to render (e.g., POLYGON, LINE).
  * @param color The color of the shape.

@@ -213,10 +213,10 @@ ShashlikMap(
     state = rememberLocationState(latitude = 35.6879, longitude = 139.7570),
     withPuck = true
 ) {
-    // Convex polygon centered at Tokyo with a 10.dp radius
+    // Convex polygon centered at Tokyo with a 10 unit radius (around 15 meters)
     ConvexPolygon(
         center = Point(x = 139.7570, y = 35.6879),
-        radius = 10.dp,
+        radius = 10f,
         sides = 5,
         color = Color.Red
     )
@@ -281,7 +281,7 @@ Draws a completely filled convex polygon on the map layer centered at a specific
 @Composable
 fun ConvexPolygon(
     center: uniffi.ffi_run.Point,
-    radius: androidx.compose.ui.unit.Dp,
+    radius: Float,
     sides: Int,
     color: androidx.compose.ui.graphics.Color
 )
@@ -289,7 +289,7 @@ fun ConvexPolygon(
 
 #### Parameters:
 - **`center`**: The geographic center anchor point of the polygon.
-- **`radius`**: The distance from the center to each vertex as a `Dp` value.
+- **`radius`**: The distance from the center to each vertex in abstract units (where 1 unit is approximately 1.5 meters, or around half of average road width / a width of one lane). As an anchored polygon, it automatically scales depending on camera zoom/scale level.
 - **`sides`**: The number of sides (vertices) of the polygon. Must be at least 3.
 - **`color`**: The color used to fill the polygon.
 
@@ -308,7 +308,7 @@ fun LineShape(
 #### Parameters:
 - **`points`**: The list of geographic points defining the path of the line.
 - **`color`**: The color of the line.
-- **`width`**: The width of the line. *(Note: abstract unit at this moment; a resolution-independent coordinate unit will be provided in a future iteration).*
+- **`width`**: The width of the line in abstract units (where 1 unit is approximately 1.5 meters, or around half of average road width / a width of one lane). Lines automatically scale depending on camera zoom/scale level.
 
 ### `ShashlikShape`
 Low-level component managing underlying shapes. Handles automatic shape instantiation on addition and resource cleanup on disposal.
@@ -324,8 +324,8 @@ fun ShashlikShape(
 ```
 
 #### Parameters:
-- **`points`**: The points defining the shape. If `anchor` is `null`, `points` are interpreted as geographic coordinates. If `anchor` is provided, `points` are interpreted as relative offset points in dp from the `anchor`.
-- **`anchor`**: Optional geographic anchor point for the shape.
+- **`points`**: The points defining the shape. If `anchor` is `null`, `points` are interpreted as geographic coordinates. If `anchor` is provided, `points` are interpreted as relative offset points in abstract units from the `anchor`.
+- **`anchor`**: Optional geographic anchor point for the shape. If `null`, `points` are geographic coordinates; otherwise `points` are relative offset points from this anchor. Note that only anchored polygons and lines receive auto scale depending on camera zoom/scale level (non-anchored polygons do not).
 - **`type`**: The type of shape to render (`ShapeType.Polygon` or `ShapeType.Line`).
 - **`color`**: The color of the shape.
 
