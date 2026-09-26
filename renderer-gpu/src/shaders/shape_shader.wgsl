@@ -106,7 +106,11 @@ fn vs_main(
         normal_scale = vec3(model.normal.xy * inflate_factor * factor, 0.0);
     }
 
-    let pointPos = modelpos.xyz + normal_scale.xyz + vec3(normalize(model.normal) * (pos.normal_scale), 0.0);
+    var pointPos = modelpos.xyz + normal_scale.xyz;
+    // we can't inlince it. If normal and normal_scale are 0, then some GPU can't handle NaN * 0 properly
+    if(pos.normal_scale != 0.0) {
+        pointPos += vec3(normalize(model.normal) * (pos.normal_scale), 0.0);
+    }
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
