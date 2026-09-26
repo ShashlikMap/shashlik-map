@@ -35,10 +35,12 @@ impl OverlayShapeGroup {
         let point = anchor.unwrap_or(DVec3::new(shape[0].x(), shape[0].y(), 0.0));
         let mut spatial_data = SpatialData::transform(point);
         let scale = normal_scale.unwrap_or(1.0);
-        spatial_data.normal_scale = scale;
         let is_polygon = matches!(shape_type, ShapeType::Polygon);
-        if is_polygon {
-            spatial_data.scale = DVec3::splat(scale);
+        if !is_polygon || anchor.is_some() {
+            spatial_data.normal_scale = scale;
+            if is_polygon {
+                spatial_data.scale = DVec3::splat(scale);
+            }
         }
         let shape = if anchor.is_some() {
             shape

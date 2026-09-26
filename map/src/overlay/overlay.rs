@@ -14,10 +14,15 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 static OVERLAY_SHAPE_ID: AtomicUsize = AtomicUsize::new(0);
+
+struct ShapeValue {
+    shape_type: ShapeType,
+    anchored: bool
+}
 pub struct Overlay<RAPI: RendererApi> {
     api: Arc<RAPI>,
     feature_layer_tag: String,
-    shapes: FxHashMap<String, ShapeType>,
+    shapes: FxHashMap<String, ShapeValue>,
     styles: FxHashMap<String, StyleId>,
     rects: FxHashMap<String, Rect<f64>>,
     bbox: Option<Rect>,
@@ -87,7 +92,10 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         self.rects.insert(unique_id.clone(), bbox);
         self.bbox = None;
 
-        self.shapes.insert(unique_id.clone(), shape_type);
+        self.shapes.insert(unique_id.clone(), ShapeValue {
+            shape_type,
+            anchored: anchor.is_some(),
+        });
 
         let style_key = format!("overlay_shape_key_{:?}", render_style);
         let style_id = self.styles.entry(style_key.clone()).or_insert_with(|| {
@@ -98,7 +106,7 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         });
 
         let shape = Box::new(OverlayShapeGroup::new(
-            points.clone(),
+            points,
             self.feature_layer_tag.clone(),
             style_id.clone(),
             shape_type,
@@ -147,14 +155,16 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
     pub fn update(&mut self, normal_scale: f64) {
         self.last_normal_scale = Some(normal_scale);
         let api = Arc::clone(&self.api);
-        self.shapes.iter().for_each(|(shape_id, shape_type)| {
-            let is_polygon = matches!(shape_type, ShapeType::Polygon);
-            api.update_spatial_data(shape_id.clone(), move |spatial_data| {
-                spatial_data.normal_scale = normal_scale;
-                if is_polygon {
-                    spatial_data.scale = DVec3::splat(normal_scale);
-                }
-            });
+        self.shapes.iter().for_each(|(shape_id, shape)| {
+            let is_polygon = matches!(shape.shape_type, ShapeType::Polygon);
+            if !is_polygon || shape.anchored {
+                api.update_spatial_data(shape_id.clone(), move |spatial_data| {
+                    spatial_data.normal_scale = normal_scale;
+                    if is_polygon {
+                        spatial_data.scale = DVec3::splat(normal_scale);
+                    }
+                });
+            }
         })
     }
 }
