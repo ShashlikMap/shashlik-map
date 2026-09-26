@@ -27,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.shashlik.kmp.ConvexPolygon
 import com.shashlik.kmp.LineShape
@@ -98,13 +97,13 @@ fun App() {
             ) {
                 ConvexPolygon(
                     center = movingPoint,
-                    radius = 6.dp,
+                    radius = 6f,
                     sides = 5,
                     color = Color.White
                 )
                 ConvexPolygon(
                     center = movingPoint,
-                    radius = 5.dp,
+                    radius = 5f,
                     sides = 5,
                     color = Color.Blue
                 )
@@ -209,7 +208,7 @@ fun App() {
 
 private sealed interface RandomShape {
     data class Line(val points: List<Point>, val color: Color, val width: Float) : RandomShape
-    data class Convex(val center: Point, val radius: Dp, val sides: Int, val color: Color) : RandomShape
+    data class Convex(val center: Point, val radius: Float, val sides: Int, val color: Color) : RandomShape
     data class Polygon(val points: List<Point>, val color: Color) : RandomShape
 }
 
@@ -241,9 +240,9 @@ private fun generateRandomShapeAroundTokyo(): RandomShape {
                 x = centerX + Random.nextDouble(-maxOffset, maxOffset),
                 y = centerY + Random.nextDouble(-maxOffset, maxOffset)
             )
-            val radius = Random.nextInt(4, 15).dp
+            val radius = Random.nextInt(4, 15)
             val sides = Random.nextInt(3, 8)
-            RandomShape.Convex(center, radius, sides, randomColor)
+            RandomShape.Convex(center, radius.toFloat(), sides, randomColor)
         }
 
         else -> {

@@ -31,17 +31,16 @@ internal fun ComposeColor.toShashlikColor(): Color = Color(r = red, g = green, b
 @Composable
 fun ConvexPolygon(
     center: Point,
-    radius: Dp,
+    radius: Float,
     sides: Int,
     color: ComposeColor,
 ) {
-    val radiusDp = radius.value.toDouble()
-    val points = remember(radiusDp, sides) {
+    val points = remember(radius, sides) {
         (0 until sides).map { i ->
             val angle = 2.0 * PI * i / sides
             Point(
-                x = cos(angle) * radiusDp,
-                y = sin(angle) * radiusDp,
+                x = cos(angle) * radius,
+                y = sin(angle) * radius,
             )
         }
     }
