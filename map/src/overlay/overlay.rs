@@ -4,7 +4,7 @@ use crate::overlay::overlay_shape_group::OverlayShapeGroup;
 use crate::puck_group::SimplePuck;
 use geo::{BoundingRect, Scale, Translate};
 use geo_types::{GeometryCollection, MultiPoint, Point, Rect};
-use glam::DVec3;
+use glam::{DVec2, DVec3};
 use renderer_common::RendererApi;
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::style_id::StyleId;
@@ -17,7 +17,7 @@ static OVERLAY_SHAPE_ID: AtomicUsize = AtomicUsize::new(0);
 
 struct ShapeValue {
     shape_type: ShapeType,
-    anchored: bool
+    anchor_distance: Option<f64>
 }
 pub struct Overlay<RAPI: RendererApi> {
     api: Arc<RAPI>,
@@ -78,6 +78,10 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
             let p = converter(&p);
             DVec3::new(p.x(), p.y(), 0.0)
         });
+        let anchor_distance = anchor.map(|_| {
+            // This is a workaround to calculate scaling, the proper normals has to be created for polygons later
+            DVec2::new(points[0].x(), points[0].y()).length()
+        });
         let id = OVERLAY_SHAPE_ID.fetch_add(1, Ordering::Relaxed);
         let render_style = renderer_common::render_style::RenderStyle::fill([
             fill_color[0],
@@ -94,7 +98,7 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
 
         self.shapes.insert(unique_id.clone(), ShapeValue {
             shape_type,
-            anchored: anchor.is_some(),
+            anchor_distance
         });
 
         let style_key = format!("overlay_shape_key_{:?}", render_style);
@@ -111,6 +115,7 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
             style_id.clone(),
             shape_type,
             anchor,
+            anchor_distance,
             self.last_normal_scale
         ));
 
@@ -157,11 +162,13 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         let api = Arc::clone(&self.api);
         self.shapes.iter().for_each(|(shape_id, shape)| {
             let is_polygon = matches!(shape.shape_type, ShapeType::Polygon);
-            if !is_polygon || shape.anchored {
+            if !is_polygon || shape.anchor_distance.is_some() {
+                let anchor_distance = shape.anchor_distance.unwrap_or(1.0);
                 api.update_spatial_data(shape_id.clone(), move |spatial_data| {
                     spatial_data.normal_scale = normal_scale;
                     if is_polygon {
-                        spatial_data.scale = DVec3::splat(normal_scale);
+                        let anchor_scale = (anchor_distance + normal_scale) / anchor_distance;
+                        spatial_data.scale = DVec3::splat(anchor_scale);
                     }
                 });
             }
