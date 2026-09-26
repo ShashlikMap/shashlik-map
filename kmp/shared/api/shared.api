@@ -24,7 +24,7 @@ public final class com/shashlik/kmp/LocationStateKt {
 }
 
 public final class com/shashlik/kmp/OverlayKt {
-	public static final fun ConvexPolygon-jHzyhOc (Luniffi/ffi_run/Point;FIJLandroidx/compose/runtime/Composer;I)V
+	public static final fun ConvexPolygon-Bx497Mc (Luniffi/ffi_run/Point;FIJLandroidx/compose/runtime/Composer;I)V
 	public static final fun LineShape-3IgeMak (Ljava/util/List;JFLandroidx/compose/runtime/Composer;II)V
 	public static final fun ShashlikShape-Bx497Mc (Ljava/util/List;Luniffi/ffi_run/Point;Luniffi/ffi_run/ShapeType;JLandroidx/compose/runtime/Composer;I)V
 	public static final fun getWidth (Luniffi/ffi_run/ShapeType$Line;)F

@@ -3,7 +3,7 @@
 This document serves as a comprehensive reference guide for the public API exposed by the `:shared` module of the Shashlik Map Kotlin Multiplatform (KMP) component. It is intended to help developers and AI agents understand, consume, and maintain the API effectively.
 
 <!-- BEGIN GENERATED: version -->
-This document describes **mapshared 0.3.25**.
+This document describes **mapshared 0.3.26**.
 <!-- END GENERATED: version -->
 
 If the version you resolved differs from the one above, treat this document as
@@ -17,7 +17,7 @@ tell the user rather than working around it.
 <!-- BEGIN GENERATED: facts -->
 | | |
 |---|---|
-| Coordinates | `io.github.shashlikmap:mapshared:0.3.25` |
+| Coordinates | `io.github.shashlikmap:mapshared:0.3.26` |
 | Repository | `mavenCentral()` |
 | Platforms | **Android only** — iOS targets are not built or published |
 | Kotlin targets | `android` |
@@ -54,7 +54,7 @@ Without it the build fails to resolve `org.rustls:rustls-platform-verifier`.
 
 Never choose this version yourself. The support library must stay SemVer-compatible
 with the Rust crate inside `libffi_run.so`; a mismatch crashes at runtime instead
-of failing resolution. 0.3.25 pins `0.2.0`, read from the
+of failing resolution. 0.3.26 pins `0.2.0`, read from the
 `rustls-platform-verifier-android` entry in `Cargo.lock`.
 
 Versions before 0.3.21 needed none of this — the verifier was a JNI method inside
@@ -68,14 +68,14 @@ itself.
 
 ## Known limitations
 
-Verified against 0.3.25. If you need something listed here, it does not exist yet —
+Verified against 0.3.26. If you need something listed here, it does not exist yet —
 tell the user rather than reaching for an undocumented API or `InternalShashlikMapApi`.
 
 ### Temporary, non-blocking
 
 - **Changing `anchor` recreates the shape.** An anchor change currently removes the
   shape and adds it again instead of moving it in place (the `updateShape` call is
-  commented out, `Overlay.kt:128`). This is a temporary limitation of a WIP/POC SDK;
+  commented out, `Overlay.kt:130`). This is a temporary limitation of a WIP/POC SDK;
   the overhead is small and acceptable. It is **not** a reason to avoid anchored
   shapes, including ones whose anchor changes frequently. In-place updates will
   return in a later version without API changes.
@@ -83,7 +83,7 @@ tell the user rather than reaching for an undocumented API or `InternalShashlikM
 ### Broken or disabled
 
 - **No iOS artifact.** iOS targets are commented out
-  (`kmp/shared/build.gradle.kts:55`). Android only, `arm64-v8a` only.
+  (`kmp/shared/build.gradle.kts:56`). Android only, `arm64-v8a` only.
 - **Location permission revocation is not handled.** `SimpleLocationManager.start()`
   is annotated `@SuppressLint("MissingPermission")` (`SimpleLocationManager.kt:39`);
   revoking permission while the map runs is untested.
@@ -290,6 +290,7 @@ fun ConvexPolygon(
 #### Parameters:
 - **`center`**: The geographic center anchor point of the polygon.
 - **`radius`**: The distance from the center to each vertex in abstract units (where 1 unit is approximately 1.5 meters, or around half of average road width / a width of one lane). As an anchored polygon, it automatically scales depending on camera zoom/scale level.
+  **Changed in 0.3.26:** `radius` was `Dp` in 0.3.25 and earlier; it is now `Float`. Write `radius = 10f`, not `radius = 10.dp`.
 - **`sides`**: The number of sides (vertices) of the polygon. Must be at least 3.
 - **`color`**: The color used to fill the polygon.
 

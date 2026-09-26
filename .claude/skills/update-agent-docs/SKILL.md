@@ -21,7 +21,7 @@ This split exists because the file previously acquired four false statements in
 two days when it was authored freely. Keep the split.
 
 Second rule: **gaps are fine, lies are not.** If you are unsure whether something
-is still true, write a pointer (`undocumented — see Overlay.kt:97`) rather than a
+is still true, write a pointer (`undocumented — see Overlay.kt:NNN`, with the real line) rather than a
 guess. You only owe maintenance on what you assert.
 
 ## Workflow
@@ -51,6 +51,15 @@ bash .claude/skills/update-agent-docs/scripts/scan-known-issues.sh
 The dump diff is the authority on API change — commit messages are not. A
 signature gaining a mangled suffix (`ShashlikShape-Bx497Mc`) means a value-class
 parameter changed type; that is a breaking change even though the name is intact.
+So does a suffix that merely *changes* while the JVM descriptor stays identical
+(`ConvexPolygon-jHzyhOc` → `-Bx497Mc` when `radius` went from `Dp` to `Float`).
+For every breaking change, add a one-line "Changed in X.Y.Z" note next to the
+parameter with the old and new form. Consumer agents trained on older docs keep
+writing the old form otherwise.
+
+Read the scan's **Diff anchor** line first. Until a `mapshared-*` tag exists it
+falls back to the merge-base with `main`, so sections 3 and 4 then cover this
+branch only. Say so in your report. Do not present that as "since last release".
 
 ### 3. Reconcile the prose
 Work the generated **inventory** list as a checklist:
@@ -81,6 +90,35 @@ the scan results on the floor.
 - The root `README.md` usage example still compiles against the inventory. It sits
   *outside* the generated marker, so the task will not fix it for you — the
   `ShashlikMap { _, _ -> }` form was wrong there for months.
+- Hand-written version mentions outside the markers (the rustls "X.Y.Z pins" line
+  in both READMEs, "Verified against X.Y.Z" in Known limitations) name the current
+  version. `grep -n '<previous version>'` over the three docs. Re-check the rustls
+  pin itself in `Cargo.lock` before bumping the sentence.
+- Scan section 5 shows every `file:line` citation as OK. Fix each **STALE** one
+  to the suggested line. For **UNTRACKED**, add an anchor to `tracked-items.tsv`
+  (see Step 5) rather than leaving an unchecked citation.
+- Re-run Step 1: it must produce no further diff.
+
+### 5. Maintain this skill
+
+This skill is part of the deliverable. Before finishing, fix anything in it that
+this run proved wrong. Edit `SKILL.md` and `scripts/` in the same change as the
+docs. Do not just mention it in your report.
+
+- **Never write a line number into this file.** Line numbers rot on every edit to
+  the source. That happened here: `Overlay.kt:128` went stale while the docs moved
+  on to `:130`. Refer to code by symbol or pattern. Anchors the docs cite by line
+  go in `scripts/tracked-items.tsv` (`id<TAB>file<TAB>fixed-string pattern`). The
+  scan resolves them each run.
+- **A tracked anchor reported MISSING**: the issue was probably fixed. Confirm in
+  the code, then update the doc entry, the TSV row and the matching bullet under
+  *Current known-broken items* together.
+- **A new consumer-facing limitation you added to the docs**: add its bullet under
+  *Current known-broken items*. If the docs cite it by line, add a TSV row too.
+- **A command, path or assumption in this file that failed or misled you**: fix it
+  and add a short *why* ("a previous run …"), so a later run does not revert it.
+- **Keep the same bar as the docs.** Gaps are fine, lies are not. Only record what
+  you verified this run.
 
 ## Known blind spot
 
@@ -92,10 +130,11 @@ four types are wrapped in hand-written Kotlin.
 
 ## Current known-broken items
 
-Verify these each run; do not silently drop them.
+Verify these each run; do not silently drop them. Scan section 0 reports each
+anchor's current line, or MISSING if the pattern is gone.
 
 - **Changing `ShashlikShape` `anchor` recreates the shape.** The `updateShape`
-  call is commented out (`Overlay.kt:128`), and `DisposableEffect` keys on
+  call in `Overlay.kt` is commented out (anchor `anchor-recreates-shape`), and `DisposableEffect` keys on
   `anchor`, so the shape is destroyed and recreated. Keep it under *Temporary,
   non-blocking* in `README_API.md`, not *Broken or disabled*: the cost is small,
   it is temporary, and consumer agents previously read the stronger wording as a
@@ -104,5 +143,16 @@ Verify these each run; do not silently drop them.
   rule in `README_API.md` §4, the demo module note, and the `llms.txt` template.
   Never add opt-in instructions or examples that use `ShashlikMapApiHolder`: a consumer
   agent once proposed the opt-in as the recommended approach while planning.
-- **No iOS artifact.** iOS targets are commented out (`shared/build.gradle.kts:55`).
+- **No iOS artifact.** iOS targets are commented out in `kmp/shared/build.gradle.kts`
+  (anchor `ios-targets-disabled`).
   The published library is Android-only, `arm64-v8a` only.
+- **Location permission revocation is not handled.** `SimpleLocationManager.start()`
+  is `@SuppressLint("MissingPermission")` with a FIXME above it (anchor
+  `permission-revocation`). Keep under *Broken or disabled*.
+- **`LineShape` fails silently** with fewer than two distinct points: the
+  `if (!isValid)` early return in `Overlay.kt` (anchor `lineshape-silent-fail`).
+  Keep under *Not supported yet*.
+
+Every row in `tracked-items.tsv` should have a bullet here. A previous run found
+two anchors tracked in the TSV with no bullet, so nothing told a later run to
+keep their doc entries.

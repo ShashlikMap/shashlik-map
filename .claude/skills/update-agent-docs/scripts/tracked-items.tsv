@@ -1,0 +1,13 @@
+# Code anchors for known issues the docs cite by file:line.
+# Columns (TAB-separated): id <TAB> repo-relative file <TAB> fixed-string pattern
+#
+# Patterns, not line numbers: lines drift on every edit, patterns survive.
+# scan-known-issues.sh resolves each pattern to its current line and checks
+# every `File.ext:NNN` citation in the docs against these anchors.
+#
+# Pattern not found → the item was likely fixed or rewritten. Investigate, then
+# update both the docs and this file. Keep each pattern unique within its file.
+anchor-recreates-shape	kmp/shared/src/commonMain/kotlin/com/shashlik/kmp/Overlay.kt	//            api.updateShape(
+ios-targets-disabled	kmp/shared/build.gradle.kts	//    listOf(
+permission-revocation	kmp/shared/src/androidMain/kotlin/com/shashlik/kmp/SimpleLocationManager.kt	@SuppressLint("MissingPermission")
+lineshape-silent-fail	kmp/shared/src/commonMain/kotlin/com/shashlik/kmp/Overlay.kt	if (!isValid) {
