@@ -81,6 +81,11 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         let anchor_distance = anchor.map(|_| {
             // This is a workaround to calculate scaling, the proper normals has to be created for polygons later
             DVec2::new(points[0].x(), points[0].y()).length()
+        }).or_else(|| {
+            match shape_type {
+                ShapeType::Line(width) => width.map(|w| (w * 0.5) as f64),
+                _ => None
+            }
         });
         let id = OVERLAY_SHAPE_ID.fetch_add(1, Ordering::Relaxed);
         let render_style = renderer_common::render_style::RenderStyle::fill([
@@ -161,14 +166,12 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
         self.last_normal_scale = Some(normal_scale);
         let api = Arc::clone(&self.api);
         self.shapes.iter().for_each(|(shape_id, shape)| {
-            let is_polygon = matches!(shape.shape_type, ShapeType::Polygon);
-            if !is_polygon || shape.anchor_distance.is_some() {
-                let anchor_distance = shape.anchor_distance.unwrap_or(1.0);
+            if let Some(anchor_distance) = shape.anchor_distance {
+                let is_polygon = matches!(shape.shape_type, ShapeType::Polygon);
                 api.update_spatial_data(shape_id.clone(), move |spatial_data| {
-                    spatial_data.normal_scale = normal_scale;
+                    spatial_data.normal_scale = (normal_scale - 1.0) * anchor_distance;
                     if is_polygon {
-                        let anchor_scale = (anchor_distance + normal_scale) / anchor_distance;
-                        spatial_data.scale = DVec3::splat(anchor_scale);
+                        spatial_data.scale = DVec3::splat(normal_scale);
                     }
                 });
             }

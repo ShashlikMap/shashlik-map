@@ -106,12 +106,7 @@ fn vs_main(
         normal_scale = vec3(model.normal.xy * inflate_factor * factor, 0.0);
     }
 
-    var pointPos = modelpos.xyz + normal_scale.xyz;
-
-    // TODO This is not the best option. Now all shapes will have this branching regardless normal_scale value..
-    if(pos.normal_scale > 1.0) {
-        pointPos += vec3(normalize(model.normal) * (pos.normal_scale - 1.0), 0.0);
-    }
+    let pointPos = modelpos.xyz + normal_scale.xyz + vec3(normalize(model.normal) * (pos.normal_scale), 0.0);
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;

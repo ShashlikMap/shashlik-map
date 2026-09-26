@@ -16,7 +16,7 @@ impl SpatialData {
             transform: DVec3::new(0.0, 0.0, 0.0),
             scale: DVec3::splat(1.0),
             yaw: 0.0,
-            normal_scale: 1.0,
+            normal_scale: 0.0,
             bbox: Rect::new((0.0, 0.0), (0.0, 0.0)),
         }
     }
@@ -26,7 +26,7 @@ impl SpatialData {
             transform,
             scale: DVec3::splat(1.0),
             yaw: 0.0,
-            normal_scale: 1.0,
+            normal_scale: 0.0,
             bbox: Rect::new((0.0, 0.0), (0.0, 0.0)),
         }
     }
