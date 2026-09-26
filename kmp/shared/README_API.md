@@ -3,7 +3,7 @@
 This document serves as a comprehensive reference guide for the public API exposed by the `:shared` module of the Shashlik Map Kotlin Multiplatform (KMP) component. It is intended to help developers and AI agents understand, consume, and maintain the API effectively.
 
 <!-- BEGIN GENERATED: version -->
-This document describes **mapshared 0.3.26**.
+This document describes **mapshared 0.3.27**.
 <!-- END GENERATED: version -->
 
 If the version you resolved differs from the one above, treat this document as
@@ -17,7 +17,7 @@ tell the user rather than working around it.
 <!-- BEGIN GENERATED: facts -->
 | | |
 |---|---|
-| Coordinates | `io.github.shashlikmap:mapshared:0.3.26` |
+| Coordinates | `io.github.shashlikmap:mapshared:0.3.27` |
 | Repository | `mavenCentral()` |
 | Platforms | **Android only** — iOS targets are not built or published |
 | Kotlin targets | `android` |
@@ -54,7 +54,7 @@ Without it the build fails to resolve `org.rustls:rustls-platform-verifier`.
 
 Never choose this version yourself. The support library must stay SemVer-compatible
 with the Rust crate inside `libffi_run.so`; a mismatch crashes at runtime instead
-of failing resolution. 0.3.26 pins `0.2.0`, read from the
+of failing resolution. 0.3.27 pins `0.2.0`, read from the
 `rustls-platform-verifier-android` entry in `Cargo.lock`.
 
 Versions before 0.3.21 needed none of this — the verifier was a JNI method inside
@@ -68,7 +68,7 @@ itself.
 
 ## Known limitations
 
-Verified against 0.3.26. If you need something listed here, it does not exist yet —
+Verified against 0.3.27. If you need something listed here, it does not exist yet —
 tell the user rather than reaching for an undocumented API or `InternalShashlikMapApi`.
 
 ### Temporary, non-blocking
@@ -87,6 +87,12 @@ tell the user rather than reaching for an undocumented API or `InternalShashlikM
 - **Location permission revocation is not handled.** `SimpleLocationManager.start()`
   is annotated `@SuppressLint("MissingPermission")` (`SimpleLocationManager.kt:39`);
   revoking permission while the map runs is untested.
+- **An anchored polygon must not start at the anchor.** Anchored polygons are scaled
+  by `(d + zoomScale) / d`, where `d` is the distance of the **first** point from the
+  anchor (`map/src/overlay/overlay.rs:83`). If `points[0]` is `Point(0.0, 0.0)`, `d` is 0
+  and the scale is infinite. Put a vertex other than the anchor first. This only
+  affects `ShashlikShape` with `ShapeType.Polygon` and a non-null `anchor`.
+  `ConvexPolygon` is safe for any non-zero `radius`.
 
 ### Not supported yet
 
@@ -326,7 +332,7 @@ fun ShashlikShape(
 
 #### Parameters:
 - **`points`**: The points defining the shape. If `anchor` is `null`, `points` are interpreted as geographic coordinates. If `anchor` is provided, `points` are interpreted as relative offset points in abstract units from the `anchor`.
-- **`anchor`**: Optional geographic anchor point for the shape. If `null`, `points` are geographic coordinates; otherwise `points` are relative offset points from this anchor. Note that only anchored polygons and lines receive auto scale depending on camera zoom/scale level (non-anchored polygons do not).
+- **`anchor`**: Optional geographic anchor point for the shape. If `null`, `points` are geographic coordinates; otherwise `points` are relative offset points from this anchor. Note that only anchored polygons and lines receive auto scale depending on camera zoom/scale level (non-anchored polygons do not). Anchored polygons scale about the anchor, by a factor derived from the first point's distance to it. `points[0]` must not be `Point(0.0, 0.0)`; see Known limitations.
 - **`type`**: The type of shape to render (`ShapeType.Polygon` or `ShapeType.Line`).
 - **`color`**: The color of the shape.
 

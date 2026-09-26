@@ -57,6 +57,12 @@ For every breaking change, add a one-line "Changed in X.Y.Z" note next to the
 parameter with the old and new form. Consumer agents trained on older docs keep
 writing the old form otherwise.
 
+Read scan **section 6** too: it lists `map/src` files changed since the anchor.
+The engine changes overlay behaviour (scaling, validation) without touching any
+signature, so sections 3 and 4 stay empty. A previous run nearly missed the
+0.3.27 anchored-polygon scaling change: it lived only in `map/src/overlay`, and
+the only commit that touched `shared.api` was a version bump.
+
 Read the scan's **Diff anchor** line first. Until a `mapshared-*` tag exists it
 falls back to the merge-base with `main`, so sections 3 and 4 then cover this
 branch only. Say so in your report. Do not present that as "since last release".
@@ -128,6 +134,9 @@ though they break consumers. Section 3 of the scan script diffs
 `ffi-run/src/lib.rs` as a substitute — read it. This blind spot closes once those
 four types are wrapped in hand-written Kotlin.
 
+The same applies to the Rust engine in `map/src`: behaviour changes there never
+reach either diff. Scan section 6 lists the changed files; read the overlay ones.
+
 ## Current known-broken items
 
 Verify these each run; do not silently drop them. Scan section 0 reports each
@@ -152,6 +161,13 @@ anchor's current line, or MISSING if the pattern is gone.
 - **`LineShape` fails silently** with fewer than two distinct points: the
   `if (!isValid)` early return in `Overlay.kt` (anchor `lineshape-silent-fail`).
   Keep under *Not supported yet*.
+- **An anchored polygon whose first point is the anchor gets infinite scale.**
+  `map/src/overlay/overlay.rs` computes the anchored-polygon scale as
+  `(d + normal_scale) / d`, where `d` is the length of `points[0]` (anchor
+  `anchored-polygon-first-point`). `are_points_valid` only counts points, so
+  `Point(0.0, 0.0)` first gives `d = 0`. Keep under *Broken or disabled*. The code
+  calls this a workaround until proper polygon normals exist; expect the anchor
+  to go MISSING when that lands.
 
 Every row in `tracked-items.tsv` should have a bullet here. A previous run found
 two anchors tracked in the TSV with no bullet, so nothing told a later run to
