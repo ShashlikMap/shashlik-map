@@ -1,4 +1,6 @@
 import super::common::CameraUniform;
+import super::shape_styles;
+import super::shape_styles::{ShapeStyle, ShapeSubStyle};
 import super::globe_common::GLOBE_SCALE;
 import super::globe_common::transform_to_globe_position;
 
@@ -60,25 +62,25 @@ fn style_array_to_mat(out: ptr<function,VertexOutput>, params: mat4x3<f32>, scal
     let style_type = u32(params[0][0]);
     let fill_color = vec4(params[0][1], params[0][2], params[1][0], params[1][1]);
 
-    (*out).style_type_subtype = vec2(style_type, 0u);
+    (*out).style_type_subtype = vec2(style_type, shape_styles::SUB_STYLE_SOLID);
     (*out).style_color_1 = fill_color;
 
     @if(OUTLINE_DEBUG)
     if(outline_flag == 0) {
-        (*out).style_type_subtype = vec2(0u, 0u);
+        (*out).style_type_subtype = vec2(0u, shape_styles::SUB_STYLE_SOLID);
         (*out).style_color_1 = vec4f(1.0, 0.0, 0.0, 1.0);
         return;
     }
 
     switch style_type {
-        case 1u: {
+        case shape_styles::STYLE_BORDER: {
             if(outline_flag == 0) {
                 let border_koef = params[1][2];
                 let border_color = vec4(fill_color.xyz * border_koef, 1.0 / max(1.0, scale));
                 (*out).style_color_1 = border_color;
             }
         }
-        case 2u: {
+        case shape_styles::STYLE_DASH: {
             let dash_style = u32(params[3][0]); // 0: solid, 1: circle
             (*out).style_type_subtype.y = dash_style;
             let dash_color = vec4(params[1][2], params[2][0], params[2][1], params[2][2]);
@@ -245,19 +247,21 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let style_type = in.style_type_subtype.x;
 
     var res_color = vec4(0.0, 0.0, 0.0, 1.0);
-    if(style_type == 0) {
-        res_color = in.style_color_1;
-    } else if(style_type == 1) {
-        res_color = in.style_color_1;
-    } else if(style_type == 2) {
-        res_color = dashed_style(in.uv_dist, in.style_color_1, in.style_color_2, in.style_type_subtype.y);
-    } else {
-        res_color = vec4(0.0, 0.0, 0.0, 1.0);
+    switch style_type {
+        case shape_styles::STYLE_SOLID, shape_styles::STYLE_BORDER: {
+            res_color = in.style_color_1;
+        }
+        case shape_styles::STYLE_DASH: {
+            res_color = dashed_style(in.uv_dist, in.style_color_1, in.style_color_2, in.style_type_subtype.y);
+        }
+        default : {
+            res_color = vec4(0.0, 0.0, 0.0, 1.0);
+        }
     }
 
-     res_color.a *= in.color_alpha;
+    res_color.a *= in.color_alpha;
 
-     return res_color;
+    return res_color;
 }
 
 fn circle(st: vec2f, radius: f32) -> f32 {
