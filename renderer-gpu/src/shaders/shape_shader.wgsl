@@ -44,25 +44,48 @@ struct InstanceInput {
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
-    @location(0) @interpolate(flat) style1: vec3<f32>,
-    @location(1) @interpolate(flat) style2: vec3<f32>,
-    @location(2) @interpolate(flat) style3: vec3<f32>,
-    @location(3) @interpolate(flat) style4: vec3<f32>,
-    @location(4) @interpolate(flat) outline_flag: u32,
-    @location(5) color_alpha: f32,
-    @location(6) vertex_pos_xy: vec2<f32>,
-    @location(7) bbox: vec4<f32>,
-    @location(8) uv_dist_scale: vec4<f32>,
+    @location(0) @interpolate(flat) style_type_subtype: vec2<u32>,
+    @location(1) @interpolate(flat) style_color_1: vec4<f32>,
+    @location(2) @interpolate(flat) style_color_2: vec4<f32>,
+    @location(3) color_alpha: f32,
+    @location(4) vertex_pos_xy: vec2<f32>,
+    @location(5) bbox: vec4<f32>,
+    @location(6) uv_dist_scale: vec4<f32>,
 }
 
 // TODO pass as a parameter
 const inflate_factor: f32 = 0.24;
 
-fn style_array_to_mat(out: ptr<function,VertexOutput>, params: mat4x3<f32>) {
-    (*out).style1 = params[0];
-    (*out).style2 = params[1];
-    (*out).style3 = params[2];
-    (*out).style4 = params[3];
+fn style_array_to_mat(out: ptr<function,VertexOutput>, params: mat4x3<f32>, scale: f32, outline_flag: u32) {
+    let style_type = u32(params[0][0]);
+    let fill_color = vec4(params[0][1], params[0][2], params[1][0], params[1][1]);
+
+    (*out).style_type_subtype = vec2(style_type, 0u);
+    (*out).style_color_1 = fill_color;
+
+    @if(OUTLINE_DEBUG)
+    if(outline_flag == 0) {
+        (*out).style_type_subtype = vec2(0u, 0u);
+        (*out).style_color_1 = vec4f(1.0, 0.0, 0.0, 1.0);
+        return;
+    }
+
+    switch style_type {
+        case 1u: {
+            if(outline_flag == 0) {
+                let border_koef = params[1][2];
+                let border_color = vec4(fill_color.xyz * border_koef, 1.0 / max(1.0, scale));
+                (*out).style_color_1 = border_color;
+            }
+        }
+        case 2u: {
+            let dash_style = u32(params[3][0]); // 0: solid, 1: circle
+            (*out).style_type_subtype.y = dash_style;
+            let dash_color = vec4(params[1][2], params[2][0], params[2][1], params[2][2]);
+            (*out).style_color_2 = dash_color;
+        }
+        default : {}
+    }
 }
 
 fn handle_flat_globe(out: ptr<function, VertexOutput>, position: vec3f) {
@@ -95,13 +118,13 @@ fn vs_main(
     let model_position = model_matrix * vec4(model.position.xy, 0.0, 1.0);
     var modelpos = model_position.xyz + pos.position;
 
-    style_array_to_mat(&out, styles[model.style_index].params);
-    out.outline_flag = model.instance_index % 2;
+    let outline_flag = model.instance_index % 2;
+    style_array_to_mat(&out, styles[model.style_index].params, camera.scale, outline_flag);
     out.color_alpha = pos.color_alpha;
 
     // only two components for normal
     var normal_scale = vec3f(0.0, 0.0, 0.0);
-    if(out.outline_flag == 0) {
+    if(outline_flag == 0) {
         let factor = max(1.0, camera.scale * 0.5); // increase border with scale
         normal_scale = vec3(model.normal.xy * inflate_factor * factor, 0.0);
     }
@@ -153,11 +176,8 @@ fn vs_main_indirect(
 
     var modelpos = model_position.xyz + indirect_instances[instance_index].position;
 
-    style_array_to_mat(&out, styles[model.style_index].params);
-    out.outline_flag = 1;
-    if(with_normal) {
-        out.outline_flag = model.instance_index % 2;
-    }
+    let outline_flag = select(1, model.instance_index % 2, with_normal);
+    style_array_to_mat(&out, styles[model.style_index].params, 1.0, outline_flag);
 
     var pointPos = modelpos.xyz;
     if(with_normal) {
@@ -195,9 +215,8 @@ fn vs_main_screen(
     let model_position = model_matrix * vec4(model.position.xy, 0.0, 1.0);
     let ratio_fixed_modelpos = vec4(model_position.xy * vec2(2.0*camera.inv_screen_size.x, 2.0*camera.inv_screen_size.y), model_position.z, 1.0);
 
-    style_array_to_mat(&out, styles[model.style_index].params);
     // FIXME Disable outlining for screen shapes for a while
-    out.outline_flag = 1; //model.instance_index % 2;
+    style_array_to_mat(&out, styles[model.style_index].params, 0.0, 1);
     out.color_alpha = pos.color_alpha;
 
     var pointPos = ratio_fixed_modelpos.xyz;
@@ -210,19 +229,6 @@ fn vs_main_screen(
 
     return out;
 }
-
-//0 - matrix[0][0]
-//1 - matrix[0][1]
-//2 - matrix[0][2]
-//3 - matrix[1][0]
-//4 - matrix[1][1]
-//5 - matrix[1][2]
-//6 - matrix[2][0]
-//7 - matrix[2][1]
-//8 - matrix[2][2]
-//9 - matrix[3][0]
-//10 - matrix[3][1]
-//11 - matrix[3][2]
 
 // Fragment shader
 @fragment
@@ -237,27 +243,15 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         }
     }
 
-    @if(OUTLINE_DEBUG)
-    if(in.outline_flag == 0) {
-        return vec4f(1.0, 0.0, 0.0, 1.0);
-    }
-
-    let style = mat4x3<f32>(
-            in.style1,
-            in.style2,
-            in.style3,
-            in.style4,
-        );
-    // FIXME Requires better solution for param type
-    let style_type = u32(style[0][0]);
+    let style_type = in.style_type_subtype.x;
 
     var res_color = vec4(0.0, 0.0, 0.0, 1.0);
     if(style_type == 0) {
-        res_color = solid_style(style);
+        res_color = in.style_color_1;
     } else if(style_type == 1) {
-        res_color = border_style(in.outline_flag, in.uv_dist_scale.w, style);
+        res_color = in.style_color_1;
     } else if(style_type == 2) {
-        res_color = dashed_style(in.uv_dist_scale.xyz, style);
+        res_color = dashed_style(in.uv_dist_scale.xyz, in.style_color_1, in.style_color_2, in.style_type_subtype.y);
     } else {
         res_color = vec4(0.0, 0.0, 0.0, 1.0);
     }
@@ -288,11 +282,9 @@ fn border_style(outline_flag: u32, scale: f32, params: mat4x3<f32>) -> vec4<f32>
     return fill_color;
 }
 
-fn dashed_style(uv_dist: vec3f, params: mat4x3<f32>) -> vec4<f32> {
-    let dash_style = u32(params[3][0]); // 0: solid, 1: circle
-
-    let fill_color = vec4(params[0][1], params[0][2], params[1][0], params[1][1]);
-    let dash_color = vec4(params[1][2], params[2][0], params[2][1], params[2][2]);
+fn dashed_style(uv_dist: vec3f, color1: vec4f, color2: vec4f, dash_style: u32) -> vec4<f32> {
+    let fill_color = color1;
+    let dash_color = color2;
 
     if(dash_style == 1) {
         let cirlce_alpha0 = circle(uv_dist.xy, 0.85);
