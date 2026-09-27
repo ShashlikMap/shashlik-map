@@ -58,7 +58,7 @@ struct VertexOutput {
 // TODO pass as a parameter
 const inflate_factor: f32 = 0.24;
 
-fn style_array_to_mat(out: ptr<function,VertexOutput>, params: mat4x3<f32>, scale: f32, outline_flag: u32) {
+fn fill_styles(out: ptr<function,VertexOutput>, params: mat4x3<f32>, scale: f32, outline_flag: u32) {
     let style_type = u32(params[0][0]);
     let fill_color = vec4(params[0][1], params[0][2], params[1][0], params[1][1]);
 
@@ -121,7 +121,7 @@ fn vs_main(
     var modelpos = model_position.xyz + pos.position;
 
     let outline_flag = model.instance_index % 2;
-    style_array_to_mat(&out, styles[model.style_index].params, camera.scale, outline_flag);
+    fill_styles(&out, styles[model.style_index].params, camera.scale, outline_flag);
     out.color_alpha = pos.color_alpha;
 
     // only two components for normal
@@ -179,7 +179,7 @@ fn vs_main_indirect(
     var modelpos = model_position.xyz + indirect_instances[instance_index].position;
 
     let outline_flag = select(1, model.instance_index % 2, with_normal);
-    style_array_to_mat(&out, styles[model.style_index].params, 1.0, outline_flag);
+    fill_styles(&out, styles[model.style_index].params, 1.0, outline_flag);
 
     var pointPos = modelpos.xyz;
     if(with_normal) {
@@ -217,7 +217,7 @@ fn vs_main_screen(
     let ratio_fixed_modelpos = vec4(model_position.xy * vec2(2.0*camera.inv_screen_size.x, 2.0*camera.inv_screen_size.y), model_position.z, 1.0);
 
     // FIXME Disable outlining for screen shapes for a while
-    style_array_to_mat(&out, styles[model.style_index].params, 0.0, 1);
+    fill_styles(&out, styles[model.style_index].params, 0.0, 1);
     out.color_alpha = pos.color_alpha;
 
     var pointPos = ratio_fixed_modelpos.xyz;
