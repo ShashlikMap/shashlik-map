@@ -50,7 +50,7 @@ struct VertexOutput {
     @location(3) color_alpha: f32,
     @location(4) vertex_pos_xy: vec2<f32>,
     @location(5) bbox: vec4<f32>,
-    @location(6) uv_dist_scale: vec4<f32>,
+    @location(6) uv_dist: vec3<f32>,
 }
 
 // TODO pass as a parameter
@@ -138,7 +138,7 @@ fn vs_main(
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
     // divide distance to scale, so dash shader works properly
-    out.uv_dist_scale = vec4f(model.uv, f32(model.dist) / camera.p2_scale, camera.scale);
+    out.uv_dist = vec3f(model.uv, f32(model.dist) / camera.p2_scale);
 
     handle_flat_globe(&out, pointPos);
 
@@ -190,8 +190,7 @@ fn vs_main_indirect(
     }
 
     out.vertex_pos_xy = pointPos.xy;
-    // keep scale 1.0 so route doesn't hide its border
-    out.uv_dist_scale = vec4f(model.uv, f32(model.dist), 1.0);
+    out.uv_dist = vec3f(model.uv, f32(model.dist));
 
     handle_flat_globe(&out, pointPos);
 
@@ -251,7 +250,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     } else if(style_type == 1) {
         res_color = in.style_color_1;
     } else if(style_type == 2) {
-        res_color = dashed_style(in.uv_dist_scale.xyz, in.style_color_1, in.style_color_2, in.style_type_subtype.y);
+        res_color = dashed_style(in.uv_dist, in.style_color_1, in.style_color_2, in.style_type_subtype.y);
     } else {
         res_color = vec4(0.0, 0.0, 0.0, 1.0);
     }
