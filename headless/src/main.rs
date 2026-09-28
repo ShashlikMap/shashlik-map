@@ -73,6 +73,7 @@ fn main() {
     map.set_camera_follow_mode(!with_overlay);
     map.set_cam_follow_zoom_lock(None);
     map.set_lon_lat_bearing(139.757080078125, 35.69100828125, None);
+    map.set_anim_enabled(false, false);
     if is_globe {
         map.zoom_delta(0.000035, (0.0, 0.0));
     } else {
@@ -91,7 +92,7 @@ fn main() {
     }
 
     println!("Headless mode. Run frames");
-    let frames_to_run = if is_globe { 240 } else { 120 };
+    let frames_to_run = if is_globe { 170 } else { 90 };
     sleep(Duration::from_secs(1));
     map.update_and_render(());
     for _ in 0..frames_to_run {
