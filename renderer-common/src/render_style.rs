@@ -52,6 +52,10 @@ impl RenderStyle {
     }
 
     pub fn params(&self) -> Vec<[f32; 4]> {
-        vec![self.header, self.color_1, self.color_2]
+        if self.header[0] == 2.0 {
+            vec![self.header, self.color_1, self.color_2]
+        } else {
+            vec![self.header, self.color_1]
+        }
     }
 }

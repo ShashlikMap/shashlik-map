@@ -9,6 +9,7 @@ use tokio::sync::broadcast::{Receiver, Sender};
 pub struct StyleStore {
     style_uniform_tx: Sender<Vec<[f32; 4]>>,
     style_map: IndexMap<StyleId, RenderStyle>,
+    style_indices: Vec<usize>,
 }
 
 impl StyleStore {
@@ -18,6 +19,7 @@ impl StyleStore {
         let mut store = StyleStore {
             style_uniform_tx: uniform_tx,
             style_map: IndexMap::new(),
+            style_indices: vec![]
         };
         store.register_styles(vec![(Self::STUB_STYLE_ID, RenderStyle::default())]);
         store
@@ -34,17 +36,29 @@ impl StyleStore {
         self.style_map.values().collect()
     }
 
-    pub fn subscribe(&self) -> Receiver<Vec<[f32; 4]>> {
+    pub fn subscribe(&mut self) -> Receiver<Vec<[f32; 4]>> {
         let receiver = self.style_uniform_tx.subscribe();
         self.generate_uniforms_and_send();
         receiver
     }
 
-    fn generate_uniforms_and_send(&self) {
+    fn generate_uniforms_and_send(&mut self) {
+        let style_indices = self
+            .styles()
+            .iter()
+            .scan(0usize, |state, style| {
+                let curr = *state;
+                *state += style.params().len();
+                Some(curr)
+            })
+            .collect::<Vec<_>>();
+        self.style_indices = style_indices;
+
         let styles = self
             .styles()
             .iter()
-            .map(|it| it.params()).flatten()
+            .map(|it| it.params())
+            .flatten()
             .collect::<Vec<_>>();
         
         if self.style_uniform_tx.receiver_count() > 0 {
@@ -55,11 +69,15 @@ impl StyleStore {
     }
 
     pub fn get_index(&mut self, style_id: &StyleId) -> usize {
+        let should_regenerate = !self.style_map.contains_key(style_id);
         self.style_map
             .entry(style_id.clone())
             .or_insert(RenderStyle::default());
+        if should_regenerate {
+            self.generate_uniforms_and_send();
+        }
         let (index, _, _) = self.style_map.get_full(style_id).unwrap();
-        index * 3
+        self.style_indices[index]
     }
 
     pub fn update_style<F: FnOnce(&mut RenderStyle)>(&mut self, style_id: &StyleId, updater: F) {

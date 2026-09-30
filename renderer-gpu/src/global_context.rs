@@ -27,7 +27,7 @@ pub(crate) struct GlobalContext {
 }
 
 impl GlobalContext {
-    pub fn new(canvas: Box<dyn WgpuCanvas>, render_config: &RenderConfig, style_store: &StyleStore) -> Self {
+    pub fn new(canvas: Box<dyn WgpuCanvas>, render_config: &RenderConfig, style_store: &mut StyleStore) -> Self {
         let device = canvas.device();
         let view_projection = ViewProjection::new(device, render_config);
         let collider = Collider::new();

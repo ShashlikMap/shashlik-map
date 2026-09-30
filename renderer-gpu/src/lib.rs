@@ -91,8 +91,8 @@ impl GpuRenderer {
         canvas: Box<dyn WgpuCanvas>,
         font_data: &'static [u8],
     ) -> anyhow::Result<GpuRenderer> {
-        let style_store = StyleStore::new();
-        let mut global_context = GlobalContext::new(canvas, &render_config, &style_store);
+        let mut style_store = StyleStore::new();
+        let mut global_context = GlobalContext::new(canvas, &render_config, &mut style_store);
 
         let mut buffer_pool = BufferPool::new();
         let font = Face::parse(font_data, 0)?;
