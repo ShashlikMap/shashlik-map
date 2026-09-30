@@ -371,7 +371,7 @@ val agentDocs by tasks.registering {
             """
             # Shashlik Map SDK
 
-            > Android map SDK powered by a Rust/WGPU engine, with a Compose-first API:
+            > Map SDK powered by a Rust/WGPU engine, with a Compose-first API:
             > a `ShashlikMap` composable, overlays declared in its content slot.
             > Published as `io.github.shashlikmap:mapshared` on Maven Central.
 
@@ -384,7 +384,7 @@ val agentDocs by tasks.registering {
             Important:
             - `Point(x, y)` means x = longitude, y = latitude. `LocationState` uses
               named `latitude` / `longitude`. Double-check every coordinate.
-            - Android only, `arm64-v8a` only, minSdk 26. There is no iOS artifact.
+            - Android (`arm64-v8a`, minSdk 26) and iOS (`iosArm64`, `iosSimulatorArm64`).
             - Map tiles cover Japan and the SF Bay Area only. Test with coordinates there.
             - **From 0.3.21 you must add the rustls Maven repository** to
               `settings.gradle.kts`, or the build cannot resolve
