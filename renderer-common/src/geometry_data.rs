@@ -57,7 +57,7 @@ impl Default for PolylineOptions {
         PolylineOptions {
             width: 1f32,
             line_cap: LineCap::Butt,
-            line_join: LineJoin::Miter,
+            line_join: LineJoin::Bevel,
             tolerance: 1f32,
         }
     }

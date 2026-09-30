@@ -273,9 +273,11 @@ impl GpuCanvasApi {
                     return;
                 }
                 self.tessellate_stroke_path(&data.path, geometry, options, |vertex| {
+                    let position = vertex.position();
+                    let normal = vertex.normal().normalize();
                     ShapeVertex::new(
-                        [vertex.position().x, vertex.position().y],
-                        [vertex.normal().x, vertex.normal().y],
+                        [position.x, position.y],
+                        [normal.x, normal.y],
                         [0.0, 0.0],
                         vertex.advancement(),
                         style_index as u8,
@@ -284,8 +286,9 @@ impl GpuCanvasApi {
             }
             GeometryType::Polygon => {
                 Self::tessellate_fill_path(&data.path, geometry, |vertex| {
+                    let position = vertex.position();
                     ShapeVertex::new(
-                        [vertex.position().x, vertex.position().y],
+                        [position.x, position.y],
                         [0.0, 0.0],
                         [0.0, 0.0],
                         0.0,
@@ -334,8 +337,9 @@ impl GpuCanvasApi {
                         self.style_store.get_index(&icon_background.style_id);
                     let path = (icon_background.shape)(&data);
                     Self::tessellate_fill_path(&path, &mut mesh, |vertex| {
-                        let pos_x = vertex.position().x;
-                        let pos_y = vertex.position().y;
+                        let position = vertex.position();
+                        let pos_x = position.x;
+                        let pos_y = position.y;
                         ShapeVertex::new(
                             [pos_x, pos_y],
                             [0.0, 0.0],
