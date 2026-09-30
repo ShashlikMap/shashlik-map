@@ -53,6 +53,7 @@ pub struct PolylineOptions {
 }
 
 impl Default for PolylineOptions {
+    /// Returns a width and tessellation tolerance of 1.0, with butt caps and bevel joins.
     fn default() -> Self {
         PolylineOptions {
             width: 1f32,

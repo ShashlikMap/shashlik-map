@@ -261,6 +261,14 @@ impl GpuCanvasApi {
         self.shapes.push(data);
     }
 
+    /// Appends a filled polygon or stroked polyline to `geometry` and records its layer range.
+    ///
+    /// Polylines with non-positive widths add no geometry or range. Stroke vertices have
+    /// normalized normals; polygon normals are zero. Contiguous ranges in the
+    /// same layer are merged, retaining the earlier range's metadata.
+    ///
+    /// # Panics
+    /// Panics if fill or stroke tessellation fails.
     fn process_shape(&mut self, data: ShapeData, geometry: &mut VertexBuffers<ShapeVertex, u32>) {
         let geom_type = data.geometry_type;
         let style_index = self.style_store.get_index(&data.style_id);
@@ -315,6 +323,15 @@ impl GpuCanvasApi {
         }
     }
 
+    /// Queues an icon instance, building its mesh from SVG and/or background data on a cache miss.
+    ///
+    /// Meshes are keyed by icon ID and optional SVG style, or background style when
+    /// there is no SVG. A cache hit reuses the original mesh and size, appends the
+    /// instance ID and position, and replaces the collision flag with `data.with_collision`.
+    /// SVG stroke tessellation errors are ignored.
+    ///
+    /// # Panics
+    /// Panics if SVG parsing or SVG/background fill tessellation fails on a cache miss.
     fn icon(&mut self, data: IconShapeData) {
         let key_style_id = match &data.icon_data.icon_type {
             IconType::SvgBinary(style_id, _) => style_id.clone(),

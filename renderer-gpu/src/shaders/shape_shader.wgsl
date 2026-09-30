@@ -101,6 +101,10 @@ fn handle_flat_globe(out: ptr<function, VertexOutput>, position: vec3f) {
     }
 }
 
+// Projects a shape vertex onto the flat map or globe and returns its fragment inputs.
+// Even instance indices draw the expanded outline; odd indices draw the fill.
+// model.normal is used without normalization for outline and pos.normal_scale offsets.
+// Non-positive instance alpha returns a zero-initialized output to collapse the geometry.
 @vertex
 fn vs_main(
     model: VertexInput,
@@ -224,7 +228,9 @@ fn vs_main_screen(
     return out;
 }
 
-// Fragment shader
+// Returns the solid, border, or dashed style color with alpha multiplied by color_alpha.
+// Discards fragments outside bbox (x, y, width, height) when either extent is positive;
+// points on the bounds are retained. Unknown styles use black before alpha scaling.
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // ignore if both are zero
