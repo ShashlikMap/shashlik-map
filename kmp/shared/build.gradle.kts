@@ -53,15 +53,15 @@ kotlin {
     // TODO iOS targe temporary disabled.
     //  It takes a lot of time to build locally and on CI and produces huge binaries(MVN complains)
     //  Need to figure out the reason later.
-//    listOf(
-//        iosArm64(),
-//        iosSimulatorArm64()
-//    ).forEach { iosTarget ->
-//        iosTarget.binaries.framework(listOf(NativeBuildType.RELEASE)) {
-//            baseName = "Shared"
-//            isStatic = true
-//        }
-//    }
+    listOf(
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework(listOf(NativeBuildType.RELEASE)) {
+            baseName = "Shared"
+            isStatic = true
+        }
+    }
 
     sourceSets {
         all {
@@ -113,7 +113,7 @@ android {
 }
 
 group = "io.github.shashlikmap"
-version = "0.3.28"
+version = "0.3.29"
 
 mavenPublishing {
     publishToMavenCentral()
@@ -371,7 +371,7 @@ val agentDocs by tasks.registering {
             """
             # Shashlik Map SDK
 
-            > Android map SDK powered by a Rust/WGPU engine, with a Compose-first API:
+            > Map SDK powered by a Rust/WGPU engine, with a Compose-first API:
             > a `ShashlikMap` composable, overlays declared in its content slot.
             > Published as `io.github.shashlikmap:mapshared` on Maven Central.
 
@@ -384,7 +384,7 @@ val agentDocs by tasks.registering {
             Important:
             - `Point(x, y)` means x = longitude, y = latitude. `LocationState` uses
               named `latitude` / `longitude`. Double-check every coordinate.
-            - Android only, `arm64-v8a` only, minSdk 26. There is no iOS artifact.
+            - Android (`arm64-v8a`, minSdk 26) and iOS (`iosArm64`, `iosSimulatorArm64`).
             - Map tiles cover Japan and the SF Bay Area only. Test with coordinates there.
             - **From 0.3.21 you must add the rustls Maven repository** to
               `settings.gradle.kts`, or the build cannot resolve

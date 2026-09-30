@@ -4,10 +4,10 @@
 
 | | |
 |---|---|
-| Coordinates | `io.github.shashlikmap:mapshared:0.3.28` |
+| Coordinates | `io.github.shashlikmap:mapshared:0.3.29` |
 | Repository | `mavenCentral()` |
-| Platforms | **Android only** — iOS targets are not built or published |
-| Kotlin targets | `android` |
+| Platforms | Android, iOS |
+| Kotlin targets | `android`, `iosArm64`, `iosSimulatorArm64` |
 | Android minSdk | 26 |
 | Android compileSdk | 36 |
 | JVM target | 11 |

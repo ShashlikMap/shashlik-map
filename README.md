@@ -113,7 +113,7 @@ Add the dependency to your version catalog:
 
 ```toml
 [versions]
-shashlikMap = "0.3.28"
+shashlikMap = "0.3.29"
 
 [libraries]
 shashlikmap = { module = "io.github.shashlikmap:mapshared", version.ref = "shashlikMap" }
@@ -126,7 +126,7 @@ implementation(libs.shashlikmap)
 ```
 
 Requires `mavenCentral()`, Android minSdk 26, and an arm64-v8a device or
-emulator. Android only — there is no iOS artifact.
+emulator. iOS is also supported (`iosArm64`, `iosSimulatorArm64`).
 
 ### Add the rustls repository (required from 0.3.21)
 
@@ -158,7 +158,7 @@ Without it the build fails to resolve `org.rustls:rustls-platform-verifier`.
 Do not pick a version by hand. The support library must stay SemVer-compatible
 with the Rust crate compiled into the `.so`, and a mismatch causes **runtime
 crashes rather than resolution failures**. Take whatever version the SDK's POM
-pins — 0.3.28 pins `0.2.0`, read from the `rustls-platform-verifier-android`
+pins — 0.3.29 pins `0.2.0`, read from the `rustls-platform-verifier-android`
 entry in `Cargo.lock`.
 
 Then place the composable anywhere in your Compose UI:
