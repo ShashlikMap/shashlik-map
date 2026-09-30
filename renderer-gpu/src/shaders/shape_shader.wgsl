@@ -125,17 +125,10 @@ fn vs_main(
     out.color_alpha = pos.color_alpha;
 
     // only two components for normal
-    var normal_scale = vec3f(0.0, 0.0, 0.0);
-    if(outline_flag == 0) {
-        let factor = max(1.0, camera.scale * 0.5); // increase border with scale
-        normal_scale = vec3(model.normal.xy * inflate_factor * factor, 0.0);
-    }
+    let factor = select(0.0, max(1.0, camera.scale * 0.5), outline_flag == 0u); // increase border with scale
+    let normal_scale = vec3(model.normal.xy * inflate_factor * factor, 0.0);
 
-    var pointPos = modelpos.xyz + normal_scale.xyz;
-    // we can't inlince it. If normal and normal_scale are 0, then some GPU can't handle NaN * 0 properly
-    if(pos.normal_scale != 0.0) {
-        pointPos += vec3(normalize(model.normal) * (pos.normal_scale), 0.0);
-    }
+    let pointPos = modelpos.xyz + normal_scale.xyz + vec3(model.normal * (pos.normal_scale), 0.0);
 
     out.vertex_pos_xy = pointPos.xy;
     out.bbox = pos.bbox;
@@ -235,13 +228,11 @@ fn vs_main_screen(
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // ignore if both are zero
-    if in.bbox.z > 0.0 || in.bbox.w > 0.0 {
-        if in.vertex_pos_xy.x < in.bbox.x || in.vertex_pos_xy.x > in.bbox.x + in.bbox.z {
-            discard;
-        }
-        if in.vertex_pos_xy.y < in.bbox.y || in.vertex_pos_xy.y > in.bbox.y + in.bbox.w {
-            discard;
-        }
+    let has_bounds = in.bbox.z > 0.0 || in.bbox.w > 0.0;
+    let outside_x = in.vertex_pos_xy.x < in.bbox.x || in.vertex_pos_xy.x > in.bbox.x + in.bbox.z;
+    let outside_y = in.vertex_pos_xy.y < in.bbox.y || in.vertex_pos_xy.y > in.bbox.y + in.bbox.w;
+    if has_bounds && (outside_x || outside_y) {
+        discard;
     }
 
     let style_type = in.style_type_subtype.x;
@@ -269,20 +260,6 @@ fn circle(st: vec2f, radius: f32) -> f32 {
 	return 1.0 - smoothstep(radius-(radius*0.04),
                          radius+(radius*0.04),
                          dot(dist,dist)*4.0);
-}
-
-fn solid_style(params: mat4x3<f32>) -> vec4<f32> {
-    let fill_color = vec4(params[0][1], params[0][2], params[1][0], params[1][1]);
-    return fill_color;
-}
-
-fn border_style(outline_flag: u32, scale: f32, params: mat4x3<f32>) -> vec4<f32> {
-    let fill_color = vec4(params[0][1], params[0][2], params[1][0], params[1][1]);
-    if(outline_flag == 0) {
-        let koef = params[1][2];
-        return vec4(fill_color.x * koef, fill_color.y * koef, fill_color.z * koef, 1.0 / max(1.0, scale));
-    }
-    return fill_color;
 }
 
 fn dashed_style(uv_dist: vec3f, color1: vec4f, color2: vec4f, dash_style: u32) -> vec4<f32> {
