@@ -160,9 +160,6 @@ anchor's current line, or MISSING if the pattern is gone.
   rule in `README_API.md` §4, the demo module note, and the `llms.txt` template.
   Never add opt-in instructions or examples that use `ShashlikMapApiHolder`: a consumer
   agent once proposed the opt-in as the recommended approach while planning.
-- **No iOS artifact.** iOS targets are commented out in `kmp/shared/build.gradle.kts`
-  (anchor `ios-targets-disabled`).
-  The published library is Android-only, `arm64-v8a` only.
 - **Location permission revocation is not handled.** `SimpleLocationManager.start()`
   is `@SuppressLint("MissingPermission")` with a FIXME above it (anchor
   `permission-revocation`). Keep under *Broken or disabled*.
