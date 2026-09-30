@@ -1,8 +1,8 @@
-use crate::consts::STYLE_SHADER_PARAMS_COUNT;
-
 #[derive(Clone, Copy, Debug)]
 pub struct RenderStyle {
-    container: [f32; STYLE_SHADER_PARAMS_COUNT],
+    header: [f32; 4],
+    color_1: [f32; 4],
+    color_2: [f32; 4],
 }
 
 impl Default for RenderStyle {
@@ -11,31 +11,32 @@ impl Default for RenderStyle {
     }
 }
 
-// TODO Builder
 impl RenderStyle {
     fn empty() -> Self {
         RenderStyle {
-            container: [0.0; STYLE_SHADER_PARAMS_COUNT],
+            header: [0.0; 4],
+            color_1: [0.0; 4],
+            color_2: [0.0; 4],
         }
     }
     pub fn fill(fill_color: [f32; 4]) -> RenderStyle {
         let mut style = Self::empty();
 
-        style.container[0] = 0.0;
-        style.container[1..fill_color.len() + 1].copy_from_slice(&fill_color);
+        style.header[0] = 0.0;
+        style.color_1 = fill_color;
 
         style
     }
 
     pub fn get_fill_color(&self) -> [f32; 4] {
-        *self.container[1..].first_chunk().expect("Color components should be present")
+        self.color_1
     }
 
     pub fn border(fill_color: [f32; 4], darken_percent: f32) -> RenderStyle {
         let mut style = RenderStyle::fill(fill_color);
 
-        style.container[0] = 1.0;
-        style.container[5] = darken_percent;
+        style.header[0] = 1.0;
+        style.header[1] = darken_percent;
 
         style
     }
@@ -43,27 +44,14 @@ impl RenderStyle {
     pub fn dashed(fill_color: [f32; 4], dash_color: [f32; 4], dash_style: u8) -> RenderStyle {
         let mut style = RenderStyle::fill(fill_color);
 
-        style.container[0] = 2.0;
-        style.container[5..dash_color.len() + 5].copy_from_slice(&dash_color);
-        style.container[9] = dash_style as f32;
+        style.header[0] = 2.0;
+        style.header[1] = dash_style as f32;
+        style.color_2 = dash_color;
 
         style
     }
 
-    pub fn params(&self) -> [[f32; 4]; 4] {
-        Self::convert_to_wgsl_mat4x3(self.container)
-    }
-
-    pub fn set_alpha(&mut self, alpha: f32) {
-        self.container[4] = alpha;
-    }
-
-    fn convert_to_wgsl_mat4x3(flat_array: [f32; 12]) -> [[f32; 4]; 4] {
-        [
-            [flat_array[0], flat_array[1], flat_array[2], 0.0],  // Column 0
-            [flat_array[3], flat_array[4], flat_array[5], 0.0],  // Column 1
-            [flat_array[6], flat_array[7], flat_array[8], 0.0],  // Column 2
-            [flat_array[9], flat_array[10], flat_array[11], 0.0], // Column 3
-        ]
+    pub fn params(&self) -> Vec<[f32; 4]> {
+        vec![self.header, self.color_1, self.color_2]
     }
 }

@@ -22,7 +22,7 @@ pub(crate) struct GlobalContext {
     pub x_real_mesh_shader_enabled: bool,
     pub(crate) texture_view_resources: TextureViewResources,
     preview_type: PreviewType,
-    style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[[f32; 4]; 4]>>,
+    style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; 4]>>,
     png_buffer: Option<Buffer>
 }
 
