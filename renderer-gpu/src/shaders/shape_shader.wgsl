@@ -4,19 +4,11 @@ import super::shape_styles::{ShapeStyle, ShapeSubStyle};
 import super::globe_common::GLOBE_SCALE;
 import super::globe_common::transform_to_globe_position;
 
-// Vertex shader
-const PARAMS_COUNT : i32 = 12; // 12 is mat4x3!
-
-struct StyleUniform {
-    params: mat4x3<f32>
-};
-
 @group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 
-// there is a chance that dyn array without size might not be working on every platform
 @group(1) @binding(0)
-var<storage, read> styles: array<StyleUniform>;
+var<storage, read> styles: array<vec4f>;
 
 @group(2) @binding(0)
 var<storage, read> indirect_instances: array<InstanceInput>;
@@ -58,9 +50,10 @@ struct VertexOutput {
 // TODO pass as a parameter
 const inflate_factor: f32 = 0.24;
 
-fn fill_styles(out: ptr<function,VertexOutput>, params: mat4x3<f32>, scale: f32, outline_flag: u32) {
-    let style_type = u32(params[0][0]);
-    let fill_color = vec4(params[0][1], params[0][2], params[1][0], params[1][1]);
+fn fill_styles(out: ptr<function,VertexOutput>, style_index: u32, scale: f32, outline_flag: u32) {
+    let header = styles[style_index];
+    let style_type = u32(header[0]);
+    let fill_color = styles[style_index + 1];
 
     (*out).style_type_subtype = vec2(style_type, shape_styles::SUB_STYLE_SOLID);
     (*out).style_color_1 = fill_color;
@@ -75,16 +68,14 @@ fn fill_styles(out: ptr<function,VertexOutput>, params: mat4x3<f32>, scale: f32,
     switch style_type {
         case shape_styles::STYLE_BORDER: {
             if(outline_flag == 0) {
-                let border_koef = params[1][2];
+                let border_koef = header[1];
                 let border_color = vec4(fill_color.xyz * border_koef, 1.0 / max(1.0, scale));
                 (*out).style_color_1 = border_color;
             }
         }
         case shape_styles::STYLE_DASH: {
-            let dash_style = u32(params[3][0]); // 0: solid, 1: circle
-            (*out).style_type_subtype.y = dash_style;
-            let dash_color = vec4(params[1][2], params[2][0], params[2][1], params[2][2]);
-            (*out).style_color_2 = dash_color;
+            (*out).style_type_subtype.y = u32(header[1]); // 0: solid, 1: circle
+            (*out).style_color_2 = styles[style_index + 2];
         }
         default : {}
     }
@@ -121,7 +112,7 @@ fn vs_main(
     var modelpos = model_position.xyz + pos.position;
 
     let outline_flag = model.instance_index % 2;
-    fill_styles(&out, styles[model.style_index].params, camera.scale, outline_flag);
+    fill_styles(&out, model.style_index, camera.scale, outline_flag);
     out.color_alpha = pos.color_alpha;
 
     // only two components for normal
@@ -172,7 +163,7 @@ fn vs_main_indirect(
     var modelpos = model_position.xyz + indirect_instances[instance_index].position;
 
     let outline_flag = select(1, model.instance_index % 2, with_normal);
-    fill_styles(&out, styles[model.style_index].params, 1.0, outline_flag);
+    fill_styles(&out, model.style_index, 1.0, outline_flag);
 
     var pointPos = modelpos.xyz;
     if(with_normal) {
@@ -210,7 +201,7 @@ fn vs_main_screen(
     let ratio_fixed_modelpos = vec4(model_position.xy * vec2(2.0*camera.inv_screen_size.x, 2.0*camera.inv_screen_size.y), model_position.z, 1.0);
 
     // FIXME Disable outlining for screen shapes for a while
-    fill_styles(&out, styles[model.style_index].params, 0.0, 1);
+    fill_styles(&out, model.style_index, 0.0, 1);
     out.color_alpha = pos.color_alpha;
 
     var pointPos = ratio_fixed_modelpos.xyz;

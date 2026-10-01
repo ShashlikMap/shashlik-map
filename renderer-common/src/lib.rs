@@ -10,7 +10,6 @@ use std::f64::consts::PI;
 use std::sync::Arc;
 use strum::{Display, EnumIter, EnumString};
 
-mod consts;
 pub mod geometry_data;
 pub mod render_group;
 pub mod render_modifier;

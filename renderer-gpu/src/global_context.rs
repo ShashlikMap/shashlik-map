@@ -22,12 +22,12 @@ pub(crate) struct GlobalContext {
     pub x_real_mesh_shader_enabled: bool,
     pub(crate) texture_view_resources: TextureViewResources,
     preview_type: PreviewType,
-    style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[[f32; 4]; 4]>>,
+    style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; 4]>>,
     png_buffer: Option<Buffer>
 }
 
 impl GlobalContext {
-    pub fn new(canvas: Box<dyn WgpuCanvas>, render_config: &RenderConfig, style_store: &StyleStore) -> Self {
+    pub fn new(canvas: Box<dyn WgpuCanvas>, render_config: &RenderConfig, style_store: &mut StyleStore) -> Self {
         let device = canvas.device();
         let view_projection = ViewProjection::new(device, render_config);
         let collider = Collider::new();
