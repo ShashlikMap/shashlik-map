@@ -1,11 +1,11 @@
+use crate::tiles::ShashlikMapGeomObject;
 use crate::tiles::mvt::mvt_scheme_parser::MvtSchemeParser;
 use crate::tiles::tile_parser::TileParser;
 use fast_mvt::proto::GeomType;
 use fast_mvt::{MvtReaderRef, MvtResult};
 use geo_types::{Geometry, LineString, Point, Polygon, coord};
-use osm::map::{MapGeomObject, MapGeometry};
+use osm::map::MapGeometry;
 use osm::tiles::TileKey;
-use crate::tiles::ShashlikMapGeomObject;
 
 pub struct MvtParser {
     schema_parser: MvtSchemeParser,

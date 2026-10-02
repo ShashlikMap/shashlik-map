@@ -1,8 +1,9 @@
 use crate::tiles::tile_parser::TileParser;
+use crate::tiles::{ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapPointInfo, ShashlikMapPointObjectKind, ShashlikNatureKind, ShashlikPopAreaInfo, ShashlikWayInfo};
 use geo_types::{LineString, Polygon, coord};
 use osm::map::{
-    HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo,
-    MapPointObjectKind, NatureKind, PopAreaInfo, RailwayKind, WayInfo,
+    HighwayKind, LayerKind, LineKind, MapGeometry,
+    RailwayKind,
 };
 use osm::tiles::TileKey;
 use tiles::decode::{AreaKind, DecodedTile, LabelClass, RoadKind};
@@ -24,14 +25,14 @@ impl ShashlikV1Parser {
         &self,
         tile: DecodedTile,
         tile_key: &TileKey,
-    ) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
+    ) -> Vec<(ShashlikMapGeomObject, MapGeometry<f32>)> {
         let extent = tile.extent;
         self.parse_tile(tile, extent as f32, tile_key)
     }
 }
 
 impl TileParser<DecodedTile> for ShashlikV1Parser {
-    fn parse_tile_inner(&self, tile: DecodedTile) -> Vec<(MapGeomObject, MapGeometry<i32>)> {
+    fn parse_tile_inner(&self, tile: DecodedTile) -> Vec<(ShashlikMapGeomObject, MapGeometry<i32>)> {
         let mut result = vec![];
         for road in tile.roads {
             let line_kind = match road.kind {
@@ -71,9 +72,9 @@ impl TileParser<DecodedTile> for ShashlikV1Parser {
                 _ => continue,
             };
 
-            let map_geom_obj = MapGeomObject {
+            let map_geom_obj = ShashlikMapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Way(WayInfo {
+                kind: ShashlikMapGeomObjectKind::Way(ShashlikWayInfo {
                     line_kind,
                     layer: road.layer as i32,
                     layer_kind: LayerKind::None,
@@ -94,16 +95,16 @@ impl TileParser<DecodedTile> for ShashlikV1Parser {
 
         for area in tile.areas {
             let area_kind = match area.kind {
-                AreaKind::Water => NatureKind::Water,
-                AreaKind::Forest => NatureKind::Forest,
-                AreaKind::Grass => NatureKind::Park,
+                AreaKind::Water => ShashlikNatureKind::Water,
+                AreaKind::Forest => ShashlikNatureKind::Forest,
+                AreaKind::Grass => ShashlikNatureKind::Park,
                 AreaKind::Building => continue,
                 AreaKind::Land => continue,
             };
 
-            let map_geom_obj = MapGeomObject {
+            let map_geom_obj = ShashlikMapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Nature(area_kind),
+                kind: ShashlikMapGeomObjectKind::Nature(area_kind),
             };
 
             // TODO Use all rings
@@ -124,11 +125,11 @@ impl TileParser<DecodedTile> for ShashlikV1Parser {
                 _ => continue,
             };
 
-            let map_geom_obj = MapGeomObject {
+            let map_geom_obj = ShashlikMapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Poi(MapPointInfo {
+                kind: ShashlikMapGeomObjectKind::Poi(ShashlikMapPointInfo {
                     text: label.name,
-                    kind: MapPointObjectKind::PopArea(PopAreaInfo {
+                    kind: ShashlikMapPointObjectKind::PopArea(ShashlikPopAreaInfo {
                         level: 0,
                         population: 0,
                     }),

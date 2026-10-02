@@ -1,16 +1,16 @@
+use crate::tiles::ShashlikMapGeomObject;
 use crate::tiles::tile_data::TileData;
 use futures::Stream;
 use geo::{CoordsIter, Scale};
 use geo_types::{Coord, Polygon, Rect, coord};
 use glam::DVec3;
 use googleprojection::Mercator;
-use osm::map::{MapGeomObject, MapGeometry};
+use osm::map::MapGeometry;
 use osm::tiles::TileKey;
+use renderer_common::MAP_SIZE;
 use std::collections::HashSet;
 use std::f64::consts::PI;
 use std::sync::Arc;
-use renderer_common::MAP_SIZE;
-use crate::tiles::ShashlikMapGeomObject;
 
 pub enum TilesMessage {
     TilesData(Vec<TileData>),

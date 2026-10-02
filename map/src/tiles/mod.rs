@@ -11,14 +11,14 @@ pub mod tile_data;
 mod tile_parser;
 pub mod tiles_provider;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ShashlikMapGeomObject {
     pub id: i64,
     pub kind: ShashlikMapGeomObjectKind,
 }
 
 #[derive(Debug, Clone, PartialEq, Ord, Eq, Hash, PartialOrd)]
-pub(crate) enum ShashlikMapGeomObjectKind {
+pub enum ShashlikMapGeomObjectKind {
     Nature(ShashlikNatureKind),
     Building(u16),
     Way(ShashlikWayInfo),
@@ -28,7 +28,7 @@ pub(crate) enum ShashlikMapGeomObjectKind {
 
 #[derive(Derivative, Debug, Clone)]
 #[derivative(PartialEq, PartialOrd, Hash, Eq)]
-pub(crate) struct ShashlikWayInfo {
+pub struct ShashlikWayInfo {
     pub line_kind: LineKind,
     pub layer: i32,
     pub layer_kind: LayerKind,
@@ -39,21 +39,31 @@ pub(crate) struct ShashlikWayInfo {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct ShashlikMapPointInfo {
+pub struct ShashlikMapPointInfo {
     pub text: String,
     pub kind: ShashlikMapPointObjectKind,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub(crate) enum ShashlikNatureKind {
+pub enum ShashlikNatureKind {
     Ground,
     Park,
     Forest,
     Water,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Ord, Eq, Hash, PartialOrd)]
+pub enum ShashlikMapPointObjectKind {
+    PopArea(ShashlikPopAreaInfo),
+    TrafficLight,
+    Toilet,
+    Parking,
+    EVCharging,
+    TrainStation(bool),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Hash, Eq)]
-pub(crate) struct ShashlikPopAreaInfo {
+pub struct ShashlikPopAreaInfo {
     pub level: i32,
     pub population: u32,
 }
@@ -102,12 +112,4 @@ impl Ord for ShashlikWayInfo {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Ord, Eq, Hash, PartialOrd)]
-pub(crate) enum ShashlikMapPointObjectKind {
-    PopArea(ShashlikPopAreaInfo),
-    TrafficLight,
-    Toilet,
-    Parking,
-    EVCharging,
-    TrainStation(bool),
-}
+

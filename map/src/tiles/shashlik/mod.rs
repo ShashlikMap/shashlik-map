@@ -1,14 +1,14 @@
-use std::collections::HashSet;
 use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesProviderStore};
+use crate::tiles::{ShashlikMapGeomObject, ShashlikMapPointObjectKind, ShashlikPopAreaInfo};
 use geo::{BoundingRect, Intersects, MapCoordsInPlace, Scale};
 use geo_types::{Coord, Polygon, Rect};
 use glam::DVec3;
 use googleprojection::Mercator;
-use osm::map::{MapGeomObject, MapGeometry, MapPointObjectKind, PopAreaInfo};
+use osm::map::{MapGeometry, MapPointObjectKind, PopAreaInfo};
 use osm::source::TileSource;
 use osm::tiles::{TILES_COUNT, TILE_OVERLAP_PERCENT, TILE_SIZE, TileKey, TileStore, calc_tile_ranges};
-use crate::tiles::{ShashlikMapPointObjectKind, ShashlikPopAreaInfo};
+use std::collections::HashSet;
 
 impl<S: TileSource> MercatorProvider for TileStore<S> {
     fn mercator(&self) -> Mercator {
@@ -86,8 +86,9 @@ impl <S:TileSource> TilesProviderStore for TileStore<S> {
         (tile_position, bbox)
     }
 
-    fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
-        self.load_geometries(tile_key)
+    fn load(&self, tile_key: &TileKey) -> Vec<(ShashlikMapGeomObject, MapGeometry<f32>)> {
+        vec![]
+        // self.load_geometries(tile_key)
     }
 }
 
