@@ -56,6 +56,7 @@ pub enum ShashlikNatureKind {
 pub enum ShashlikMapPointObjectKind {
     PopArea(ShashlikPopAreaInfo),
     TrafficLight,
+    Crossing,
     Toilet,
     Parking,
     EVCharging,

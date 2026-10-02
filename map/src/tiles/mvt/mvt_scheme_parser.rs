@@ -116,6 +116,7 @@ impl MvtSchemeParser {
             match (class.as_str(), subclass.as_str()) {
                 ("street", "toilets") => Some(ShashlikMapPointObjectKind::Toilet),
                 ("street", "traffic_signals") => Some(ShashlikMapPointObjectKind::TrafficLight),
+                ("street", "crossing") => Some(ShashlikMapPointObjectKind::Crossing),
                 _ => None,
             }
             .map(|kind| ShashlikMapGeomObject {
