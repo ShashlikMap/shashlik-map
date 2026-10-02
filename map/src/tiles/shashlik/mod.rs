@@ -1,11 +1,11 @@
 use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesProviderStore};
-use crate::tiles::{ShashlikMapGeomObject, ShashlikMapPointObjectKind, ShashlikPopAreaInfo};
+use crate::tiles::{ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapPointInfo, ShashlikMapPointObjectKind, ShashlikNatureKind, ShashlikPopAreaInfo, ShashlikWayInfo};
 use geo::{BoundingRect, Intersects, MapCoordsInPlace, Scale};
 use geo_types::{Coord, Polygon, Rect};
 use glam::DVec3;
 use googleprojection::Mercator;
-use osm::map::{MapGeometry, MapPointObjectKind, PopAreaInfo};
+use osm::map::{MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo, MapPointObjectKind, NatureKind, PopAreaInfo, WayInfo};
 use osm::source::TileSource;
 use osm::tiles::{TILES_COUNT, TILE_OVERLAP_PERCENT, TILE_SIZE, TileKey, TileStore, calc_tile_ranges};
 use std::collections::HashSet;
@@ -87,8 +87,65 @@ impl <S:TileSource> TilesProviderStore for TileStore<S> {
     }
 
     fn load(&self, tile_key: &TileKey) -> Vec<(ShashlikMapGeomObject, MapGeometry<f32>)> {
-        vec![]
-        // self.load_geometries(tile_key)
+        self.load_geometries(tile_key).into_iter().map(|(geom_obj, geom)| {
+            (geom_obj.into(), geom)
+        }).collect()
+    }
+}
+
+impl From<MapGeomObject> for ShashlikMapGeomObject {
+    fn from(value: MapGeomObject) -> Self {
+        ShashlikMapGeomObject {
+            id: value.id,
+            kind: value.kind.into(),
+        }
+    }
+}
+
+impl From<MapGeomObjectKind> for ShashlikMapGeomObjectKind {
+    fn from(value: MapGeomObjectKind) -> Self {
+        match value {
+            MapGeomObjectKind::Nature(data) => ShashlikMapGeomObjectKind::Nature(data.into()),
+            MapGeomObjectKind::Building(data) => ShashlikMapGeomObjectKind::Building(data),
+            MapGeomObjectKind::Way(data) => ShashlikMapGeomObjectKind::Way(data.into()),
+            MapGeomObjectKind::AdminLine => ShashlikMapGeomObjectKind::AdminLine,
+            MapGeomObjectKind::Poi(data) => ShashlikMapGeomObjectKind::Poi(data.into())
+        }
+    }
+}
+
+impl From<WayInfo> for ShashlikWayInfo {
+    fn from(value: WayInfo) -> Self {
+        match value {
+            WayInfo { .. } => ShashlikWayInfo {
+                line_kind: value.line_kind,
+                layer: value.layer,
+                layer_kind: value.layer_kind,
+                name_en: value.name_en,
+            }
+        }
+    }
+}
+
+impl From<NatureKind> for ShashlikNatureKind {
+    fn from(value: NatureKind) -> Self {
+        match value {
+            NatureKind::Ground => ShashlikNatureKind::Ground,
+            NatureKind::Park => ShashlikNatureKind::Park,
+            NatureKind::Forest => ShashlikNatureKind::Forest,
+            NatureKind::Water => ShashlikNatureKind::Water
+        }
+    }
+}
+
+impl From<MapPointInfo> for ShashlikMapPointInfo {
+    fn from(value: MapPointInfo) -> Self {
+        match value {
+            MapPointInfo { .. } => ShashlikMapPointInfo {
+                text: value.text,
+                kind: value.kind.into()
+            }
+        }
     }
 }
 
