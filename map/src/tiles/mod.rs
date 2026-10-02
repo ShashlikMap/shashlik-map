@@ -1,5 +1,5 @@
 use derivative::Derivative;
-use osm::map::{LayerKind, LineKind};
+use osm::map::{LayerKind, LineKind, MapGeomObject};
 use std::cmp::Ordering;
 
 pub mod default_tiles_provider;
@@ -11,7 +11,7 @@ pub mod tile_data;
 mod tile_parser;
 pub mod tiles_provider;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ShashlikMapGeomObject {
     pub id: i64,
     pub kind: ShashlikMapGeomObjectKind,
@@ -67,6 +67,18 @@ pub enum ShashlikMapPointObjectKind {
 pub struct ShashlikPopAreaInfo {
     pub level: i32,
     pub population: u32,
+}
+
+impl Ord for ShashlikMapGeomObject {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.kind.cmp(&other.kind)
+    }
+}
+
+impl PartialOrd for ShashlikMapGeomObject {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl PartialOrd for ShashlikPopAreaInfo {
