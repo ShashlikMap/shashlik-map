@@ -1,8 +1,113 @@
+use derivative::Derivative;
+use osm::map::{LayerKind, LineKind};
+use std::cmp::Ordering;
+
 pub mod default_tiles_provider;
+mod grid_divider;
 pub mod mvt;
 pub mod shashlik;
 pub mod shashlik_v1;
 pub mod tile_data;
 mod tile_parser;
 pub mod tiles_provider;
-mod grid_divider;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ShashlikMapGeomObject {
+    pub id: i64,
+    pub kind: ShashlikMapGeomObjectKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Ord, Eq, Hash, PartialOrd)]
+pub(crate) enum ShashlikMapGeomObjectKind {
+    Nature(ShashlikNatureKind),
+    Building(u16),
+    Way(ShashlikWayInfo),
+    AdminLine,
+    Poi(ShashlikMapPointInfo),
+}
+
+#[derive(Derivative, Debug, Clone)]
+#[derivative(PartialEq, PartialOrd, Hash, Eq)]
+pub(crate) struct ShashlikWayInfo {
+    pub line_kind: LineKind,
+    pub layer: i32,
+    pub layer_kind: LayerKind,
+    #[derivative(PartialEq = "ignore")]
+    #[derivative(Hash = "ignore")]
+    #[derivative(PartialOrd = "ignore")]
+    pub name_en: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct ShashlikMapPointInfo {
+    pub text: String,
+    pub kind: ShashlikMapPointObjectKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub(crate) enum ShashlikNatureKind {
+    Ground,
+    Park,
+    Forest,
+    Water,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Hash, Eq)]
+pub(crate) struct ShashlikPopAreaInfo {
+    pub level: i32,
+    pub population: u32,
+}
+
+impl PartialOrd for ShashlikPopAreaInfo {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ShashlikPopAreaInfo {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.level.cmp(&other.level) {
+            Ordering::Equal => self.population.cmp(&other.population),
+            v => v,
+        }
+    }
+}
+
+impl Ord for ShashlikMapPointInfo {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.kind.cmp(&other.kind)
+    }
+}
+
+impl PartialOrd for ShashlikMapPointInfo {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ShashlikWayInfo {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Bridge has priority over tunnels even if the tunnel has the higher layer!
+        // Example can be found here: https://www.openstreetmap.org/way/80581130
+        // Tunnel has layer 3, but it's below than the bridge with layer 2!
+
+        // sort by OSM layer_kind layer first, then by layer itself and only then by internal layer values
+        match self.layer_kind.cmp(&other.layer_kind) {
+            Ordering::Equal => match self.layer.cmp(&other.layer) {
+                Ordering::Equal => self.line_kind.get_layer().cmp(&other.line_kind.get_layer()),
+                v => v,
+            },
+            v => v,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Ord, Eq, Hash, PartialOrd)]
+pub(crate) enum ShashlikMapPointObjectKind {
+    PopArea(ShashlikPopAreaInfo),
+    TrafficLight,
+    Toilet,
+    Parking,
+    EVCharging,
+    TrainStation(bool),
+}

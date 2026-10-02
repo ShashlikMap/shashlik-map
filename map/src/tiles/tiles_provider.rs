@@ -10,6 +10,7 @@ use std::collections::HashSet;
 use std::f64::consts::PI;
 use std::sync::Arc;
 use renderer_common::MAP_SIZE;
+use crate::tiles::ShashlikMapGeomObject;
 
 pub enum TilesMessage {
     TilesData(Vec<TileData>),
@@ -112,7 +113,7 @@ pub trait TilesProviderStore: MercatorConverter {
 
         (tile_position, bbox)
     }
-    fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)>;
+    fn load(&self, tile_key: &TileKey) -> Vec<(ShashlikMapGeomObject, MapGeometry<f32>)>;
 
     fn mercator_meters_to_512_tile(&self, mx: f64, my: f64, zoom: u32) -> (i32, u32) {
         let norm_x = (mx) / MAP_SIZE;

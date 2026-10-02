@@ -2,13 +2,14 @@ use std::env;
 use crate::tiles::mvt::mvt_parser::MvtParser;
 use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesProviderStore};
 use log::error;
-use osm::map::{MapGeomObject, MapGeometry};
+use osm::map::{MapGeometry};
 use reqwest::header::{HeaderMap, HeaderValue, ORIGIN};
 use std::time::{Duration, SystemTime};
 use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache, HttpCacheOptions};
 use osm::tiles::TileKey;
 use reqwest_middleware::ClientWithMiddleware;
 use tokio::runtime::Runtime;
+use crate::tiles::ShashlikMapGeomObject;
 
 const HTTP_CACHE_ENABLED: bool = true;
 
@@ -88,7 +89,7 @@ impl MercatorProvider for MvtTileStore {}
 impl MercatorConverter for MvtTileStore {}
 
 impl TilesProviderStore for MvtTileStore {
-    fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
+    fn load(&self, tile_key: &TileKey) -> Vec<(ShashlikMapGeomObject, MapGeometry<f32>)> {
         let data = self
             .fetch_tile(tile_key.tile_x, tile_key.tile_y, tile_key.zoom_level)
             .unwrap_or_default();

@@ -4,8 +4,7 @@ use glam::{DVec3, Vec2};
 use lyon::geom::point;
 use lyon::path::{Path, Winding};
 use osm::map::{
-    HighwayKind, LayerKind, LineKind, MapGeomObjectKind, MapPointInfo, MapPointObjectKind,
-    NatureKind,
+    HighwayKind, LayerKind, LineKind,
 };
 use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, LineData, PolylineOptions, ShapeData, StyledRangeInfo, IconBackground, IconShapeData, TextData, IconData};
 use renderer_common::style_id::StyleId;
@@ -17,10 +16,11 @@ use lyon::path::builder::BorderRadii;
 use rand::RngExt;
 use renderer_common::geometry_data::IconType::SvgBinary;
 use crate::MAX_ZOOM_LEVEL;
+use crate::tiles::{ShashlikMapGeomObjectKind, ShashlikMapPointInfo, ShashlikMapPointObjectKind, ShashlikNatureKind};
 
 pub struct ShashlikFeatureProcessor {
     include_extruded: bool,
-    data_filter: fn(zoom_level: i32, &MapGeomObjectKind) -> bool,
+    data_filter: fn(zoom_level: i32, &ShashlikMapGeomObjectKind) -> bool,
 }
 
 impl Default for ShashlikFeatureProcessor {
@@ -28,13 +28,13 @@ impl Default for ShashlikFeatureProcessor {
         ShashlikFeatureProcessor::new(true, |zoom_level, kind| {
             // by default, we keep building only for zoom_level >= 13 and TrafficLight/Toilet for >= 15(due to POI id issues)
             match kind {
-                MapGeomObjectKind::Poi(info) => {
+                ShashlikMapGeomObjectKind::Poi(info) => {
                     match info.kind {
-                        MapPointObjectKind::TrafficLight | MapPointObjectKind::Toilet => zoom_level >= 15,
+                        ShashlikMapPointObjectKind::TrafficLight | ShashlikMapPointObjectKind::Toilet => zoom_level >= 15,
                         _ => true,
                     }
                 }
-                MapGeomObjectKind::Building(_) => zoom_level >= 13,
+                ShashlikMapGeomObjectKind::Building(_) => zoom_level >= 13,
                 _ => true,
             }
         })
@@ -47,8 +47,9 @@ impl ShashlikFeatureProcessor {
     const TOILETS_SVG: &'static [u8] = include_bytes!("../svg/toilet.svg");
     const TRAIN_STATION_SVG: &'static [u8] = include_bytes!("../svg/train_station.svg");
     const EV_STATION_SVG: &'static [u8] = include_bytes!("../svg/ev_station.svg");
+    const CROSSING_SVG: &'static [u8] = include_bytes!("../svg/pedestrian-crossing.svg");
     pub fn new(include_extruded: bool,
-               data_filter: fn(zoom_level: i32, kind: &MapGeomObjectKind) -> bool) -> Self {
+               data_filter: fn(zoom_level: i32, kind: &ShashlikMapGeomObjectKind) -> bool) -> Self {
         ShashlikFeatureProcessor {
             include_extruded,
             data_filter,
@@ -100,12 +101,12 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         &self,
         mut id: i64,
         geometry_data: &mut Vec<GeometryData>,
-        poi: &MapPointInfo,
+        poi: &ShashlikMapPointInfo,
         zoom_level: i32,
         local_position: &Coord,
         dpi_scale: f32,
     ) {
-        if !(self.data_filter)(zoom_level, &MapGeomObjectKind::Poi(poi.clone())) {
+        if !(self.data_filter)(zoom_level, &ShashlikMapGeomObjectKind::Poi(poi.clone())) {
             return;
         }
         // Temporary workaround for POIs without IDs
@@ -116,36 +117,36 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             id = rng.random();
         }
         let icon: Option<(&str, &[u8])> = match poi.kind {
-            MapPointObjectKind::TrainStation(is_train) => {
+            ShashlikMapPointObjectKind::TrainStation(is_train) => {
                 if is_train {
                     Some(("train_station", Self::TRAIN_STATION_SVG))
                 } else {
                     Some(("railway_station", Self::TRAIN_STATION_SVG))
                 }
             }
-            MapPointObjectKind::TrafficLight => Some(("traffic_light", Self::TRAFFIC_LIGHT_SVG)),
-            MapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
-            MapPointObjectKind::Parking => Some(("parking", Self::PARKING_SVG)),
-            MapPointObjectKind::EVCharging => Some(("ev_station", Self::EV_STATION_SVG)),
-            MapPointObjectKind::PopArea(..) => None,
+            ShashlikMapPointObjectKind::TrafficLight => Some(("traffic_light", Self::TRAFFIC_LIGHT_SVG)),
+            ShashlikMapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
+            ShashlikMapPointObjectKind::Parking => Some(("parking", Self::PARKING_SVG)),
+            ShashlikMapPointObjectKind::EVCharging => Some(("ev_station", Self::EV_STATION_SVG)),
+            ShashlikMapPointObjectKind::PopArea(..) => None,
         };
         if let Some(icon) = icon {
             let style_id = match poi.kind {
-                MapPointObjectKind::TrainStation(is_train) => {
+                ShashlikMapPointObjectKind::TrainStation(is_train) => {
                     if is_train {
                         Some(StyleId::new("train_station"))
                     } else {
                         Some(StyleId::new("railway_station"))
                     }
                 }
-                MapPointObjectKind::TrafficLight => None,
-                MapPointObjectKind::EVCharging => Some(StyleId::new("poi_ev_station")),
-                MapPointObjectKind::Parking => Some(StyleId::new("poi_parking")),
-                MapPointObjectKind::Toilet => Some(StyleId::new("poi_toilet")),
+                ShashlikMapPointObjectKind::TrafficLight => None,
+                ShashlikMapPointObjectKind::EVCharging => Some(StyleId::new("poi_ev_station")),
+                ShashlikMapPointObjectKind::Parking => Some(StyleId::new("poi_parking")),
+                ShashlikMapPointObjectKind::Toilet => Some(StyleId::new("poi_toilet")),
                 _ => Some(StyleId::new("poi")),
             };
 
-            let icon_size = if matches!(poi.kind, MapPointObjectKind::TrafficLight) {
+            let icon_size = if matches!(poi.kind, ShashlikMapPointObjectKind::TrafficLight) {
                 33.0
             } else {
                 30.0
@@ -205,7 +206,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         geometry_data: &mut Vec<GeometryData>,
         mut line: LineString<f32>,
         interiors: Vec<LineString<f32>>,
-        kind: MapGeomObjectKind,
+        kind: ShashlikMapGeomObjectKind,
         zoom_level: i32,
         dpi_scale: f32,
     ) {
@@ -215,7 +216,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 return;
             }
             if let Some((style_id, layer_level, geometry_type, name)) = match &kind {
-                MapGeomObjectKind::Way(info) => match info.line_kind {
+                ShashlikMapGeomObjectKind::Way(info) => match info.line_kind {
                     LineKind::Highway { kind } => {
                         if kind != HighwayKind::Footway {
                             let show_name = zoom_level <= 3;
@@ -268,7 +269,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         })
                     }
                 },
-                MapGeomObjectKind::AdminLine => {
+                ShashlikMapGeomObjectKind::AdminLine => {
                     (zoom_level >= 10).then(|| {
                         (
                             StyleId::new("admin_line"),
@@ -281,23 +282,23 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         )
                     })
                 },
-                MapGeomObjectKind::Nature(kind) => {
+                ShashlikMapGeomObjectKind::Nature(kind) => {
                     let style_id = match kind {
-                        NatureKind::Ground => StyleId::new("ground"),
-                        NatureKind::Park => StyleId::new("park"),
-                        NatureKind::Forest => StyleId::new("forest"),
-                        NatureKind::Water => StyleId::new("water"),
+                        ShashlikNatureKind::Ground => StyleId::new("ground"),
+                        ShashlikNatureKind::Park => StyleId::new("park"),
+                        ShashlikNatureKind::Forest => StyleId::new("forest"),
+                        ShashlikNatureKind::Water => StyleId::new("water"),
                     };
                     Some((style_id, -100, GeometryType::Polygon, None))
                 }
-                MapGeomObjectKind::Building(_) => {
+                ShashlikMapGeomObjectKind::Building(_) => {
                     Some((StyleId::new("building"), -98, GeometryType::Polygon, None))
                 }
                 _ => None,
             } {
                 // a small trick to get rid of many coplanar walls issues
                 // fyi, it might be better to skip it for CPU only devices
-                if matches!(kind, MapGeomObjectKind::Building(_)) {
+                if matches!(kind, ShashlikMapGeomObjectKind::Building(_)) {
                     if line.0.len() % 2 == 0 {
                         line.scale_mut(1.01);
                     }
@@ -311,7 +312,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
 
                 // fyi, we need to close the building path to properly build a closed stroke
                 // also if interiors are not empty!
-                let end_with_closing = matches!(kind, MapGeomObjectKind::Building(_)) || !interiors.is_empty();
+                let end_with_closing = matches!(kind, ShashlikMapGeomObjectKind::Building(_)) || !interiors.is_empty();
                 path_builder.end(end_with_closing);
 
                 for interior in interiors {
@@ -326,7 +327,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     }
                 }
 
-                if let MapGeomObjectKind::Building(level) = kind {
+                if let ShashlikMapGeomObjectKind::Building(level) = kind {
                     let building_path = path_builder.build();
 
                     let mut styled_range_info = StyledRangeInfo::new(1, true);
@@ -369,13 +370,13 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     }));
                 } else {
                     let double_style = match &kind {
-                        MapGeomObjectKind::Building(_) => {
+                        ShashlikMapGeomObjectKind::Building(_) => {
                             panic!("Buildings should not be processed here");
                         }
-                        MapGeomObjectKind::Nature(_) => {
+                        ShashlikMapGeomObjectKind::Nature(_) => {
                             false
                         }
-                        MapGeomObjectKind::Way(info) => {
+                        ShashlikMapGeomObjectKind::Way(info) => {
                             match info.line_kind {
                                 LineKind::Highway { .. } => { zoom_level < 1 }
                                 _ => { false }
@@ -383,7 +384,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         }
                         _ => { zoom_level < 1 }
                     };
-                    let skip_preview = matches!(kind, MapGeomObjectKind::Building(_));
+                    let skip_preview = matches!(kind, ShashlikMapGeomObjectKind::Building(_));
 
                     geometry_data.push(GeometryData::Shape(ShapeData {
                         path: path_builder.build(),
