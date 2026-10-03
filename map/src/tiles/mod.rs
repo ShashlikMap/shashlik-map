@@ -26,6 +26,9 @@ pub enum ShashlikMapGeomObjectKind {
     Poi(ShashlikMapPointInfo),
 }
 
+// FIXME PartialOrd and Ord are not aligned, so fat it's causing any issues.
+// After moving LineKind here, it's probably better to just impl custom PartialOrd/Ord for LineKind only
+// and use deriving for ShashlikWayInfo
 #[derive(Derivative, Debug, Clone)]
 #[derivative(PartialEq, PartialOrd, Hash, Eq)]
 pub struct ShashlikWayInfo {
