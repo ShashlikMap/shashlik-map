@@ -585,6 +585,14 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
                     error!("Offline styles are used!");
                 }
             }
+
+            let style_id = StyleId::new("crossing_style");
+            renderer_api
+                .update_style(style_id, move |style| *style = renderer_common::render_style::RenderStyle::dashed(
+                    [0.0, 0.0, 0.0, 0.0],
+                    [1.0, 1.0, 1.0, 1.0],
+                    2,
+                ));
             styles.into_iter().for_each(|style| {
                 let style_id = StyleId::new(style.id);
                 let actual_render_style = match style.render_style {

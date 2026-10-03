@@ -19,6 +19,7 @@ use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
 use std::collections::{BTreeMap, HashMap};
 use std::mem;
+use lyon::algorithms::measure::{PathMeasurements, SampleType};
 
 #[derive(Clone)]
 pub struct MeshInfo {
@@ -272,6 +273,7 @@ impl GpuCanvasApi {
                 if options.width <= 0.0 {
                     return;
                 }
+
                 self.tessellate_stroke_path(&data.path, geometry, options, |vertex| {
                     let position = vertex.position();
                     let normal = vertex.normal().normalize();
@@ -283,6 +285,28 @@ impl GpuCanvasApi {
                         style_index as u8,
                     )
                 });
+
+                if let Some(jj) = data.jj {
+                    let ll = self.style_store.get_index(&StyleId::new("crossing_style")) as u8;
+                    let pm = PathMeasurements::from_path(&data.path, 1.0);
+                    let mut ss = pm.create_sampler(&data.path, SampleType::Normalized);
+                    let mut npb = Path::builder();
+                    let len = 0.75 * (1.0 / pm.length());
+                    ss.split_range((jj - len)..(jj + len), &mut npb);
+                    let temp_path = npb.build();
+
+                    self.tessellate_stroke_path(&temp_path, geometry, options, |vertex| {
+                        let position = vertex.position();
+                        let normal = vertex.normal().normalize();
+                        ShapeVertex::new(
+                            [position.x, position.y],
+                            [normal.x, normal.y],
+                            [(vertex.side().to_f32() + 1.0) * 0.5, 0.0],
+                            vertex.advancement(),
+                            ll,
+                        )
+                    });
+                }
             }
             GeometryType::Polygon => {
                 Self::tessellate_fill_path(&data.path, geometry, |vertex| {

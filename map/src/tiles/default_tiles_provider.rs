@@ -2,9 +2,9 @@ use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesMessage, TilesProvider, TilesProviderStore};
 use futures::{Stream};
 use futures::channel::mpsc::{UnboundedSender, unbounded};
-use geo::{Area, Convert };
+use geo::{Area, Convert, Distance, Euclidean, LineLocatePoint};
 use geo::Winding;
-use geo_types::{coord, Coord, LineString, Rect, Polygon};
+use geo_types::{coord, Coord, LineString, Rect, Polygon, Point};
 use log::error;
 use osm::map::{MapGeometry};
 use osm::tiles::{TileKey, TileStore};
@@ -23,7 +23,7 @@ use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::grid_divider::subdivide_grid;
 use crate::tiles::mvt::mvt_tile_store::MvtTileStore;
 use crate::tiles::shashlik_v1::ShashlikV1TileStore;
-use crate::tiles::{ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapPointInfo, ShashlikNatureKind};
+use crate::tiles::{ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapPointInfo, ShashlikMapPointObjectKind, ShashlikNatureKind};
 
 pub trait FeatureProcessor: Send + Sync {
     fn process_poi(
@@ -41,6 +41,7 @@ pub trait FeatureProcessor: Send + Sync {
         id: i64,
         geometry_data: &mut Vec<GeometryData>,
         line: LineString<f32>,
+        jj: Option<f32>,
         interiors: Vec<LineString<f32>>,
         kind: ShashlikMapGeomObjectKind,
         zoom_level: i32,
@@ -109,7 +110,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
     ) -> TileData {
         let zoom_level = tile_store.convert_zoom(tile_key.zoom_level);
 
-        
+
         let (tile_position, bbox) = tile_store.tile_position_bbox(&tile_key, Self::BBOX_OVERLAP_OFFSET_SCALE);
 
         let mut geom = tile_store.load(&tile_key);
@@ -123,6 +124,20 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                 kind: ShashlikMapGeomObjectKind::Nature(ShashlikNatureKind::Water),
             }, MapGeometry::Poly(fake_water_rectangle.to_polygon())))
         }
+
+        let cxs: Vec<_> = geom.iter().filter_map(|(obj, geom)| {
+            match &obj.kind {
+                ShashlikMapGeomObjectKind::Poi(data) => {
+                    match data.kind {
+                        ShashlikMapPointObjectKind::Crossing => {
+                            Some(geom.coord().clone())
+                        }
+                        _ => None
+                    }
+                }
+                _ => None
+            }
+        }).collect();
 
         let mut geometry_data: Vec<GeometryData> = vec![];
         geom.into_iter()
@@ -144,10 +159,18 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                     }
                 }
                 MapGeometry::Line(line) => {
+                    let hh = cxs.iter().find(|q| {
+                        let qq = Euclidean.distance(&line, &Point::from(**q));
+                        qq == 0.0
+                    });
+                    let jj = hh.and_then(|hh| {
+                        line.line_locate_point(&Point::from(*hh))
+                    });
                     feature_processor.process_line(
                         obj_type.id,
                         &mut geometry_data,
                         line.convert(),
+                        jj,
                         vec![],
                         obj_type.kind,
                         zoom_level,
@@ -186,6 +209,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                                 obj_type.id,
                                 &mut geometry_data,
                                 line,
+                                None,
                                 interiors,
                                 obj_type.kind.clone(),
                                 zoom_level,

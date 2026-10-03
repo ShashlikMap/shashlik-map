@@ -9,7 +9,7 @@ use osm::map::{
 use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, LineData, PolylineOptions, ShapeData, StyledRangeInfo, IconBackground, IconShapeData, TextData, IconData};
 use renderer_common::style_id::StyleId;
 use capitalize::Capitalize;
-use geo::Scale;
+use geo::{Scale};
 use lyon::geom::euclid::{point2, Box2D};
 use lyon::lyon_tessellation::{LineCap, LineJoin};
 use lyon::path::builder::BorderRadii;
@@ -206,6 +206,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         id: i64,
         geometry_data: &mut Vec<GeometryData>,
         mut line: LineString<f32>,
+        jj: Option<f32>,
         interiors: Vec<LineString<f32>>,
         kind: ShashlikMapGeomObjectKind,
         zoom_level: i32,
@@ -352,6 +353,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                             style_id: StyleId::new("building_stand"),
                             index_layer_level: -99,
                             styled_range_info: styled_range_info.clone(),
+                            jj: None
                         }));
 
 
@@ -368,6 +370,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         style_id,
                         index_layer_level: layer_level as i8,
                         styled_range_info,
+                        jj: None
                     }));
                 } else {
                     let double_style = match &kind {
@@ -393,6 +396,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         style_id,
                         index_layer_level: layer_level as i8,
                         styled_range_info: StyledRangeInfo::new(if double_style { 0 } else { 1 }, skip_preview),
+                        jj
                     }));
                 }
 
