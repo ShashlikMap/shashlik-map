@@ -1,9 +1,10 @@
+use crate::tiles::{
+    ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapPointInfo,
+    ShashlikMapPointObjectKind, ShashlikNatureKind, ShashlikPopAreaInfo, ShashlikWayInfo,
+};
 use fast_mvt::{MvtFeatureRef, MvtLayerRef, MvtValue};
 use log::error;
-use osm::map::{
-    HighwayKind, LayerKind, LineKind, MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo,
-    MapPointObjectKind, NatureKind, PopAreaInfo, RailwayKind, WayInfo,
-};
+use osm::map::{HighwayKind, LayerKind, LineKind, MapGeometry, RailwayKind};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -38,9 +39,9 @@ impl MvtSchemeParser {
                 if ramp {
                     highway_tag = format!("{highway_kind_name}_link");
                 }
-                HighwayKind::from_descr(highway_tag.as_str()).map(|kind| MapGeomObject {
+                HighwayKind::from_descr(highway_tag.as_str()).map(|kind| ShashlikMapGeomObject {
                     id: -1,
-                    kind: MapGeomObjectKind::Way(WayInfo {
+                    kind: ShashlikMapGeomObjectKind::Way(ShashlikWayInfo {
                         line_kind: LineKind::Highway { kind },
                         layer: if brunnel { road_layer as i32 } else { 0 },
                         layer_kind: LayerKind::None,
@@ -54,9 +55,9 @@ impl MvtSchemeParser {
             let name_en: String = handler.get_prop_value("name:en");
             let name: String = handler.get_prop_value("name");
 
-            Some(MapGeomObject {
+            Some(ShashlikMapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Way(WayInfo {
+                kind: ShashlikMapGeomObjectKind::Way(ShashlikWayInfo {
                     line_kind: LineKind::Label,
                     layer: 0,
                     layer_kind: LayerKind::None,
@@ -66,30 +67,30 @@ impl MvtSchemeParser {
         });
 
         let water_handler = MvtPropHandler::new("water", |_| {
-            Some(MapGeomObject {
+            Some(ShashlikMapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Nature(NatureKind::Water),
+                kind: ShashlikMapGeomObjectKind::Nature(ShashlikNatureKind::Water),
             })
         });
 
         let forest_handler = MvtPropHandler::new("forest", |_| {
-            Some(MapGeomObject {
+            Some(ShashlikMapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Nature(NatureKind::Forest),
+                kind: ShashlikMapGeomObjectKind::Nature(ShashlikNatureKind::Forest),
             })
         });
 
         let wood_handler = MvtPropHandler::new("wood", |_| {
-            Some(MapGeomObject {
+            Some(ShashlikMapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Nature(NatureKind::Forest),
+                kind: ShashlikMapGeomObjectKind::Nature(ShashlikNatureKind::Forest),
             })
         });
 
         let grass_handler = MvtPropHandler::new("grass", |_| {
-            Some(MapGeomObject {
+            Some(ShashlikMapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Nature(NatureKind::Park),
+                kind: ShashlikMapGeomObjectKind::Nature(ShashlikNatureKind::Park),
             })
         });
 
@@ -99,10 +100,12 @@ impl MvtSchemeParser {
             // fyi, so far we don't support
             let height_min: i64 = handler.get_prop_value("height_min");
             let underground: bool = handler.get_prop_value("underground");
-            (!underground && height_min == 0).then_some(MapGeomObject {
+            (!underground && height_min == 0).then_some(ShashlikMapGeomObject {
                 id: -1,
                 // fyi, 3 - koef to convert map tiler height to osm levels, 2 - feature processor multiplier
-                kind: MapGeomObjectKind::Building(((height / (3 * 2)) as u16).clamp(0, 100)),
+                kind: ShashlikMapGeomObjectKind::Building(
+                    ((height / (3 * 2)) as u16).clamp(0, 100),
+                ),
             })
         });
 
@@ -111,13 +114,14 @@ impl MvtSchemeParser {
             let subclass: String = handler.get_prop_value("subclass");
 
             match (class.as_str(), subclass.as_str()) {
-                ("street", "toilets") => Some(MapPointObjectKind::Toilet),
-                ("street", "traffic_signals") => Some(MapPointObjectKind::TrafficLight),
+                ("street", "toilets") => Some(ShashlikMapPointObjectKind::Toilet),
+                ("street", "traffic_signals") => Some(ShashlikMapPointObjectKind::TrafficLight),
+                ("street", "crossing") => Some(ShashlikMapPointObjectKind::Crossing),
                 _ => None,
             }
-            .map(|kind| MapGeomObject {
+            .map(|kind| ShashlikMapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Poi(MapPointInfo {
+                kind: ShashlikMapGeomObjectKind::Poi(ShashlikMapPointInfo {
                     text: "".to_string(),
                     kind,
                 }),
@@ -131,13 +135,17 @@ impl MvtSchemeParser {
             let name: String = handler.get_prop_value("name:en");
 
             match (agg_stop, class.as_str(), subclass.as_str()) {
-                (true, "railway", "station") => Some(MapPointObjectKind::TrainStation(true)),
-                (true, "railway", "subway") => Some(MapPointObjectKind::TrainStation(false)),
+                (true, "railway", "station") => {
+                    Some(ShashlikMapPointObjectKind::TrainStation(true))
+                }
+                (true, "railway", "subway") => {
+                    Some(ShashlikMapPointObjectKind::TrainStation(false))
+                }
                 _ => None,
             }
-            .map(|kind| MapGeomObject {
+            .map(|kind| ShashlikMapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Poi(MapPointInfo { text: name, kind }),
+                kind: ShashlikMapGeomObjectKind::Poi(ShashlikMapPointInfo { text: name, kind }),
             })
         });
 
@@ -146,13 +154,13 @@ impl MvtSchemeParser {
             let subclass: String = handler.get_prop_value("subclass");
 
             match (class.as_str(), subclass.as_str()) {
-                ("parking", "parking") => Some(MapPointObjectKind::Parking),
-                ("fuel", "charging_station") => Some(MapPointObjectKind::EVCharging),
+                ("parking", "parking") => Some(ShashlikMapPointObjectKind::Parking),
+                ("fuel", "charging_station") => Some(ShashlikMapPointObjectKind::EVCharging),
                 _ => None,
             }
-            .map(|kind| MapGeomObject {
+            .map(|kind| ShashlikMapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Poi(MapPointInfo {
+                kind: ShashlikMapGeomObjectKind::Poi(ShashlikMapPointInfo {
                     text: "".to_string(),
                     kind,
                 }),
@@ -163,11 +171,11 @@ impl MvtSchemeParser {
             let name_en: String = handler.get_prop_value("name:en");
             let name: String = handler.get_prop_value("name");
 
-            Some(MapGeomObject {
+            Some(ShashlikMapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Poi(MapPointInfo {
+                kind: ShashlikMapGeomObjectKind::Poi(ShashlikMapPointInfo {
                     text: if name_en.is_empty() { name } else { name_en },
-                    kind: MapPointObjectKind::PopArea(PopAreaInfo {
+                    kind: ShashlikMapPointObjectKind::PopArea(ShashlikPopAreaInfo {
                         level: 0,
                         population: 0,
                     }),
@@ -180,17 +188,17 @@ impl MvtSchemeParser {
 
         let country_border_handler = MvtPropHandler::new("country_border", |handler| {
             let maritime: bool = handler.get_prop_value("maritime");
-            (!maritime).then_some(MapGeomObject {
+            (!maritime).then_some(ShashlikMapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::AdminLine,
+                kind: ShashlikMapGeomObjectKind::AdminLine,
             })
         });
 
         let railway_handler = MvtPropHandler::new("railway", |handler| {
             let class: String = handler.get_prop_value("class");
-            (class == "rail" || class == "monorail").then_some(MapGeomObject {
+            (class == "rail" || class == "monorail").then_some(ShashlikMapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Way(WayInfo {
+                kind: ShashlikMapGeomObjectKind::Way(ShashlikWayInfo {
                     line_kind: LineKind::Railway {
                         kind: RailwayKind::Rail,
                     },
@@ -232,7 +240,7 @@ impl MvtSchemeParser {
         &self,
         layers: impl Iterator<Item = MvtLayerRef<'b>>,
         geom_builder: F,
-    ) -> Vec<(MapGeomObject, MapGeometry<i32>)>
+    ) -> Vec<(ShashlikMapGeomObject, MapGeometry<i32>)>
     where
         F: Fn(&MvtFeatureRef) -> Vec<MapGeometry<i32>>,
     {
@@ -256,14 +264,14 @@ impl MvtSchemeParser {
 #[derive(Clone)]
 struct MvtPropHandler {
     layer: &'static str,
-    builder: Arc<dyn Fn(&Self) -> Option<MapGeomObject> + Send + Sync>,
+    builder: Arc<dyn Fn(&Self) -> Option<ShashlikMapGeomObject> + Send + Sync>,
     map: HashMap<String, MvtValue>,
 }
 
 impl MvtPropHandler {
     pub fn new<F>(layer: &'static str, builder: F) -> Self
     where
-        F: Fn(&Self) -> Option<MapGeomObject> + Send + Sync + 'static,
+        F: Fn(&Self) -> Option<ShashlikMapGeomObject> + Send + Sync + 'static,
     {
         Self {
             layer,
@@ -280,7 +288,7 @@ impl MvtPropHandler {
         &mut self,
         feature: &MvtFeatureRef<'_>,
         geom_builder: &F,
-    ) -> Vec<(MapGeomObject, MapGeometry<i32>)>
+    ) -> Vec<(ShashlikMapGeomObject, MapGeometry<i32>)>
     where
         F: Fn(&MvtFeatureRef) -> Vec<MapGeometry<i32>>,
     {

@@ -1,9 +1,10 @@
+use crate::tiles::ShashlikMapGeomObject;
 use crate::tiles::mvt::mvt_scheme_parser::MvtSchemeParser;
 use crate::tiles::tile_parser::TileParser;
 use fast_mvt::proto::GeomType;
 use fast_mvt::{MvtReaderRef, MvtResult};
 use geo_types::{Geometry, LineString, Point, Polygon, coord};
-use osm::map::{MapGeomObject, MapGeometry};
+use osm::map::MapGeometry;
 use osm::tiles::TileKey;
 
 pub struct MvtParser {
@@ -56,13 +57,13 @@ impl MvtParser {
         &self,
         bytes: &[u8],
         tile_key: &TileKey,
-    ) -> MvtResult<Vec<(MapGeomObject, MapGeometry<f32>)>> {
+    ) -> MvtResult<Vec<(ShashlikMapGeomObject, MapGeometry<f32>)>> {
         Ok(self.parse_tile(bytes, 4096.0, tile_key))
     }
 }
 
 impl TileParser<&[u8]> for MvtParser {
-    fn parse_tile_inner(&self, data: &[u8]) -> Vec<(MapGeomObject, MapGeometry<i32>)> {
+    fn parse_tile_inner(&self, data: &[u8]) -> Vec<(ShashlikMapGeomObject, MapGeometry<i32>)> {
         let mut result = vec![];
         if let Ok(reader) = MvtReaderRef::new(data) {
             result = self.schema_parser.parse(reader.layers(), |feature| {

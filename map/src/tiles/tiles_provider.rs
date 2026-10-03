@@ -1,15 +1,16 @@
+use crate::tiles::ShashlikMapGeomObject;
 use crate::tiles::tile_data::TileData;
 use futures::Stream;
 use geo::{CoordsIter, Scale};
 use geo_types::{Coord, Polygon, Rect, coord};
 use glam::DVec3;
 use googleprojection::Mercator;
-use osm::map::{MapGeomObject, MapGeometry};
+use osm::map::MapGeometry;
 use osm::tiles::TileKey;
+use renderer_common::MAP_SIZE;
 use std::collections::HashSet;
 use std::f64::consts::PI;
 use std::sync::Arc;
-use renderer_common::MAP_SIZE;
 
 pub enum TilesMessage {
     TilesData(Vec<TileData>),
@@ -112,7 +113,7 @@ pub trait TilesProviderStore: MercatorConverter {
 
         (tile_position, bbox)
     }
-    fn load(&self, tile_key: &TileKey) -> Vec<(MapGeomObject, MapGeometry<f32>)>;
+    fn load(&self, tile_key: &TileKey) -> Vec<(ShashlikMapGeomObject, MapGeometry<f32>)>;
 
     fn mercator_meters_to_512_tile(&self, mx: f64, my: f64, zoom: u32) -> (i32, u32) {
         let norm_x = (mx) / MAP_SIZE;

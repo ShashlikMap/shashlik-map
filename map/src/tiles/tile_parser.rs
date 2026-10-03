@@ -1,18 +1,19 @@
 use crate::MAX_ZOOM_LEVEL;
+use crate::tiles::ShashlikMapGeomObject;
 use geo::MapCoords;
 use geo_types::Coord;
-use osm::map::{MapGeomObject, MapGeometry};
+use osm::map::MapGeometry;
 use osm::tiles::TileKey;
 
 pub(crate) trait TileParser<T> {
-    fn parse_tile_inner(&self, data: T) -> Vec<(MapGeomObject, MapGeometry<i32>)>;
+    fn parse_tile_inner(&self, data: T) -> Vec<(ShashlikMapGeomObject, MapGeometry<i32>)>;
 
     fn parse_tile(
         &self,
         data: T,
         extent: f32,
         tile_key: &TileKey,
-    ) -> Vec<(MapGeomObject, MapGeometry<f32>)> {
+    ) -> Vec<(ShashlikMapGeomObject, MapGeometry<f32>)> {
         let mut result = self.parse_tile_inner(data);
         result.sort_by(|(a, _), (b, _)| a.cmp(b));
         let fixed = result

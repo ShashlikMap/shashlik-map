@@ -6,7 +6,7 @@ use geo::{Area, Convert };
 use geo::Winding;
 use geo_types::{coord, Coord, LineString, Rect, Polygon};
 use log::error;
-use osm::map::{MapGeomObject, MapGeomObjectKind, MapGeometry, MapPointInfo};
+use osm::map::{MapGeometry};
 use osm::tiles::{TileKey, TileStore};
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
@@ -17,21 +17,20 @@ use std::sync::{Arc, RwLock};
 use std::thread::spawn;
 use std::time::{SystemTime};
 use googleprojection::Mercator;
-use osm::map::NatureKind::Water;
 use osm::source::reqwest_source::ReqwestSource;
 use renderer_common::TilesType;
 use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::grid_divider::subdivide_grid;
 use crate::tiles::mvt::mvt_tile_store::MvtTileStore;
 use crate::tiles::shashlik_v1::ShashlikV1TileStore;
-
+use crate::tiles::{ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapPointInfo, ShashlikNatureKind};
 
 pub trait FeatureProcessor: Send + Sync {
     fn process_poi(
         &self,
         id: i64,
         geometry_data: &mut Vec<GeometryData>,
-        poi: &MapPointInfo,
+        poi: &ShashlikMapPointInfo,
         zoom_level: i32,
         local_position: &geo::Coord,
         dpi_scale: f32,
@@ -43,7 +42,7 @@ pub trait FeatureProcessor: Send + Sync {
         geometry_data: &mut Vec<GeometryData>,
         line: LineString<f32>,
         interiors: Vec<LineString<f32>>,
-        kind: MapGeomObjectKind,
+        kind: ShashlikMapGeomObjectKind,
         zoom_level: i32,
         dpi_scale: f32,
     );
@@ -119,9 +118,9 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         if geom.is_empty() {
             let fake_water_rectangle = Rect::new(coord! { x: 0.0, y: -bbox.max().y as f32},
                                                  coord! { x: bbox.max().x as f32, y: 0.0 });
-            geom.push((MapGeomObject {
+            geom.push((ShashlikMapGeomObject {
                 id: -1,
-                kind: MapGeomObjectKind::Nature(Water),
+                kind: ShashlikMapGeomObjectKind::Nature(ShashlikNatureKind::Water),
             }, MapGeometry::Poly(fake_water_rectangle.to_polygon())))
         }
 
@@ -131,7 +130,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                 MapGeometry::Coord(coord) => {
                     let local_position = coord! { x: coord.x as f64, y: coord.y as f64};
                     match &obj_type.kind {
-                        MapGeomObjectKind::Poi(poi) => {
+                        ShashlikMapGeomObjectKind::Poi(poi) => {
                             feature_processor.process_poi(
                                 obj_type.id,
                                 &mut geometry_data,
@@ -156,8 +155,8 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                     );
                 }
                 MapGeometry::Poly(poly) => {
-                    let is_building = matches!(obj_type.kind, MapGeomObjectKind::Building(_));
-                    let is_water = matches!(obj_type.kind, MapGeomObjectKind::Nature(Water));
+                    let is_building = matches!(obj_type.kind, ShashlikMapGeomObjectKind::Building(_));
+                    let is_water = matches!(obj_type.kind, ShashlikMapGeomObjectKind::Nature(ShashlikNatureKind::Water));
                     let is_visible = !cfg!(target_os = "linux")
                         || zoom_level == MAX_ZOOM_LEVEL
                         // reduce amount of buildings for linux
