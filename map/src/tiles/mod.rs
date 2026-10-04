@@ -1,5 +1,5 @@
 use derivative::Derivative;
-use osm::map::{LayerKind, LineKind, MapGeomObject};
+use osm::map::{LayerKind, LineKind};
 use std::cmp::Ordering;
 
 pub mod default_tiles_provider;

@@ -42,6 +42,9 @@ http-cache-reqwest = "0.16.0"
 
 tiles = { git = "https://github.com/ShashlikMap/shashlik-tiles", rev = "e8b0dbc" }
 tokio = "1.53.1"
+serde = { version = "1.0.229", features = ["derive"] }
+thiserror = "2.0.20"
+error-stack = { workspace = true }
 
 [build-dependencies]
 anyhow = "1.0"
