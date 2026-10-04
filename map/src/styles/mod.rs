@@ -18,7 +18,8 @@ pub enum FeatureStyleType {
 #[derive(Deserialize)]
 pub enum DashStyle {
     Solid,
-    Circles
+    Circles,
+    TDash // dash pattern across line
 }
 
 #[derive(Deserialize)]
