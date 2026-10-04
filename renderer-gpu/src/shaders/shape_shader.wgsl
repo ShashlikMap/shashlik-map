@@ -254,7 +254,7 @@ fn circle(st: vec2f, radius: f32) -> f32 {
 }
 
 // TODO pass as a parameter?
-const T_DASH_FACTOR: f32 = 30.0;
+const T_DASH_FACTOR: f32 = 40.0;
 fn dashed_style(uv_dist: vec3f, color1: vec4f, color2: vec4f, dash_style: u32) -> vec4<f32> {
     let fill_color = color1;
     let dash_color = color2;
@@ -273,7 +273,7 @@ fn dashed_style(uv_dist: vec3f, color1: vec4f, color2: vec4f, dash_style: u32) -
             // uv_dist.x - is a side dist in 0.0..1.0 range
             // converted to -1.0..1.0 range
             let u = (uv_dist.x - 0.5) * 2.0;
-            return dash_solid(camera.p2_scale, T_DASH_FACTOR * u, dash_color, fill_color);
+            return dash_solid(1.0, T_DASH_FACTOR * u, dash_color, fill_color);
         }
     }
 }

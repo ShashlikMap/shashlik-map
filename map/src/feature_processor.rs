@@ -10,13 +10,14 @@ use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, Geometry
 use renderer_common::style_id::StyleId;
 use capitalize::Capitalize;
 use geo::Scale;
+use lyon::algorithms::measure::{PathMeasurements, SampleType};
 use lyon::geom::euclid::{point2, Box2D};
 use lyon::lyon_tessellation::{LineCap, LineJoin};
 use lyon::path::builder::BorderRadii;
 use rand::RngExt;
 use renderer_common::geometry_data::IconType::SvgBinary;
 use crate::MAX_ZOOM_LEVEL;
-use crate::tiles::{ShashlikMapGeomObjectKind, ShashlikMapPointInfo, ShashlikMapPointObjectKind, ShashlikNatureKind};
+use crate::tiles::{ShashlikMapGeomObjectKind, ShashlikMapLinearRef, ShashlikMapPointInfo, ShashlikMapPointObjectKind, ShashlikNatureKind};
 
 pub struct ShashlikFeatureProcessor {
     include_extruded: bool,
@@ -47,7 +48,7 @@ impl ShashlikFeatureProcessor {
     const TOILETS_SVG: &'static [u8] = include_bytes!("../svg/toilet.svg");
     const TRAIN_STATION_SVG: &'static [u8] = include_bytes!("../svg/train_station.svg");
     const EV_STATION_SVG: &'static [u8] = include_bytes!("../svg/ev_station.svg");
-    const CROSSING_SVG: &'static [u8] = include_bytes!("../svg/pedestrian-crossing.svg");
+    // const CROSSING_SVG: &'static [u8] = include_bytes!("../svg/pedestrian-crossing.svg");
     pub fn new(include_extruded: bool,
                data_filter: fn(zoom_level: i32, kind: &ShashlikMapGeomObjectKind) -> bool) -> Self {
         ShashlikFeatureProcessor {
@@ -129,7 +130,9 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             ShashlikMapPointObjectKind::Parking => Some(("parking", Self::PARKING_SVG)),
             ShashlikMapPointObjectKind::EVCharging => Some(("ev_station", Self::EV_STATION_SVG)),
             ShashlikMapPointObjectKind::PopArea(..) => None,
-            ShashlikMapPointObjectKind::Crossing => Some(("crossing", Self::CROSSING_SVG)),
+            // we skip crossing since we need only to calculate linear refs, but it happens before,
+            // in future we should have it at all as a POI representation
+            ShashlikMapPointObjectKind::Crossing => None,
         };
         if let Some(icon) = icon {
             let style_id = match poi.kind {
@@ -216,7 +219,10 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             if !(self.data_filter)(MAX_ZOOM_LEVEL - zoom_level, &kind) {
                 return;
             }
-            if let Some((style_id, layer_level, geometry_type, name)) = match &kind {
+            if let Some((style_id,
+                            layer_level,
+                            geometry_type,
+                            name)) = match &kind {
                 ShashlikMapGeomObjectKind::Way(info) => match info.line_kind {
                     LineKind::Highway { kind } => {
                         if kind != HighwayKind::Footway {
@@ -366,7 +372,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         path: building_path,
                         geometry_type,
                         style_id,
-                        index_layer_level: layer_level as i8,
+                        index_layer_level: layer_level as i16,
                         styled_range_info,
                     }));
                 } else {
@@ -385,14 +391,55 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         }
                         _ => { zoom_level < 1 }
                     };
-                    let skip_preview = matches!(kind, ShashlikMapGeomObjectKind::Building(_));
+
+                    // creating a bucket(10 sub-layers) for each layer so we can add some associated data atop of the layer.
+                    // we need to add markings, but it's not possible now to mix different instance_offset for the same layer
+                    let layer_level= if layer_level >= 0 {
+                        layer_level * 10
+                    } else {
+                        layer_level
+                    } as i16;
+
+                    let path = path_builder.build();
+
+                    match &kind {
+                        ShashlikMapGeomObjectKind::Way(info) => {
+                            if !info.linear_refs.is_empty() {
+                                let path_measure = PathMeasurements::from_path(&path, 1.0);
+                                let mut path_sampler = path_measure.create_sampler(&path, SampleType::Normalized);
+                                info.linear_refs.iter().cloned().for_each(|linear_ref| {
+                                    match linear_ref {
+                                        ShashlikMapLinearRef::Crossing(s_value) => {
+                                            let mut builder = Path::builder();
+                                            let len = 0.65 * (1.0 / path_measure.length());
+                                            // don't exceed start
+                                            let start = (s_value - len).clamp(len, 1.0 - len);
+                                            // don't exceed end
+                                            let end = (s_value + len).clamp(len, 1.0 - len);
+                                            path_sampler.split_range(start..end, &mut builder);
+                                            let temp_path = builder.build();
+
+                                            geometry_data.push(GeometryData::Shape(ShapeData {
+                                                path: temp_path,
+                                                geometry_type,
+                                                style_id: StyleId::new("crossing_mark"),
+                                                index_layer_level: layer_level + 1, // one layer up than road layer
+                                                styled_range_info: StyledRangeInfo::new(1, true),
+                                            }));
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                        _ => {}
+                    }
 
                     geometry_data.push(GeometryData::Shape(ShapeData {
-                        path: path_builder.build(),
+                        path,
                         geometry_type,
                         style_id,
-                        index_layer_level: layer_level as i8,
-                        styled_range_info: StyledRangeInfo::new(if double_style { 0 } else { 1 }, skip_preview),
+                        index_layer_level: layer_level,
+                        styled_range_info: StyledRangeInfo::new(if double_style { 0 } else { 1 }, false),
                     }));
                 }
 

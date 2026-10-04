@@ -46,6 +46,7 @@ impl MvtSchemeParser {
                         layer: if brunnel { road_layer as i32 } else { 0 },
                         layer_kind: LayerKind::None,
                         name_en: None,
+                        linear_refs: vec![]
                     }),
                 })
             })
@@ -62,6 +63,7 @@ impl MvtSchemeParser {
                     layer: 0,
                     layer_kind: LayerKind::None,
                     name_en: Some(if name_en.is_empty() { name } else { name_en }),
+                    linear_refs: vec![]
                 }),
             })
         });
@@ -205,6 +207,7 @@ impl MvtSchemeParser {
                     layer: 0,
                     layer_kind: LayerKind::None,
                     name_en: None,
+                    linear_refs: vec![]
                 }),
             })
         });

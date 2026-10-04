@@ -5,11 +5,13 @@ use log::error;
 use osm::map::{MapGeometry};
 use reqwest::header::{HeaderMap, HeaderValue, ORIGIN};
 use std::time::{Duration, SystemTime};
+use geo::{Distance, Euclidean, LineLocatePoint};
+use geo_types::Point;
 use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache, HttpCacheOptions};
 use osm::tiles::TileKey;
 use reqwest_middleware::ClientWithMiddleware;
 use tokio::runtime::Runtime;
-use crate::tiles::ShashlikMapGeomObject;
+use crate::tiles::{ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapLinearRef, ShashlikMapPointObjectKind};
 
 const HTTP_CACHE_ENABLED: bool = true;
 
@@ -93,8 +95,56 @@ impl TilesProviderStore for MvtTileStore {
         let data = self
             .fetch_tile(tile_key.tile_x, tile_key.tile_y, tile_key.zoom_level)
             .unwrap_or_default();
-        self.mvt_parser
+        let mut data = self.mvt_parser
             .read_mvt_tile(data.as_slice(), tile_key)
-            .unwrap_or_default()
+            .unwrap_or_default();
+
+        if tile_key.zoom_level < 15 {
+            return data
+        }
+
+        // TODO This is temporary solution since MapTiler doesn't have LinearRefs for roads/lines.
+        // Only for 15 zoom level
+        let crossing_points: Vec<_> = data.iter().filter_map(|(obj, geom)| {
+            match &obj.kind {
+                ShashlikMapGeomObjectKind::Poi(data) => {
+                    match data.kind {
+                        ShashlikMapPointObjectKind::Crossing => {
+                            Some(geom.coord().clone())
+                        }
+                        _ => None
+                    }
+                }
+                _ => None
+            }
+        }).collect();
+
+        if crossing_points.is_empty() {
+            return data;
+        }
+
+        // TODO This is temporary solution to find linear refs and inject them into ways
+        data.iter_mut().for_each(|(obj, geom)| {
+            match &mut obj.kind {
+                ShashlikMapGeomObjectKind::Way(info) => {
+                    info.linear_refs = crossing_points.iter().filter_map(|q| {
+                        let line = geom.line_string();
+                        let dist_to_point = Euclidean.distance(line, &Point::from(*q));
+                        // this is simple condition since, we don't care about precision and the fact the some marks will be missing for POC
+                        if dist_to_point == 0.0 && info.layer >= 0 {
+                            if let Some(linear_ref) = line.line_locate_point(&Point::from(*q)) {
+                                Some(ShashlikMapLinearRef::Crossing(linear_ref))
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    }).collect();
+                }
+                _ => {}
+            }
+        });
+        data
     }
 }
