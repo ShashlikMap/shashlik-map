@@ -77,6 +77,7 @@ pub struct ShapeData {
     pub style_id: StyleId,
     pub index_layer_level: i8,
     pub styled_range_info: StyledRangeInfo,
+    pub jj: Option<f32>
 }
 
 pub struct ExtrudedPolygonData {

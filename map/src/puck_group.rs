@@ -15,7 +15,8 @@ impl <T: CanvasApi> RenderGroup<T> for SimplePuck {
                 geometry_type: GeometryType::Polygon,
                 style_id: StyleId::new("ground"),
                 index_layer_level: 0,
-                styled_range_info: StyledRangeInfo::new(1, false)
+                styled_range_info: StyledRangeInfo::new(1, false),
+                jj: None
             },
         ));
         canvas.geometry_data(GeometryData::Shape(
@@ -24,7 +25,8 @@ impl <T: CanvasApi> RenderGroup<T> for SimplePuck {
                 geometry_type: GeometryType::Polygon,
                 style_id: StyleId::new("puck_style"),
                 index_layer_level: 0,
-                styled_range_info: StyledRangeInfo::new(1, false)
+                styled_range_info: StyledRangeInfo::new(1, false),
+                jj: None
             },
         ));
     }

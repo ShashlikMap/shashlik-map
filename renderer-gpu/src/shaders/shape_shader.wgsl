@@ -74,7 +74,10 @@ fn fill_styles(out: ptr<function,VertexOutput>, style_index: u32, scale: f32, ou
             }
         }
         case shape_styles::STYLE_DASH: {
-            (*out).style_type_subtype.y = u32(header[1]); // 0: solid, 1: circle
+            (*out).style_type_subtype.y = u32(header[1]); // 0: solid, 1: circle, 2: ...
+            if(outline_flag == 0 && u32(header[1]) == 2) {
+                (*out).style_type_subtype.x = 0;
+            }
             (*out).style_color_2 = styles[style_index + 2];
         }
         default : {}
@@ -261,6 +264,9 @@ fn dashed_style(uv_dist: vec3f, color1: vec4f, color2: vec4f, dash_style: u32) -
         let cirlce_alpha0 = circle(uv_dist.xy, 0.85);
         let cirlce_alpha1 = circle(uv_dist.xy, 0.45);
         return mix(vec4(fill_color.rgb, cirlce_alpha0), vec4(dash_color.rgb, cirlce_alpha1), cirlce_alpha1);
+    } else if(dash_style == 2) {
+        let xx = (uv_dist.x - 0.5) * 2.0;
+        return dash_solid2(30.0 * xx + 2.0, dash_color, fill_color);
     } else {
         // uv_dist.z - is a distance
         return dash_solid(uv_dist.z, dash_color, fill_color);
@@ -270,6 +276,14 @@ fn dashed_style(uv_dist: vec3f, color1: vec4f, color2: vec4f, dash_style: u32) -
 const freq = 0.5; // the less the longer dashes
 fn dash_solid(dist: f32, extra_color: vec4f, main_color: vec4f) -> vec4f {
     let p2_scale = camera.p2_scale;
+    // prevents dash to be too short when a line width longer than a default dash
+    let freq_fixed = select(freq, freq * 0.2 * p2_scale, p2_scale <= 2.0);
+    let dash = step(0.5, fract(dist * freq_fixed));
+    return select(main_color, extra_color, dash <= 0.0);
+}
+
+fn dash_solid2(dist: f32, extra_color: vec4f, main_color: vec4f) -> vec4f {
+    let p2_scale = 1.0; //camera.p2_scale;
     // prevents dash to be too short when a line width longer than a default dash
     let freq_fixed = select(freq, freq * 0.2 * p2_scale, p2_scale <= 2.0);
     let dash = step(0.5, fract(dist * freq_fixed));
