@@ -55,7 +55,8 @@ impl RenderStyle {
         if self.header[0] == 2.0 {
             vec![self.header, self.color_1, self.color_2]
         } else {
-            vec![self.header, self.color_1]
+            // FIXME it should be vec![self.header, self.color_1] but there is a bug with storage buffer length calc
+            vec![self.header, self.color_1, self.color_2]
         }
     }
 }

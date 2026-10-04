@@ -34,7 +34,7 @@ pub struct GpuCanvasApi {
     flushed: bool,
     draw_commands: Vec<Box<dyn DrawCommand>>,
     shapes: Vec<ShapeData>,
-    indices_by_layers: BTreeMap<i8, Vec<StyledRange>>,
+    indices_by_layers: BTreeMap<i16, Vec<StyledRange>>,
     geometry3d: VertexBuffers<MeshVertex, u32>,
     text_vec: Vec<TextData>,
     // consider to add more fields to the cache key
@@ -303,7 +303,7 @@ impl GpuCanvasApi {
         
         let ranges = self
             .indices_by_layers
-            .entry(data.index_layer_level)
+            .entry(data.index_layer_level as i16)
             .or_insert(Vec::new());
         if let Some(last) = ranges.last_mut()
             && last.0.end == initial_index

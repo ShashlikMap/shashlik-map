@@ -75,7 +75,7 @@ pub struct ShapeData {
     pub path: Path,
     pub geometry_type: GeometryType,
     pub style_id: StyleId,
-    pub index_layer_level: i8,
+    pub index_layer_level: i16,
     pub styled_range_info: StyledRangeInfo,
 }
 

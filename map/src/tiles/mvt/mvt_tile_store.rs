@@ -95,12 +95,17 @@ impl TilesProviderStore for MvtTileStore {
         let data = self
             .fetch_tile(tile_key.tile_x, tile_key.tile_y, tile_key.zoom_level)
             .unwrap_or_default();
-        let r = self.mvt_parser
+        let mut data = self.mvt_parser
             .read_mvt_tile(data.as_slice(), tile_key)
             .unwrap_or_default();
 
+        if tile_key.zoom_level < 15 {
+            return data
+        }
 
-        let cxs: Vec<_> = r.iter().filter_map(|(obj, geom)| {
+        // TODO This is temporary solution since MapTiler doesn't have LinearRefs for roads/lines.
+        // Only for 15 zoom level
+        let crossing_points: Vec<_> = data.iter().filter_map(|(obj, geom)| {
             match &obj.kind {
                 ShashlikMapGeomObjectKind::Poi(data) => {
                     match data.kind {
@@ -114,15 +119,20 @@ impl TilesProviderStore for MvtTileStore {
             }
         }).collect();
 
-        r.into_iter().map(|(obj, geom)| {
-            match obj.kind {
-                ShashlikMapGeomObjectKind::Way(mut info) => {
-                    let refs: Vec<_> = cxs.iter().filter_map(|q| {
+        if crossing_points.is_empty() {
+            return data;
+        }
+
+        // TODO This is temporary solution to find linear refs and inject them into ways
+        data.iter_mut().for_each(|(obj, geom)| {
+            match &mut obj.kind {
+                ShashlikMapGeomObjectKind::Way(info) => {
+                    info.linear_refs = crossing_points.iter().filter_map(|q| {
                         let line = geom.line_string();
-                        let qq = Euclidean.distance(line, &Point::from(*q));
-                        if qq == 0.0 {
-                            if let Some(pp) = line.line_locate_point(&Point::from(*q)) {
-                                Some(ShashlikMapLinearRef::Crossing(pp))
+                        let dist_to_point = Euclidean.distance(line, &Point::from(*q));
+                        if dist_to_point == 0.0 {
+                            if let Some(linear_ref) = line.line_locate_point(&Point::from(*q)) {
+                                Some(ShashlikMapLinearRef::Crossing(linear_ref))
                             } else {
                                 None
                             }
@@ -130,15 +140,10 @@ impl TilesProviderStore for MvtTileStore {
                             None
                         }
                     }).collect();
-                    info.linear_refs = refs;
-                    let qq = ShashlikMapGeomObject {
-                        id: obj.id,
-                        kind: ShashlikMapGeomObjectKind::Way(info),
-                    };
-                    (qq, geom)
                 }
-                _ => (obj, geom)
+                _ => {}
             }
-        }).collect()
+        });
+        data
     }
 }
