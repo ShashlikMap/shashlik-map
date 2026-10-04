@@ -410,10 +410,10 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         ShashlikMapGeomObjectKind::Way(info) => {
                             if !info.linear_refs.is_empty() {
                                 let pm = PathMeasurements::from_path(&path, 1.0);
+                                let mut ss = pm.create_sampler(&path, SampleType::Normalized);
                                 info.linear_refs.iter().cloned().for_each(|linear_ref| {
                                     match linear_ref {
                                         ShashlikMapLinearRef::Crossing(jj) => {
-                                            let mut ss = pm.create_sampler(&path, SampleType::Normalized);
                                             let mut npb = Path::builder();
                                             let len = 0.75 * (1.0 / pm.length());
                                             let jj = if jj > 0.75 {

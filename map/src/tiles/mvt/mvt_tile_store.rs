@@ -5,11 +5,13 @@ use log::error;
 use osm::map::{MapGeometry};
 use reqwest::header::{HeaderMap, HeaderValue, ORIGIN};
 use std::time::{Duration, SystemTime};
+use geo::{Distance, Euclidean, LineLocatePoint};
+use geo_types::Point;
 use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache, HttpCacheOptions};
 use osm::tiles::TileKey;
 use reqwest_middleware::ClientWithMiddleware;
 use tokio::runtime::Runtime;
-use crate::tiles::ShashlikMapGeomObject;
+use crate::tiles::{ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapLinearRef, ShashlikMapPointObjectKind};
 
 const HTTP_CACHE_ENABLED: bool = true;
 
@@ -93,8 +95,50 @@ impl TilesProviderStore for MvtTileStore {
         let data = self
             .fetch_tile(tile_key.tile_x, tile_key.tile_y, tile_key.zoom_level)
             .unwrap_or_default();
-        self.mvt_parser
+        let r = self.mvt_parser
             .read_mvt_tile(data.as_slice(), tile_key)
-            .unwrap_or_default()
+            .unwrap_or_default();
+
+
+        let cxs: Vec<_> = r.iter().filter_map(|(obj, geom)| {
+            match &obj.kind {
+                ShashlikMapGeomObjectKind::Poi(data) => {
+                    match data.kind {
+                        ShashlikMapPointObjectKind::Crossing => {
+                            Some(geom.coord().clone())
+                        }
+                        _ => None
+                    }
+                }
+                _ => None
+            }
+        }).collect();
+
+        r.into_iter().map(|(obj, geom)| {
+            match obj.kind {
+                ShashlikMapGeomObjectKind::Way(mut info) => {
+                    let refs: Vec<_> = cxs.iter().filter_map(|q| {
+                        let line = geom.line_string();
+                        let qq = Euclidean.distance(line, &Point::from(*q));
+                        if qq == 0.0 {
+                            if let Some(pp) = line.line_locate_point(&Point::from(*q)) {
+                                Some(ShashlikMapLinearRef::Crossing(pp))
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    }).collect();
+                    info.linear_refs = refs;
+                    let qq = ShashlikMapGeomObject {
+                        id: obj.id,
+                        kind: ShashlikMapGeomObjectKind::Way(info),
+                    };
+                    (qq, geom)
+                }
+                _ => (obj, geom)
+            }
+        }).collect()
     }
 }
