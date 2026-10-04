@@ -129,7 +129,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             ShashlikMapPointObjectKind::Parking => Some(("parking", Self::PARKING_SVG)),
             ShashlikMapPointObjectKind::EVCharging => Some(("ev_station", Self::EV_STATION_SVG)),
             ShashlikMapPointObjectKind::PopArea(..) => None,
-            ShashlikMapPointObjectKind::Crossing => Some(("crossing", Self::CROSSING_SVG)),
+            ShashlikMapPointObjectKind::Crossing => None,
         };
         if let Some(icon) = icon {
             let style_id = match poi.kind {

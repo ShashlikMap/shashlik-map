@@ -292,7 +292,24 @@ impl GpuCanvasApi {
                     let mut ss = pm.create_sampler(&data.path, SampleType::Normalized);
                     let mut npb = Path::builder();
                     let len = 0.75 * (1.0 / pm.length());
-                    ss.split_range((jj - len)..(jj + len), &mut npb);
+                    let jj = if jj > 0.75 {
+                        jj - len * 0.5
+                    } else if jj < 0.25 {
+                        jj + len * 0.5
+                    } else {
+                        jj
+                    };
+                    let ls = if jj - len < 0.0 {
+                        len
+                    } else {
+                        jj - len
+                    };
+                    let rs = if jj + len > 1.0 {
+                        len - jj
+                    } else {
+                        jj + len
+                    };
+                    ss.split_range(ls..rs, &mut npb);
                     let temp_path = npb.build();
 
                     self.tessellate_stroke_path(&temp_path, geometry, options, |vertex| {
