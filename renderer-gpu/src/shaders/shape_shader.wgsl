@@ -253,17 +253,28 @@ fn circle(st: vec2f, radius: f32) -> f32 {
                          dot(dist,dist)*4.0);
 }
 
+// TODO pass as a parameter?
+const T_DASH_FACTOR: f32 = 30.0;
 fn dashed_style(uv_dist: vec3f, color1: vec4f, color2: vec4f, dash_style: u32) -> vec4<f32> {
     let fill_color = color1;
     let dash_color = color2;
 
-    if(dash_style == 1) {
-        let cirlce_alpha0 = circle(uv_dist.xy, 0.85);
-        let cirlce_alpha1 = circle(uv_dist.xy, 0.45);
-        return mix(vec4(fill_color.rgb, cirlce_alpha0), vec4(dash_color.rgb, cirlce_alpha1), cirlce_alpha1);
-    } else {
-        // uv_dist.z - is a distance
-        return dash_solid(camera.p2_scale, uv_dist.z, dash_color, fill_color);
+    switch dash_style {
+        case default, shape_styles::SUB_STYLE_SOLID: {
+            // uv_dist.z - is a distance
+            return dash_solid(camera.p2_scale, uv_dist.z, dash_color, fill_color);
+        }
+        case shape_styles::SUB_STYLE_CIRCLE: {
+            let cirlce_alpha0 = circle(uv_dist.xy, 0.85);
+            let cirlce_alpha1 = circle(uv_dist.xy, 0.45);
+            return mix(vec4(fill_color.rgb, cirlce_alpha0), vec4(dash_color.rgb, cirlce_alpha1), cirlce_alpha1);
+        }
+        case shape_styles::SUB_STYLE_TDASH: {
+            // uv_dist.x - is a side dist in 0.0..1.0 range
+            // converted to -1.0..1.0 range
+            let u = (uv_dist.x - 0.5) * 2.0;
+            return dash_solid(camera.p2_scale, T_DASH_FACTOR * u, dash_color, fill_color);
+        }
     }
 }
 
