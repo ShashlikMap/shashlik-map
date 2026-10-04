@@ -12,8 +12,6 @@ use geo_types::{coord, Coord, Point};
 use geo_types::{Polygon};
 use glam::{DMat2, DVec2, DVec3, Vec2, Vec3Swizzles};
 use num::{clamp};
-use osm::styles::style_loader::StyleLoader;
-use osm::styles::{DashStyle, RenderStyle};
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_group::RenderGroup;
 use renderer_common::style_id::StyleId;
@@ -32,6 +30,8 @@ use geo::{BoundingRect, Centroid, Winding};
 use log::error;
 use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData, MAP_SIZE, GLOBE_SCALE};
 use crate::overlay::overlay::Overlay;
+use crate::styles::{DashStyle, FeatureStyleType};
+use crate::styles::style_loader::StyleLoader;
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
 
 mod camera;
@@ -43,6 +43,8 @@ pub mod route;
 pub mod tiles;
 mod transition_2d_3d_helper;
 pub mod overlay;
+
+mod styles;
 
 type CoordConverter = Box<dyn (Fn(&Point) -> Point) + Send>;
 
@@ -587,14 +589,14 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             }
             styles.into_iter().for_each(|style| {
                 let style_id = StyleId::new(style.id);
-                let actual_render_style = match style.render_style {
-                    RenderStyle::Fill(color) => {
+                let actual_render_style = match style.feature_style {
+                    FeatureStyleType::Fill(color) => {
                         renderer_common::render_style::RenderStyle::fill(color.as_array())
                     }
-                    RenderStyle::Border(color, percent) => {
+                    FeatureStyleType::Border(color, percent) => {
                         renderer_common::render_style::RenderStyle::border(color.as_array(), percent)
                     }
-                    RenderStyle::Dashed(color1, color2, dash_style) => {
+                    FeatureStyleType::Dashed(color1, color2, dash_style) => {
                         let dash_style_value = match dash_style {
                             DashStyle::Solid => 0,
                             DashStyle::Circles => 1,
