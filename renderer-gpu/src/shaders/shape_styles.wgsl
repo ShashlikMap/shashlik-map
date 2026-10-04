@@ -6,3 +6,4 @@ const STYLE_DASH: ShapeStyle = 2;
 alias ShapeSubStyle = u32;
 const SUB_STYLE_SOLID: ShapeSubStyle = 0;
 const SUB_STYLE_CIRCLE: ShapeSubStyle = 1;
+const SUB_STYLE_TDASH: ShapeSubStyle = 2;

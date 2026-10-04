@@ -600,6 +600,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
                         let dash_style_value = match dash_style {
                             DashStyle::Solid => 0,
                             DashStyle::Circles => 1,
+                            DashStyle::TDash => 2
                         };
                         renderer_common::render_style::RenderStyle::dashed(
                             color1.as_array(),

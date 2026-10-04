@@ -275,10 +275,12 @@ impl GpuCanvasApi {
                 self.tessellate_stroke_path(&data.path, geometry, options, |vertex| {
                     let position = vertex.position();
                     let normal = vertex.normal().normalize();
+                    // u coord in 0.0 - 1.0 range
+                    let u = (vertex.side().to_f32() + 1.0) * 0.5;
                     ShapeVertex::new(
                         [position.x, position.y],
                         [normal.x, normal.y],
-                        [0.0, 0.0],
+                        [u, 0.0],
                         vertex.advancement(),
                         style_index as u8,
                     )
