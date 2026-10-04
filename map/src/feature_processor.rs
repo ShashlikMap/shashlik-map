@@ -412,19 +412,10 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                                         ShashlikMapLinearRef::Crossing(s_value) => {
                                             let mut builder = Path::builder();
                                             let len = 0.65 * (1.0 / path_measure.length());
-
                                             // don't exceed start
-                                            let start = if s_value - len < 0.0 {
-                                                len
-                                            } else {
-                                                s_value - len
-                                            };
+                                            let start = (s_value - len).clamp(len, 1.0 - len);
                                             // don't exceed end
-                                            let end = if s_value + len > 1.0 {
-                                                len - s_value
-                                            } else {
-                                                s_value + len
-                                            };
+                                            let end = (s_value + len).clamp(len, 1.0 - len);
                                             path_sampler.split_range(start..end, &mut builder);
                                             let temp_path = builder.build();
 

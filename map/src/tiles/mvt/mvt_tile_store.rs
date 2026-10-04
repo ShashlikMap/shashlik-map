@@ -130,7 +130,8 @@ impl TilesProviderStore for MvtTileStore {
                     info.linear_refs = crossing_points.iter().filter_map(|q| {
                         let line = geom.line_string();
                         let dist_to_point = Euclidean.distance(line, &Point::from(*q));
-                        if dist_to_point == 0.0 {
+                        // this is simple condition since, we don't care about precision and the fact the some marks will be missing for POC
+                        if dist_to_point == 0.0 && info.layer >= 0 {
                             if let Some(linear_ref) = line.line_locate_point(&Point::from(*q)) {
                                 Some(ShashlikMapLinearRef::Crossing(linear_ref))
                             } else {
