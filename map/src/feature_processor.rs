@@ -402,14 +402,6 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
 
                     let path = path_builder.build();
 
-                    geometry_data.push(GeometryData::Shape(ShapeData {
-                        path: path.clone(),
-                        geometry_type,
-                        style_id,
-                        index_layer_level: layer_level,
-                        styled_range_info: StyledRangeInfo::new(if double_style { 0 } else { 1 }, false),
-                    }));
-
                     match &kind {
                         ShashlikMapGeomObjectKind::Way(info) => {
                             if !info.linear_refs.is_empty() {
@@ -450,6 +442,14 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         }
                         _ => {}
                     }
+
+                    geometry_data.push(GeometryData::Shape(ShapeData {
+                        path,
+                        geometry_type,
+                        style_id,
+                        index_layer_level: layer_level,
+                        styled_range_info: StyledRangeInfo::new(if double_style { 0 } else { 1 }, false),
+                    }));
                 }
 
                 if let Some(name) = name {
