@@ -30,9 +30,8 @@ impl StyleLoader {
     fn styles() -> Result<Vec<FeatureStyle>, Report<StylesFetchError>> {
         let client = reqwest::blocking::Client::builder()
             .tcp_keepalive(Duration::from_secs(30))
-            .build()
-            .unwrap();
-        let response = client
+            .build().change_context(StylesFetchError::Internal);
+        let response = client?
             .get(
                 "http://ec2-3-107-91-243.ap-southeast-2.compute.amazonaws.com:3000/styles_v0.json"
                     .to_string(),
