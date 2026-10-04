@@ -10,13 +10,14 @@ use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, Geometry
 use renderer_common::style_id::StyleId;
 use capitalize::Capitalize;
 use geo::Scale;
+use lyon::algorithms::measure::{PathMeasurements, SampleType};
 use lyon::geom::euclid::{point2, Box2D};
 use lyon::lyon_tessellation::{LineCap, LineJoin};
 use lyon::path::builder::BorderRadii;
 use rand::RngExt;
 use renderer_common::geometry_data::IconType::SvgBinary;
 use crate::MAX_ZOOM_LEVEL;
-use crate::tiles::{ShashlikMapGeomObjectKind, ShashlikMapPointInfo, ShashlikMapPointObjectKind, ShashlikNatureKind};
+use crate::tiles::{ShashlikMapGeomObjectKind, ShashlikMapLinearRef, ShashlikMapPointInfo, ShashlikMapPointObjectKind, ShashlikNatureKind};
 
 pub struct ShashlikFeatureProcessor {
     include_extruded: bool,
@@ -216,7 +217,11 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             if !(self.data_filter)(MAX_ZOOM_LEVEL - zoom_level, &kind) {
                 return;
             }
-            if let Some((style_id, layer_level, geometry_type, name)) = match &kind {
+            if let Some((style_id,
+                            layer_level,
+                            geometry_type,
+                            name,
+                            linear_refs)) = match &kind {
                 ShashlikMapGeomObjectKind::Way(info) => match info.line_kind {
                     LineKind::Highway { kind } => {
                         if kind != HighwayKind::Footway {
@@ -233,6 +238,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                                 } else {
                                     None
                                 },
+                                info.linear_refs.clone()
                             ))
                         } else {
                             None
@@ -249,6 +255,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                                     ..Default::default()
                                 }),
                                 None,
+                                vec![]
                             ))
                         } else {
                             None
@@ -266,6 +273,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                                     ..Default::default()
                                 }),
                                 Some(name.clone()),
+                                vec![]
                             )
                         })
                     }
@@ -280,6 +288,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                                 ..Default::default()
                             }),
                             None,
+                            vec![]
                         )
                     })
                 },
@@ -290,10 +299,10 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         ShashlikNatureKind::Forest => StyleId::new("forest"),
                         ShashlikNatureKind::Water => StyleId::new("water"),
                     };
-                    Some((style_id, -100, GeometryType::Polygon, None))
+                    Some((style_id, -100, GeometryType::Polygon, None, vec![]))
                 }
                 ShashlikMapGeomObjectKind::Building(_) => {
-                    Some((StyleId::new("building"), -98, GeometryType::Polygon, None))
+                    Some((StyleId::new("building"), -98, GeometryType::Polygon, None, vec![]))
                 }
                 _ => None,
             } {
@@ -379,7 +388,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         }
                         ShashlikMapGeomObjectKind::Way(info) => {
                             match info.line_kind {
-                                LineKind::Highway { .. } => { zoom_level < 1 }
+                                LineKind::Highway { .. } => { zoom_level < 1 && info.linear_refs.is_empty() }
                                 _ => { false }
                             }
                         }
@@ -387,13 +396,60 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     };
                     let skip_preview = matches!(kind, ShashlikMapGeomObjectKind::Building(_));
 
+                    let path = path_builder.build();
+
                     geometry_data.push(GeometryData::Shape(ShapeData {
-                        path: path_builder.build(),
+                        path: path.clone(),
                         geometry_type,
                         style_id,
                         index_layer_level: layer_level as i8,
                         styled_range_info: StyledRangeInfo::new(if double_style { 0 } else { 1 }, skip_preview),
                     }));
+
+                    match &kind {
+                        ShashlikMapGeomObjectKind::Way(info) => {
+                            if !info.linear_refs.is_empty() {
+                                let pm = PathMeasurements::from_path(&path, 1.0);
+                                info.linear_refs.iter().cloned().for_each(|linear_ref| {
+                                    match linear_ref {
+                                        ShashlikMapLinearRef::Crossing(jj) => {
+                                            let mut ss = pm.create_sampler(&path, SampleType::Normalized);
+                                            let mut npb = Path::builder();
+                                            let len = 0.75 * (1.0 / pm.length());
+                                            let jj = if jj > 0.75 {
+                                                jj - len * 0.5
+                                            } else if jj < 0.25 {
+                                                jj + len * 0.5
+                                            } else {
+                                                jj
+                                            };
+                                            let ls = if jj - len < 0.0 {
+                                                len
+                                            } else {
+                                                jj - len
+                                            };
+                                            let rs = if jj + len > 1.0 {
+                                                len - jj
+                                            } else {
+                                                jj + len
+                                            };
+                                            ss.split_range(ls..rs, &mut npb);
+                                            let temp_path = npb.build();
+
+                                            geometry_data.push(GeometryData::Shape(ShapeData {
+                                                path: temp_path,
+                                                geometry_type,
+                                                style_id: StyleId::new("crossing_mark"),
+                                                index_layer_level: layer_level as i8,
+                                                styled_range_info: StyledRangeInfo::new(1, true),
+                                            }));
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                        _ => {}
+                    }
                 }
 
                 if let Some(name) = name {

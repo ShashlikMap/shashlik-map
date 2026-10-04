@@ -39,6 +39,15 @@ pub struct ShashlikWayInfo {
     #[derivative(Hash = "ignore")]
     #[derivative(PartialOrd = "ignore")]
     pub name_en: Option<String>,
+    #[derivative(PartialEq = "ignore")]
+    #[derivative(Hash = "ignore")]
+    #[derivative(PartialOrd = "ignore")]
+    pub linear_refs: Vec<ShashlikMapLinearRef>,
+}
+
+#[derive(Debug, Clone)]
+pub enum ShashlikMapLinearRef {
+    Crossing(f32),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -122,6 +122,7 @@ impl From<WayInfo> for ShashlikWayInfo {
                 layer: value.layer,
                 layer_kind: value.layer_kind,
                 name_en: value.name_en,
+                linear_refs: vec![]
             }
         }
     }

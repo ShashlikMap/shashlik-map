@@ -79,6 +79,7 @@ impl TileParser<DecodedTile> for ShashlikV1Parser {
                     layer: road.layer as i32,
                     layer_kind: LayerKind::None,
                     name_en: road.name,
+                    linear_refs: vec![]
                 }),
             };
 
