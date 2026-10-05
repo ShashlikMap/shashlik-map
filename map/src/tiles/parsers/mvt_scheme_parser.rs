@@ -1,10 +1,9 @@
 use crate::tiles::{
-    ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapPointInfo,
-    ShashlikMapPointObjectKind, ShashlikNatureKind, ShashlikPopAreaInfo, ShashlikWayInfo,
+    ShashlikMapGeomObject,
 };
 use fast_mvt::{MvtFeatureRef, MvtLayerRef, MvtValue};
 use log::error;
-use osm::map::{HighwayKind, LayerKind, LineKind, MapGeometry, RailwayKind};
+use osm::map::{MapGeometry};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -13,7 +12,7 @@ pub(crate) struct MvtSchemeParser {
 }
 
 impl MvtSchemeParser {
-    
+
     pub(crate) fn new_from_handlers(handlers: Vec<MvtPropHandler>) -> Self {
         Self {
             config: handlers
@@ -99,7 +98,7 @@ impl MvtPropHandler {
             .unwrap_or_default()
     }
 
-    pub fn get_prop_value<T: Default>(&self, key: &'static str) -> T
+    pub(crate) fn get_prop_value<T: Default>(&self, key: &'static str) -> T
     where
         for<'a> Option<T>: From<LocalMvtValue<'a>>,
     {
@@ -111,7 +110,7 @@ impl MvtPropHandler {
     }
 }
 
-struct LocalMvtValue<'a>(pub &'a MvtValue);
+pub(crate) struct LocalMvtValue<'a>(pub &'a MvtValue);
 
 impl LocalMvtValue<'_> {
     fn unexpected_type<T>(&self, expected: &str) -> Option<T> {
