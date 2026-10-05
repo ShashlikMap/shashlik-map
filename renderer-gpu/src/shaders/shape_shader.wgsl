@@ -282,6 +282,14 @@ const freq = 0.5; // the less the longer dashes
 fn dash_solid(p2_scale: f32, dist: f32, extra_color: vec4f, main_color: vec4f) -> vec4f {
     // prevents dash to be too short when a line width longer than a default dash
     let freq_fixed = select(freq, freq * 0.2 * p2_scale, p2_scale <= 2.0);
-    let dash = step(0.5, fract(dist * freq_fixed));
-    return select(main_color, extra_color, dash <= 0.0);
+
+    let dist_fract = fract(dist * freq_fixed);
+    let dist_from_center = abs(dist_fract - 0.5);
+    let edge_width = fwidth(dist_from_center);
+    // 0.25 because each dash part use 0.5, so dist from center of each dash part to its edge is 0.25 in uv coords
+    let low_bound = 0.25 - edge_width;
+    let high_bound = 0.25 + edge_width;
+    let alpha = 1.0 - smoothstep(low_bound, high_bound, dist_from_center);
+
+    return mix(main_color, extra_color, alpha);
 }
