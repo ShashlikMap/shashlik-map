@@ -1,6 +1,6 @@
 use crate::tiles::ShashlikMapGeomObject;
-use crate::tiles::mvt::mvt_scheme_parser::MvtSchemeParser;
-use crate::tiles::tile_parser::TileParser;
+use crate::tiles::parsers::mvt_scheme_parser::MvtSchemeParser;
+use crate::tiles::parsers::tile_parser::TileParser;
 use fast_mvt::proto::GeomType;
 use fast_mvt::{MvtReaderRef, MvtResult};
 use geo_types::{Geometry, LineString, Point, Polygon, coord};
@@ -10,17 +10,10 @@ use osm::tiles::TileKey;
 pub struct MvtParser {
     schema_parser: MvtSchemeParser,
 }
-
-impl Default for MvtParser {
-    fn default() -> Self {
-        MvtParser::new()
-    }
-}
-
 impl MvtParser {
-    pub fn new() -> Self {
+    pub fn new(schema_parser: MvtSchemeParser) -> Self {
         Self {
-            schema_parser: MvtSchemeParser::new_map_tiler_v4(),
+            schema_parser
         }
     }
     fn get_all_lines(geometry: Geometry<i32>) -> Vec<LineString<i32>> {

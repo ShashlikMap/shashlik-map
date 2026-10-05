@@ -1,7 +1,7 @@
 use crate::ShashlikUI;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
-use map::tiles::mvt::mvt_tile_store::MvtTileStore;
+use map::tiles::maptiler::maptiler_tile_store::MvtTileStore;
 use map::{ShashlikMap, DEFAULT_FONT_DATA};
 use renderer_common::fps::FpsCounter;
 use renderer_cpu::CpuRenderer;

@@ -21,7 +21,7 @@ use osm::source::reqwest_source::ReqwestSource;
 use renderer_common::TilesType;
 use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::grid_divider::subdivide_grid;
-use crate::tiles::mvt::mvt_tile_store::MvtTileStore;
+use crate::tiles::maptiler::maptiler_tile_store::MvtTileStore;
 use crate::tiles::shashlik_v1::ShashlikV1TileStore;
 use crate::tiles::{ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapPointInfo, ShashlikNatureKind};
 
