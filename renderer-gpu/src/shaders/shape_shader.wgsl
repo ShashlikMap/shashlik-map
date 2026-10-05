@@ -75,7 +75,17 @@ fn fill_styles(out: ptr<function,VertexOutput>, style_index: u32, scale: f32, ou
         }
         case shape_styles::STYLE_DASH: {
             (*out).style_type_subtype.y = u32(header[1]); // 0: solid, 1: circle, 2: tdash
-            (*out).style_color_2 = styles[style_index + 2];
+            let extra_color = styles[style_index + 2];
+            (*out).style_color_2 = extra_color;
+
+            // Nice and smooth fade in/out for t-dash pattern to prevent ugly artifacts related to AA and subpixel line
+            // TODO Ideally it has to be done outside of the shader but given there is only one use case new then let's keep it here
+            if((*out).style_type_subtype.y == shape_styles::SUB_STYLE_TDASH) {
+                let alpha_k = (1.0 / (scale * scale * 7.0));
+                // mixing colors to fade lines casing(style_color_1 is case) faster then the lines
+                (*out).style_color_1 = vec4(mix(extra_color.rgb, fill_color.rgb, min(1.0, 0.1 * alpha_k)), 0.0);
+                (*out).style_color_2.a = min(1.0, alpha_k);
+            }
         }
         default : {}
     }
@@ -282,6 +292,14 @@ const freq = 0.5; // the less the longer dashes
 fn dash_solid(p2_scale: f32, dist: f32, extra_color: vec4f, main_color: vec4f) -> vec4f {
     // prevents dash to be too short when a line width longer than a default dash
     let freq_fixed = select(freq, freq * 0.2 * p2_scale, p2_scale <= 2.0);
-    let dash = step(0.5, fract(dist * freq_fixed));
-    return select(main_color, extra_color, dash <= 0.0);
+
+    let dist_fract = fract(dist * freq_fixed);
+    let dist_from_center = abs(dist_fract - 0.5);
+    let edge_width = fwidth(dist_from_center);
+    // 0.25 because each dash part use 0.5, so dist from center of each dash part to its edge is 0.25 in uv coords
+    let low_bound = 0.25 - edge_width;
+    let high_bound = 0.25 + edge_width;
+    let alpha = 1.0 - smoothstep(low_bound, high_bound, dist_from_center);
+
+    return mix(main_color, extra_color, alpha);
 }
