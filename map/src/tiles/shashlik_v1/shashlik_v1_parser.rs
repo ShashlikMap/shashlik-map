@@ -1,12 +1,12 @@
 use crate::tiles::parsers::tile_parser::TileParser;
-use crate::tiles::{ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapPointInfo, ShashlikMapPointObjectKind, ShashlikNatureKind, ShashlikPopAreaInfo, ShashlikWayInfo};
-use geo_types::{LineString, Polygon, coord};
-use osm::map::{
-    HighwayKind, LayerKind, LineKind, MapGeometry,
-    RailwayKind,
+use crate::tiles::{
+    ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapPointInfo,
+    ShashlikMapPointObjectKind, ShashlikNatureKind, ShashlikPopAreaInfo, ShashlikWayInfo,
 };
+use geo_types::{LineString, Polygon, coord};
+use osm::map::{HighwayKind, LayerKind, LineKind, MapGeometry, RailwayKind};
 use osm::tiles::TileKey;
-use tiles::decode::{AreaKind, DecodedTile, LabelClass, RoadKind};
+use tiles::decode::{AreaKind, DecodedTile, LabelClass, PoiKind, RoadKind, RoadStructure};
 
 pub struct ShashlikV1Parser {}
 
@@ -32,9 +32,17 @@ impl ShashlikV1Parser {
 }
 
 impl TileParser<DecodedTile> for ShashlikV1Parser {
-    fn parse_tile_inner(&self, tile: DecodedTile) -> Vec<(ShashlikMapGeomObject, MapGeometry<i32>)> {
+    fn parse_tile_inner(
+        &self,
+        tile: DecodedTile,
+    ) -> Vec<(ShashlikMapGeomObject, MapGeometry<i32>)> {
         let mut result = vec![];
         for road in tile.roads {
+            let layer_kind = match road.structure {
+                RoadStructure::None => LayerKind::None,
+                RoadStructure::Bridge => LayerKind::Bridge,
+                RoadStructure::Tunnel => LayerKind::Tunnel,
+            };
             let line_kind = match road.kind {
                 RoadKind::Motorway | RoadKind::MajorRoad => LineKind::Highway {
                     kind: HighwayKind::Motorway,
@@ -77,47 +85,51 @@ impl TileParser<DecodedTile> for ShashlikV1Parser {
                 kind: ShashlikMapGeomObjectKind::Way(ShashlikWayInfo {
                     line_kind,
                     layer: road.layer as i32,
-                    layer_kind: LayerKind::None,
+                    layer_kind,
                     name_en: road.name,
-                    linear_refs: vec![]
+                    linear_refs: vec![],
                 }),
             };
 
-            let qgg = road
+            let coords: Vec<_> = road
                 .coords
                 .iter()
                 .map(|c| {
                     coord! {x: c[0] as i32, y: c[1] as i32 }
                 })
                 .collect();
-            let hh = MapGeometry::Line(LineString::new(qgg));
-            result.push((map_geom_obj, hh))
+            let line = MapGeometry::Line(coords.into());
+            result.push((map_geom_obj, line))
         }
 
         for area in tile.areas {
-            let area_kind = match area.kind {
-                AreaKind::Water => ShashlikNatureKind::Water,
-                AreaKind::Forest => ShashlikNatureKind::Forest,
-                AreaKind::Grass => ShashlikNatureKind::Park,
-                AreaKind::Building => continue,
+            let obj = match area.kind {
+                AreaKind::Water => ShashlikMapGeomObjectKind::Nature(ShashlikNatureKind::Water),
+                AreaKind::Forest => ShashlikMapGeomObjectKind::Nature(ShashlikNatureKind::Forest),
+                AreaKind::Grass => ShashlikMapGeomObjectKind::Nature(ShashlikNatureKind::Park),
+                AreaKind::Building => ShashlikMapGeomObjectKind::Building(area.floors as u16),
                 AreaKind::Land => continue,
             };
 
-            let map_geom_obj = ShashlikMapGeomObject {
-                id: -1,
-                kind: ShashlikMapGeomObjectKind::Nature(area_kind),
-            };
+            let map_geom_obj = ShashlikMapGeomObject { id: -1, kind: obj };
 
-            // TODO Use all rings
-            let just_outer_ring = area.rings[0]
+            let mut rings: Vec<LineString<i32>> = area
+                .rings
                 .iter()
-                .map(|c| {
-                    coord! {x: c[0] as i32, y: c[1] as i32 }
+                .map(|ring| {
+                    let coords = ring
+                        .iter()
+                        .map(|c| {
+                            coord! {x: c[0] as i32, y: c[1] as i32 }
+                        })
+                        .collect::<Vec<_>>();
+                    LineString::<i32>(coords)
                 })
                 .collect();
-
-            let hh = MapGeometry::Poly(Polygon::new(LineString::new(just_outer_ring), vec![]));
-            result.push((map_geom_obj, hh))
+            if !rings.is_empty() {
+                let poly = MapGeometry::Poly(Polygon::new(rings.remove(0), rings));
+                result.push((map_geom_obj, poly))
+            }
         }
 
         for label in tile.labels {
@@ -127,7 +139,7 @@ impl TileParser<DecodedTile> for ShashlikV1Parser {
             };
 
             let map_geom_obj = ShashlikMapGeomObject {
-                id: -1,
+                id: 0,
                 kind: ShashlikMapGeomObjectKind::Poi(ShashlikMapPointInfo {
                     text: label.name,
                     kind: ShashlikMapPointObjectKind::PopArea(ShashlikPopAreaInfo {
@@ -136,9 +148,26 @@ impl TileParser<DecodedTile> for ShashlikV1Parser {
                     }),
                 }),
             };
-            let hh =
+            let coord =
                 MapGeometry::Coord(coord! { x: label.anchor[0] as i32, y: label.anchor[1] as i32 });
-            result.push((map_geom_obj, hh))
+            result.push((map_geom_obj, coord))
+        }
+
+        for poi in tile.pois {
+            match poi.kind {
+                PoiKind::TrafficSignal => {}
+            };
+
+            let map_geom_obj = ShashlikMapGeomObject {
+                id: 0,
+                kind: ShashlikMapGeomObjectKind::Poi(ShashlikMapPointInfo {
+                    text: "".to_string(),
+                    kind: ShashlikMapPointObjectKind::TrafficLight,
+                }),
+            };
+            let coord =
+                MapGeometry::Coord(coord! { x: poi.anchor[0] as i32, y: poi.anchor[1] as i32 });
+            result.push((map_geom_obj, coord))
         }
         result
     }

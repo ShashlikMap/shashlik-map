@@ -42,3 +42,5 @@ dbs/*.db
 .env
 
 output.png
+
+*.pmtiles
