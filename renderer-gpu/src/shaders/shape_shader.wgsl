@@ -75,7 +75,17 @@ fn fill_styles(out: ptr<function,VertexOutput>, style_index: u32, scale: f32, ou
         }
         case shape_styles::STYLE_DASH: {
             (*out).style_type_subtype.y = u32(header[1]); // 0: solid, 1: circle, 2: tdash
-            (*out).style_color_2 = styles[style_index + 2];
+            let extra_color = styles[style_index + 2];
+            (*out).style_color_2 = extra_color;
+
+            // Nice and smooth fade in/out for t-dash pattern to prevent ugly artifacts related to AA and subpixel line
+            // TODO Ideally it has to be done outside of the shader but given there is only one use case new then let's keep it here
+            if((*out).style_type_subtype.y == shape_styles::SUB_STYLE_TDASH) {
+                let alpha_k = (1.0 / (scale * scale * 10.0));
+                // mixing colors to fade lines casing(style_color_1 is case) faster then the lines
+                (*out).style_color_1 = vec4(mix(extra_color.rgb, fill_color.rgb, min(1.0, 0.15 * alpha_k)), 0.0);
+                (*out).style_color_2.a = min(1.0, alpha_k);
+            }
         }
         default : {}
     }
