@@ -25,7 +25,7 @@ impl ShashlikV1TileStore {
 
         let pm_tiles_reader = tokio_handle.block_on(async move {
             // TODO So far, just some hardcoded path
-            let reader = FileRangeReader::open("../../Downloads/japan.pmtiles")
+            let reader = FileRangeReader::open("tokyo.pmtiles")
                 .await
                 .unwrap();
             let pm_reader = PmTilesReader::open(reader).await.unwrap();
