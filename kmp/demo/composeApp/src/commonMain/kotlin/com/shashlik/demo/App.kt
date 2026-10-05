@@ -160,7 +160,7 @@ fun App() {
                             mvtCheckedState, onCheckedChange = {
                                 mvtCheckedState = it
                             })
-                        Text("MVT")
+                        Text("MTiler")
 
                         Button({
                             if (shapes.size > 5) {
