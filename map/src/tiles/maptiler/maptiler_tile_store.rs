@@ -16,14 +16,14 @@ use crate::tiles::parsers::mvt_scheme_parser::MvtSchemeParser;
 
 const HTTP_CACHE_ENABLED: bool = true;
 
-pub struct MvtTileStore {
+pub struct MaptilerTileStore {
     tokio_rt: Runtime,
     mvt_parser: MvtParser,
     client: ClientWithMiddleware,
 }
 
 
-impl MvtTileStore {
+impl MaptilerTileStore {
     pub fn new() -> Self {
         let tokio_rt = Runtime::new().unwrap();
         let mut headers = HeaderMap::new();
@@ -88,10 +88,10 @@ impl MvtTileStore {
     }
 }
 
-impl MercatorProvider for MvtTileStore {}
-impl MercatorConverter for MvtTileStore {}
+impl MercatorProvider for MaptilerTileStore {}
+impl MercatorConverter for MaptilerTileStore {}
 
-impl TilesProviderStore for MvtTileStore {
+impl TilesProviderStore for MaptilerTileStore {
     fn load(&self, tile_key: &TileKey) -> Vec<(ShashlikMapGeomObject, MapGeometry<f32>)> {
         let data = self
             .fetch_tile(tile_key.tile_x, tile_key.tile_y, tile_key.zoom_level)
