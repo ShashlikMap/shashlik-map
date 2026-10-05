@@ -1,28 +1,29 @@
-use std::env;
-use crate::tiles::mvt::mvt_parser::MvtParser;
+use crate::tiles::parsers::mvt_parser::MvtParser;
 use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesProviderStore};
-use log::error;
-use osm::map::{MapGeometry};
-use reqwest::header::{HeaderMap, HeaderValue, ORIGIN};
-use std::time::{Duration, SystemTime};
+use crate::tiles::{ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapLinearRef, ShashlikMapPointObjectKind};
 use geo::{Distance, Euclidean, LineLocatePoint};
 use geo_types::Point;
 use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache, HttpCacheOptions};
+use log::error;
+use osm::map::MapGeometry;
 use osm::tiles::TileKey;
+use reqwest::header::{HeaderMap, HeaderValue, ORIGIN};
 use reqwest_middleware::ClientWithMiddleware;
+use std::env;
+use std::time::{Duration, SystemTime};
 use tokio::runtime::Runtime;
-use crate::tiles::{ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapLinearRef, ShashlikMapPointObjectKind};
+use crate::tiles::parsers::mvt_scheme_parser::MvtSchemeParser;
 
 const HTTP_CACHE_ENABLED: bool = true;
 
-pub struct MvtTileStore {
+pub struct MaptilerTileStore {
     tokio_rt: Runtime,
     mvt_parser: MvtParser,
     client: ClientWithMiddleware,
 }
 
 
-impl MvtTileStore {
+impl MaptilerTileStore {
     pub fn new() -> Self {
         let tokio_rt = Runtime::new().unwrap();
         let mut headers = HeaderMap::new();
@@ -56,7 +57,7 @@ impl MvtTileStore {
 
         Self {
             tokio_rt,
-            mvt_parser: MvtParser::default(),
+            mvt_parser: MvtParser::new(MvtSchemeParser::new_map_tiler_v4()),
             client,
         }
     }
@@ -87,10 +88,10 @@ impl MvtTileStore {
     }
 }
 
-impl MercatorProvider for MvtTileStore {}
-impl MercatorConverter for MvtTileStore {}
+impl MercatorProvider for MaptilerTileStore {}
+impl MercatorConverter for MaptilerTileStore {}
 
-impl TilesProviderStore for MvtTileStore {
+impl TilesProviderStore for MaptilerTileStore {
     fn load(&self, tile_key: &TileKey) -> Vec<(ShashlikMapGeomObject, MapGeometry<f32>)> {
         let data = self
             .fetch_tile(tile_key.tile_x, tile_key.tile_y, tile_key.zoom_level)

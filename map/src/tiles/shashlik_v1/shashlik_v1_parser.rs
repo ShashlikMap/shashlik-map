@@ -1,4 +1,4 @@
-use crate::tiles::tile_parser::TileParser;
+use crate::tiles::parsers::tile_parser::TileParser;
 use crate::tiles::{ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapPointInfo, ShashlikMapPointObjectKind, ShashlikNatureKind, ShashlikPopAreaInfo, ShashlikWayInfo};
 use geo_types::{LineString, Polygon, coord};
 use osm::map::{

@@ -2,7 +2,7 @@ use crate::{Action, Feature, PanState, Scale, ShashlikUI, SlintMapEvent};
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
-use map::tiles::mvt::mvt_tile_store::MvtTileStore;
+use map::tiles::maptiler::maptiler_tile_store::MaptilerTileStore;
 use map::{DEFAULT_FONT_DATA, ShashlikMap};
 use native_dialog::DialogBuilder;
 use renderer_common::{PreviewType, TilesType, feature_layer_tags};
@@ -99,7 +99,7 @@ pub fn launch_internal(ui: &ShashlikUI) {
                             target_texture,
                         );
                         let tiles_provider = DefaultTilesProvider::new(
-                            Box::new(MvtTileStore::new()),
+                            Box::new(MaptilerTileStore::new()),
                             ShashlikFeatureProcessor::default(),
                             dpi,
                         );

@@ -4,12 +4,12 @@ use std::cmp::Ordering;
 
 pub mod default_tiles_provider;
 mod grid_divider;
-pub mod mvt;
+pub mod maptiler;
 pub mod shashlik;
 pub mod shashlik_v1;
 pub mod tile_data;
-mod tile_parser;
 pub mod tiles_provider;
+mod parsers;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ShashlikMapGeomObject {
