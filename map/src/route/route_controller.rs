@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
+use reqwest::Url;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
 use valhalla_client::route::{DirectionsType, Location, Manifest, Trip};
@@ -24,17 +25,20 @@ pub struct RouteController<RAPI: RendererApi + 'static> {
 }
 
 impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
-    pub fn new(api: Arc<RAPI>) -> RouteController<RAPI> {
+
+    pub fn new(url: Option<Url>, api: Arc<RAPI>) -> RouteController<RAPI> {
+        let valhalla = url.map_or_else(Valhalla::default, Valhalla::new);
         let mut route_controller = RouteController {
             api,
             current_lon_lat: None,
-            valhalla: Arc::new(Valhalla::default()),
+            valhalla: Arc::new(valhalla),
             active_routes: Arc::new(AtomicU8::new(0)),
             active_routes_ids: Vec::new()
         };
         route_controller.warm_up();
         route_controller
     }
+
     pub fn set_current_lon_lat(&mut self, lon_lat: (f64, f64)) {
         self.current_lon_lat = Some(lon_lat);
     }

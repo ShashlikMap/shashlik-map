@@ -1,7 +1,7 @@
 use std::env;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
-use map::{DEFAULT_FONT_DATA, ShashlikMap};
+use map::{MapConfig, ShashlikMap, DEFAULT_FONT_DATA};
 use osm::source::reqwest_source::ReqwestSource;
 use osm::tiles::TileStore;
 use renderer_common::feature_layer_tags;
@@ -65,7 +65,7 @@ fn main() {
         )
         .await?;
 
-        ShashlikMap::new(renderer, tiles_provider).await
+        ShashlikMap::new(MapConfig::new(None), renderer, tiles_provider).await
     })
     .unwrap();
 

@@ -8,7 +8,7 @@ use jni::sys::{jboolean, jlong, jobject};
 use jni_fn::jni_fn;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
-use map::{DEFAULT_FONT_DATA, ShashlikMap};
+use map::{MapConfig, ShashlikMap, DEFAULT_FONT_DATA};
 use osm::source::reqwest_source::ReqwestSource;
 use osm::tiles::TileStore;
 use pollster::FutureExt;
@@ -115,7 +115,7 @@ pub fn createShashlikMapApi(
     let shashlik_map = pollster::block_on(async {
         let renderer = GpuRenderer::new(feature_layer_tags(),
                                         Box::new(surface), &DEFAULT_FONT_DATA).await?;
-        ShashlikMap::new(renderer,
+        ShashlikMap::new(MapConfig::new(None), renderer,
                          DefaultTilesProvider::new(tile_store, feature_processor, dpi_scale),
         ).await
     }).unwrap();

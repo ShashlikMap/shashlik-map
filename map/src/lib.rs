@@ -28,6 +28,7 @@ use std::time::{Duration, Instant};
 use fast_mvt::serde_json;
 use geo::{BoundingRect, Centroid, Winding};
 use log::error;
+use reqwest::Url;
 use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData, MAP_SIZE, GLOBE_SCALE};
 use crate::overlay::overlay::Overlay;
 use crate::styles::{DashStyle, FeatureStyleType};
@@ -68,6 +69,16 @@ impl AnimConfig {
             return Self::DEFAULT_ANIMATION_SPEED
         }
         1.0
+    }
+}
+
+pub struct MapConfig {
+    custom_valhalla_url: Option<Url>
+}
+
+impl MapConfig {
+    pub fn new(custom_valhalla_url: Option<Url>) -> Self {
+        Self { custom_valhalla_url }
     }
 }
 
@@ -131,7 +142,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
     const TELEPORT_THRESHOLD: f64 = 300.0;
     const ZOOM_LOCK_DIST: f64 = 200.0;
 
-    pub async fn new(renderer: R, mut tiles_provider: T) -> anyhow::Result<ShashlikMap<R, T>> {
+    pub async fn new(map_config: MapConfig, renderer: R, mut tiles_provider: T) -> anyhow::Result<ShashlikMap<R, T>> {
         let screen_size = renderer.screen_size();
         let tiles_stream = tiles_provider.tiles();
 
@@ -153,7 +164,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
         let (map_event_sender, map_event_receiver) = mpsc::channel();
 
-        let route_controller = RouteController::new(renderer.api());
+        let route_controller = RouteController::new(map_config.custom_valhalla_url, renderer.api());
         let mut map = ShashlikMap {
             renderer,
             camera: cam,

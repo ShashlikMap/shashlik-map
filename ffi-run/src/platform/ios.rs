@@ -3,7 +3,7 @@ use wgpu::{CurrentSurfaceTexture, Device, Queue, SurfaceConfiguration, SurfaceTe
 use crate::ShashlikMapApi;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use osm::source::reqwest_source::ReqwestSource;
-use map::{ShashlikMap, DEFAULT_FONT_DATA};
+use map::{MapConfig, ShashlikMap, DEFAULT_FONT_DATA};
 use std::sync::RwLock;
 use std::ffi::c_void;
 use std::mem;
@@ -34,7 +34,7 @@ pub fn create_shashlik_map_api_for_ios(view: u64, metal_layer: u64, maximum_fram
 	let shashlik_map = pollster::block_on(async {
 		let renderer = GpuRenderer::new(feature_layer_tags(),
 		                                Box::new(wrapper), &DEFAULT_FONT_DATA).await?;
-		ShashlikMap::new(renderer,
+		ShashlikMap::new(MapConfig::new(None), renderer,
 		                 DefaultTilesProvider::new(tile_store, feature_processor, 1.35),
 		).await
 	}).unwrap();
