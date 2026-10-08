@@ -3,7 +3,7 @@ use map::feature_processor::ShashlikFeatureProcessor;
 use map::route::RouteCosting;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
 use map::tiles::maptiler::maptiler_tile_store::MaptilerTileStore;
-use map::{DEFAULT_FONT_DATA, ShashlikMap};
+use map::{MapConfig, ShashlikMap, DEFAULT_FONT_DATA};
 use native_dialog::DialogBuilder;
 use renderer_common::{PreviewType, TilesType, feature_layer_tags};
 use renderer_gpu::GpuRenderer;
@@ -13,10 +13,14 @@ use slint::wgpu_30::wgpu::{Features, Limits};
 use slint::wgpu_30::{WGPUConfiguration, WGPUSettings};
 use slint::{ComponentHandle, GraphicsAPI, PhysicalSize, RenderingState};
 use std::cmp::max;
+use std::process::Command;
 use std::str::FromStr;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 use wgpu::{Device, Instance};
+use url::Url;
+use map::tiles::shashlik_v1::ShashlikV1TileStore;
+use map::tiles::tiles_provider::TilesProviderStore;
 
 pub fn prepare() {
     let mut wgpu_settings = WGPUSettings::default();
@@ -40,7 +44,23 @@ pub fn prepare() {
 
 const GENERATE_INSTANCE_REPORT: bool = false;
 
+const OFFLINE_VALHALLA_URL: &'static str = "http://127.0.0.1:8002";
+
+fn is_offline_mode() -> bool {
+    cfg!(target_os = "linux") && !Command::new("iwgetid")
+        .arg("-r")
+        .output()
+        .ok().is_some_and(|output| {
+        let ssid = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        println!("Active WiFi: {:?}", ssid);
+        !ssid.is_empty()
+    })
+}
+
 pub fn launch_internal(ui: &ShashlikUI) {
+    let is_offline_mode = is_offline_mode();
+    println!("is_offline_mode = {:?}", is_offline_mode);
+
     let (slint_map_event_sender, slint_map_event_receiver) = mpsc::channel();
 
     let mut screen_size = ui.window().size();
@@ -93,16 +113,6 @@ pub fn launch_internal(ui: &ShashlikUI) {
                                 | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_SRC,
                             view_formats: &[],
                         });
-                        let canvas = DefaultWgpuCanvas::new(
-                            queue.clone(),
-                            device.clone(),
-                            target_texture,
-                        );
-                        let tiles_provider = DefaultTilesProvider::new(
-                            Box::new(MaptilerTileStore::new()),
-                            ShashlikFeatureProcessor::default(),
-                            dpi,
-                        );
 
                         if let Some(ui_weak) = ui_weak.upgrade() {
                             // TODO How to get rid of all this clones?
@@ -151,6 +161,26 @@ pub fn launch_internal(ui: &ShashlikUI) {
                             });
                         }
 
+                        let canvas = DefaultWgpuCanvas::new(
+                            queue.clone(),
+                            device.clone(),
+                            target_texture,
+                        );
+
+                        let default_tile_store: Box<dyn TilesProviderStore> = if is_offline_mode {
+                            // ShashlikV1TileStore works only offline at this moment
+                            Box::new(ShashlikV1TileStore::new())
+                        } else {
+                            Box::new(MaptilerTileStore::new())
+                        };
+                        let tiles_provider = DefaultTilesProvider::new(
+                            default_tile_store,
+                            ShashlikFeatureProcessor::default(),
+                            dpi,
+                        );
+
+                        let route_url = is_offline_mode.then(|| Url::parse(OFFLINE_VALHALLA_URL).unwrap());
+                        let map_config = MapConfig::new(route_url);
                         let mut map =
                             pollster::block_on(async {
                                 let shadow_tex_size = if low_res {
@@ -162,7 +192,7 @@ pub fn launch_internal(ui: &ShashlikUI) {
                                 let renderer = GpuRenderer::new_with_config(render_config, feature_layer_tags(),
                                                                             Box::new(canvas), &DEFAULT_FONT_DATA).await?;
 
-                                ShashlikMap::new(renderer, tiles_provider).await
+                                ShashlikMap::new(map_config, renderer, tiles_provider).await
                             }).unwrap();
 
                         device_instance = Some((device.clone(), instance.clone()));

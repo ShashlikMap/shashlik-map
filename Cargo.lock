@@ -9371,6 +9371,7 @@ dependencies = [
  "slint",
  "slint-build",
  "strum",
+ "url",
  "wgpu",
 ]
 
