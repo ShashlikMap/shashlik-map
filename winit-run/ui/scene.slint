@@ -101,8 +101,8 @@ export component ShashlikUI inherits Window {
                         pressed = false;
                         long_press_timer.running = false;
                     } else if (event.kind == PointerEventKind.move
-                        && abs(current-pan-state.x - (self.mouse-x / 1phx)) > 1
-                        && abs(current-pan-state.y - (self.mouse-y / 1phx)) > 1) {
+                        && (abs(current-pan-state.x - (self.mouse-x / 1phx)) > 1
+                        || abs(current-pan-state.y - (self.mouse-y / 1phx)) > 1)) {
                         long_press_timer.running = false;
                     }
                     current-pan-state = { pressed: pressed, x: self.mouse-x / 1phx, y: self.mouse-y / 1phx };
