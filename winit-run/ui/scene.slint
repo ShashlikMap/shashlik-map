@@ -85,11 +85,25 @@ export component ShashlikUI inherits Window {
             TouchArea {
                 width: 100%;
                 height: 100%;
+                long_press_timer := Timer {
+                        interval: 800ms;
+                        running: false;
+                        triggered() => { // fyi, triggered on stop
+                            self.running = false;
+                            btn_click(Action.Route, cost.current-index)
+                        }
+                    }
                 pointer-event(event) => {
                     if (event.kind == PointerEventKind.down) {
                         pressed = true;
+                        long_press_timer.running = true;
                     } else if (event.kind == PointerEventKind.up || event.kind == PointerEventKind.cancel) {
                         pressed = false;
+                        long_press_timer.running = false;
+                    } else if (event.kind == PointerEventKind.move
+                        && abs(current-pan-state.x - (self.mouse-x / 1phx)) > 1
+                        && abs(current-pan-state.y - (self.mouse-y / 1phx)) > 1) {
+                        long_press_timer.running = false;
                     }
                     current-pan-state = { pressed: pressed, x: self.mouse-x / 1phx, y: self.mouse-y / 1phx };
                 }
@@ -201,15 +215,6 @@ export component ShashlikUI inherits Window {
                 current-index: 0;
                 selected(value) => {
                     tiles_type(value)
-                }
-            }
-
-            Button {
-                text: "Route";
-                height: 48px;
-                clicked => {
-                    panel_controls = false;
-                    btn_click(Action.Route, cost.current-index)
                 }
             }
 

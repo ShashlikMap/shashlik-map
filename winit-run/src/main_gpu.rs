@@ -210,6 +210,8 @@ pub fn launch_internal(ui: &ShashlikUI) {
                             last_report_time = Instant::now();
                             println!("instanceReport: {:?}", instance.generate_report());
                         }
+                        let curr_pan_state = app.get_current_pan_state();
+
                         while let Ok(event) = slint_map_event_receiver.try_recv() {
                             match event {
                                 SlintMapEvent::VerticalScroll(delta_y) => {
@@ -237,8 +239,9 @@ pub fn launch_internal(ui: &ShashlikUI) {
                                             2 => RouteCosting::Motorbike,
                                             _ => panic!("{cost_index} cost index not supported"),
                                         };
-                                        shashlik_map
-                                            .create_route_to_from_screen_center(route_costing);
+                                        shashlik_map.create_route_to_screen_point(curr_pan_state.x,
+                                                                                  curr_pan_state.y,
+                                                                                  route_costing);
                                     }
                                     Action::KML => {
                                         let path = DialogBuilder::file()
@@ -282,7 +285,7 @@ pub fn launch_internal(ui: &ShashlikUI) {
                                 }
                             };
                         }
-                        let curr_pan_state = app.get_current_pan_state();
+
                         if curr_pan_state.pressed {
                             if let Some(prev_pan) = &prev_pan_state {
                                 let delta_x = -(curr_pan_state.x - prev_pan.x);
