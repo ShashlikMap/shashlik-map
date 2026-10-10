@@ -1,7 +1,5 @@
 import super::common::CameraUniform;
-
-@group(0) @binding(0)
-var<uniform> camera: CameraUniform;
+import super::common::camera;
 
 @group(1) @binding(0) var ssao_texture: texture_storage_2d<rgba16float, write>;
 

@@ -1,7 +1,5 @@
 import super::common::CameraUniform;
-
-@group(0) @binding(0)
-var<uniform> camera: CameraUniform;
+import super::common::camera;
 
 struct IndirectArgs {
     indexCount: u32,
