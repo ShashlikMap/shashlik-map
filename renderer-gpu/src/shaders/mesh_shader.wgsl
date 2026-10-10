@@ -1,14 +1,12 @@
 import super::mesh_shader_common::{VertexInput, InstanceInput, VertexOutput};
 import super::common::CameraUniform;
 import super::common::shadow_map;
+import super::common::camera;
 
 alias MeshRenderFlag = u32;
 const NONE: MeshRenderFlag = 0;
 const SHADOWS: MeshRenderFlag = 2;
 const G_BUF: MeshRenderFlag = 4;
-
-@group(0) @binding(0)
-var<uniform> camera: CameraUniform;
 
 var<immediate> render_flag: MeshRenderFlag;
 

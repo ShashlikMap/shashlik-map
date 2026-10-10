@@ -19,7 +19,7 @@ tokio = { workspace = true }
 rstar = { workspace = true }
 rustybuzz = { workspace = true }
 rustc-hash = { workspace = true }
-wesl = { version = "0.4.4", features = ["naga-ext"]}
+wesl-core = "0.1.0"
 rand = { workspace = true }
 strum = { workspace = true }
 splines = {  version = "5.0.0", features = ["glam"] }
@@ -27,6 +27,6 @@ image = "0.24"
 
 [build-dependencies]
 anyhow = "1.0"
-wesl = { version = "0.4.4", features = ["naga-ext"]}
+wesl = { version = "0.6.0", features = ["naga-ext"]}
 
 

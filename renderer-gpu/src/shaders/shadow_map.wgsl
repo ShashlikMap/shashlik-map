@@ -1,8 +1,6 @@
 import super::mesh_shader_common::{VertexInput, InstanceInput, VertexOutput};
 import super::common::CameraUniform;
-
-@group(0) @binding(0)
-var<uniform> camera: CameraUniform;
+import super::common::camera;
 
 @vertex
 fn vs_main(

@@ -1,11 +1,9 @@
 import super::common::CameraUniform;
+import super::common::camera;
 import super::shape_styles;
 import super::shape_styles::{ShapeStyle, ShapeSubStyle};
 import super::globe_common::GLOBE_SCALE;
 import super::globe_common::transform_to_globe_position;
-
-@group(0) @binding(0)
-var<uniform> camera: CameraUniform;
 
 @group(1) @binding(0)
 var<storage, read> styles: array<vec4f>;

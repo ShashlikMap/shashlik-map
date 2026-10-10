@@ -1,11 +1,9 @@
 import super::common::CameraUniform;
+import super::common::camera;
 import super::textures;
 import super::textures::TextureType;
 import super::globe_common::GLOBE_SCALE;
 import super::globe_common::transform_to_globe_position;
-
-@group(0) @binding(0)
-var<uniform> camera: CameraUniform;
 
 var<immediate> texture_type: TextureType;
 

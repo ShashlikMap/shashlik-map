@@ -5,8 +5,7 @@ use crate::textures::{SAMPLE_COUNT, TextureData, create_simple_texture};
 use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
 use crate::{DEPTH_STENCIL_TEX_FORMAT, SHADOW_MAP_DEPTH_TEX_FORMAT};
 use renderer_common::geometry_data::MeshVertex;
-use std::borrow::Cow;
-use wesl::include_wesl;
+use wesl_core::include_wesl;
 use wgpu::{BindGroup, BindGroupLayout, BlendState, CompareFunction, DepthStencilState, Face, RenderPass, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilState, TextureUsages};
 
 pub(crate) struct MeshPipeline {
@@ -150,7 +149,7 @@ impl MeshPipeline {
         });
         let shader_module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("mesh_shader"),
-            source: ShaderSource::Wgsl(Cow::from(include_wesl!("mesh_shader"))),
+            source: ShaderSource::Wgsl(include_wesl!("mesh_shader").into()),
         });
         let stencil = if self.write_to_stencil {
             wgpu::StencilState {

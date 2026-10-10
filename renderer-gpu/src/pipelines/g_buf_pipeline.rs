@@ -3,8 +3,7 @@ use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{MeshRenderFlag, RenderPipeline};
 use crate::vertex_attrs::GeneralInstanceInput;
-use std::borrow::Cow;
-use wesl::include_wesl;
+use wesl_core::include_wesl;
 use wgpu::TextureFormat::{Rgba16Float, Rgba32Float};
 use wgpu::{RenderPass, ShaderModuleDescriptor, ShaderSource};
 
@@ -23,7 +22,7 @@ impl GBufPipeline {
                 .device()
                 .create_shader_module(ShaderModuleDescriptor {
                     label: Some("g_buf_frag_shader"),
-                    source: ShaderSource::Wgsl(Cow::from(include_wesl!("g_buf_frag_shader"))),
+                    source: ShaderSource::Wgsl(include_wesl!("g_buf_frag_shader").into()),
                 });
         root_descriptor.label = Some("g_buffer_pipeline");
         let fragment = root_descriptor.fragment.as_mut().unwrap();

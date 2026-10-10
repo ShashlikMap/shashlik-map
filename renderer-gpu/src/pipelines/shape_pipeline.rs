@@ -5,10 +5,9 @@ use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex, VertexAttrib};
 use renderer_common::WorldShapeFeatureLayerTag;
-use std::borrow::Cow;
-use wesl::include_wesl;
-use wgpu::{BindGroup, BindGroupLayout, Buffer, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, Device, Face, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
+use wesl_core::include_wesl;
 use wgpu::Face::Back;
+use wgpu::{BindGroup, BindGroupLayout, Buffer, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, Device, Face, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
 
 pub(crate) struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
@@ -72,7 +71,7 @@ impl ShapePipeline {
         let mesh_pipeline = MeshPipeline::new(global_context, false, false, false);
         let compute_cull_shader = global_context.device().create_shader_module(ShaderModuleDescriptor {
             label: Some("shape_culling"),
-            source: ShaderSource::Wgsl(Cow::from(include_wesl!("shape_culling"))),
+            source: ShaderSource::Wgsl(include_wesl!("shape_culling").into()),
         });
 
 
@@ -159,7 +158,7 @@ impl ShapePipeline {
 
         let shader_module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("shape_shader"),
-            source: ShaderSource::Wgsl(Cow::from(include_wesl!("shape_shader"))),
+            source: ShaderSource::Wgsl(include_wesl!("shape_shader").into()),
         });
         let vertex = &mut mesh_descriptor.vertex;
         vertex.entry_point = self.vs_func_name.or(vertex.entry_point);

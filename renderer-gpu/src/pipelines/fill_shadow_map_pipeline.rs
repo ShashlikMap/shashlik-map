@@ -1,12 +1,11 @@
+use crate::SHADOW_MAP_DEPTH_TEX_FORMAT;
 use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedVertexState, RenderPipeline};
 use crate::vertex_attrs::{GeneralInstanceInput, VertexAttrib};
 use renderer_common::geometry_data::MeshVertex;
-use std::borrow::Cow;
-use wesl::include_wesl;
+use wesl_core::include_wesl;
 use wgpu::{Face, RenderPass, ShaderModuleDescriptor, ShaderSource};
-use crate::SHADOW_MAP_DEPTH_TEX_FORMAT;
 
 pub(crate) struct FillShadowMapPipeline {
     mesh_pipeline: MeshPipeline,
@@ -22,7 +21,7 @@ impl FillShadowMapPipeline {
                 .device()
                 .create_shader_module(ShaderModuleDescriptor {
                     label: Some("shadow_map"),
-                    source: ShaderSource::Wgsl(Cow::from(include_wesl!("shadow_map"))),
+                    source: ShaderSource::Wgsl(include_wesl!("shadow_map").into()),
                 });
         root_descriptor.label = Some("shadow_pipeline");
         root_descriptor.vertex = OwnedVertexState {
