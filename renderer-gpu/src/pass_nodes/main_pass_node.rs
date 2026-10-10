@@ -195,7 +195,7 @@ impl PassNode for MainPassNode {
             global_context,
         );
 
-        if global_context.is_globe_view() {
+        if global_context.is_globe_view() && global_context.is_globe_visible() {
             layers.globe_layer.render(&mut render_pass,
                                       &mut self.globe_glow_pipeline,
                                       global_context);
