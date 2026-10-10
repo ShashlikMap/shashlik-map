@@ -5,8 +5,7 @@ use crate::texture_view_resources::TextureViewKind;
 use crate::textures::{TextureData, create_simple_texture, create_simple_texture_with_data};
 use glam::Vec4;
 use rand::{RngExt, rng};
-use std::borrow::Cow;
-use wesl::include_wesl;
+use wesl_core::include_wesl;
 use wgpu::{
     BindGroup, CommandEncoder, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor,
     ImageSubresourceRange, ShaderModuleDescriptor, ShaderSource, StorageTextureAccess,
@@ -206,7 +205,7 @@ impl SsaoPassNode {
             .device()
             .create_shader_module(ShaderModuleDescriptor {
                 label: Some("ssao"),
-                source: ShaderSource::Wgsl(Cow::from(include_wesl!("ssao"))),
+                source: ShaderSource::Wgsl(include_wesl!("ssao").into()),
             });
 
         let ssao_compute_pipeline = device.create_compute_pipeline(&ComputePipelineDescriptor {

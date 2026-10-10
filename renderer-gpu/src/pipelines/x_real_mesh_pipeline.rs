@@ -3,8 +3,7 @@ use crate::global_context::GlobalContext;
 use crate::pipelines::RenderPipeline;
 use crate::textures::SAMPLE_COUNT;
 use crate::vertex_attrs::GeneralInstanceInput;
-use std::borrow::Cow;
-use wesl::include_wesl;
+use wesl_core::include_wesl;
 use wgpu::{
     BlendState, DepthBiasState, DepthStencilState, RenderPass, ShaderModuleDescriptor,
     ShaderSource, StencilState,
@@ -29,7 +28,7 @@ impl XRealMeshShaderPipeline {
         });
         let shader_module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("x_real_mesh_shader"),
-            source: ShaderSource::Wgsl(Cow::from(include_wesl!("x_real_mesh_shader"))),
+            source: ShaderSource::Wgsl(include_wesl!("x_real_mesh_shader").into()),
         });
         let pipeline = device.create_mesh_pipeline(&wgpu::MeshPipelineDescriptor {
             label: Some("X Real Mesh Shader Pipeline"),
