@@ -7,7 +7,11 @@ const MAP_SIZE: f32 = 16777216.0;
 const GLOBE_R: f32 = MAP_SIZE / (2.0 * PI);
 
 fn transform_to_globe_position(position: vec2f) -> vec4f {
-    let lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * (position.y / MAP_SIZE)))) - (PI * 0.5);
+    // for position.y <= 1.0 we force PI/2. It fixes very well north pole emptyness circle!
+    var lat = PI * 0.5;
+    if(position.y > 1.0) {
+        lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * (position.y / MAP_SIZE)))) - (PI * 0.5);
+    }
     let lon = 2.0 * PI * ((position.x / MAP_SIZE) - 0.5);
     let globe = vec3<f32>(
         cos(lat) * sin(lon),
