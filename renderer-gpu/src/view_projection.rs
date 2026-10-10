@@ -3,7 +3,8 @@ use crate::render_config::RenderConfig;
 use crate::{GpuRenderer, RendererUpdateData};
 use geo_types::{Coord, coord};
 use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec3Swizzles, Vec4Swizzles};
-use renderer_common::{max_f64, min_f64, GLOBE_R, GLOBE_SCALE, LIGHT_POS, MAP_SIZE};
+use num::abs;
+use renderer_common::{GLOBE_R, GLOBE_SCALE, LIGHT_POS, MAP_SIZE, max_f64, min_f64};
 use std::cmp::min;
 use std::f64::consts::PI;
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
@@ -27,10 +28,10 @@ pub(crate) struct ViewProjUniform {
     light_view_proj: [[f32; 4]; 4],
     view_tr_inv: [[f32; 4]; 4],
     inv_screen_size: [f32; 2],
+    inv_ndc_globe_r: [f32; 2],
     pub(crate) scale: f32,
     p2_scale: f32,
     scale_2d_3d: f32,
-    globe_r: f32
 }
 
 #[derive(Clone)]
@@ -88,7 +89,7 @@ impl ViewProjection {
                 scale: 0.0,
                 p2_scale: 1.0,
                 scale_2d_3d: 1.0,
-                globe_r: 0.0,
+                inv_ndc_globe_r: [0.0, 0.0],
             },
             scale_2d_3d: 0.0,
             screen_size: (0.0, 0.0),
@@ -148,7 +149,11 @@ impl ViewProjection {
             .as_mat4()
             .to_cols_array_2d();
         self.uniform.scale = data.scale;
-        self.uniform.globe_r = data.globe_r;
+
+        self.uniform.inv_ndc_globe_r = [
+            1f32 / (data.globe_r * abs(data.proj_matrix.x_axis.x as f32)),
+            1f32 / (data.globe_r * abs(data.proj_matrix.y_axis.y as f32))
+        ];
 
         self.uniform.p2_scale = self.p2_scale(data.scale);
         self.uniform.scale_2d_3d = data.scale_2d_3d;
@@ -336,6 +341,10 @@ impl ViewProjection {
 
     pub fn is_globe_view(&self) -> bool {
         self.uniform.scale > GLOBE_SCALE
+    }
+
+    pub fn globe_ndc_radius(&self) -> f32 {
+        self.uniform.inv_ndc_globe_r[0]
     }
 
     pub fn get_cs_offset(&self) -> DVec3 {

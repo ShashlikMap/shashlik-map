@@ -135,6 +135,16 @@ impl GlobalContext {
         self.view_projection.is_globe_view()
     }
 
+    pub fn is_globe_visible(&self) -> bool {
+        let globe_ndc_r = self.view_projection.globe_ndc_radius();
+        if self.view_projection.round_screen_sq_radius().is_some() {
+            // for round screen we can use higher value, almost close to the screen edge
+            return globe_ndc_r >= 0.9
+        }
+        // this is a safe option for almost all screen, we're a globe but the sphere is about to be visible
+        globe_ndc_r >= 0.3
+    }
+
     pub fn preview_type(&self) -> PreviewType {
         self.preview_type
     }
