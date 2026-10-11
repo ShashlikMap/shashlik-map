@@ -21,9 +21,9 @@ pub(crate) struct MainPassNode {
     default_shape_pipeline: ShapePipeline,
     screen_shape_pipeline: ShapePipeline,
     feature_shape_pipelines: Vec<(String, ShapePipeline)>,
-    preview_screen_mesh_pipeline: ScreenMeshPipeline,
+    preview_screen_mesh_pipeline: Option<ScreenMeshPipeline>,
     text_screen_mesh_pipeline: ScreenMeshPipeline,
-    post_process_screen_mesh_pipeline: ScreenMeshPipeline,
+    post_process_screen_mesh_pipeline: Option<ScreenMeshPipeline>,
     globe_pipeline: ScreenMeshPipeline,
     globe_glow_pipeline: ScreenMeshPipeline,
 }
@@ -51,33 +51,33 @@ impl MainPassNode {
         let screen_shape_pipeline =
             ShapePipeline::new(global_context, Some("vs_main_screen"), false, false, None);
 
-        let mut preview_screen_mesh_pipeline = ScreenMeshPipeline::new(
-            global_context,
-            TextureInfo {
-                use_texture: true,
-                filterable: false, // ideally, it should be picked using underlying TextureFormat..
-                fs_shader: "fs_main_textured",
-            },
-            false,
-        );
-        preview_screen_mesh_pipeline.set_texture_view(
-            layers.preview_mesh_layer.texture_view(),
-            global_context.device(),
-        );
+        let tv = layers.preview_mesh_layer.texture_view();
+        let preview_screen_mesh_pipeline = tv.map(|_| {
+            ScreenMeshPipeline::new(
+                global_context,
+                TextureInfo {
+                    use_texture: tv.is_some(),
+                    filterable: false, // ideally, it should be picked using underlying TextureFormat..
+                    fs_shader: "fs_main_textured",
+                },
+                tv,
+                false,
+            )
+        });
 
-        let mut post_process_screen_mesh_pipeline = ScreenMeshPipeline::new(
-            global_context,
-            TextureInfo {
-                use_texture: true,
-                filterable: true,
-                fs_shader: "fs_main_tex_storage",
-            },
-            false,
-        );
-        post_process_screen_mesh_pipeline.set_texture_view(
-            layers.post_process_layer.texture_view(),
-            global_context.device(),
-        );
+        let tv = layers.post_process_layer.texture_view();
+        let post_process_screen_mesh_pipeline = tv.map(|_| {
+            ScreenMeshPipeline::new(
+                global_context,
+                TextureInfo {
+                    use_texture: tv.is_some(),
+                    filterable: true,
+                    fs_shader: "fs_main_tex_storage",
+                },
+                tv,
+                false,
+            )
+        });
 
         let feature_shape_pipelines = ShapePipeline::from_world_shape_tags(global_context,
                                                                            world_shape_feature_layer_tag);
@@ -89,6 +89,7 @@ impl MainPassNode {
                 filterable: false,
                 fs_shader: "",
             },
+            None,
             false,
         );
 
@@ -99,6 +100,7 @@ impl MainPassNode {
                 filterable: false,
                 fs_shader: "fs_main_globe",
             },
+            None,
             false,
         );
         layers.globe_layer.set_texture(None, (0.0, 0.0), global_context, buffer_pool);
@@ -110,6 +112,7 @@ impl MainPassNode {
                 filterable: false,
                 fs_shader: "fs_main_globe_glow",
             },
+            None,
             false,
         );
 
@@ -220,10 +223,11 @@ impl PassNode for MainPassNode {
                 true
             );
 
-            if global_context.is_ssao_enabled() {
+            if global_context.is_ssao_enabled()
+                && let Some(post_process_screen_mesh_pipeline) = self.post_process_screen_mesh_pipeline.as_mut() {
                 layers.post_process_layer.render(
                     &mut render_pass,
-                    &mut self.post_process_screen_mesh_pipeline,
+                    post_process_screen_mesh_pipeline,
                     global_context,
                 );
             }
@@ -251,10 +255,11 @@ impl PassNode for MainPassNode {
                 }
             });
 
-        if global_context.preview_type().is_enabled() {
+        if global_context.preview_type().is_enabled()
+            && let Some(preview_screen_mesh_pipeline) = self.preview_screen_mesh_pipeline.as_mut() {
             layers.preview_mesh_layer.render(
                 &mut render_pass,
-                &mut self.preview_screen_mesh_pipeline,
+                preview_screen_mesh_pipeline,
                 global_context,
             );
         }

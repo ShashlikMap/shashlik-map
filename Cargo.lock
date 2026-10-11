@@ -8549,6 +8549,8 @@ dependencies = [
  "half",
  "itertools 0.15.0",
  "num-traits",
+ "proc-macro2",
+ "quote",
  "serde",
  "thiserror 2.0.21",
  "toml 1.1.8+spec-1.1.0",

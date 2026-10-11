@@ -1,17 +1,24 @@
 use wesl::{CompileOptions, Compiler, Feature};
 
-const SHADERS: [&str; 8] = [
+const SHADERS: [&str; 7] = [
     "shape_shader",
     "g_buf_frag_shader",
     "mesh_shader",
     "shadow_map",
-    "screen_mesh_shader",
     "shape_culling",
     "ssao",
     "x_real_mesh_shader",
 ];
 
 fn main() {
+    println!("cargo:rerun-if-changed=src/shaders");
+    wesl::package::PackageBuilder::new("shaders")
+        .scan_root("src/shaders")
+        .expect("failed to scan WESL files")
+        .validate()
+        .expect("WESL validation error")
+        .build_artifact().expect("failed to build WESL artifact");
+
     let mut options = CompileOptions::default();
     options.features.set("CASTANO", Feature::Enable);
     options.features.set("OUTLINE_DEBUG", Feature::Disable);
