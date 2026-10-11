@@ -1,11 +1,9 @@
-use crate::SHADOW_MAP_DEPTH_TEX_FORMAT;
 use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
-use crate::textures::{TextureData, create_simple_texture};
 use crate::vertex_attrs::{MeshVertexWithUV, ScreenShapeInstanceInput, VertexAttrib};
 use wesl_core::include_wesl;
-use wgpu::{BindGroup, BindGroupLayout, BindGroupLayoutEntry, BindingType, CompareFunction, Device, FilterMode, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
+use wgpu::{BindGroup, BindGroupLayout, BindingType, CompareFunction, Device, FilterMode, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
 
 pub(crate) struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
@@ -66,29 +64,34 @@ impl TextureInfo {
         }
         let mut groups = vec![];
         if let Some(texture_view) = texture_view {
-            let texture_type = TextureType::get_texture_type(texture_view);
-            groups.push(wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Texture {
-                    multisampled: false,
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                    sample_type: wgpu::TextureSampleType::Float {
-                        filterable: self.filterable,
-                    },
-                },
-                count: None,
-            });
-            groups.push(wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Texture {
-                    multisampled: false,
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                    sample_type: wgpu::TextureSampleType::Depth,
-                },
-                count: None,
-            });
+            match TextureType::get_texture_type(texture_view) {
+                TextureType::Depth => {
+                    groups.push(wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Depth,
+                        },
+                        count: None,
+                    });
+                }
+                _ => {
+                    groups.push(wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float {
+                                filterable: self.filterable,
+                            },
+                        },
+                        count: None,
+                    });
+                }
+            }
         }
 
         groups.push(wgpu::BindGroupLayoutEntry {
@@ -103,7 +106,6 @@ impl TextureInfo {
             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
             count: None,
         });
-
 
         Some(device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: groups.as_slice(),
@@ -235,43 +237,20 @@ impl ScreenMeshPipeline {
             compare: Some(CompareFunction::GreaterEqual),
             ..Default::default()
         });
-        let dummy_texture = create_simple_texture(
-            TextureData {
-                sample_count: 1,
-                size: (1, 1),
-                usage: TextureUsages::TEXTURE_BINDING,
-                format: TextureFormat::Rgba16Float,
-            },
-            device,
-        );
-        let dummy_depth_texture = create_simple_texture(
-            TextureData {
-                sample_count: 1,
-                size: (1, 1),
-                usage: TextureUsages::TEXTURE_BINDING,
-                format: SHADOW_MAP_DEPTH_TEX_FORMAT,
-            },
-            device,
-        );
         let mut entries: Vec<wgpu::BindGroupEntry> = vec![];
-        if texture_view.texture().format().is_depth_stencil_format() {
-            entries.push(wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::TextureView(&dummy_texture),
-            });
-            entries.push(wgpu::BindGroupEntry {
-                binding: 1,
-                resource: wgpu::BindingResource::TextureView(texture_view),
-            });
-        } else {
-            entries.push(wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::TextureView(&texture_view),
-            });
-            entries.push(wgpu::BindGroupEntry {
-                binding: 1,
-                resource: wgpu::BindingResource::TextureView(&dummy_depth_texture),
-            });
+        match TextureType::get_texture_type(texture_view) {
+            TextureType::Depth => {
+                entries.push(wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(texture_view),
+                });
+            }
+            _ => {
+                entries.push(wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&texture_view),
+                });
+            }
         }
         entries.push(wgpu::BindGroupEntry {
             binding: 2,
