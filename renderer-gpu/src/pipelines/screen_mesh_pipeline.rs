@@ -44,6 +44,7 @@ impl ScreenMeshPipeline {
     pub fn new(
         global_context: &GlobalContext,
         texture_info: TextureInfo,
+        texture_view: Option<&TextureView>,
         read_stencil: bool,
     ) -> Self {
         let device = global_context.device();
@@ -103,6 +104,7 @@ impl ScreenMeshPipeline {
                 .prepare(global_context)
                 .to_render_pipeline(global_context.device()),
         );
+        result.set_texture_view(texture_view, global_context.device());
         result
     }
 
@@ -169,7 +171,7 @@ impl ScreenMeshPipeline {
         mesh_descriptor
     }
 
-    pub fn set_texture_view(&mut self, texture_view: Option<&TextureView>, device: &wgpu::Device) {
+    fn set_texture_view(&mut self, texture_view: Option<&TextureView>, device: &wgpu::Device) {
         if let Some(texture_view) = texture_view {
             // fyi, in future we may need to cache bind group here for more dynamic behavior
             // now, it'll be called only in MainPassNode constructor for new render configuration

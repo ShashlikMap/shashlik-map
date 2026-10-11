@@ -58,11 +58,8 @@ impl MainPassNode {
                 filterable: false, // ideally, it should be picked using underlying TextureFormat..
                 fs_shader: "fs_main_textured",
             },
-            false,
-        );
-        preview_screen_mesh_pipeline.set_texture_view(
             layers.preview_mesh_layer.texture_view(),
-            global_context.device(),
+            false,
         );
 
         let mut post_process_screen_mesh_pipeline = ScreenMeshPipeline::new(
@@ -72,11 +69,8 @@ impl MainPassNode {
                 filterable: true,
                 fs_shader: "fs_main_tex_storage",
             },
-            false,
-        );
-        post_process_screen_mesh_pipeline.set_texture_view(
             layers.post_process_layer.texture_view(),
-            global_context.device(),
+            false,
         );
 
         let feature_shape_pipelines = ShapePipeline::from_world_shape_tags(global_context,
@@ -89,6 +83,7 @@ impl MainPassNode {
                 filterable: false,
                 fs_shader: "",
             },
+            None,
             false,
         );
 
@@ -99,6 +94,7 @@ impl MainPassNode {
                 filterable: false,
                 fs_shader: "fs_main_globe",
             },
+            None,
             false,
         );
         layers.globe_layer.set_texture(None, (0.0, 0.0), global_context, buffer_pool);
@@ -110,6 +106,7 @@ impl MainPassNode {
                 filterable: false,
                 fs_shader: "fs_main_globe_glow",
             },
+            None,
             false,
         );
 
