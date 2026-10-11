@@ -16,13 +16,20 @@ struct InstanceInput {
     @location(7) model_matrix_1: vec4<f32>,
     @location(8) model_matrix_2: vec4<f32>,
     @location(9) model_matrix_3: vec4<f32>,
-    @location(13) screen_space: u32, // question: should the location be universal across
+    @location(13) @interpolate(flat) screen_space: u32, // question: should the location be universal across
 }
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) color: vec4<f32>,
     @location(1) uv: vec2<f32>,
+    @location(2) pos_from_light: vec4<f32>,
+}
+
+struct VertexOutputCube {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) color: vec4<f32>,
+    @location(1) uv: vec3<f32>,
     @location(2) pos_from_light: vec4<f32>,
 }
 
@@ -68,6 +75,9 @@ var t_tex: texture_2d<f32>;
 @if(DEPTH)
 @group(1) @binding(0)
 var t_tex: texture_depth_2d;
+@if(CUBE)
+@group(1) @binding(0)
+var t_tex: texture_cube<f32>;
 @group(1) @binding(1)
 var s_diffuse: sampler;
 @group(1) @binding(2)
@@ -110,6 +120,52 @@ fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
 
 const tex_border_x: f32 = 0.01;
 
+@vertex
+fn vs_stars_main(model: VertexInput,
+    pos: InstanceInput) -> VertexOutputCube {
+    var out: VertexOutputCube;
+
+    let model_matrix = mat4x4<f32>(
+            pos.model_matrix_0,
+            pos.model_matrix_1,
+            pos.model_matrix_2,
+            pos.model_matrix_3,
+    );
+    let model_position = model_matrix * vec4(model.position, 0.0, 1.0);
+    let ratio_fixed_modelpos = vec4(model_position.xy * vec2(2.0*camera.inv_screen_size.x, 2.0*camera.inv_screen_size.y), model_position.z, 1.0);
+
+    var coord = vec4<f32>(pos.position.xy, 0.0, 1.0);
+    if pos.screen_space == 0 {
+        if(camera.scale > GLOBE_SCALE) {
+            coord = camera.globe_view_proj * transform_to_globe_position(pos.position.xy);
+        } else {
+            coord = camera.view_proj * coord;
+        }
+    } else {
+        coord.x *= camera.inv_screen_size.x;
+        coord.x = 2.0*(coord.x - 0.5);
+        coord.y *= camera.inv_screen_size.y;
+        coord.y = 2.0*(coord.y - 0.5) * -1.0;
+    }
+
+    out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
+    let unprojected = camera.inv_proj * out.clip_position;
+    out.color = vec4f(model.color.rgb, model.color.a * pos.color_alpha);
+    out.uv = (camera.inv_globe_view * unprojected).xyz;
+
+    return out;
+}
+
+
+@fragment
+fn fs_main_stars(in: VertexOutputCube) -> @location(0) vec4<f32> {
+    @if(CUBE)
+    let sample = textureSample(t_tex, s_diffuse, in.uv);
+    @else
+    let sample = vec4f(1.0);
+    return sample;
+}
+
 @fragment
 fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
     let uv = in.uv;
@@ -119,16 +175,20 @@ fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
     if in.uv.x <= tex_border_x || in.uv.x >= 1.0 - tex_border_x || in.uv.y <= tex_border_y || in.uv.y >= 1.0 - tex_border_y {
          return vec4(1.0, 0.0, 0.0, 1.0);
     }
-    let sample = textureSample(t_tex, s_diffuse, in.uv.xy);
 
     @if(GENERAL_RGBA) {
-        return sample;
+        return textureSample(t_tex, s_diffuse, in.uv.xy);
     }
     @if(GENERAL_R_FLOAT) {
+        let sample = textureSample(t_tex, s_diffuse, in.uv.xy);
         return vec4f(vec3f(1.0 - sample.r), 1.0);
     }
     @if(DEPTH) {
+        let sample = textureSample(t_tex, s_diffuse, in.uv.xy);
         return vec4f(vec3f(sample), 1.0);
+    }
+    @if(CUBE) {
+        return vec4f(1.0);
     }
 }
 

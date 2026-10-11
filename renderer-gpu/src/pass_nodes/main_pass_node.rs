@@ -9,8 +9,9 @@ use crate::pipelines::shape_pipeline::ShapePipeline;
 use crate::pipelines::x_real_mesh_pipeline::XRealMeshShaderPipeline;
 use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
 use renderer_common::WorldShapeFeatureLayerTag;
-use wgpu::{CommandEncoder, TextureView};
+use wgpu::{AstcBlock, AstcChannel, CommandEncoder, Extent3d, TextureView};
 use wgpu::Face::Back;
+use wgpu::util::DeviceExt;
 use crate::buffer_pool::BufferPool;
 
 pub(crate) struct MainPassNode {
@@ -24,9 +25,12 @@ pub(crate) struct MainPassNode {
     preview_screen_mesh_pipeline: Option<ScreenMeshPipeline>,
     text_screen_mesh_pipeline: ScreenMeshPipeline,
     post_process_screen_mesh_pipeline: Option<ScreenMeshPipeline>,
+    stars_pipeline: ScreenMeshPipeline,
     globe_pipeline: ScreenMeshPipeline,
     globe_glow_pipeline: ScreenMeshPipeline,
 }
+
+const STARS_BYTES: &'static [u8] = include_bytes!("../../../astc.ktx2");
 
 impl MainPassNode {
     pub fn new(
@@ -116,6 +120,54 @@ impl MainPassNode {
             false,
         );
 
+        let reader = ktx2::Reader::new(STARS_BYTES).unwrap();
+        let header = reader.header();
+        let mut image = Vec::with_capacity(reader.data().len());
+        for level in reader.levels() {
+            image.extend_from_slice(level.data);
+        }
+
+        let texture = global_context.device().create_texture_with_data(
+            global_context.queue(),
+            &wgpu::TextureDescriptor {
+                size: Extent3d {
+                    width: 512,
+                    height: 512,
+                    depth_or_array_layers: 6,
+                },
+                mip_level_count: header.level_count,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Astc {
+                    block: AstcBlock::B4x4,
+                    channel: AstcChannel::UnormSrgb,
+                },
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                label: None,
+                view_formats: &[],
+            },
+            // KTX2 stores mip levels in mip major order.
+            wgpu::util::TextureDataOrder::MipMajor,
+            &image,
+        );
+
+        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor {
+            label: None,
+            dimension: Some(wgpu::TextureViewDimension::Cube),
+            ..wgpu::TextureViewDescriptor::default()
+        });
+
+        let stars_pipeline = ScreenMeshPipeline::new(
+            global_context,
+            TextureInfo {
+                use_texture: true,
+                filterable: true,
+                fs_shader: "fs_main_stars",
+            },
+            Some(&texture_view),
+            false,
+        );
+
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
             depth_texture_view: create_depth_texture(
@@ -132,6 +184,7 @@ impl MainPassNode {
             feature_shape_pipelines,
             preview_screen_mesh_pipeline,
             post_process_screen_mesh_pipeline,
+            stars_pipeline,
             globe_pipeline,
             globe_glow_pipeline
         }
@@ -188,6 +241,9 @@ impl PassNode for MainPassNode {
         if global_context.is_globe_view() {
             layers.globe_layer.render(&mut render_pass,
                                       &mut self.globe_pipeline,
+                                      global_context);
+            layers.globe_layer.render(&mut render_pass,
+                                      &mut self.stars_pipeline,
                                       global_context);
         }
 

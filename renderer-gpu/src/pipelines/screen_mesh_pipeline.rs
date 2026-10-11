@@ -4,7 +4,7 @@ use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::vertex_attrs::{MeshVertexWithUV, ScreenShapeInstanceInput, VertexAttrib};
 use wesl::Compiler;
 use wesl::resolver::PackageResolver;
-use wgpu::{BindGroup, BindGroupLayout, BindingType, CompareFunction, Device, FilterMode, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
+use wgpu::{AstcBlock, AstcChannel, BindGroup, BindGroupLayout, BindingType, CompareFunction, Device, FilterMode, MipmapFilterMode, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
 
 pub(crate) struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
@@ -20,6 +20,7 @@ enum TextureType {
     GeneralRgba,
     GeneralRFloat,
     Depth,
+    Cube
 }
 
 impl TextureType {
@@ -27,7 +28,8 @@ impl TextureType {
         match self {
             TextureType::GeneralRgba => "GENERAL_RGBA",
             TextureType::GeneralRFloat => "GENERAL_R_FLOAT",
-            TextureType::Depth => "DEPTH"
+            TextureType::Depth => "DEPTH",
+            TextureType::Cube => "CUBE"
         }
     }
 
@@ -47,6 +49,8 @@ impl TextureType {
             } else {
                 TextureType::GeneralRgba
             }
+        } else if matches!(texture_format, TextureFormat::Astc {..})  {
+            TextureType::Cube
         } else {
             TextureType::GeneralRgba
         }
@@ -79,6 +83,13 @@ impl TextureInfo {
                         multisampled: false,
                         view_dimension: wgpu::TextureViewDimension::D2,
                         sample_type: wgpu::TextureSampleType::Depth,
+                    }
+                },
+                TextureType::Cube => {
+                    wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::Cube,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
                     }
                 }
                 _ => {
@@ -195,6 +206,7 @@ impl ScreenMeshPipeline {
         let mut wesl_compiler = Compiler::default().with_resolver(wesl_resolver);
         let tex_type_shader_type = texture_type.as_ref().map(|t_type|
             t_type.get_shader_type()).unwrap_or(TextureType::GeneralRgba.get_shader_type());
+        println!("tex_type_shader_type = {:?}",tex_type_shader_type);
         wesl_compiler.options.features.set(tex_type_shader_type, true);
         let wesl_shader = wesl_compiler
             .compile_module(&"shaders::screen_mesh_shader".parse().unwrap())
@@ -213,6 +225,9 @@ impl ScreenMeshPipeline {
         if self.texture_info.use_texture {
             vertex.entry_point = Some("vs_main");
             fragment.entry_point = Some(self.texture_info.fs_shader);
+            if self.texture_info.fs_shader.contains("fs_main_stars") {
+                vertex.entry_point = Some("vs_stars_main");
+            }
         }
         if !self.texture_info.fs_shader.is_empty() {
             fragment.entry_point = Some(self.texture_info.fs_shader);
@@ -244,6 +259,7 @@ impl ScreenMeshPipeline {
         let diffuse_sampler = device.create_sampler(&SamplerDescriptor {
             mag_filter: self.texture_info.filter_mode(),
             min_filter: self.texture_info.filter_mode(),
+            mipmap_filter: MipmapFilterMode::Linear,
             ..Default::default()
         });
         let sampler_compare = device.create_sampler(&SamplerDescriptor {
