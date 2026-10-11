@@ -164,7 +164,6 @@ impl ScreenMeshPipeline {
                         Some(&self.mesh_pipeline.bind_group_layout),
                         Some(texture_bind_group_layout),
                     ],
-                    immediate_size: 4,
                     ..Default::default()
                 },
             ));
