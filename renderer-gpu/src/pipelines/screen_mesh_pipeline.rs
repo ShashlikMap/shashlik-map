@@ -5,7 +5,7 @@ use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::textures::{TextureData, create_simple_texture};
 use crate::vertex_attrs::{MeshVertexWithUV, ScreenShapeInstanceInput, VertexAttrib};
 use wesl_core::include_wesl;
-use wgpu::{BindGroup, BindGroupLayout, BindingType, CompareFunction, Device, FilterMode, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
+use wgpu::{BindGroup, BindGroupLayout, BindGroupLayoutEntry, BindingType, CompareFunction, Device, FilterMode, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
 
 pub(crate) struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
@@ -21,6 +21,29 @@ enum TextureType {
     GeneralRgba,
     GeneralRFloat,
     Depth,
+}
+
+impl TextureType {
+    fn get_texture_type(texture_view: &TextureView) -> TextureType {
+        let texture = texture_view.texture();
+        let texture_format = texture.format();
+        let texture_usage = texture.usage();
+        if texture_format.is_depth_stencil_format() {
+            TextureType::Depth
+        } else if texture_format == TextureFormat::R16Float
+            || texture_format == TextureFormat::R32Float
+        {
+            TextureType::GeneralRFloat
+        } else if texture_format == TextureFormat::Rgba16Float {
+            if texture_usage.contains(TextureUsages::STORAGE_BINDING) {
+                TextureType::GeneralRFloat
+            } else {
+                TextureType::GeneralRgba
+            }
+        } else {
+            TextureType::GeneralRgba
+        }
+    }
 }
 
 pub struct TextureInfo {
@@ -41,43 +64,49 @@ impl TextureInfo {
         if !self.use_texture {
             return None;
         }
+        let mut groups = vec![];
+        if let Some(texture_view) = texture_view {
+            let texture_type = TextureType::get_texture_type(texture_view);
+            groups.push(wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Float {
+                        filterable: self.filterable,
+                    },
+                },
+                count: None,
+            });
+            groups.push(wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Depth,
+                },
+                count: None,
+            });
+        }
+
+        groups.push(wgpu::BindGroupLayoutEntry {
+            binding: 2,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: BindingType::Sampler(self.sample_binding_type()),
+            count: None,
+        });
+        groups.push(wgpu::BindGroupLayoutEntry {
+            binding: 3,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
+            count: None,
+        });
+
+
         Some(device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        sample_type: wgpu::TextureSampleType::Float {
-                            filterable: self.filterable,
-                        },
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        sample_type: wgpu::TextureSampleType::Depth,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: BindingType::Sampler(self.sample_binding_type()),
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
-                    count: None,
-                },
-            ],
+            entries: groups.as_slice(),
             label: Some("texture_bind_group_layout"),
         }))
     }
@@ -170,7 +199,6 @@ impl ScreenMeshPipeline {
             fragment.entry_point = Some(self.texture_info.fs_shader);
         }
 
-
         mesh_descriptor.primitive.cull_mode = None;
 
         mesh_descriptor
@@ -184,30 +212,9 @@ impl ScreenMeshPipeline {
                 "Created texture view: {:?} for ScreenMeshPipeline",
                 texture_view
             );
-            let texture_type = Self::get_texture_type(texture_view);
+            let texture_type = TextureType::get_texture_type(texture_view);
             self.texture_type_and_bind_group = Some((texture_type,
                                                      self.create_texture_bind_group(texture_view, device, texture_bind_group_layout)));
-        }
-    }
-
-    fn get_texture_type(texture_view: &TextureView) -> TextureType {
-        let texture = texture_view.texture();
-        let texture_format = texture.format();
-        let texture_usage = texture.usage();
-        if texture_format.is_depth_stencil_format() {
-            TextureType::Depth
-        } else if texture_format == TextureFormat::R16Float
-            || texture_format == TextureFormat::R32Float
-        {
-            TextureType::GeneralRFloat
-        } else if texture_format == TextureFormat::Rgba16Float {
-            if texture_usage.contains(TextureUsages::STORAGE_BINDING) {
-                TextureType::GeneralRFloat
-            } else {
-                TextureType::GeneralRgba
-            }
-        } else {
-            TextureType::GeneralRgba
         }
     }
 
