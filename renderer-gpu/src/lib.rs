@@ -1,5 +1,7 @@
 extern crate core;
 
+wesl_pkg!(pub shaders);
+
 use crate::buffer_pool::BufferPool;
 use crate::mesh_layers::layers::SCREEN_TEXT_LAYER;
 use crate::messages::RendererMessage;
@@ -33,6 +35,7 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::spawn;
 use strum::IntoEnumIterator;
 use tokio::sync::broadcast;
+use wesl_core::wesl_pkg;
 use wgpu::{Texture, TextureFormat, TextureView};
 use crate::mesh_layers::BaseMeshLayer;
 

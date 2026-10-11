@@ -1,13 +1,13 @@
 
 // TODO this has to come from Rust, maybe push constants?
-const GLOBE_SCALE: f32 = 500.0;
+public const GLOBE_SCALE: f32 = 500.0;
 
 const PI: f32 = 3.14159265359;
 const MAP_SIZE: f32 = 16777216.0;
 const GLOBE_R: f32 = MAP_SIZE / (2.0 * PI);
 const HALF_PI: f32 = PI * 0.5;
 
-fn transform_to_globe_position(position: vec2f) -> vec4f {
+public fn transform_to_globe_position(position: vec2f) -> vec4f {
     let orig_lat = 2.0 * atan(exp(PI * (1.0 - 2.0 * (position.y / MAP_SIZE)))) - HALF_PI;
     // for position.y <= 1.0 we force PI/2. It fixes very well north pole emptyness circle!
     let lat = mix(HALF_PI, orig_lat, clamp(position.y, 0.0, 1.0));

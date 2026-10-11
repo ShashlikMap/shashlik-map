@@ -28,6 +28,6 @@ image = "0.24"
 
 [build-dependencies]
 anyhow = "1.0"
-wesl = { version = "0.6.0", features = ["naga-ext"]}
+wesl = { version = "0.6.0", features = ["naga-ext","package"]}
 
 

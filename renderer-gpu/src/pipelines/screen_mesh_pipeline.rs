@@ -3,6 +3,7 @@ use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::vertex_attrs::{MeshVertexWithUV, ScreenShapeInstanceInput, VertexAttrib};
 use wesl::Compiler;
+use wesl::resolver::PackageResolver;
 use wgpu::{BindGroup, BindGroupLayout, BindingType, CompareFunction, Device, FilterMode, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
 
 pub(crate) struct ScreenMeshPipeline {
@@ -189,16 +190,15 @@ impl ScreenMeshPipeline {
         }
         mesh_descriptor.depth_stencil = Some(depth_stencil);
 
-        let mut wesl_compiler = Compiler::default();
+        // TODO Some cache to prevent recompilation.
+        let mut wesl_resolver = PackageResolver::new();
+        wesl_resolver.add_package(&crate::shaders::PACKAGE);
+        let mut wesl_compiler = Compiler::default().with_resolver(wesl_resolver);
         let tex_type_shader_type = texture_type.as_ref().map(|t_type|
             t_type.get_shader_type()).unwrap_or(TextureType::GeneralRgba.get_shader_type());
         wesl_compiler.options.features.set(tex_type_shader_type, true);
-
-        // TODO Later
-        // 1. Some cache to prevent recompilation.
-        // 2. Set the root folder for all shaders
         let wesl_shader = wesl_compiler
-            .compile("renderer-gpu/src/shaders/screen_mesh_shader.wgsl")
+            .compile_module(&"shaders::screen_mesh_shader".parse().unwrap())
             .unwrap_or_else(|e| panic!("failed to compile screen_mesh_shader: {e}")).to_string();
         let shader_module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("screen_mesh_shader"),

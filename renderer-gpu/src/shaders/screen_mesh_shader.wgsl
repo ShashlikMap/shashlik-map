@@ -1,7 +1,5 @@
 import super::common::CameraUniform;
 import super::common::camera;
-import super::textures;
-import super::textures::TextureType;
 import super::globe_common::GLOBE_SCALE;
 import super::globe_common::transform_to_globe_position;
 
@@ -134,27 +132,26 @@ fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
     }
 }
 
-@if(GENERAL_R_FLOAT) {
-    @fragment
-    fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
-        let a_koef = max(0.0, 1.0 - camera.scale * 0.5);
-        if a_koef <= 0.0 {
-            return vec4f(0.0, 0.0, 0.0, 0.0);
-        }
-
-        var result = 0.0;
-        let dims = vec2f(textureDimensions(t_tex));
-        let texelSize = 1.0 / dims;
-        let base = (floor(in.uv * dims) + 0.5) * texelSize;
-
-        for (var y = -1; y <= 1; y += 2) {
-            for (var x = -1; x <= 1; x += 2) {
-                let offset = base + (vec2f(f32(x), f32(y)) - 0.5) * texelSize;
-                result += textureSample(t_tex, s_diffuse, offset).r;
-            }
-        }
-        result = result / 4.0;
-
-        return vec4f(0.0, 0.0, 0.0, result * a_koef);
+@fragment
+fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
+    let a_koef = max(0.0, 1.0 - camera.scale * 0.5);
+    if a_koef <= 0.0 {
+        return vec4f(0.0, 0.0, 0.0, 0.0);
     }
+
+    var result = 0.0;
+    let dims = vec2f(textureDimensions(t_tex));
+    let texelSize = 1.0 / dims;
+    let base = (floor(in.uv * dims) + 0.5) * texelSize;
+
+    for (var y = -1; y <= 1; y += 2) {
+        for (var x = -1; x <= 1; x += 2) {
+            let offset = base + (vec2f(f32(x), f32(y)) - 0.5) * texelSize;
+            @if(GENERAL_R_FLOAT)
+            result += textureSample(t_tex, s_diffuse, offset).r;
+        }
+    }
+    result = result / 4.0;
+
+    return vec4f(0.0, 0.0, 0.0, result * a_koef);
 }
