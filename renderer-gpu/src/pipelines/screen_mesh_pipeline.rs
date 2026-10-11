@@ -5,11 +5,10 @@ use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::textures::{TextureData, create_simple_texture};
 use crate::vertex_attrs::{MeshVertexWithUV, ScreenShapeInstanceInput, VertexAttrib};
 use wesl_core::include_wesl;
-use wgpu::{BindGroup, BindGroupLayout, BindingType, CompareFunction, FilterMode, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
+use wgpu::{BindGroup, BindGroupLayout, BindingType, CompareFunction, Device, FilterMode, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
 
 pub(crate) struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
-    texture_bind_group_layout: BindGroupLayout,
     texture_type_and_bind_group: Option<(TextureType, BindGroup)>,
     texture_info: TextureInfo,
     read_stencil: bool,
@@ -31,12 +30,56 @@ pub struct TextureInfo {
 }
 
 impl TextureInfo {
-
     fn sample_binding_type(&self) -> SamplerBindingType {
         if self.filterable { SamplerBindingType::Filtering } else { SamplerBindingType::NonFiltering }
     }
     fn filter_mode(&self) -> FilterMode {
         if self.filterable { wgpu::FilterMode::Linear } else { wgpu::FilterMode::Nearest }
+    }
+
+    fn create_texture_bind_group_layout(&self, device: &Device, texture_view: Option<&TextureView>) -> Option<BindGroupLayout> {
+        if !self.use_texture {
+            return None;
+        }
+        Some(device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float {
+                            filterable: self.filterable,
+                        },
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Depth,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(self.sample_binding_type()),
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
+                    count: None,
+                },
+            ],
+            label: Some("texture_bind_group_layout"),
+        }))
     }
 }
 
@@ -49,82 +92,44 @@ impl ScreenMeshPipeline {
     ) -> Self {
         let device = global_context.device();
 
-        let texture_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float {
-                                filterable: texture_info.filterable,
-                            },
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            multisampled: false,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Depth,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: BindingType::Sampler(texture_info.sample_binding_type()),
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
-                        count: None,
-                    },
-                ],
-                label: Some("texture_bind_group_layout"),
-            });
-
         let mut result = Self {
             mesh_pipeline: MeshPipeline::new(global_context, false, false, false),
-            texture_bind_group_layout,
             texture_type_and_bind_group: None,
             texture_info,
             read_stencil,
             pipeline: None,
         };
 
+        let texture_bind_group_layout = result.texture_info.create_texture_bind_group_layout(device, texture_view);
         result.pipeline = Some(
             result
-                .prepare(global_context)
+                .prepare(global_context, texture_bind_group_layout.as_ref())
                 .to_render_pipeline(global_context.device()),
         );
-        result.set_texture_view(texture_view, global_context.device());
+        result.set_texture_view(texture_view, device, texture_bind_group_layout);
         result
     }
 
-    fn prepare(&self, global_context: &GlobalContext) -> OwnedRenderPipelineDescriptor<'_> {
+
+
+    fn prepare(&self, global_context: &GlobalContext, texture_bind_group_layout: Option<&BindGroupLayout>) -> OwnedRenderPipelineDescriptor<'_> {
         let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context);
         mesh_descriptor.label = Some("Screen Mesh Pipeline");
         let device = global_context.device();
 
-        if self.texture_info.use_texture {
+        if let Some(texture_bind_group_layout) = texture_bind_group_layout {
             mesh_descriptor.layout = Some(device.create_pipeline_layout(
                 &wgpu::PipelineLayoutDescriptor {
                     label: Some("Texture Render Pipeline Layout"),
                     bind_group_layouts: &[
                         Some(&self.mesh_pipeline.bind_group_layout),
-                        Some(&self.texture_bind_group_layout),
+                        Some(texture_bind_group_layout),
                     ],
                     immediate_size: 4,
                     ..Default::default()
                 },
             ));
+
         }
 
         let mut depth_stencil = mesh_descriptor.depth_stencil.unwrap();
@@ -171,8 +176,8 @@ impl ScreenMeshPipeline {
         mesh_descriptor
     }
 
-    fn set_texture_view(&mut self, texture_view: Option<&TextureView>, device: &wgpu::Device) {
-        if let Some(texture_view) = texture_view {
+    fn set_texture_view(&mut self, texture_view: Option<&TextureView>, device: &wgpu::Device, texture_bind_group_layout: Option<BindGroupLayout>) {
+        if let (Some(texture_view), Some(texture_bind_group_layout)) = (texture_view, texture_bind_group_layout) {
             // fyi, in future we may need to cache bind group here for more dynamic behavior
             // now, it'll be called only in MainPassNode constructor for new render configuration
             println!(
@@ -180,7 +185,8 @@ impl ScreenMeshPipeline {
                 texture_view
             );
             let texture_type = Self::get_texture_type(texture_view);
-            self.texture_type_and_bind_group = Some((texture_type, self.create_texture_bind_group(texture_view, device)));
+            self.texture_type_and_bind_group = Some((texture_type,
+                                                     self.create_texture_bind_group(texture_view, device, texture_bind_group_layout)));
         }
     }
 
@@ -209,6 +215,7 @@ impl ScreenMeshPipeline {
         &self,
         texture_view: &TextureView,
         device: &wgpu::Device,
+        texture_bind_group_layout: BindGroupLayout
     ) -> BindGroup {
         let diffuse_sampler = device.create_sampler(&SamplerDescriptor {
             mag_filter: self.texture_info.filter_mode(),
@@ -269,7 +276,7 @@ impl ScreenMeshPipeline {
         });
 
         device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &self.texture_bind_group_layout,
+            layout: &texture_bind_group_layout,
             entries: &entries,
             label: Some("texture_bind_group"),
         })
