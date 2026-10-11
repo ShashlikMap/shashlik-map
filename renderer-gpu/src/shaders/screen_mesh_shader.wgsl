@@ -5,8 +5,6 @@ import super::textures::TextureType;
 import super::globe_common::GLOBE_SCALE;
 import super::globe_common::transform_to_globe_position;
 
-var<immediate> texture_type: TextureType;
-
 struct VertexInput {
     @location(0) position: vec2<f32>,
     @location(1) color: vec4<f32>,

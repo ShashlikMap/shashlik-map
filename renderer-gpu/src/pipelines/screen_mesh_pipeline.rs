@@ -7,7 +7,7 @@ use wgpu::{BindGroup, BindGroupLayout, BindingType, CompareFunction, Device, Fil
 
 pub(crate) struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
-    texture_type_and_bind_group: Option<(TextureType, BindGroup)>,
+    texture_type_and_bind_group: Option<BindGroup>,
     texture_info: TextureInfo,
     read_stencil: bool,
     pipeline: Option<wgpu::RenderPipeline>,
@@ -230,9 +230,7 @@ impl ScreenMeshPipeline {
                 "Created texture view: {:?} for ScreenMeshPipeline",
                 texture_view
             );
-            let texture_type = TextureType::get_texture_type(texture_view);
-            self.texture_type_and_bind_group = Some((texture_type,
-                                                     self.create_texture_bind_group(texture_view, device, texture_bind_group_layout)));
+            self.texture_type_and_bind_group = Some(self.create_texture_bind_group(texture_view, device, texture_bind_group_layout));
         }
     }
 
@@ -286,8 +284,7 @@ impl RenderPipeline<ScreenShapeInstanceInput> for ScreenMeshPipeline {
                 render_pass.set_stencil_reference(1);
             }
         }
-        if let Some((texture_type, texture_bind_group)) = self.texture_type_and_bind_group.as_ref() {
-            render_pass.set_immediates(0, bytemuck::bytes_of(&(*texture_type as u32)));
+        if let Some(texture_bind_group) = self.texture_type_and_bind_group.as_ref() {
             render_pass.set_bind_group(1, texture_bind_group, &[]);
         }
     }
