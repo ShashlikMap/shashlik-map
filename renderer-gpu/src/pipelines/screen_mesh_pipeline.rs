@@ -194,13 +194,12 @@ impl ScreenMeshPipeline {
             }
         }
 
-        let res = compiler
+        let wesl_shader = compiler
             .compile("renderer-gpu/src/shaders/screen_mesh_shader.wgsl")
             .unwrap_or_else(|e| panic!("failed to compile screen_mesh_shader: {e}")).to_string();
-        println!("{:?}",res);
         let shader_module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("screen_mesh_shader"),
-            source: ShaderSource::Wgsl(res.into()),
+            source: ShaderSource::Wgsl(wesl_shader.into()),
         });
 
         let vertex = &mut mesh_descriptor.vertex;
