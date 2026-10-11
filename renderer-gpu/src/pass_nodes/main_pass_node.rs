@@ -30,7 +30,7 @@ pub(crate) struct MainPassNode {
     globe_glow_pipeline: ScreenMeshPipeline,
 }
 
-const STARS_BYTES: &'static [u8] = include_bytes!("../../../astc.ktx2");
+const STARS_BYTES: &'static [u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../astc.ktx2"));
 
 impl MainPassNode {
     pub fn new(
@@ -240,10 +240,10 @@ impl PassNode for MainPassNode {
 
         if global_context.is_globe_view() {
             layers.globe_layer.render(&mut render_pass,
-                                      &mut self.globe_pipeline,
+                                      &mut self.stars_pipeline,
                                       global_context);
             layers.globe_layer.render(&mut render_pass,
-                                      &mut self.stars_pipeline,
+                                      &mut self.globe_pipeline,
                                       global_context);
         }
 

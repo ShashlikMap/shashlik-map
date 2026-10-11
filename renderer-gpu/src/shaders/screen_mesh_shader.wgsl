@@ -23,14 +23,11 @@ struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) color: vec4<f32>,
     @location(1) uv: vec2<f32>,
-    @location(2) pos_from_light: vec4<f32>,
 }
 
 struct VertexOutputCube {
     @builtin(position) clip_position: vec4<f32>,
-    @location(0) color: vec4<f32>,
-    @location(1) uv: vec3<f32>,
-    @location(2) pos_from_light: vec4<f32>,
+    @location(0) uv: vec3<f32>,
 }
 
 @vertex
@@ -95,14 +92,14 @@ fn fs_main_globe(in: VertexOutput) -> @location(0) vec4<f32> {
     if(d <= 1.0) {
         return vec4f(0.957, 0.953, 0.941, 1.0);
     }
-    return in.color;
+    discard;
 }
 
 @fragment
 fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
     let ndc = in.uv * 2.0 - 1.0;
     let d = length(ndc * camera.inv_ndc_globe_r);
-    if(d <= 0.9) {
+    if(d <= 0.9 || d > 1.15) {
         discard;
     }
     let glow_color = vec4f(0.35, 0.60, 1.00, 1.0);
@@ -150,7 +147,6 @@ fn vs_stars_main(model: VertexInput,
 
     out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
     let unprojected = camera.inv_proj * out.clip_position;
-    out.color = vec4f(model.color.rgb, model.color.a * pos.color_alpha);
     out.uv = (camera.inv_globe_view * unprojected).xyz;
 
     return out;
