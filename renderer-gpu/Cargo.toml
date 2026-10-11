@@ -20,6 +20,7 @@ rstar = { workspace = true }
 rustybuzz = { workspace = true }
 rustc-hash = { workspace = true }
 wesl-core = "0.1.0"
+wesl = { version = "0.6.0", features = ["naga-ext"]}
 rand = { workspace = true }
 strum = { workspace = true }
 splines = {  version = "5.0.0", features = ["glam"] }

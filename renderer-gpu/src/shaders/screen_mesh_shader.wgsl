@@ -66,14 +66,15 @@ fn vs_main(
     return out;    
 }
 
-// Fragment shader
+@if(GENERAL_RGBA || GENERAL_R_FLOAT)
 @group(1) @binding(0)
-var t_diffuse: texture_2d<f32>;
+var t_tex: texture_2d<f32>;
+@if(DEPTH)
+@group(1) @binding(0)
+var t_tex: texture_depth_2d;
 @group(1) @binding(1)
-var t_depth: texture_depth_2d;
-@group(1) @binding(2)
 var s_diffuse: sampler;
-@group(1) @binding(3)
+@group(1) @binding(2)
 var s_compare: sampler_comparison;
 
 @fragment
@@ -116,41 +117,46 @@ const tex_border_x: f32 = 0.01;
 @fragment
 fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
     let uv = in.uv;
-    let tex_size = textureDimensions(t_diffuse);
+    let tex_size = textureDimensions(t_tex);
+
     let tex_border_y = (tex_border_x * (f32(tex_size.x) / f32(tex_size.y)));
     if in.uv.x <= tex_border_x || in.uv.x >= 1.0 - tex_border_x || in.uv.y <= tex_border_y || in.uv.y >= 1.0 - tex_border_y {
          return vec4(1.0, 0.0, 0.0, 1.0);
     }
-    if texture_type == textures::GENERAL_RGBA {
-        return textureSample(t_diffuse, s_diffuse, in.uv.xy);
-    } else if texture_type == textures::GENERAL_RGBA_R_NEG {
-        let r = textureSample(t_diffuse, s_diffuse, in.uv.xy).r;
-        return vec4f(vec3f(1.0 - r), 1.0);
-    } else { // TextureType::DEPTH
-        let depth = textureSample(t_depth, s_diffuse, in.uv.xy);
-        return vec4f(vec3f(depth), 1.0);
+    let sample = textureSample(t_tex, s_diffuse, in.uv.xy);
+
+    @if(GENERAL_RGBA) {
+        return sample;
+    }
+    @if(GENERAL_R_FLOAT) {
+        return vec4f(vec3f(1.0 - sample.r), 1.0);
+    }
+    @if(DEPTH) {
+        return vec4f(vec3f(sample), 1.0);
     }
 }
 
-@fragment
-fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
-    let a_koef = max(0.0, 1.0 - camera.scale * 0.5);
-    if a_koef <= 0.0 {
-        return vec4f(0.0, 0.0, 0.0, 0.0);
-    }
-
-    var result = 0.0;
-    let dims = vec2f(textureDimensions(t_diffuse));
-    let texelSize = 1.0 / dims;
-    let base = (floor(in.uv * dims) + 0.5) * texelSize;
-
-    for (var y = -1; y <= 1; y += 2) {
-        for (var x = -1; x <= 1; x += 2) {
-            let offset = base + (vec2f(f32(x), f32(y)) - 0.5) * texelSize;
-            result += textureSample(t_diffuse, s_diffuse, offset).r;
+@if(GENERAL_R_FLOAT) {
+    @fragment
+    fn fs_main_tex_storage(in: VertexOutput) -> @location(0) vec4<f32> {
+        let a_koef = max(0.0, 1.0 - camera.scale * 0.5);
+        if a_koef <= 0.0 {
+            return vec4f(0.0, 0.0, 0.0, 0.0);
         }
-    }
-    result = result / 4.0;
 
-    return vec4f(0.0, 0.0, 0.0, result * a_koef);
+        var result = 0.0;
+        let dims = vec2f(textureDimensions(t_tex));
+        let texelSize = 1.0 / dims;
+        let base = (floor(in.uv * dims) + 0.5) * texelSize;
+
+        for (var y = -1; y <= 1; y += 2) {
+            for (var x = -1; x <= 1; x += 2) {
+                let offset = base + (vec2f(f32(x), f32(y)) - 0.5) * texelSize;
+                result += textureSample(t_tex, s_diffuse, offset).r;
+            }
+        }
+        result = result / 4.0;
+
+        return vec4f(0.0, 0.0, 0.0, result * a_koef);
+    }
 }

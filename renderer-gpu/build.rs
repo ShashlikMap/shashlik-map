@@ -1,11 +1,10 @@
 use wesl::{CompileOptions, Compiler, Feature};
 
-const SHADERS: [&str; 8] = [
+const SHADERS: [&str; 7] = [
     "shape_shader",
     "g_buf_frag_shader",
     "mesh_shader",
     "shadow_map",
-    "screen_mesh_shader",
     "shape_culling",
     "ssao",
     "x_real_mesh_shader",
