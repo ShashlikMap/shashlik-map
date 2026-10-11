@@ -206,7 +206,6 @@ impl ScreenMeshPipeline {
         let mut wesl_compiler = Compiler::default().with_resolver(wesl_resolver);
         let tex_type_shader_type = texture_type.as_ref().map(|t_type|
             t_type.get_shader_type()).unwrap_or(TextureType::GeneralRgba.get_shader_type());
-        println!("tex_type_shader_type = {:?}",tex_type_shader_type);
         wesl_compiler.options.features.set(tex_type_shader_type, true);
         let wesl_shader = wesl_compiler
             .compile_module(&"shaders::screen_mesh_shader".parse().unwrap())

@@ -124,7 +124,7 @@ async fn create_wgpu() -> (Device, Queue) {
 
     let mut device_descriptor = DeviceDescriptor {
         label: Label::from("HeadlessDeviceDescriptor"),
-        required_features: Features::CLEAR_TEXTURE | Features::IMMEDIATES,
+        required_features: Features::CLEAR_TEXTURE | Features::IMMEDIATES | Features::TEXTURE_COMPRESSION_ASTC,
         required_limits: Limits::downlevel_defaults(),
         experimental_features: Default::default(),
         memory_hints: MemoryHints::MemoryUsage,
