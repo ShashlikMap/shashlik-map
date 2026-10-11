@@ -22,6 +22,14 @@ enum TextureType {
 }
 
 impl TextureType {
+    fn get_shader_type(&self) -> &str {
+        match self {
+            TextureType::GeneralRgba => "GENERAL_RGBA",
+            TextureType::GeneralRFloat => "GENERAL_R_FLOAT",
+            TextureType::Depth => "DEPTH"
+        }
+    }
+
     fn get_texture_type(texture_view: &TextureView) -> TextureType {
         let texture = texture_view.texture();
         let texture_format = texture.format();
@@ -181,20 +189,15 @@ impl ScreenMeshPipeline {
         }
         mesh_descriptor.depth_stencil = Some(depth_stencil);
 
-        let mut compiler = Compiler::default();
-        match texture_type {
-            Some(TextureType::GeneralRFloat) => {
-                compiler.options.features.set("GENERAL_R_FLOAT", true);
-            }
-            Some(TextureType::Depth) => {
-                compiler.options.features.set("DEPTH", true);
-            }
-            _ => {
-                compiler.options.features.set("GENERAL_RGBA", true);
-            }
-        }
+        let mut wesl_compiler = Compiler::default();
+        let tex_type_shader_type = texture_type.as_ref().map(|t_type|
+            t_type.get_shader_type()).unwrap_or(TextureType::GeneralRgba.get_shader_type());
+        wesl_compiler.options.features.set(tex_type_shader_type, true);
 
-        let wesl_shader = compiler
+        // TODO Later
+        // 1. Some cache to prevent recompilation.
+        // 2. Set the root folder for all shaders
+        let wesl_shader = wesl_compiler
             .compile("renderer-gpu/src/shaders/screen_mesh_shader.wgsl")
             .unwrap_or_else(|e| panic!("failed to compile screen_mesh_shader: {e}")).to_string();
         let shader_module = device.create_shader_module(ShaderModuleDescriptor {
