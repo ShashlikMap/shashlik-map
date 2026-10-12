@@ -7,10 +7,14 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
+use glam::DVec3;
 use reqwest::Url;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
 use valhalla_client::route::{DirectionsType, Location, Manifest, Trip};
+use renderer_common::geometry_data::{GeometryData, IconData, IconShapeData, IconType};
+use renderer_common::geometry_render_group::GeometryRenderGroup;
+use renderer_common::render_modifier::SpatialData;
 use renderer_common::style_id::StyleId;
 use crate::CoordConverter;
 use crate::overlay::overlay_shape_group::{OverlayShapeGroup};
@@ -21,19 +25,22 @@ pub struct RouteController<RAPI: RendererApi + 'static> {
     current_lon_lat: Option<(f64, f64)>,
     valhalla: Arc<Valhalla>,
     active_routes: Arc<AtomicU8>,
-    active_routes_ids: Vec<String>
+    active_routes_ids: Vec<String>,
+    dpi_scale: f32
 }
 
 impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
+    const PIN_SVG: &'static [u8] = include_bytes!("../../svg/location_pin.svg");
 
-    pub fn new(url: Option<Url>, api: Arc<RAPI>) -> RouteController<RAPI> {
+    pub fn new(url: Option<Url>, api: Arc<RAPI>, dpi_scale: f32) -> RouteController<RAPI> {
         let valhalla = url.map_or_else(Valhalla::default, Valhalla::new);
         let mut route_controller = RouteController {
             api,
             current_lon_lat: None,
             valhalla: Arc::new(valhalla),
             active_routes: Arc::new(AtomicU8::new(0)),
-            active_routes_ids: Vec::new()
+            active_routes_ids: Vec::new(),
+            dpi_scale
         };
         route_controller.warm_up();
         route_controller
@@ -69,7 +76,9 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         if let Some((lon, lat)) = self.current_lon_lat {
             let valhalla = Arc::clone(&self.valhalla);
             let api = Arc::clone(&self.api);
+            Self::destination_pin(api.clone(), self.dpi_scale, None);
             let active_routes = Arc::clone(&self.active_routes);
+            let dpi_scale = self.dpi_scale;
             spawn(move || {
                 let source_loc = Location::new(lon as f32, lat as f32);
                 let destination_loc = Location::new(to_lon_lat.0 as f32, to_lon_lat.1 as f32);
@@ -122,7 +131,8 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                         },
                                     };
 
-                                    let route = OverlayShapeGroup::new(
+                                    let last_coord = route.last().cloned();
+                                    let route_group = OverlayShapeGroup::new(
                                         route,
                                         "route_layer".to_string(),
                                         style_id,
@@ -132,9 +142,15 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
 
                                     api.add_render_group(
                                         Self::create_route_id(index),
-                                        route.spatial_data(),
-                                        route,
+                                        route_group.spatial_data(),
+                                        route_group,
                                     );
+
+                                    if let Some(last_coord) = last_coord {
+                                        Self::destination_pin(api.clone(),
+                                                              dpi_scale,
+                                                              Some(DVec3::new(last_coord.x(), last_coord.y(), 0.0)));
+                                    }
                                 } else {
                                     error!("No legs found in route!");
                                 }
@@ -158,6 +174,31 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         }
     }
 
+    fn destination_pin(api: Arc<RAPI>, dpi_scale: f32, location: Option<DVec3>) {
+        if let Some(mut location) = location {
+            let group = GeometryRenderGroup(GeometryData::Svg(IconShapeData {
+                id: u64::MAX,
+                icon_data: IconData {
+                    id: "dest_pin",
+                    icon_type: IconType::SvgBinary(None, Self::PIN_SVG),
+                },
+                position: Default::default(),
+                size: 60.0 * dpi_scale,
+                with_collision: false,
+                background: None,
+            }));
+            // move it a bit so tip of the pin would be close to destination location
+            location.y -= 4.0;
+            api.add_render_group(
+                "dest_pin".to_string(),
+                SpatialData::transform(location),
+                group,
+            );
+        } else {
+            api.clear_render_groups(HashSet::from_iter(vec!["dest_pin".to_string()]));
+        }
+    }
+
     pub fn handle_trips(trips: (Trip, Vec<Trip>), action: impl Fn(u8, &Trip) -> ()) {
         let main_trip = &trips.0;
         let alternates: Vec<Trip> = trips.1.clone();
@@ -177,6 +218,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         let active_routes = self.get_active_route_ids().clone();
         self.active_routes.store(0, Ordering::Relaxed);
         self.active_routes_ids.clear();
+        Self::destination_pin(api.clone(), self.dpi_scale, None);
         api.clear_render_groups(HashSet::from_iter(active_routes));
     }
 

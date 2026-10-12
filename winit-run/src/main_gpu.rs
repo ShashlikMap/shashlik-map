@@ -181,7 +181,7 @@ pub fn launch_internal(ui: &ShashlikUI) {
                         );
 
                         let route_url = is_offline_mode.then(|| Url::parse(OFFLINE_VALHALLA_URL).unwrap());
-                        let map_config = MapConfig::new(route_url);
+                        let map_config = MapConfig::new(route_url).with_dpi(dpi);
                         let mut map =
                             pollster::block_on(async {
                                 let shadow_tex_size = if low_res {
