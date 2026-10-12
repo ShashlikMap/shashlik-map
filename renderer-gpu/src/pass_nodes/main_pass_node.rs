@@ -12,6 +12,7 @@ use renderer_common::WorldShapeFeatureLayerTag;
 use wgpu::{CommandEncoder, TextureView};
 use wgpu::Face::Back;
 use crate::buffer_pool::BufferPool;
+use crate::textures::textures::Textures;
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
@@ -31,6 +32,7 @@ pub(crate) struct MainPassNode {
 impl MainPassNode {
     pub fn new(
         global_context: &GlobalContext,
+        textures: &Textures,
         x_real_mesh_shader_pipeline_enabled: bool,
         layers: &mut Layers,
         world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>,
@@ -93,18 +95,6 @@ impl MainPassNode {
             false,
         );
 
-        let globe_pipeline = ScreenMeshPipeline::new(
-            global_context,
-            TextureInfo {
-                use_texture: false,
-                filterable: false,
-                fs_shader: "fs_main_globe",
-            },
-            None,
-            false,
-        );
-        layers.globe_layer.set_texture(None, (0.0, 0.0), global_context, buffer_pool);
-
         let globe_glow_pipeline = ScreenMeshPipeline::new(
             global_context,
             TextureInfo {
@@ -115,6 +105,18 @@ impl MainPassNode {
             None,
             false,
         );
+
+        let globe_pipeline = ScreenMeshPipeline::new(
+            global_context,
+            TextureInfo {
+                use_texture: true,
+                filterable: true,
+                fs_shader: "fs_main_globe",
+            },
+            Some(textures.get_stars_texture()),
+            false,
+        );
+        layers.globe_layer.set_texture(None, (0.0, 0.0), global_context, buffer_pool);
 
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),

@@ -22,7 +22,9 @@ const FLIP_Y: DMat4 = DMat4::from_cols_array(
 pub(crate) struct ViewProjUniform {
     view: [[f32; 4]; 4],
     proj: [[f32; 4]; 4],
+    inv_proj: [[f32; 4]; 4],
     view_proj: [[f32; 4]; 4],
+    inv_globe_view: [[f32; 4]; 4],
     globe_view_proj: [[f32; 4]; 4],
     view_proj_inv: [[f32; 4]; 4],
     light_view_proj: [[f32; 4]; 4],
@@ -80,7 +82,9 @@ impl ViewProjection {
             uniform: ViewProjUniform {
                 view: Mat4::IDENTITY.to_cols_array_2d(),
                 proj: Mat4::IDENTITY.to_cols_array_2d(),
+                inv_proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_proj: Mat4::IDENTITY.to_cols_array_2d(),
+                inv_globe_view: Mat4::IDENTITY.to_cols_array_2d(),
                 globe_view_proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_proj_inv: Mat4::IDENTITY.to_cols_array_2d(),
                 light_view_proj: Mat4::IDENTITY.to_cols_array_2d(),
@@ -113,9 +117,10 @@ impl ViewProjection {
 
         self.uniform.view = data.view_matrix.as_mat4()
             .to_cols_array_2d();
-        self.uniform.proj = (FLIP_Y * data.proj_matrix)
-            .as_mat4()
+        let proj = (FLIP_Y * data.proj_matrix).as_mat4();
+        self.uniform.proj = proj
             .to_cols_array_2d();
+        self.uniform.inv_proj = proj.inverse().to_cols_array_2d();
         let view_proj = FLIP_Y * data.view_proj_matrix;
         let globe_view_proj = FLIP_Y * data.globe_view_proj_matrix;
 
@@ -134,6 +139,8 @@ impl ViewProjection {
             .to_cols_array_2d();
 
         self.globe_view = data.globe_view;
+
+        self.uniform.inv_globe_view = data.globe_view.transpose().as_mat4().to_cols_array_2d();
         self.uniform.globe_view_proj = globe_view_proj
             .as_mat4()
             .to_cols_array_2d();

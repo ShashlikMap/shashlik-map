@@ -16,14 +16,14 @@ struct InstanceInput {
     @location(7) model_matrix_1: vec4<f32>,
     @location(8) model_matrix_2: vec4<f32>,
     @location(9) model_matrix_3: vec4<f32>,
-    @location(13) screen_space: u32, // question: should the location be universal across
+    @location(13) @interpolate(flat) screen_space: u32, // question: should the location be universal across
 }
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) color: vec4<f32>,
     @location(1) uv: vec2<f32>,
-    @location(2) pos_from_light: vec4<f32>,
+    @location(2) uv_cube: vec3<f32>,
 }
 
 @vertex
@@ -58,6 +58,10 @@ fn vs_main(
     out.clip_position = vec4<f32>(ratio_fixed_modelpos.xyz, 0.0) + vec4(coord.xyz/coord.w, 1.0);
     out.color = vec4f(model.color.rgb, model.color.a * pos.color_alpha);
     out.uv = model.uv;
+    if(camera.scale > GLOBE_SCALE) {
+        let unprojected = camera.inv_proj * out.clip_position;
+        out.uv_cube = (camera.inv_globe_view * unprojected).xyz;
+    }
 
     return out;    
 }
@@ -68,6 +72,9 @@ var t_tex: texture_2d<f32>;
 @if(DEPTH)
 @group(1) @binding(0)
 var t_tex: texture_depth_2d;
+@if(CUBE)
+@group(1) @binding(0)
+var t_tex: texture_cube<f32>;
 @group(1) @binding(1)
 var s_diffuse: sampler;
 @group(1) @binding(2)
@@ -85,14 +92,17 @@ fn fs_main_globe(in: VertexOutput) -> @location(0) vec4<f32> {
     if(d <= 1.0) {
         return vec4f(0.957, 0.953, 0.941, 1.0);
     }
-    return in.color;
+    @if(CUBE)
+    return textureSample(t_tex, s_diffuse, in.uv_cube);
+    @else
+    discard;
 }
 
 @fragment
 fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
     let ndc = in.uv * 2.0 - 1.0;
     let d = length(ndc * camera.inv_ndc_globe_r);
-    if(d <= 0.9) {
+    if(d <= 0.9 || d > 1.15) {
         discard;
     }
     let glow_color = vec4f(0.35, 0.60, 1.00, 1.0);
@@ -119,16 +129,20 @@ fn fs_main_textured(in: VertexOutput) -> @location(0) vec4<f32> {
     if in.uv.x <= tex_border_x || in.uv.x >= 1.0 - tex_border_x || in.uv.y <= tex_border_y || in.uv.y >= 1.0 - tex_border_y {
          return vec4(1.0, 0.0, 0.0, 1.0);
     }
-    let sample = textureSample(t_tex, s_diffuse, in.uv.xy);
 
     @if(GENERAL_RGBA) {
-        return sample;
+        return textureSample(t_tex, s_diffuse, in.uv.xy);
     }
     @if(GENERAL_R_FLOAT) {
+        let sample = textureSample(t_tex, s_diffuse, in.uv.xy);
         return vec4f(vec3f(1.0 - sample.r), 1.0);
     }
     @if(DEPTH) {
+        let sample = textureSample(t_tex, s_diffuse, in.uv.xy);
         return vec4f(vec3f(sample), 1.0);
+    }
+    @if(CUBE) {
+        return vec4f(1.0);
     }
 }
 

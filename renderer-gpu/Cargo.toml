@@ -25,6 +25,7 @@ rand = { workspace = true }
 strum = { workspace = true }
 splines = {  version = "5.0.0", features = ["glam"] }
 image = "0.24"
+ktx2 = "0.5.0"
 
 [build-dependencies]
 anyhow = "1.0"
