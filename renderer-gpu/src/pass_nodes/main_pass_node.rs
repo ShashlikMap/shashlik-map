@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+use std::fs;
 use crate::DEPTH_STENCIL_TEX_FORMAT;
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::RenderableLayer;
@@ -30,7 +32,7 @@ pub(crate) struct MainPassNode {
     globe_glow_pipeline: ScreenMeshPipeline,
 }
 
-const STARS_BYTES: &'static [u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../astc.ktx2"));
+const STARS_BYTES: &'static [u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../stars-cubemap/astc.ktx2"));
 
 impl MainPassNode {
     pub fn new(
@@ -120,7 +122,22 @@ impl MainPassNode {
             false,
         );
 
-        let reader = ktx2::Reader::new(STARS_BYTES).unwrap();
+        let star_box_format = if global_context.device().features().contains(wgpu::Features::TEXTURE_COMPRESSION_ASTC) {
+            wgpu::TextureFormat::Astc {
+                block: AstcBlock::B4x4,
+                channel: AstcChannel::UnormSrgb,
+            }
+        } else {
+            wgpu::TextureFormat::Bc7RgbaUnormSrgb
+        };
+
+        let stars_bytes = if star_box_format == wgpu::TextureFormat::Bc7RgbaUnormSrgb {
+            Cow::Owned(fs::read("/stars-cubemap/bc7.ktx2").unwrap())
+        } else {
+            Cow::Borrowed(STARS_BYTES)
+        };
+
+        let reader = ktx2::Reader::new(stars_bytes).unwrap();
         let header = reader.header();
         let mut image = Vec::with_capacity(reader.data().len());
         for level in reader.levels() {
@@ -138,10 +155,7 @@ impl MainPassNode {
                 mip_level_count: header.level_count,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Astc {
-                    block: AstcBlock::B4x4,
-                    channel: AstcChannel::UnormSrgb,
-                },
+                format: star_box_format,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 label: None,
                 view_formats: &[],

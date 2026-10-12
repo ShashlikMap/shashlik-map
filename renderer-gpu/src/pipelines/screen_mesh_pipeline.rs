@@ -4,7 +4,7 @@ use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::vertex_attrs::{MeshVertexWithUV, ScreenShapeInstanceInput, VertexAttrib};
 use wesl::Compiler;
 use wesl::resolver::PackageResolver;
-use wgpu::{AstcBlock, AstcChannel, BindGroup, BindGroupLayout, BindingType, CompareFunction, Device, FilterMode, MipmapFilterMode, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
+use wgpu::{BindGroup, BindGroupLayout, BindingType, CompareFunction, Device, FilterMode, MipmapFilterMode, RenderPass, SamplerBindingType, SamplerDescriptor, ShaderModuleDescriptor, ShaderSource, StencilFaceState, TextureFormat, TextureUsages, TextureView};
 
 pub(crate) struct ScreenMeshPipeline {
     mesh_pipeline: MeshPipeline,
@@ -49,7 +49,9 @@ impl TextureType {
             } else {
                 TextureType::GeneralRgba
             }
-        } else if matches!(texture_format, TextureFormat::Astc {..})  {
+        } else if matches!(texture_format, TextureFormat::Astc {..}) ||
+            matches!(texture_format, TextureFormat::Bc7RgbaUnormSrgb) {
+            // fyi, Astc/Bc7RgbaUnormSrgb doesn't mean this is a cube texture, but OK for our use case now
             TextureType::Cube
         } else {
             TextureType::GeneralRgba
