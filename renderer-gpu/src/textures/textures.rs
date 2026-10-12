@@ -37,6 +37,8 @@ impl Textures {
             wgpu::TextureFormat::Bc7RgbaUnormSrgb
         };
 
+        // fyi, BC7 is used only as fallback if ASTC is not supported. So far the only case is headless mode that is compiled from source
+        // and texture file is always available
         let stars_bytes = if star_box_format == wgpu::TextureFormat::Bc7RgbaUnormSrgb {
             Cow::Owned(
                 fs::read(concat!(
@@ -60,9 +62,9 @@ impl Textures {
             queue,
             &wgpu::TextureDescriptor {
                 size: Extent3d {
-                    width: 512,
-                    height: 512,
-                    depth_or_array_layers: 6,
+                    width: header.pixel_width,
+                    height: header.pixel_height,
+                    depth_or_array_layers: header.face_count,
                 },
                 mip_level_count: header.level_count,
                 sample_count: 1,

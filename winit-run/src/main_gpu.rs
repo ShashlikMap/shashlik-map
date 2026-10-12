@@ -24,6 +24,7 @@ use map::tiles::tiles_provider::TilesProviderStore;
 
 pub fn prepare() {
     let mut wgpu_settings = WGPUSettings::default();
+    // fyi, most of hardware supports ASTC today, so no need to dance with BC7
     wgpu_settings.device_required_features = Features::CLEAR_TEXTURE | Features::IMMEDIATES | Features::TEXTURE_COMPRESSION_ASTC;
     wgpu_settings.device_required_limits = Limits::downlevel_defaults();
 
