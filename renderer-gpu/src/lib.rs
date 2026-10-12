@@ -38,6 +38,7 @@ use tokio::sync::broadcast;
 use wesl_core::wesl_pkg;
 use wgpu::{Texture, TextureFormat, TextureView};
 use crate::mesh_layers::BaseMeshLayer;
+use crate::textures::textures::Textures;
 
 pub mod canvas_api;
 pub mod draw_commands;
@@ -77,6 +78,7 @@ pub struct GpuRenderer {
     fps_counter: FpsCounter<100>,
     global_context: GlobalContext,
     buffer_pool: BufferPool,
+    textures: Textures,
     preview_textures: HashMap<PreviewType, TextureView>,
 }
 
@@ -108,6 +110,7 @@ impl GpuRenderer {
 
         let api = Arc::new(CommonRendererApi::new(renderer_api_tx));
 
+        let textures = Textures::new(&global_context);
         Ok(Self {
             render_config,
             layers,
@@ -117,6 +120,7 @@ impl GpuRenderer {
             fps_counter: FpsCounter::new(),
             global_context,
             buffer_pool,
+            textures,
             preview_textures: HashMap::new(),
         })
     }
@@ -266,6 +270,7 @@ impl GpuRenderer {
 
         let tag = self.layers.world_shapes_feature_tags.clone();
         let main_node = MainPassNode::new(&mut self.global_context,
+                                          &self.textures,
                                           self.render_config.x_real_mesh_shader_enabled,
                                           &mut self.layers,
                                           tag,

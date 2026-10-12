@@ -1,3 +1,5 @@
+pub mod textures;
+
 use crate::global_context::GlobalContext;
 use wgpu::{Device, Queue, TextureFormat, TextureUsages, TextureView};
 use wgpu::util::{DeviceExt, TextureDataOrder};

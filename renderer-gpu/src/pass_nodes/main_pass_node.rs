@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-use std::fs;
 use crate::DEPTH_STENCIL_TEX_FORMAT;
 use crate::global_context::GlobalContext;
 use crate::mesh_layers::RenderableLayer;
@@ -11,10 +9,10 @@ use crate::pipelines::shape_pipeline::ShapePipeline;
 use crate::pipelines::x_real_mesh_pipeline::XRealMeshShaderPipeline;
 use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
 use renderer_common::WorldShapeFeatureLayerTag;
-use wgpu::{AstcBlock, AstcChannel, CommandEncoder, Extent3d, TextureView};
+use wgpu::{CommandEncoder, TextureView};
 use wgpu::Face::Back;
-use wgpu::util::DeviceExt;
 use crate::buffer_pool::BufferPool;
+use crate::textures::textures::Textures;
 
 pub(crate) struct MainPassNode {
     msaa_texture_view: TextureView,
@@ -31,11 +29,10 @@ pub(crate) struct MainPassNode {
     globe_glow_pipeline: ScreenMeshPipeline,
 }
 
-const STARS_BYTES: &'static [u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../stars-cubemap/astc.ktx2"));
-
 impl MainPassNode {
     pub fn new(
         global_context: &GlobalContext,
+        textures: &Textures,
         x_real_mesh_shader_pipeline_enabled: bool,
         layers: &mut Layers,
         world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>,
@@ -109,55 +106,6 @@ impl MainPassNode {
             false,
         );
 
-        let star_box_format = if global_context.device().features().contains(wgpu::Features::TEXTURE_COMPRESSION_ASTC) {
-            wgpu::TextureFormat::Astc {
-                block: AstcBlock::B4x4,
-                channel: AstcChannel::UnormSrgb,
-            }
-        } else {
-            wgpu::TextureFormat::Bc7RgbaUnormSrgb
-        };
-
-        let stars_bytes = if star_box_format == wgpu::TextureFormat::Bc7RgbaUnormSrgb {
-            Cow::Owned(fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/../stars-cubemap/bc7.ktx2")).unwrap())
-        } else {
-            Cow::Borrowed(STARS_BYTES)
-        };
-
-        let reader = ktx2::Reader::new(stars_bytes).unwrap();
-        let header = reader.header();
-        let mut image = Vec::with_capacity(reader.data().len());
-        for level in reader.levels() {
-            image.extend_from_slice(level.data);
-        }
-
-        let texture = global_context.device().create_texture_with_data(
-            global_context.queue(),
-            &wgpu::TextureDescriptor {
-                size: Extent3d {
-                    width: 512,
-                    height: 512,
-                    depth_or_array_layers: 6,
-                },
-                mip_level_count: header.level_count,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: star_box_format,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                label: None,
-                view_formats: &[],
-            },
-            // KTX2 stores mip levels in mip major order.
-            wgpu::util::TextureDataOrder::MipMajor,
-            &image,
-        );
-
-        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor {
-            label: None,
-            dimension: Some(wgpu::TextureViewDimension::Cube),
-            ..wgpu::TextureViewDescriptor::default()
-        });
-
         let globe_pipeline = ScreenMeshPipeline::new(
             global_context,
             TextureInfo {
@@ -165,11 +113,11 @@ impl MainPassNode {
                 filterable: true,
                 fs_shader: "fs_main_globe",
             },
-            Some(&texture_view),
+            Some(textures.get_stars_texture()),
             false,
         );
         layers.globe_layer.set_texture(None, (0.0, 0.0), global_context, buffer_pool);
-        
+
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
             depth_texture_view: create_depth_texture(
