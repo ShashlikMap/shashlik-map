@@ -70,7 +70,7 @@ impl KmlGroup {
 }
 
 impl <T: CanvasApi> RenderGroup<T> for KmlGroup {
-    fn content(&mut self, canvas: &mut T) {
+    fn content(self: Box<Self>, canvas: &mut T) {
         canvas.set_feature_layer_tag(Some("kml_layer".to_string()));
         let mut geometry_data = vec![];
         Self::populate_geometry(&self.collection, &mut geometry_data);

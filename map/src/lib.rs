@@ -18,7 +18,6 @@ use renderer_common::style_id::StyleId;
 use route::route_controller::RouteController;
 #[cfg(feature = "sgnss")]
 use sgnss::start_sgnss;
-use std::{mem};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
@@ -121,8 +120,8 @@ impl ScreenParam {
 }
 
 impl <T: CanvasApi> RenderGroup<T> for TileData {
-    fn content(&mut self, canvas: &mut T) {
-        mem::take(&mut self.geometry_data)
+    fn content(self: Box<Self>, canvas: &mut T) {
+        self.geometry_data
             .into_iter()
             .for_each(|data| {
                 canvas.geometry_data(data);
