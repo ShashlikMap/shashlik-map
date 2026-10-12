@@ -2,7 +2,6 @@ use geo_types::Point;
 
 pub(crate) mod overlay_shape_group;
 pub mod overlay;
-mod overlay_geometry_group;
 
 #[derive(Clone, Copy)]
 pub enum ShapeType {

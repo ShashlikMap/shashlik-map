@@ -19,6 +19,7 @@ pub mod fps;
 pub mod r_api_messenger;
 pub mod worker_handler;
 pub mod collision_handler;
+pub mod geometry_render_group;
 
 /// should be the same as mesh_shader.wgsl
 pub static LIGHT_POS: DVec3 = dvec3(0.84, 1.12, 1.42);
