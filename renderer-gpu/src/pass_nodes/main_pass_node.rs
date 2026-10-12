@@ -132,7 +132,7 @@ impl MainPassNode {
         };
 
         let stars_bytes = if star_box_format == wgpu::TextureFormat::Bc7RgbaUnormSrgb {
-            Cow::Owned(fs::read("/stars-cubemap/bc7.ktx2").unwrap())
+            Cow::Owned(fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/../stars-cubemap/bc7.ktx2")).unwrap())
         } else {
             Cow::Borrowed(STARS_BYTES)
         };
