@@ -31,7 +31,7 @@ impl ShapePipeline {
     const RENDER_LAYOUT_ID: usize = 1;
 
     pub fn from_world_shape_tags(global_context: &GlobalContext,
-                                 world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>) -> Vec<(String, Self)> {
+                                 world_shape_feature_layer_tag: Vec<WorldShapeFeatureLayerTag>) -> Vec<(WorldShapeFeatureLayerTag, Self)> {
         world_shape_feature_layer_tag
             .into_iter()
             .map(|tag| {
@@ -42,7 +42,7 @@ impl ShapePipeline {
                     tag.single_instance_step,
                     Some(Back)
                 );
-                (tag.name.to_string(), pipeline)
+                (tag, pipeline)
             })
             .collect()
     }

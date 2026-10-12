@@ -9,7 +9,7 @@ use crate::pipelines::shape_pipeline::ShapePipeline;
 use crate::pipelines::x_real_mesh_pipeline::XRealMeshShaderPipeline;
 use crate::textures::{SAMPLE_COUNT, create_common_texture, create_depth_texture};
 use renderer_common::WorldShapeFeatureLayerTag;
-use wgpu::{CommandEncoder, TextureView};
+use wgpu::{CommandEncoder, RenderPass, TextureView};
 use wgpu::Face::Back;
 use crate::buffer_pool::BufferPool;
 use crate::textures::textures::Textures;
@@ -21,12 +21,27 @@ pub(crate) struct MainPassNode {
     x_real_mesh_shader_pipeline: XRealMeshShaderPipeline,
     default_shape_pipeline: ShapePipeline,
     screen_shape_pipeline: ShapePipeline,
-    feature_shape_pipelines: Vec<(String, ShapePipeline)>,
+    feature_shape_pipelines: Vec<(WorldShapeFeatureLayerTag, ShapePipeline)>,
     preview_screen_mesh_pipeline: Option<ScreenMeshPipeline>,
     text_screen_mesh_pipeline: ScreenMeshPipeline,
     post_process_screen_mesh_pipeline: Option<ScreenMeshPipeline>,
     globe_pipeline: ScreenMeshPipeline,
     globe_glow_pipeline: ScreenMeshPipeline,
+}
+
+trait ShapeFeatureLayerRenderer {
+    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext, layers: &mut Layers, after_poi: bool);
+}
+
+impl ShapeFeatureLayerRenderer for Vec<(WorldShapeFeatureLayerTag, ShapePipeline)> {
+    fn render(&mut self, render_pass: &mut RenderPass, global_context: &mut GlobalContext, layers: &mut Layers, after_poi: bool) {
+        self.iter_mut().filter(|(tag, _)| tag.after_poi == after_poi)
+            .for_each(|(feature_tag, shape_pipeline)| {
+                if let Some(layer) = layers.feature_layers.get_layer(feature_tag.name) {
+                    layer.render(render_pass, shape_pipeline, global_context)
+                }
+            });
+    }
 }
 
 impl MainPassNode {
@@ -235,6 +250,8 @@ impl PassNode for MainPassNode {
             }
         }
 
+        self.feature_shape_pipelines.render(&mut render_pass, global_context, layers, false);
+
         layers.screen_shape_layer.render(
             &mut render_pass,
             &mut self.screen_shape_pipeline,
@@ -249,13 +266,7 @@ impl PassNode for MainPassNode {
             )
         });
 
-        self.feature_shape_pipelines
-            .iter_mut()
-            .for_each(|(feature_tag, shape_pipeline)| {
-                if let Some(layer) = layers.feature_layers.get_layer(feature_tag) {
-                    layer.render(&mut render_pass, shape_pipeline, global_context)
-                }
-            });
+        self.feature_shape_pipelines.render(&mut render_pass, global_context, layers, true);
 
         if global_context.preview_type().is_enabled()
             && let Some(preview_screen_mesh_pipeline) = self.preview_screen_mesh_pipeline.as_mut() {

@@ -14,7 +14,7 @@ pub(crate) struct RenderToTexturePassNode {
     depth_texture_view: TextureView,
     pub rt_texture_view: TextureView,
     shape_pipeline: ShapePipeline,
-    feature_shape_pipelines: Vec<(String, ShapePipeline)>,
+    feature_shape_pipelines: Vec<(WorldShapeFeatureLayerTag, ShapePipeline)>,
 }
 
 impl RenderToTexturePassNode {
@@ -81,7 +81,7 @@ impl PassNode for RenderToTexturePassNode {
         self.feature_shape_pipelines
             .iter_mut()
             .for_each(|(feature_tag, shape_pipeline)| {
-                if let Some(layer) = layers.feature_layers.get_layer(feature_tag) {
+                if let Some(layer) = layers.feature_layers.get_layer(feature_tag.name) {
                     layer.render(&mut render_pass, shape_pipeline, global_context)
                 }
             });

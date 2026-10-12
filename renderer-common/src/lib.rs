@@ -45,10 +45,12 @@ pub fn feature_layer_tags() -> Vec<WorldShapeFeatureLayerTag> {
             vertex_shader: Some("vs_main_indirect"),
             indirect: true,
             single_instance_step: true,
+            ..Default::default()
         },
         WorldShapeFeatureLayerTag {
             name: "puck",
             single_instance_step: true,
+            after_poi: true,
             ..Default::default()
         },
     ]
@@ -60,6 +62,7 @@ pub struct WorldShapeFeatureLayerTag {
     pub vertex_shader: Option<&'static str>,
     pub indirect: bool,
     pub single_instance_step: bool,
+    pub after_poi: bool
 }
 
 pub struct RendererUpdateData {
