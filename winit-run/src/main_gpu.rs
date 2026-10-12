@@ -47,19 +47,27 @@ const GENERATE_INSTANCE_REPORT: bool = false;
 
 const OFFLINE_VALHALLA_URL: &'static str = "http://127.0.0.1:8002";
 
-fn is_offline_mode() -> bool {
-    cfg!(target_os = "linux") && !Command::new("iwgetid")
+fn is_offline_mode(force_offline: bool) -> bool {
+    let is_offline_mode = force_offline || cfg!(target_os = "linux") && !Command::new("iwgetid")
         .arg("-r")
         .output()
         .ok().is_some_and(|output| {
         let ssid = String::from_utf8_lossy(&output.stdout).trim().to_string();
         println!("Active WiFi: {:?}", ssid);
         !ssid.is_empty()
-    })
+    });
+    if is_offline_mode {
+        if let Ok(child) = Command::new("./valhalla-japan-rpi4/run.sh").spawn() {
+            println!("Valhalla started, pid: {}", child.id());
+        } else {
+            println!("Failed to start Valhalla server");
+        }
+    }
+    is_offline_mode
 }
 
-pub fn launch_internal(ui: &ShashlikUI) {
-    let is_offline_mode = is_offline_mode();
+pub fn launch_internal(ui: &ShashlikUI, force_offline: bool) {
+    let is_offline_mode = is_offline_mode(force_offline);
     println!("is_offline_mode = {:?}", is_offline_mode);
 
     let (slint_map_event_sender, slint_map_event_receiver) = mpsc::channel();

@@ -1,3 +1,4 @@
+use std::env;
 use renderer_common::{PreviewType, TilesType};
 use slint::{PhysicalSize, VecModel};
 use std::rc::Rc;
@@ -29,6 +30,9 @@ enum SlintMapEvent {
 }
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    let force_offline = args.len() > 1 && args.contains(&"-force_offline".to_string());
+
     env_logger::init();
 
     unsafe {
@@ -60,7 +64,7 @@ fn main() {
     ui.set_preview_type_items(Rc::new(VecModel::from(preview_items)).into());
     ui.set_tiles_type_items(Rc::new(VecModel::from(tiles_items)).into());
 
-    launch_internal(&ui);
+    launch_internal(&ui, force_offline);
 
     ui.run().unwrap();
 }
