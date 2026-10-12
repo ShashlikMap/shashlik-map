@@ -36,6 +36,7 @@ struct ShapeInfo {
     pub id: u64,
     pub position: DVec3,
     pub size: f32,
+    pub with_collisions: bool
 }
 
 impl<I: MeshInstanceInput> ScreenShapeLayer<I> {
@@ -81,12 +82,12 @@ impl<I: MeshInstanceInput> ScreenShapeLayer<I> {
 
             let size = batch.mesh_info.size.unwrap_or_default();
 
-
             let batch_data: Vec<_> = instance_positions.into_iter().map(|item| {
                 let shape_info = ShapeInfo {
                     id: item.0,
                     position: item.1 + spatial_data.transform,
-                    size
+                    size,
+                    with_collisions: batch.mesh_info.with_collision
                 };
                 (shape_info, 0.0f32, instance_key.clone())
             }).collect();
@@ -183,7 +184,6 @@ impl ColliderTask for ScreenMeshCollisionHandler {
         let mut id_collisions: FxHashSet<u64> = FxHashSet::default();
         render_data_holder
             .run_mut_action(|(shape_info, _, key)| {
-
                 if id_collisions.insert(shape_info.id) {
                     let mut alpha = *self.id_to_alpha.get(&shape_info.id).unwrap_or(&0.0f32);
                     let (screen_pos, side) = view_projection.screen_position(&shape_info.position);
@@ -197,7 +197,7 @@ impl ColliderTask for ScreenMeshCollisionHandler {
                     let within_screen = collision_handler.within_screen(bounds);
                     let prev_alpha = alpha;
                     if side && within_screen {
-                        if collision_handler.check_and_insert(bounds) {
+                        if !shape_info.with_collisions || collision_handler.check_and_insert(bounds) {
                             alpha = clamp(alpha + Self::FADE_ANIM_SPEED, 0.0, 1.0);
                         } else {
                             alpha = clamp(alpha - Self::FADE_ANIM_SPEED, 0.0, 1.0);
