@@ -72,12 +72,18 @@ impl AnimConfig {
 }
 
 pub struct MapConfig {
-    custom_valhalla_url: Option<Url>
+    custom_valhalla_url: Option<Url>,
+    dpi_scale: f32
 }
 
 impl MapConfig {
     pub fn new(custom_valhalla_url: Option<Url>) -> Self {
-        Self { custom_valhalla_url }
+        Self { custom_valhalla_url, dpi_scale: 1.0 }
+    }
+
+    pub fn with_dpi(mut self, dpi: f32) -> Self {
+        self.dpi_scale = dpi;
+        self
     }
 }
 
@@ -163,7 +169,9 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
         let (map_event_sender, map_event_receiver) = mpsc::channel();
 
-        let route_controller = RouteController::new(map_config.custom_valhalla_url, renderer.api());
+        let route_controller = RouteController::new(map_config.custom_valhalla_url,
+                                                    renderer.api(),
+                                                    map_config.dpi_scale);
         let mut map = ShashlikMap {
             renderer,
             camera: cam,
