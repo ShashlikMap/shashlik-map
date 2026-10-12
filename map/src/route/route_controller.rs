@@ -122,13 +122,13 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                         },
                                     };
 
-                                    let route = Box::new(OverlayShapeGroup::new(
+                                    let route = OverlayShapeGroup::new(
                                         route,
                                         "route_layer".to_string(),
                                         style_id,
                                         shape_type,
                                         None, None, None
-                                    ));
+                                    );
 
                                     api.add_render_group(
                                         Self::create_route_id(index),

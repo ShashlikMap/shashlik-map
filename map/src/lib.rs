@@ -230,7 +230,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
                                     renderer_api.add_render_group(
                                         item.key.to_string(),
                                         SpatialData::transform(item.position).bbox(item.bbox),
-                                        Box::new(item),
+                                        item,
                                     );
                                 });
                             }
@@ -632,7 +632,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         self.renderer.api().add_render_group(
             "kml_data".to_string(),
             SpatialData::transform(DVec3::new(0.0, 0.0, 0.0)),
-            Box::new(kml_group),
+            kml_group,
         );
     }
 

@@ -160,12 +160,12 @@ pub trait CanvasApi {
 
 pub trait RendererApi: Send + Sync {
     type CANVAS: CanvasApi;
-    fn add_render_group(
+    fn add_render_group<G>(
         &self,
         key: String,
         spatial_data: SpatialData,
-        group: Box<dyn RenderGroup<Self::CANVAS>>,
-    );
+        group: G,
+    ) where G: RenderGroup<Self::CANVAS> + 'static;
 
     fn clear_render_groups(&self, keys: HashSet<String>);
 

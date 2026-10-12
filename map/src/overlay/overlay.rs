@@ -17,7 +17,7 @@ static OVERLAY_SHAPE_ID: AtomicUsize = AtomicUsize::new(0);
 
 struct ShapeValue {
     shape_type: ShapeType,
-    anchor_distance: Option<f64>
+    anchor_distance: Option<f64>,
 }
 pub struct Overlay<RAPI: RendererApi> {
     api: Arc<RAPI>,
@@ -51,7 +51,7 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
             self.api.add_render_group(
                 puck_key,
                 puck_spatial_data,
-                Box::new(SimplePuck {}),
+                SimplePuck {},
             );
         } else {
             self.api.clear_render_groups(HashSet::from_iter(vec![puck_key]))
@@ -114,7 +114,7 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
             id
         });
 
-        let shape = Box::new(OverlayShapeGroup::new(
+        let shape = OverlayShapeGroup::new(
             points,
             self.feature_layer_tag.clone(),
             style_id.clone(),
@@ -122,7 +122,7 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
             anchor,
             anchor_distance,
             self.last_normal_scale
-        ));
+        );
 
         self.api
             .add_render_group(unique_id.clone(), shape.spatial_data(), shape);
