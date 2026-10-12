@@ -27,7 +27,6 @@ pub(crate) struct MainPassNode {
     preview_screen_mesh_pipeline: Option<ScreenMeshPipeline>,
     text_screen_mesh_pipeline: ScreenMeshPipeline,
     post_process_screen_mesh_pipeline: Option<ScreenMeshPipeline>,
-    stars_pipeline: ScreenMeshPipeline,
     globe_pipeline: ScreenMeshPipeline,
     globe_glow_pipeline: ScreenMeshPipeline,
 }
@@ -99,18 +98,6 @@ impl MainPassNode {
             false,
         );
 
-        let globe_pipeline = ScreenMeshPipeline::new(
-            global_context,
-            TextureInfo {
-                use_texture: false,
-                filterable: false,
-                fs_shader: "fs_main_globe",
-            },
-            None,
-            false,
-        );
-        layers.globe_layer.set_texture(None, (0.0, 0.0), global_context, buffer_pool);
-
         let globe_glow_pipeline = ScreenMeshPipeline::new(
             global_context,
             TextureInfo {
@@ -171,17 +158,18 @@ impl MainPassNode {
             ..wgpu::TextureViewDescriptor::default()
         });
 
-        let stars_pipeline = ScreenMeshPipeline::new(
+        let globe_pipeline = ScreenMeshPipeline::new(
             global_context,
             TextureInfo {
                 use_texture: true,
                 filterable: true,
-                fs_shader: "fs_main_stars",
+                fs_shader: "fs_main_globe",
             },
             Some(&texture_view),
             false,
         );
-
+        layers.globe_layer.set_texture(None, (0.0, 0.0), global_context, buffer_pool);
+        
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
             depth_texture_view: create_depth_texture(
@@ -198,7 +186,6 @@ impl MainPassNode {
             feature_shape_pipelines,
             preview_screen_mesh_pipeline,
             post_process_screen_mesh_pipeline,
-            stars_pipeline,
             globe_pipeline,
             globe_glow_pipeline
         }
@@ -253,9 +240,6 @@ impl PassNode for MainPassNode {
         let mut render_pass = encoder.begin_render_pass(&descriptor);
 
         if global_context.is_globe_view() {
-            layers.globe_layer.render(&mut render_pass,
-                                      &mut self.stars_pipeline,
-                                      global_context);
             layers.globe_layer.render(&mut render_pass,
                                       &mut self.globe_pipeline,
                                       global_context);
