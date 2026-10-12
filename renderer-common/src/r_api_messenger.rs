@@ -26,14 +26,14 @@ impl<T: CanvasApi> CommonRendererApi<T> {
 impl<T: CanvasApi> RendererApi for CommonRendererApi<T> {
     type CANVAS = T;
 
-    fn add_render_group(
+    fn add_render_group<G>(
         &self,
         key: String,
         spatial_data: SpatialData,
-        group: Box<dyn RenderGroup<Self::CANVAS>>,
-    ) {
+        group: G,
+    ) where G: RenderGroup<Self::CANVAS> + 'static {
         self.sender
-            .send(RendererApiMsg::RenderGroup(key, spatial_data, group))
+            .send(RendererApiMsg::RenderGroup(key, spatial_data, Box::new(group)))
             .unwrap();
     }
 

@@ -19,6 +19,7 @@ pub mod fps;
 pub mod r_api_messenger;
 pub mod worker_handler;
 pub mod collision_handler;
+pub mod geometry_render_group;
 
 /// should be the same as mesh_shader.wgsl
 pub static LIGHT_POS: DVec3 = dvec3(0.84, 1.12, 1.42);
@@ -159,12 +160,12 @@ pub trait CanvasApi {
 
 pub trait RendererApi: Send + Sync {
     type CANVAS: CanvasApi;
-    fn add_render_group(
+    fn add_render_group<G>(
         &self,
         key: String,
         spatial_data: SpatialData,
-        group: Box<dyn RenderGroup<Self::CANVAS>>,
-    );
+        group: G,
+    ) where G: RenderGroup<Self::CANVAS> + 'static;
 
     fn clear_render_groups(&self, keys: HashSet<String>);
 

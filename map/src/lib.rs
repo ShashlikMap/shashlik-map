@@ -18,7 +18,6 @@ use renderer_common::style_id::StyleId;
 use route::route_controller::RouteController;
 #[cfg(feature = "sgnss")]
 use sgnss::start_sgnss;
-use std::{mem};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
@@ -121,8 +120,8 @@ impl ScreenParam {
 }
 
 impl <T: CanvasApi> RenderGroup<T> for TileData {
-    fn content(&mut self, canvas: &mut T) {
-        mem::take(&mut self.geometry_data)
+    fn content(self: Box<Self>, canvas: &mut T) {
+        self.geometry_data
             .into_iter()
             .for_each(|data| {
                 canvas.geometry_data(data);
@@ -231,7 +230,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
                                     renderer_api.add_render_group(
                                         item.key.to_string(),
                                         SpatialData::transform(item.position).bbox(item.bbox),
-                                        Box::new(item),
+                                        item,
                                     );
                                 });
                             }
@@ -633,7 +632,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         self.renderer.api().add_render_group(
             "kml_data".to_string(),
             SpatialData::transform(DVec3::new(0.0, 0.0, 0.0)),
-            Box::new(kml_group),
+            kml_group,
         );
     }
 

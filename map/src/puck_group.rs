@@ -7,7 +7,7 @@ use renderer_common::CanvasApi;
 pub struct SimplePuck {}
 
 impl <T: CanvasApi> RenderGroup<T> for SimplePuck {
-    fn content(&mut self, canvas: &mut T) {
+    fn content(self: Box<Self>, canvas: &mut T) {
         canvas.set_feature_layer_tag(Some("puck".to_string()));
         canvas.geometry_data(GeometryData::Shape(
             ShapeData {
