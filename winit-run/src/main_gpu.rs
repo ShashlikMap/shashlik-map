@@ -243,8 +243,8 @@ pub fn launch_internal(ui: &ShashlikUI, force_offline: bool) {
                                     }
                                     Action::Route => {
                                         let route_costing = match cost_index {
-                                            0 => RouteCosting::Pedestrian,
-                                            1 => RouteCosting::Auto,
+                                            0 => RouteCosting::Auto,
+                                            1 => RouteCosting::Pedestrian,
                                             2 => RouteCosting::Motorbike,
                                             _ => panic!("{cost_index} cost index not supported"),
                                         };
