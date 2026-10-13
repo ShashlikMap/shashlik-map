@@ -131,7 +131,6 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                         },
                                     };
 
-                                    let last_coord = route.last().cloned();
                                     let route_group = OverlayShapeGroup::new(
                                         route,
                                         "route_layer".to_string(),
