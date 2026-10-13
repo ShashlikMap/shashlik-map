@@ -1,5 +1,5 @@
 use crate::route::RouteCosting;
-use geo_types::{Point, point};
+use geo_types::{coord, point, Point};
 use log::error;
 use renderer_common::RendererApi;
 use std::collections::HashSet;
@@ -146,11 +146,10 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                         route_group,
                                     );
 
-                                    if let Some(last_coord) = last_coord {
-                                        Self::destination_pin(api.clone(),
-                                                              dpi_scale,
-                                                              Some(DVec3::new(last_coord.x(), last_coord.y(), 0.0)));
-                                    }
+                                    let user_destination = converter(&Point(coord! {x: to_lon_lat.0, y: to_lon_lat.1}));
+                                    Self::destination_pin(api.clone(),
+                                                          dpi_scale,
+                                                          Some(DVec3::new(user_destination.x(), user_destination.y(), 0.0)));
                                 } else {
                                     error!("No legs found in route!");
                                 }
@@ -188,7 +187,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                 background: None,
             }));
             // move it a bit so tip of the pin would be close to destination location
-            location.y -= 4.0;
+            location.y -= 1.0;
             api.add_render_group(
                 "dest_pin".to_string(),
                 SpatialData::transform(location),
