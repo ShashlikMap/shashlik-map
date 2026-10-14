@@ -119,7 +119,7 @@ impl<T: CanvasApi> RenderGroup<T> for OverlayShapeGroup {
                     }));
                 }
 
-                dist += 2f32;
+                dist += 2.5f32;
                 if self.shape.is_empty() && dist > sum_line_dist {
                     break;
                 }

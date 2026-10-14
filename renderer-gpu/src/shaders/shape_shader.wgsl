@@ -254,11 +254,13 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     return res_color;
 }
 
-fn circle(st: vec2f, radius: f32) -> f32 {
-    let dist = vec2f(st.x - 0.5, st.y - 0.5);
-	return 1.0 - smoothstep(radius-(radius*0.04),
-                         radius+(radius*0.04),
-                         dot(dist,dist)*4.0);
+fn borderer_circle(st: vec2f, radius_inner: f32, color_inner: vec3f, radius_outer: f32, color_outer: vec3f) -> vec4f {
+    let dist = length(st - vec2f(0.5));
+    let aa_width = fwidth(dist);
+
+    let cirlce_alpha0 = 1.0 - smoothstep(radius_outer - aa_width, radius_outer + aa_width, dist);
+    let cirlce_alpha1 = 1.0 - smoothstep(radius_inner - aa_width, radius_inner + aa_width, dist);
+    return vec4f(mix(color_inner, color_outer, cirlce_alpha1), cirlce_alpha0);
 }
 
 // TODO pass as a parameter?
@@ -273,9 +275,7 @@ fn dashed_style(uv_dist: vec3f, color1: vec4f, color2: vec4f, dash_style: u32) -
             return dash_solid(camera.p2_scale, uv_dist.z, dash_color, fill_color);
         }
         case shape_styles::SUB_STYLE_CIRCLE: {
-            let cirlce_alpha0 = circle(uv_dist.xy, 0.85);
-            let cirlce_alpha1 = circle(uv_dist.xy, 0.45);
-            return mix(vec4(fill_color.rgb, cirlce_alpha0), vec4(dash_color.rgb, cirlce_alpha1), cirlce_alpha1);
+            return borderer_circle(uv_dist.xy, 0.32, fill_color.rgb, 0.495, dash_color.rgb);
         }
         case shape_styles::SUB_STYLE_TDASH: {
             // uv_dist.x - is a side dist in 0.0..1.0 range
