@@ -77,7 +77,25 @@ impl TileParser<DecodedTile> for ShashlikV1Parser {
                 RoadKind::Rail => LineKind::Railway {
                     kind: RailwayKind::Rail,
                 },
-                _ => continue,
+                RoadKind::RailMinor => LineKind::Railway {
+                    kind: RailwayKind::Rail,
+                },
+                RoadKind::MotorwayLink => LineKind::Highway {
+                    kind: HighwayKind::MotorwayLink
+                },
+                RoadKind::TrunkLink => LineKind::Highway {
+                    kind: HighwayKind::TrunkLink
+                },
+                RoadKind::PrimaryLink => LineKind::Highway {
+                    kind: HighwayKind::PrimaryLink
+                },
+                RoadKind::SecondaryLink => LineKind::Highway {
+                    kind: HighwayKind::SecondaryLink
+                },
+                RoadKind::TertiaryLink => LineKind::Highway {
+                    kind: HighwayKind::TertiaryLink
+                },
+                _ => continue
             };
 
             let map_geom_obj = ShashlikMapGeomObject {
