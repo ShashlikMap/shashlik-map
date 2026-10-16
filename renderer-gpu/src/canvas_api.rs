@@ -89,8 +89,12 @@ impl GpuCanvasApi {
         self.feature_layer_tag = tag;
     }
 
-    pub fn update_style<F: FnOnce(&mut RenderStyle)>(&mut self, style_id: &StyleId, updater: F) {
+    pub fn update_style<F: FnOnce(&mut RenderStyle)>(&mut self, style_id: StyleId, updater: F) {
         self.style_store.update_style(style_id, updater);
+    }
+
+    pub fn copy_style(&mut self, style_id_src: StyleId, style_id_dest: StyleId) {
+        self.style_store.copy_style(style_id_src, style_id_dest)
     }
 
     fn geometry_data(&mut self, geometry_data: GeometryData) {

@@ -178,6 +178,12 @@ pub trait RendererApi: Send + Sync {
         updater: F,
     );
 
+    fn copy_style(
+        &self,
+        style_id_src: StyleId,
+        style_id_dest: StyleId,
+    );
+
     fn update_spatial_data<F: FnOnce(&mut SpatialData) + Send + 'static>(
         &self,
         key: String,

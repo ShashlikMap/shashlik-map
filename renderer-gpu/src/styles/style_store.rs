@@ -80,9 +80,17 @@ impl StyleStore {
         self.style_indices[index]
     }
 
-    pub fn update_style<F: FnOnce(&mut RenderStyle)>(&mut self, style_id: &StyleId, updater: F) {
-        let style = self.style_map.entry(style_id.clone()).or_insert(RenderStyle::default());
+    pub fn update_style<F: FnOnce(&mut RenderStyle)>(&mut self, style_id: StyleId, updater: F) {
+        let style = self.style_map.entry(style_id).or_insert(RenderStyle::default());
         updater(style);
         self.generate_uniforms_and_send();
+    }
+
+    pub fn copy_style(&mut self, style_id_src: StyleId, style_id_dest: StyleId) {
+        if let Some(render_style_src) = self.style_map.get(&style_id_src) {
+            self.style_map.insert(style_id_dest, render_style_src.clone());
+
+            self.generate_uniforms_and_send();
+        }
     }
 }
