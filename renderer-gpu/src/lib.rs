@@ -148,7 +148,10 @@ impl GpuRenderer {
                             renderer_tx.send(RendererMessage::Draw(commands)).unwrap();
                         }
                         RendererApiMsg::UpdateStyle(style, block) => {
-                            canvas_api.update_style(&style, block);
+                            canvas_api.update_style(style, block);
+                        }
+                        RendererApiMsg::CopyStyle(style_id_src, style_id_dest) => {
+                            canvas_api.copy_style(style_id_src, style_id_dest);
                         }
                         RendererApiMsg::UpdateSpatialData(key, spatial_data_cb) => {
                             if let Some((spatial_data, tx)) = spatial_data_map.get_mut(&key) {

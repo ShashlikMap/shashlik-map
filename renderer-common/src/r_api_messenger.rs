@@ -9,6 +9,7 @@ use std::sync::mpsc::Sender;
 pub enum RendererApiMsg<T: CanvasApi> {
     RenderGroup(String, SpatialData, Box<dyn RenderGroup<T>>),
     UpdateStyle(StyleId, Box<dyn FnOnce(&mut RenderStyle) + Send>),
+    CopyStyle(StyleId, StyleId),
     UpdateSpatialData(String, Box<dyn FnOnce(&mut SpatialData) + Send>),
     ClearGroups(HashSet<String>),
 }
@@ -50,6 +51,12 @@ impl<T: CanvasApi> RendererApi for CommonRendererApi<T> {
     ) {
         self.sender
             .send(RendererApiMsg::UpdateStyle(style_id, Box::new(updater)))
+            .unwrap();
+    }
+
+    fn copy_style(&self, style_id_src: StyleId, style_id_dest: StyleId) {
+        self.sender
+            .send(RendererApiMsg::CopyStyle(style_id_src, style_id_dest))
             .unwrap();
     }
 
