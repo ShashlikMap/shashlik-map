@@ -12,6 +12,7 @@ pub enum RendererApiMsg<T: CanvasApi> {
     CopyStyle(StyleId, StyleId),
     UpdateSpatialData(String, Box<dyn FnOnce(&mut SpatialData) + Send>),
     ClearGroups(HashSet<String>),
+    BringToFront(String, Option<String>),
 }
 
 pub struct CommonRendererApi<T: CanvasApi> {
@@ -67,6 +68,12 @@ impl<T: CanvasApi> RendererApi for CommonRendererApi<T> {
     ) {
         self.sender
             .send(RendererApiMsg::UpdateSpatialData(key, Box::new(updater)))
+            .unwrap();
+    }
+
+    fn bring_to_front(&self, key: String, tag: Option<String>) {
+        self.sender
+            .send(RendererApiMsg::BringToFront(key, tag))
             .unwrap();
     }
 }

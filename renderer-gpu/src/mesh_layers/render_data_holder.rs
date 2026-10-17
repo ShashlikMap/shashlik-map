@@ -40,4 +40,10 @@ impl<T> RenderDataHolder<T> {
             });
         });
     }
+
+    pub(crate) fn bring_to_front(&mut self, key: String) {
+        if let Some(data) = self.holder.swap_remove(&key) {
+            self.holder.insert(key, data);
+        }
+    }
 }

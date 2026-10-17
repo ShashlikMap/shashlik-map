@@ -189,6 +189,15 @@ pub trait RendererApi: Send + Sync {
         key: String,
         updater: F,
     );
+
+    /// It brings to front the render group by key. If tag is specified it will be looking for the group inside the layer with the tag
+    /// As optimization, it doesn't preserve the order of other groups.
+    /// Not every render group can be brought to front inside layers
+    fn bring_to_front(
+        &self,
+        key: String,
+        tag: Option<String>,
+    );
 }
 
 #[derive(Eq, PartialEq, Copy, Clone, Hash, Display, EnumIter, EnumString)]
