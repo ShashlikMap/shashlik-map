@@ -563,17 +563,33 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         self.create_route_to(center.into(), route_costing);
     }
 
+    pub fn try_change_route_for_screen_point(
+        &mut self,
+        point_x: f32,
+        point_y: f32,
+    ) {
+        let clip = self.clip_from_screen_point(point_x, point_y);
+        if let Some(world_on_ground) = self.renderer.clip_to_world(&clip) {
+            println!("tap, world_on_ground = {world_on_ground}");
+        }
+    }
+
     pub fn create_route_to_screen_point(
         &mut self,
         point_x: f32,
         point_y: f32,
         route_costing: RouteCosting,
     ) {
-        let clip = coord! {x: (point_x / self.screen_params.width as f32) as f64,
-        y: (point_y / self.screen_params.height as f32) as f64};
-        let clip = coord! { x: 2.0*(clip.x - 0.5), y: 2.0*(clip.y - 0.5) };
+        let clip = self.clip_from_screen_point(point_x, point_y);
         let center = self.clip_to_lon_lat(&clip).unwrap();
         self.create_route_to(center.into(), route_costing);
+    }
+
+    fn clip_from_screen_point(&self, point_x: f32,
+                              point_y: f32) -> Coord {
+        let clip = coord! {x: (point_x / self.screen_params.width as f32) as f64,
+        y: (point_y / self.screen_params.height as f32) as f64};
+        coord! { x: 2.0*(clip.x - 0.5), y: 2.0*(clip.y - 0.5) }
     }
 
     pub fn create_route_to(&mut self, to_lon_lat: (f64, f64), route_costing: RouteCosting) {

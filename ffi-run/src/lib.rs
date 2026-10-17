@@ -138,6 +138,11 @@ impl ShashlikMapApi {
         shashlik_map.create_route_to_screen_point(point_x, point_y, route_costing.into());
     }
 
+    fn try_change_route_for_screen_point(&self, point_x: f32, point_y: f32) {
+        let mut shashlik_map = self.shashlik_map.write().unwrap();
+        shashlik_map.try_change_route_for_screen_point(point_x, point_y);
+    }
+
     pub fn add_overlay_shape(&self, points: Vec<Point>, anchor: Option<Point>, shape_type: ShapeType, color: Color) -> Option<String> {
         let points = points.into_iter().map(|point| {
             geo_types::Point::new(point.x, point.y)

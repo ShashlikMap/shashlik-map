@@ -240,8 +240,12 @@ pub fn launch_internal(ui: &ShashlikUI, force_offline: bool) {
                                     Action::ClearRoute => {
                                         shashlik_map
                                             .clear_routes();
-                                    }
-                                    Action::Route => {
+                                    },
+                                    Action::Tap => {
+                                        shashlik_map.try_change_route_for_screen_point(curr_pan_state.x,
+                                                                                        curr_pan_state.y);
+                                    },
+                                    Action::LongTap => {
                                         let route_costing = match cost_index {
                                             0 => RouteCosting::Auto,
                                             1 => RouteCosting::Pedestrian,
@@ -251,7 +255,8 @@ pub fn launch_internal(ui: &ShashlikUI, force_offline: bool) {
                                         shashlik_map.create_route_to_screen_point(curr_pan_state.x,
                                                                                   curr_pan_state.y,
                                                                                   route_costing);
-                                    }
+                                    },
+
                                     Action::KML => {
                                         let path = DialogBuilder::file()
                                             .set_location("~/Desktop")

@@ -233,7 +233,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         if self.active_routes_ids.is_empty() {
             let active_routes = self.active_routes.load(Ordering::Relaxed);
             if active_routes > 0 {
-                self.active_routes_ids.extend((0..=active_routes).map(Self::create_route_id));
+                self.active_routes_ids.extend((0..active_routes).map(Self::create_route_id));
             }
         }
         &self.active_routes_ids

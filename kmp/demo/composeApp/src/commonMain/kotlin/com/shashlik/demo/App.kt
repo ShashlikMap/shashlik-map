@@ -63,7 +63,11 @@ fun App() {
         Box(modifier = Modifier
             .fillMaxSize()
             .pointerInput(Unit) {
-                detectTapGestures(onLongPress = { offset ->
+                detectTapGestures(onTap = { offset ->
+                    ShashlikMapApiHolder.shashlikMapApi?.tryChangeRouteForScreenPoint(
+                        offset.x, offset.y
+                    )
+                }, onLongPress = { offset ->
                     ShashlikMapApiHolder.shashlikMapApi?.calculateRoute(
                         offset.x, offset.y, routeCosting.value
                     )
