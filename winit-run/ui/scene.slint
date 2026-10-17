@@ -20,7 +20,8 @@ export enum Feature {
 
 export enum Action {
     DmOffice,
-    Route,
+    Tap,
+    LongTap,
     ClearRoute,
     KML,
 }
@@ -47,6 +48,7 @@ export component ShashlikUI inherits Window {
     out property <int> requested-texture-height: image.height / 1phx;
     out property <Scale> current-scale;
     out property <PanState> current-pan-state;
+    private property <bool> track_tap;
     in-out property <string> fps_text: "";
     private property <bool> panel_controls: false;
     private property <bool> extended_controls: true;
@@ -90,19 +92,26 @@ export component ShashlikUI inherits Window {
                         running: false;
                         triggered() => { // fyi, triggered on stop
                             self.running = false;
-                            btn_click(Action.Route, cost.current-index)
+                            track_tap = false;
+                            btn_click(Action.LongTap, cost.current-index)
                         }
                     }
                 pointer-event(event) => {
                     if (event.kind == PointerEventKind.down) {
                         pressed = true;
                         long_press_timer.running = true;
+                        track_tap = true;
                     } else if (event.kind == PointerEventKind.up || event.kind == PointerEventKind.cancel) {
+                        if (event.kind == PointerEventKind.up && track_tap) {
+                            btn_click(Action.Tap, cost.current-index)
+                        }
+                        track_tap = false;
                         pressed = false;
                         long_press_timer.running = false;
                     } else if (event.kind == PointerEventKind.move
                         && (abs(current-pan-state.x - (self.mouse-x / 1phx)) > 1
                         || abs(current-pan-state.y - (self.mouse-y / 1phx)) > 1)) {
+                        track_tap = false;
                         long_press_timer.running = false;
                     }
                     current-pan-state = { pressed: pressed, x: self.mouse-x / 1phx, y: self.mouse-y / 1phx };
