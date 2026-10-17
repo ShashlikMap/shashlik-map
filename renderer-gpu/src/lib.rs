@@ -169,6 +169,9 @@ impl GpuRenderer {
                                 .send(RendererMessage::ClearGroups(keys))
                                 .unwrap();
                         }
+                        RendererApiMsg::BringToFront(key, tag) => {
+                            renderer_tx.send(RendererMessage::BringToFront(key, tag)).unwrap();
+                        }
                     }
                 }
             }
@@ -299,6 +302,9 @@ impl GpuRenderer {
                         self.layers.clear_by_key(&*key);
                         self.buffer_pool.recycle(key.as_str())
                     });
+                }
+                RendererMessage::BringToFront(key, tag) => {
+                    self.layers.bring_to_front(key, tag);
                 }
             }
         }

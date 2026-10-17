@@ -85,6 +85,12 @@ impl Layers {
             .for_each(|layer| layer.clear_by_key(key));
     }
 
+    pub(crate) fn bring_to_front(&mut self, key: String, tag: Option<String>) {
+        self.all_layers()
+            .iter_mut()
+            .for_each(|layer| layer.bring_to_front(key.clone(), tag.clone()));
+    }
+
     pub fn feature_layers(&mut self, tag: &str) -> Option<&mut GeneralMeshLayer<ShapeInstanceInput>> {
         self.feature_layers.get_layer(tag)
     }

@@ -127,6 +127,10 @@ impl<I: MeshInstanceInput> BaseMeshLayer for GeneralMeshLayer<I> {
     fn clear_by_key(&mut self, key: &str) {
         self.render_data_holder.remove(key);
     }
+
+    fn bring_to_front(&mut self, key: String, _: Option<String>) {
+        self.render_data_holder.bring_to_front(key);
+    }
 }
 
 impl<I: MeshInstanceInput> ComputableLayer<I> for GeneralMeshLayer<I> {

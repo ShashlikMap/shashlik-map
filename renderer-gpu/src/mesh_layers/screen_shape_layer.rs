@@ -4,7 +4,8 @@ use crate::draw_commands::mesh2d_draw_command::Mesh2dDrawCommand;
 use crate::global_context::GlobalContext;
 use crate::mesh::InstanceBuffer;
 use crate::mesh::mesh::Mesh;
-use crate::mesh::mesh_instance_input::{MeshInstanceInput};
+use crate::mesh::mesh_instance_input::MeshInstanceInput;
+use crate::mesh_buffers::MeshBuffers;
 use crate::mesh_layers::{BaseMeshLayer, LayerAttrMapper, RenderableLayer};
 use crate::pipelines::RenderPipeline;
 use crate::view_projection::ViewProjection;
@@ -14,18 +15,16 @@ use num::clamp;
 use renderer_common::collision_handler::CollisionHandler;
 use renderer_common::render_modifier::SpatialData;
 use rstar::primitives::Rectangle;
-use std::collections::HashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use std::mem;
 use std::ops::Range;
-use rustc_hash::{FxHashMap, FxHashSet};
 use wgpu::RenderPass;
-use crate::mesh_buffers::MeshBuffers;
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
 pub(crate) struct ScreenShapeLayer<I: MeshInstanceInput> {
     attr_map: LayerAttrMapper<I>,
     instance_buffer: InstanceBuffer<I>,
-    meshes: HashMap<String, (Mesh, Range<u32>)>,
+    meshes: FxHashMap<String, (Mesh, Range<u32>)>,
     collision_task_controller: CollisionTaskController<
         (ShapeInfo, f32, String),
         FxHashMap<String, Vec<(DVec3, f32)>>,
@@ -47,7 +46,7 @@ impl<I: MeshInstanceInput> ScreenShapeLayer<I> {
         ScreenShapeLayer {
             attr_map,
             instance_buffer: InstanceBuffer::default(),
-            meshes: HashMap::new(),
+            meshes: FxHashMap::default(),
             collision_task_controller,
         }
     }
