@@ -128,7 +128,7 @@ impl<I: MeshInstanceInput> BaseMeshLayer for GeneralMeshLayer<I> {
         self.render_data_holder.remove(key);
     }
 
-    fn bring_to_front(&mut self, key: String) {
+    fn bring_to_front(&mut self, key: &str) {
         self.render_data_holder.bring_to_front(key);
     }
 }
