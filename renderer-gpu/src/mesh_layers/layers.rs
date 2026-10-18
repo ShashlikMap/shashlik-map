@@ -86,8 +86,10 @@ impl Layers {
     }
 
     pub(crate) fn bring_to_front(&mut self, key: String, tag: Option<String>) {
-        if let Some(tag) = tag && let Some(layer) = self.feature_layers.get_layer(tag.as_str()) {
-            layer.bring_to_front(key);
+        if let Some(tag) = tag {
+            if let Some(layer) = self.feature_layers.get_layer(tag.as_str()) {
+                layer.bring_to_front(key);
+            }
         } else {
             self.all_layers()
                 .iter_mut()
