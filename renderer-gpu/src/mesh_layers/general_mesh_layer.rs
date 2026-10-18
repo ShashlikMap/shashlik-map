@@ -128,11 +128,8 @@ impl<I: MeshInstanceInput> BaseMeshLayer for GeneralMeshLayer<I> {
         self.render_data_holder.remove(key);
     }
 
-    fn bring_to_front(&mut self, key: String, tag: Option<String>) {
-        // if tag is specified then feature layers only should process this
-        if tag.is_none() {
-            self.render_data_holder.bring_to_front(key);
-        }
+    fn bring_to_front(&mut self, key: String) {
+        self.render_data_holder.bring_to_front(key);
     }
 }
 

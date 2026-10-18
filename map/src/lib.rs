@@ -142,7 +142,7 @@ pub static DEFAULT_FONT_DATA: LazyLock<&[u8], fn() -> &'static [u8]> =
 const MAX_ZOOM_LEVEL: i32 = 15;
 
 impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
-
+    const MAX_DISTANCE_TO_ROUTE_FOR_SELECTION: f32 = 150.0;
     const FOLLOW_ANIMATION_DELAY_MS: u64 = 2000;
     const TELEPORT_THRESHOLD: f64 = 300.0;
     const ZOOM_LOCK_DIST: f64 = 200.0;
@@ -570,7 +570,9 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
     ) {
         let clip = self.clip_from_screen_point(point_x, point_y);
         if let Some(world_on_ground) = self.renderer.clip_to_world(&clip) {
-            println!("tap, world_on_ground = {world_on_ground}");
+            self.route_controller.try_change_route_for_world_point(
+                Point(coord! {x: world_on_ground.x, y: world_on_ground.y}),
+                Self::MAX_DISTANCE_TO_ROUTE_FOR_SELECTION);
         }
     }
 
