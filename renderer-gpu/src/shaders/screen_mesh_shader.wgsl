@@ -101,9 +101,18 @@ fn fs_main_globe(in: VertexOutput) -> @location(0) vec4<f32> {
 @fragment
 fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
     let ndc = in.uv * 2.0 - 1.0;
+
     let d = length(ndc * camera.inv_ndc_globe_r);
-    if(d <= 0.9 || d > 1.15) {
+    if(d > 1.15) {
         discard;
+    }
+    if (d < 0.9) {
+        let qq = in.uv * camera.inv_ndc_globe_r;
+        let alpha = camera.inv_ndc_globe_r.x * 0.5;
+        let centeredUV = in.uv - vec2f(0.5);
+        let gradient = centeredUV.x * cos(0.125) + centeredUV.y * sin(0.125);
+        let gradient2 = clamp(gradient + 0.5, 0.0, 1.0);
+        return vec4f(0.0, 0.0, 0.0, alpha * min(0.9, 1.0 - smoothstep(0.45, 0.55, gradient2)));
     }
     let glow_color = vec4f(0.35, 0.60, 1.00, 1.0);
     if d <= 1.0 {
