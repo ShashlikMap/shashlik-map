@@ -1,12 +1,13 @@
 use crate::route::RouteCosting;
-use geo_types::{coord, point, Point};
+use geo_types::{coord, Point, LineString};
 use log::error;
 use renderer_common::RendererApi;
 use std::collections::HashSet;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
+use geo::{Distance, Euclidean};
 use glam::DVec3;
 use reqwest::Url;
 use valhalla_client::blocking::Valhalla;
@@ -20,13 +21,21 @@ use crate::CoordConverter;
 use crate::overlay::overlay_shape_group::{OverlayShapeGroup};
 use crate::overlay::ShapeType;
 
+struct RouteData {
+    id: String,
+    route: LineString,
+    costing: RouteCosting,
+    style_id: StyleId,
+}
+
 pub struct RouteController<RAPI: RendererApi + 'static> {
     api: Arc<RAPI>,
     current_lon_lat: Option<(f64, f64)>,
     valhalla: Arc<Valhalla>,
     active_routes: Arc<AtomicU8>,
+    full_routes: Arc<RwLock<Vec<RouteData>>>,
     active_routes_ids: Vec<String>,
-    dpi_scale: f32
+    dpi_scale: f32,
 }
 
 impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
@@ -39,8 +48,9 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
             current_lon_lat: None,
             valhalla: Arc::new(valhalla),
             active_routes: Arc::new(AtomicU8::new(0)),
+            full_routes: Arc::new(RwLock::new(vec![])),
             active_routes_ids: Vec::new(),
-            dpi_scale
+            dpi_scale,
         };
         route_controller.warm_up();
         route_controller
@@ -79,6 +89,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
             Self::destination_pin(api.clone(), self.dpi_scale, None);
             let active_routes = Arc::clone(&self.active_routes);
             let dpi_scale = self.dpi_scale;
+            let full_routes = Arc::clone(&self.full_routes);
             spawn(move || {
                 let source_loc = Location::new(lon as f32, lat as f32);
                 let destination_loc = Location::new(to_lon_lat.0 as f32, to_lon_lat.1 as f32);
@@ -101,35 +112,34 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                             let alternates = trips.1.len() as u8;
                             // just apply all routes, even though some might not be created(rare)
                             active_routes.store(alternates + 1, Ordering::Relaxed);
+                            let mut full_routes = full_routes.write().unwrap();
+                            full_routes.clear();
                             Self::handle_trips(trips, |index, trip: &Trip| {
                                 if let Some(leg) = trip.legs.first() {
+                                    let route_id = Self::create_route_id(index);
                                     let route: Vec<Point> = leg
                                         .shape
                                         .iter()
                                         .map(|p| {
-                                            point! { x: p.lon, y: p.lat }
+                                            converter(&p.into())
                                         })
                                         .collect();
-                                    let route: Vec<Point> =
-                                        route.iter().map(|p| converter(p)).collect();
-                                    let mut shape_type: ShapeType = ShapeType::Line(None);
-                                    let style_id = match route_costing {
-                                        RouteCosting::Pedestrian => {
-                                            shape_type = ShapeType::DottedLine;
-                                            if index < alternates {
-                                                StyleId::new("route_pedestrian_alternative")
-                                            } else {
-                                                StyleId::new("route_pedestrian")
-                                            }
-                                        },
-                                        RouteCosting::Auto | RouteCosting::Motorbike => {
-                                            if index < alternates {
-                                                StyleId::new("route_alternative")
-                                            } else {
-                                                StyleId::new("route")
-                                            }
-                                        },
+
+                                    let shape_type: ShapeType = if matches!(route_costing, RouteCosting::Pedestrian) {
+                                        ShapeType::DottedLine
+                                    } else {
+                                        ShapeType::Line(None)
                                     };
+                                    let orig_style_id = Self::get_style_for_route(index < alternates, &route_costing);
+                                    let style_id = StyleId(route_id.clone().into());
+                                    api.copy_style(orig_style_id, style_id.clone());
+
+                                    full_routes.push(RouteData {
+                                        id: route_id.clone(),
+                                        route: route.clone().into(),
+                                        costing: route_costing.clone(),
+                                        style_id: style_id.clone(),
+                                    });
 
                                     let route_group = OverlayShapeGroup::new(
                                         route,
@@ -140,7 +150,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                     );
 
                                     api.add_render_group(
-                                        Self::create_route_id(index),
+                                        route_id,
                                         route_group.spatial_data(),
                                         route_group,
                                     );
@@ -172,6 +182,25 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         }
     }
 
+    fn get_style_for_route(alternative: bool, costing: &RouteCosting) -> StyleId {
+        match costing {
+            RouteCosting::Pedestrian => {
+                if alternative {
+                    StyleId::new("route_pedestrian_alternative")
+                } else {
+                    StyleId::new("route_pedestrian")
+                }
+            },
+            RouteCosting::Auto | RouteCosting::Motorbike => {
+                if alternative {
+                    StyleId::new("route_alternative")
+                } else {
+                    StyleId::new("route")
+                }
+            },
+        }
+    }
+
     fn destination_pin(api: Arc<RAPI>, dpi_scale: f32, location: Option<DVec3>) {
         if let Some(mut location) = location {
             let group = GeometryRenderGroup(GeometryData::Svg(IconShapeData {
@@ -197,7 +226,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         }
     }
 
-    pub fn handle_trips(trips: (Trip, Vec<Trip>), action: impl Fn(u8, &Trip) -> ()) {
+    pub fn handle_trips(trips: (Trip, Vec<Trip>), mut action: impl FnMut(u8, &Trip) -> ()) {
         let main_trip = &trips.0;
         let alternates: Vec<Trip> = trips.1.clone();
         println!("Route calculated!, alternates = {:?}", alternates.len());
@@ -218,6 +247,29 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         self.active_routes_ids.clear();
         Self::destination_pin(api.clone(), self.dpi_scale, None);
         api.clear_render_groups(HashSet::from_iter(active_routes));
+    }
+
+    pub fn try_change_route_for_world_point(&mut self, point: Point, max_dist: f32) {
+        println!("try_change_route_for_world_point for = {:?} with max_dist: {max_dist}", point);
+
+        if let Ok(full_routes) = self.full_routes.try_read() {
+            let qq = full_routes.iter().map(|route| {
+                let dist = Euclidean.distance(&route.route, &point);
+                (route.id.clone(), dist)
+            }).min_by(|(_, dist1), (_, dist2)| dist1.total_cmp(dist2));
+            if let Some((target_id, dist)) = qq && dist <= max_dist as f64 {
+                let api = Arc::clone(&self.api);
+                full_routes.iter().for_each(|route| {
+                    let route_id = route.id.clone();
+                    if target_id == route_id {
+                        api.copy_style(StyleId::new("route"), StyleId(route_id.clone().into()));
+                        api.bring_to_front(route_id, Some("route_layer".to_string()));
+                    } else {
+                        api.copy_style(StyleId::new("route_alternative"), StyleId(route_id.into()));
+                    }
+                });
+            }
+        }
     }
 
     pub fn update(&mut self, normal_scale: f64) {

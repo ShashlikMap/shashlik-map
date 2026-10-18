@@ -570,7 +570,9 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
     ) {
         let clip = self.clip_from_screen_point(point_x, point_y);
         if let Some(world_on_ground) = self.renderer.clip_to_world(&clip) {
-            println!("tap, world_on_ground = {world_on_ground}");
+            self.route_controller.try_change_route_for_world_point(
+                Point(coord! {x: world_on_ground.x, y: world_on_ground.y}),
+                150f32);
         }
     }
 

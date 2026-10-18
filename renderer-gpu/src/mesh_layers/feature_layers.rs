@@ -59,9 +59,9 @@ impl<ML: BaseMeshLayer> BaseMeshLayer for FeatureLayers<ML> {
             .for_each(|(_, layer)| layer.clear_by_key(key));
     }
 
-    fn bring_to_front(&mut self, key: String, tag: Option<String>) {
-        if let Some(tag) = tag && let Some(layer) = self.get_layer(tag.as_str()) {
-            layer.bring_to_front(key, Some(tag));
-        }
+    fn bring_to_front(&mut self, key: String) {
+        self.feature_shape_layers
+            .iter_mut()
+            .for_each(|(_, layer)| layer.bring_to_front(key.clone()));
     }
 }
