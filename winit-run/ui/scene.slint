@@ -48,7 +48,6 @@ export component ShashlikUI inherits Window {
     out property <int> requested-texture-height: image.height / 1phx;
     out property <Scale> current-scale;
     out property <PanState> current-pan-state;
-    private property <bool> track_tap;
     in-out property <string> fps_text: "";
     private property <bool> panel_controls: false;
     private property <bool> extended_controls: true;
@@ -84,18 +83,58 @@ export component ShashlikUI inherits Window {
         image := Image {
             width: 100%;
             height: 100%;
+            gestures_cooldown:= Timer {
+                interval: 300ms;
+                running: false;
+                triggered() => {
+                    self.running = false;
+                }
+            }
+            click_delay:= Timer {
+                interval: 100ms;
+                running: false;
+                triggered() => {
+                    self.running = false;
+                    if (!gestures_cooldown.running) {
+                        btn_click(Action.Tap, cost.current-index);
+                    }
+                }
+            }
+            ScaleRotateGestureHandler {
+                started => {
+                    gestures_cooldown.running = true;
+                    gestures_cooldown.restart();
+                    current-scale = { value: 0.0, x: 0.0, y: 0.0 };
+                }
+                ended => {
+                    gestures_cooldown.running = true;
+                    gestures_cooldown.restart();
+                    current-scale = { value: 0.0, x: 0.0, y: 0.0 };
+                }
+                cancelled => {
+                    gestures_cooldown.running = true;
+                    gestures_cooldown.restart();
+                    current-scale = { value: 0.0, x: 0.0, y: 0.0 };
+                }
+                updated => {
+                    current-scale = { value: self.scale, x: self.center.x / 1phx, y: self.center.y / 1phx };
+                }
+            }
             TouchArea {
                 width: 100%;
                 height: 100%;
+
+                property <bool> track_tap;
+
                 long_press_timer := Timer {
-                        interval: 800ms;
-                        running: false;
-                        triggered() => { // fyi, triggered on stop
-                            self.running = false;
-                            track_tap = false;
-                            btn_click(Action.LongTap, cost.current-index)
-                        }
+                    interval: 800ms;
+                    running: false;
+                    triggered() => {
+                        self.running = false;
+                        track_tap = false;
+                        btn_click(Action.LongTap, cost.current-index)
                     }
+                }
                 pointer-event(event) => {
                     if (event.kind == PointerEventKind.down) {
                         pressed = true;
@@ -103,7 +142,7 @@ export component ShashlikUI inherits Window {
                         track_tap = true;
                     } else if (event.kind == PointerEventKind.up || event.kind == PointerEventKind.cancel) {
                         if (event.kind == PointerEventKind.up && track_tap) {
-                            btn_click(Action.Tap, cost.current-index)
+                            click_delay.running = true;
                         }
                         track_tap = false;
                         pressed = false;
@@ -119,18 +158,6 @@ export component ShashlikUI inherits Window {
                 scroll-event(event) => {
                     vert_scroll(event.delta-y / 1phx);
                     accept;
-                }
-            }
-
-            ScaleRotateGestureHandler {
-                started => {
-                    current-scale = { value: 0.0, x: 0.0, y: 0.0 };
-                }
-                ended => {
-                    current-scale = { value: 0.0, x: 0.0, y: 0.0 };
-                }
-                updated => {
-                    current-scale = { value: self.scale, x: self.center.x / 1phx, y: self.center.y / 1phx };
                 }
             }
         }
