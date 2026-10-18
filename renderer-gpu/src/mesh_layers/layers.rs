@@ -85,7 +85,7 @@ impl Layers {
             .for_each(|layer| layer.clear_by_key(key));
     }
 
-    pub(crate) fn bring_to_front(&mut self, key: String, tag: Option<String>) {
+    pub(crate) fn bring_to_front(&mut self, key: &str, tag: Option<String>) {
         if let Some(tag) = tag {
             if let Some(layer) = self.feature_layers.get_layer(tag.as_str()) {
                 layer.bring_to_front(key);
@@ -93,7 +93,7 @@ impl Layers {
         } else {
             self.all_layers()
                 .iter_mut()
-                .for_each(|layer| layer.bring_to_front(key.clone()));
+                .for_each(|layer| layer.bring_to_front(key));
         }
     }
 

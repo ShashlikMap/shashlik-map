@@ -41,7 +41,8 @@ impl<T> RenderDataHolder<T> {
         });
     }
 
-    pub(crate) fn bring_to_front(&mut self, key: String) {
+    pub(crate) fn bring_to_front(&mut self, key: &str) {
+        let key = key.to_string();
         if let Some(data) = self.holder.swap_remove(&key) {
             self.holder.insert(key, data);
         }

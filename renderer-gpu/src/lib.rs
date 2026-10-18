@@ -304,7 +304,7 @@ impl GpuRenderer {
                     });
                 }
                 RendererMessage::BringToFront(key, tag) => {
-                    self.layers.bring_to_front(key, tag);
+                    self.layers.bring_to_front(key.as_str(), tag);
                 }
             }
         }

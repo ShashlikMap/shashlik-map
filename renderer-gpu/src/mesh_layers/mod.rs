@@ -28,7 +28,7 @@ pub(crate) trait BaseMeshLayer {
 
     fn clear_by_key(&mut self, key: &str);
 
-    fn bring_to_front(&mut self, _: String) {}
+    fn bring_to_front(&mut self, _: &str) {}
 }
 
 pub(crate) trait RenderableLayer<I: MeshInstanceInput> {
