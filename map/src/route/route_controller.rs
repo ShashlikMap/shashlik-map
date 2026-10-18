@@ -1,5 +1,5 @@
 use crate::route::RouteCosting;
-use geo_types::{coord, Point, LineString};
+use geo_types::{point, Point, LineString};
 use log::error;
 use renderer_common::RendererApi;
 use std::collections::HashSet;
@@ -150,7 +150,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                         route_group,
                                     );
 
-                                    let user_destination = converter(&Point(coord! {x: to_lon_lat.0, y: to_lon_lat.1}));
+                                    let user_destination = converter(&point!(x: to_lon_lat.0, y: to_lon_lat.1));
                                     Self::destination_pin(api.clone(),
                                                           dpi_scale,
                                                           Some(DVec3::new(user_destination.x(), user_destination.y(), 0.0)));
