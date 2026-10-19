@@ -98,23 +98,21 @@ fn fs_main_globe(in: VertexOutput) -> @location(0) vec4<f32> {
     discard;
 }
 
-fn sphIntersect(ro: vec3<f32>, rd: vec3<f32>, sph: vec4<f32>) -> f32
-{
-    let oc: vec3<f32> = ro - sph.xyz;
-    let b: f32 = dot(oc, rd);
-    let c: f32 = dot(oc, oc) - sph.w * sph.w;
-    let h: f32 = b * b - c;
+/// Based on https://iquilezles.org/articles/spherefunctions/
+fn sphIntersect(ro: vec3<f32>, rd: vec3<f32>, sph: vec4<f32>) -> f32 {
+    let oc = ro - sph.xyz;
+    let b = dot(oc, rd);
+    let c = dot(oc, oc) - sph.w * sph.w;
+    let h = b * b - c;
 
     if (h < 0.0) {
         return -1.0;
     }
 
-    let h_sqrt: f32 = sqrt(h);
-    return -b - h_sqrt;
+    return -b - sqrt(h);
 }
 
-fn sphNormal(pos: vec3<f32>, sph: vec4<f32>) -> vec3<f32>
-{
+fn sphNormal(pos: vec3<f32>, sph: vec4<f32>) -> vec3<f32> {
     return (pos - sph.xyz) / sph.w;
 }
 

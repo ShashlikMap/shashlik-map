@@ -162,9 +162,7 @@ impl TextRendererCollisionHandler {
     }
 
     fn smoothstep(edge0: f32, edge1: f32, mut x: f32) -> f32 {
-        // Scale, clamp, and saturate to 0.0 .. 1.0 range
         x = ((x - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
-        // Evaluate polynomial: 3*t^2 - 2*t^3
         x * x * (3.0 - 2.0 * x)
     }
 }
@@ -181,7 +179,7 @@ impl ColliderTask for TextRendererCollisionHandler {
         let mut glyph_data: FxHashMap<GlyphId, Vec<GlyphData>> = FxHashMap::default();
 
         let globe_h = view_projection.uniform.globe_h;
-        let rig_alpha = 1.0 - Self::smoothstep(3.0, 3.3, globe_h);
+        let globe_h_alpha = 1.0 - Self::smoothstep(3.0, 3.3, globe_h);
 
         render_data_holder.run_mut_action(|data| {
             if !id_collisions.insert(data.id) {
@@ -415,8 +413,9 @@ impl ColliderTask for TextRendererCollisionHandler {
             for (_, mut item) in glyphs_to_draw {
                 item.alpha = data.alpha;
                 if data.alpha > 0.0 {
+                    // only for non scree space text, to keep FPS on the screen
                     if !data.screen_space {
-                        item.alpha *= rig_alpha;
+                        item.alpha *= globe_h_alpha;
                     }
                     glyph_data
                         .entry(item.glyph_id)
