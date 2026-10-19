@@ -98,6 +98,26 @@ fn fs_main_globe(in: VertexOutput) -> @location(0) vec4<f32> {
     discard;
 }
 
+fn sphIntersect(ro: vec3<f32>, rd: vec3<f32>, sph: vec4<f32>) -> f32
+{
+    let oc: vec3<f32> = ro - sph.xyz;
+    let b: f32 = dot(oc, rd);
+    let c: f32 = dot(oc, oc) - sph.w * sph.w;
+    let h: f32 = b * b - c;
+
+    if (h < 0.0) {
+        return -1.0;
+    }
+
+    let h_sqrt: f32 = sqrt(h);
+    return -b - h_sqrt;
+}
+
+fn sphNormal(pos: vec3<f32>, sph: vec4<f32>) -> vec3<f32>
+{
+    return (pos - sph.xyz) / sph.w;
+}
+
 @fragment
 fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
     let ndc = in.uv * 2.0 - 1.0;
@@ -106,21 +126,61 @@ fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
     if(d > 1.15) {
         discard;
     }
-    if (d < 0.9) {
-        let qq = in.uv * camera.inv_ndc_globe_r;
-        let alpha = camera.inv_ndc_globe_r.x * 0.5;
-        let centeredUV = in.uv - vec2f(0.5);
-        let gradient = centeredUV.x * cos(0.125) + centeredUV.y * sin(0.125);
-        let gradient2 = clamp(gradient + 0.5, 0.0, 1.0);
-        return vec4f(0.0, 0.0, 0.0, alpha * min(0.9, 1.0 - smoothstep(0.45, 0.55, gradient2)));
+    var koef = 1.0;
+    if (d <= 1.0) {
+        let fov_radians = 0.4060005080818896;
+        let ro = vec3(0.0, 0.0, -camera.rig);
+        let focal_length: f32 = 1.0 / tan(fov_radians * 0.5);
+        let rd = normalize(vec3((ndc * vec2f(camera.inv_screen_size.y / camera.inv_screen_size.x, 1.0)), focal_length));
+        let r = d;//camera.globe_r / 0.70710678;
+        let sph = vec4(0.0, 0.0, 0.0, 2670176.857720436);
+        let t = sphIntersect(ro, rd, sph);
+        var color = vec3(0.1, 0.15, 0.2);
+
+        if(t > 0.0) {
+            // 5. Calculate the exact 3D point where the ray hit the sphere
+            let hitPos = ro + t * rd;
+
+            // 6. Get the surface normal at that point
+            let normal = sphNormal(hitPos, sph);
+
+            // 7. Apply simple lighting (directional light coming from top-right)
+            let lightDir = normalize(vec3(1.0, 1.0, -0.3));
+            let diffuse = max(dot(normal, lightDir), 0.0);
+
+            // Mix a base sphere color (e.g., orange) with the lighting
+            koef = (diffuse + 0.3);
+            color = vec3(1.0, 0.5, 0.2) * (diffuse + 0.1); // 0.1 is ambient light
+//            return vec4f(1.0, 0.0, 0.0, 1.0);
+//            return vec4f(hitPos, 1.0);
+
+        }
+//        return vec4f(color, 1.0);
     }
     let glow_color = vec4f(0.35, 0.60, 1.00, 1.0);
+    let dark_koef = 1.0 - koef;
     if d <= 1.0 {
-        let white = vec4f(1.0, 1.0, 1.0, 1.0);
-        let factor = (d - 0.9) / 0.1;
+        let factor = (max(0.9, d) - 0.9) / 0.1;
         let final_factor = factor * factor;
-        let blendedColor = mix(white, glow_color, final_factor);
-        return vec4f(blendedColor.rgb, final_factor);
+
+        let light_koef = 1.0 - dark_koef; // 1.0 = sunlit day side, 0.0 = dark night side
+
+        // 1. FIXED COLOR GRADIENT:
+        // We blend from your base glow color (blue) toward pure white at the absolute outer edge.
+        // By multiplying the white target by light_koef, only the sunlit side reaches that bright white highlight!
+        let bright_white_peak = vec3f(1.0);// * light_koef;
+        let blendedColor = mix(bright_white_peak, glow_color.rgb, final_factor);
+
+        // 2. SUNLIT EDGE MULTIPLIER:
+        // Ensure the entire colored atmosphere ring fades to black on the night side.
+        let final_rgb = blendedColor * light_koef;
+
+        // 3. ALPHA OPACITY MASK:
+        // Keep the main body shadow (dark_koef) across the planet center,
+        // and smoothly scale up the atmosphere visibility near the edges.
+        let final_alpha = max(dark_koef, final_factor * light_koef);
+
+        return vec4f(final_rgb, final_alpha);
     }
 
     let glow = abs(1.0 - smoothstep(1.0, 1.15, d));
