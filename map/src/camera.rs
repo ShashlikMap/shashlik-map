@@ -81,12 +81,9 @@ impl Camera {
         let to_globe_transposed = to_globe.transpose();
 
         let target_on_globe = n * GLOBE_RADIUS;
-        let rig = to_globe * self.eye_direction() * lat.cos().max(0.05);
-        let rig2 = (target_on_globe + rig).length();
+        let globe_h = to_globe * self.eye_direction() * lat.cos().max(0.05);
 
-        println!("target_on_globe len = {:?}", target_on_globe.length());
-        println!("GLOBE_RADIUS len = {:?}", GLOBE_RADIUS);
-        let view = DMat4::look_at_rh(target_on_globe + rig, target_on_globe, to_globe * self.up);
+        let view = DMat4::look_at_rh(target_on_globe + globe_h, target_on_globe, to_globe * self.up);
         let to_target_local_space = DMat4::from_mat3_translation(
             to_globe_transposed,
             -(to_globe_transposed * target_on_globe)
@@ -95,7 +92,8 @@ impl Camera {
         let d =  GLOBE_RADIUS + l * lat.cos().max(0.05);
         let gr = GLOBE_RADIUS;
         let gr = (gr / (d * d - gr * gr).sqrt()) as f32;
-        (to_target_local_space, self.perspective_matrix * view, gr, rig2)
+        let globe_h_in_radius_units = (target_on_globe + globe_h).length() / GLOBE_RADIUS;
+        (to_target_local_space, self.perspective_matrix * view, gr, globe_h_in_radius_units)
     }
 
     /// view_light
@@ -125,7 +123,6 @@ impl Camera {
         }
         
         self.fovy_degree = fovy_rad.to_degrees();
-        println!("self.fovy_degree {:?}",fovy_rad);
         self.aspect = aspect;
         self.update_perspective_matrix(self.zfar);
     }

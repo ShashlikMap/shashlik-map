@@ -31,8 +31,7 @@ pub(crate) struct ViewProjUniform {
     view_tr_inv: [[f32; 4]; 4],
     inv_screen_size: [f32; 2],
     inv_ndc_globe_r: [f32; 2],
-    globe_r: f32,
-    rig: f32,
+    pub(crate) globe_h: f32,
     pub(crate) scale: f32,
     p2_scale: f32,
     scale_2d_3d: f32,
@@ -92,8 +91,7 @@ impl ViewProjection {
                 light_view_proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_tr_inv: Mat4::IDENTITY.to_cols_array_2d(),
                 inv_screen_size: [0.0, 0.0],
-                globe_r: 0.0,
-                rig: 0.0,
+                globe_h: 0.0,
                 scale: 0.0,
                 p2_scale: 1.0,
                 scale_2d_3d: 1.0,
@@ -161,12 +159,7 @@ impl ViewProjection {
             .to_cols_array_2d();
         self.uniform.scale = data.scale;
 
-        let r1 = data.globe_r * abs(data.proj_matrix.x_axis.x as f32);
-        let r2 = data.globe_r * abs(data.proj_matrix.y_axis.y as f32);
-        self.uniform.globe_r = r2;
-        self.uniform.rig = (data.rig) as f32;
-        println!("rig3 = {:?}", self.uniform.rig);
-        println!("KIOL = {:?}", self.uniform.globe_r);
+        self.uniform.globe_h = data.globe_h as f32;
         self.uniform.inv_ndc_globe_r = [
             1f32 / (data.globe_r * abs(data.proj_matrix.x_axis.x as f32)),
             1f32 / (data.globe_r * abs(data.proj_matrix.y_axis.y as f32))
