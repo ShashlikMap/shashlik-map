@@ -24,6 +24,8 @@ struct VertexOutput {
     @location(0) color: vec4<f32>,
     @location(1) uv: vec2<f32>,
     @location(2) uv_cube: vec3<f32>,
+    @location(3) @interpolate(flat) aspect_f_len: vec2f,
+    @location(4) @interpolate(flat) day_night_alpha: f32,
 }
 
 @vertex
@@ -61,6 +63,8 @@ fn vs_main(
     if(camera.scale > GLOBE_SCALE) {
         let unprojected = camera.inv_proj * out.clip_position;
         out.uv_cube = (camera.inv_globe_view * unprojected).xyz;
+        out.aspect_f_len = vec2f(camera.inv_screen_size.y / camera.inv_screen_size.x, abs(camera.proj[1][1]));
+        out.day_night_alpha = smoothstep(1.4, 1.6, camera.globe_h);
     }
 
     return out;    
@@ -116,6 +120,8 @@ fn sphNormal(pos: vec3<f32>, sph: vec4<f32>) -> vec3<f32> {
     return (pos - sph.xyz) / sph.w;
 }
 
+const SUN_DIR = normalize(vec3(1.0, 0.3, -0.7));
+
 @fragment
 fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
     let ndc = in.uv * 2.0 - 1.0;
@@ -125,23 +131,18 @@ fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
         discard;
     }
     var koef = 1.0;
-    let lightDir = normalize(vec3(1.0, 0.3, -0.7));
     if (d <= 1.0) {
-        let fov_radians = 0.4060005080818896;
-//        let fov_radians = 0.6609561877302526;
         let ro = vec3(0.0, 0.0, -camera.globe_h);
-        let focal_length: f32 = 1.0 / tan(fov_radians * 0.5);
-        let rd = normalize(vec3((ndc * vec2f(camera.inv_screen_size.y / camera.inv_screen_size.x, 1.0)), focal_length));
+        let rd = normalize(vec3((ndc * vec2f(in.aspect_f_len.x, 1.0)), in.aspect_f_len.y));
         let sph = vec4(0.0, 0.0, 0.0, 1.0);
         let t = sphIntersect(ro, rd, sph);
         if(t > 0.0) {
             let hitPos = ro + t * rd;
             let normal = sphNormal(hitPos, sph);
-            let diffuse = max(dot(normal, lightDir), 0.0);
+            let diffuse = max(dot(normal, SUN_DIR), 0.0);
             koef = (diffuse + 0.1);
         }
     }
-    let qq = smoothstep(1.4, 1.6, camera.globe_h);
 
     let glow_color = vec4f(0.35, 0.60, 1.00, 1.0);
     if d <= 1.0 {
@@ -151,13 +152,13 @@ fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
         let light_koef = (1.0 - dark_koef);
         let blendedColor = mix(vec3f(1.0), glow_color.rgb, final_factor);
         let final_rgb = blendedColor * 1.5 * light_koef;
-        let final_alpha = max(dark_koef * qq, final_factor * light_koef);
+        let final_alpha = max(dark_koef * in.day_night_alpha, final_factor * light_koef);
 
         return vec4f(final_rgb, final_alpha);
     }
 
     let screen_normal = normalize(ndc * camera.inv_ndc_globe_r);
-    let light_dir_2d = normalize(lightDir.xy);
+    let light_dir_2d = normalize(SUN_DIR.xy);
     let atmospheric_diffuse = max(dot(screen_normal, light_dir_2d), 0.0);
     let outer_light_koef = atmospheric_diffuse + 0.2;
     let glow = abs(1.0 - smoothstep(1.0, 1.1, d));
