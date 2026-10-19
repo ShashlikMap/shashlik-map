@@ -63,8 +63,9 @@ fn vs_main(
     if(camera.scale > GLOBE_SCALE) {
         let unprojected = camera.inv_proj * out.clip_position;
         out.uv_cube = (camera.inv_globe_view * unprojected).xyz;
-        out.aspect_f_len = vec2f(camera.inv_screen_size.y / camera.inv_screen_size.x, abs(camera.proj[1][1]));
-        out.day_night_alpha = smoothstep(1.4, 1.6, camera.globe_h);
+        let f_len = abs(camera.proj[1][1]);
+        out.aspect_f_len = vec2f(camera.inv_screen_size.y / camera.inv_screen_size.x, f_len);
+        out.day_night_alpha = smoothstep(7.0, 10.0, camera.globe_h * f_len);
     }
 
     return out;    

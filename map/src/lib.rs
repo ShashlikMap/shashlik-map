@@ -653,7 +653,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
     }
 
     pub fn load_kml_path(&self, path_buf: PathBuf) {
-        println!("Loading KML from {:?}", path_buf);
+        println!("Loading KML from222232 {:?}", path_buf);
         let kml_group = KmlGroup::new(path_buf, self.create_location_coord_converter());
 
         self.renderer.api().add_render_group(
