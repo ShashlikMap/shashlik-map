@@ -68,7 +68,7 @@ impl Camera {
         (view, self.perspective_matrix * view)
     }
 
-    pub fn build_globe_view_projection_matrix(&mut self) -> (DMat4, DMat4, f32) {
+    pub fn build_globe_view_projection_matrix(&mut self) -> (DMat4, DMat4, f32, f64) {
         let merc = self.target.xy() / MAP_SIZE;
         let lat = 2.0 * (PI * (1.0 - 2.0 * merc.y)).exp().atan() - PI * 0.5;
         let lon = 2.0 * PI * (merc.x - 0.5);
@@ -81,18 +81,19 @@ impl Camera {
         let to_globe_transposed = to_globe.transpose();
 
         let target_on_globe = n * GLOBE_RADIUS;
-        let rig = to_globe * self.eye_direction() * lat.cos().max(0.05);
-        let view = DMat4::look_at_rh(target_on_globe + rig, target_on_globe, to_globe * self.up);
+        let globe_h = to_globe * self.eye_direction() * lat.cos().max(0.05);
+
+        let view = DMat4::look_at_rh(target_on_globe + globe_h, target_on_globe, to_globe * self.up);
         let to_target_local_space = DMat4::from_mat3_translation(
             to_globe_transposed,
             -(to_globe_transposed * target_on_globe)
         );
-
         let l = self.eye_direction().length();
         let d =  GLOBE_RADIUS + l * lat.cos().max(0.05);
         let gr = GLOBE_RADIUS;
         let gr = (gr / (d * d - gr * gr).sqrt()) as f32;
-        (to_target_local_space, self.perspective_matrix * view, gr)
+        let globe_h_in_radius_units = (target_on_globe + globe_h).length() / GLOBE_RADIUS;
+        (to_target_local_space, self.perspective_matrix * view, gr, globe_h_in_radius_units)
     }
 
     /// view_light
