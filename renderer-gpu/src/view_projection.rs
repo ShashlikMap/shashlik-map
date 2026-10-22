@@ -250,8 +250,7 @@ impl ViewProjection {
         let mut visible_on_globe = true;
         let world_position = if self.is_globe_view() {
             let mut ret = world_to_globe_position(world_position.xy());
-            // 1.05: let's give it more time on the edge
-            if (self.camera_in_globe.normalize() - ret).length() >= 1.05 {
+            if self.camera_in_globe.dot(ret) < 1.0 {
                 visible_on_globe = false
             }
             ret *= GLOBE_R;

@@ -276,7 +276,8 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
 
         let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
         let day_ord = Utc::now().ordinal0();
-        let sun_lat = (23.44 * (0.9856532691 * (day_ord + 10) as f32).cos()).to_radians();
+        // Cosine variant of Cooper's formula
+        let sun_lat = -(23.44 * (0.9856532691 * (day_ord + 10) as f32).to_radians().cos()).to_radians();
         let sun_lon = (0.5 - (time % 86400) as f32 / 86400.0) * 2.0 * PI;
         let sun = Vec3::new(sun_lon.sin() * sun_lat.cos(), sun_lon.cos() * sun_lat.cos(), sun_lat.sin()).normalize();
 
