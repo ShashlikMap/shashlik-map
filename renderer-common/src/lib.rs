@@ -75,6 +75,7 @@ pub struct RendererUpdateData {
     pub cs_offset: DVec3,
     pub scale: f32,
     pub eye_direction: DVec3,
+    pub target_on_globe: DVec3,
     pub up: DVec3,
     pub scale_2d_3d: f32,
     pub globe_r: f32,
@@ -237,4 +238,12 @@ pub enum TilesType {
     ($x:expr, $($y:expr),+) => {
         ($x).max($crate::max_f64!($($y),+))
     };
+}
+
+/// converts world to a globe position with globe radius 1 unit
+pub fn world_to_globe_position(position: DVec2) -> DVec3 {
+    let merc = position / MAP_SIZE;
+    let lat = 2.0 * (PI * (1.0 - 2.0 * merc.y)).exp().atan() - PI * 0.5;
+    let lon = 2.0 * PI * (merc.x - 0.5);
+    DVec3::new(lat.cos() * lon.sin(), lat.cos() * lon.cos(), lat.sin())
 }

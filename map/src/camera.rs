@@ -5,7 +5,7 @@ use glam::DMat4;
 use glam::DVec2;
 use glam::DVec3;
 use glam::Vec3Swizzles;
-use renderer_common::{GLOBE_SCALE, LIGHT_POS, MAP_SIZE};
+use renderer_common::{world_to_globe_position, GLOBE_SCALE, LIGHT_POS, MAP_SIZE};
 use std::f64::consts::PI;
 
 pub struct Camera {
@@ -68,32 +68,24 @@ impl Camera {
         (view, self.perspective_matrix * view)
     }
 
-    pub fn build_globe_view_projection_matrix(&mut self) -> (DMat4, DMat4, f32, f64) {
-        let merc = self.target.xy() / MAP_SIZE;
-        let lat = 2.0 * (PI * (1.0 - 2.0 * merc.y)).exp().atan() - PI * 0.5;
-        let lon = 2.0 * PI * (merc.x - 0.5);
-
-        let n = DVec3::new(lat.cos() * lon.sin(), lat.cos() * lon.cos(), lat.sin());
+    pub fn build_globe_view_projection_matrix(&mut self) -> (DMat4, DMat4, f32, f64, DVec3) {
+        let n = world_to_globe_position(self.target.xy());
         let east = n.cross(DVec3::Z).normalize();
         let north = east.cross(n);
         let y_axis = -north;
         let to_globe = DMat3::from_cols(east, y_axis, n);
-        let to_globe_transposed = to_globe.transpose();
 
         let target_on_globe = n * GLOBE_RADIUS;
-        let globe_h = to_globe * self.eye_direction() * lat.cos().max(0.05);
+        let globe_h = to_globe * self.eye_direction();
 
         let view = DMat4::look_at_rh(target_on_globe + globe_h, target_on_globe, to_globe * self.up);
-        let to_target_local_space = DMat4::from_mat3_translation(
-            to_globe_transposed,
-            -(to_globe_transposed * target_on_globe)
-        );
+
         let l = self.eye_direction().length();
-        let d =  GLOBE_RADIUS + l * lat.cos().max(0.05);
+        let d =  GLOBE_RADIUS + l;
         let gr = GLOBE_RADIUS;
         let gr = (gr / (d * d - gr * gr).sqrt()) as f32;
         let globe_h_in_radius_units = (target_on_globe + globe_h).length() / GLOBE_RADIUS;
-        (to_target_local_space, self.perspective_matrix * view, gr, globe_h_in_radius_units)
+        (view, self.perspective_matrix * view, gr, globe_h_in_radius_units, target_on_globe)
     }
 
     /// view_light
