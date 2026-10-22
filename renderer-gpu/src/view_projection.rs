@@ -150,7 +150,7 @@ impl ViewProjection {
 
         self.camera_in_globe = data.camera_pos_in_globe / GLOBE_R;
         if self.is_globe_view() {
-            self.uniform.camera_pos_in_globe = self.camera_in_globe.as_vec3().extend(1.0).to_array();
+            self.uniform.camera_pos_in_globe = self.camera_in_globe.as_vec3().extend(0.0).to_array();
             self.uniform.inv_globe_view = data.globe_view.transpose().as_mat4().to_cols_array_2d();
             self.uniform.globe_view_proj = globe_view_proj.as_mat4().to_cols_array_2d();
             self.inv_globe_view_proj_matrix = data.globe_view_proj_matrix.inverse();

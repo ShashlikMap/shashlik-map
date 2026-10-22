@@ -67,7 +67,7 @@ fn vs_main(
         out.uv_cube = (camera.inv_globe_view * unprojected).xyz;
         let f_len = abs(camera.proj[1][1]);
         out.aspect_f_len = vec2f(camera.inv_screen_size.y / camera.inv_screen_size.x, f_len);
-        out.globe_h = length(camera.camera_pos_in_globe);
+        out.globe_h = length(camera.camera_pos_in_globe.xyz);
         out.day_night_alpha = smoothstep(7.0, 10.0, out.globe_h * f_len);
     }
 
