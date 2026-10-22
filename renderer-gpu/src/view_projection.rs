@@ -4,7 +4,7 @@ use crate::{GpuRenderer, RendererUpdateData};
 use geo_types::{Coord, coord};
 use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec3Swizzles, Vec4Swizzles};
 use num::abs;
-use renderer_common::{max_f64, min_f64, world_to_globe_position, GLOBE_R, GLOBE_SCALE, LIGHT_POS, MAP_SIZE};
+use renderer_common::{GLOBE_R, GLOBE_SCALE, LIGHT_POS, MAP_SIZE, max_f64, min_f64, world_to_globe_position};
 use std::cmp::min;
 use std::f64::consts::PI;
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
@@ -29,9 +29,10 @@ pub(crate) struct ViewProjUniform {
     view_proj_inv: [[f32; 4]; 4],
     light_view_proj: [[f32; 4]; 4],
     view_tr_inv: [[f32; 4]; 4],
+    camera_pos_in_globe: [f32; 4],
+    sun_dir_in_globe: [f32; 4],
     inv_screen_size: [f32; 2],
     inv_ndc_globe_r: [f32; 2],
-    pub(crate) globe_h: f32,
     pub(crate) scale: f32,
     p2_scale: f32,
     scale_2d_3d: f32,
@@ -43,7 +44,7 @@ pub(crate) struct ViewProjection {
     pub scale_2d_3d: f32,
     cs_offset: DVec3,
     pub screen_size: (f64, f64),
-    target_on_globe: DVec3,
+    pub(crate) camera_in_globe: DVec3,
     inv_view_proj_matrix: DMat4,
     inv_globe_view_proj_matrix: DMat4,
     pub uniform_buffer: Buffer,
@@ -87,8 +88,9 @@ impl ViewProjection {
                 view_proj_inv: Mat4::IDENTITY.to_cols_array_2d(),
                 light_view_proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_tr_inv: Mat4::IDENTITY.to_cols_array_2d(),
+                camera_pos_in_globe: [0.0, 0.0, 0.0, 0.0],
+                sun_dir_in_globe: [0.0, 0.0, 0.0, 0.0],
                 inv_screen_size: [0.0, 0.0],
-                globe_h: 0.0,
                 scale: 0.0,
                 p2_scale: 1.0,
                 scale_2d_3d: 1.0,
@@ -97,7 +99,7 @@ impl ViewProjection {
             scale_2d_3d: 0.0,
             screen_size: (0.0, 0.0),
             cs_offset: DVec3::splat(0.0),
-            target_on_globe: DVec3::splat(0.0),
+            camera_in_globe: DVec3::splat(0.0),
             inv_view_proj_matrix: DMat4::IDENTITY,
             inv_globe_view_proj_matrix: DMat4::IDENTITY,
             uniform_buffer,
@@ -148,9 +150,14 @@ impl ViewProjection {
             .to_cols_array_2d();
         self.uniform.scale = data.scale;
 
-        self.target_on_globe = data.target_on_globe;
-        self.uniform.globe_h = data.globe_h as f32;
+        self.camera_in_globe = data.camera_pos_in_globe / GLOBE_R;
         if self.is_globe_view() {
+            if render_config.headless {
+                self.uniform.sun_dir_in_globe = [1.0, 0.0, 0.0, 1.0];
+            } else {
+                self.uniform.sun_dir_in_globe = data.sun_dir_in_globe.extend(1.0).to_array();
+            }
+            self.uniform.camera_pos_in_globe = self.camera_in_globe.as_vec3().extend(0.0).to_array();
             self.uniform.inv_globe_view = data.globe_view.transpose().as_mat4().to_cols_array_2d();
             self.uniform.globe_view_proj = globe_view_proj.as_mat4().to_cols_array_2d();
             self.inv_globe_view_proj_matrix = data.globe_view_proj_matrix.inverse();
@@ -242,10 +249,11 @@ impl ViewProjection {
         let world_position = world_position - self.get_cs_offset();
         let mut visible_on_globe = true;
         let world_position = if self.is_globe_view() {
-            let ret = world_to_globe_position(world_position.xy()) * GLOBE_R;
-            if (self.target_on_globe - ret).length() >= GLOBE_R {
+            let mut ret = world_to_globe_position(world_position.xy());
+            if self.camera_in_globe.dot(ret) < 1.0 {
                 visible_on_globe = false
             }
+            ret *= GLOBE_R;
             ret.extend(1.0)
         } else {
             DVec4::new(world_position.x, world_position.y, 0.0, 1.0)

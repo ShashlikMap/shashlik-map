@@ -1,5 +1,6 @@
 extern crate core;
 
+use std::f32::consts::PI;
 use crate::camera::{Camera, CameraController};
 use crate::kml_viewer_group::KmlGroup;
 use crate::route::RouteCosting;
@@ -10,7 +11,7 @@ use futures::executor::block_on;
 use futures::{pin_mut, Stream, StreamExt};
 use geo_types::{coord, Coord, Point};
 use geo_types::{Polygon};
-use glam::{DMat2, DVec2, DVec3, Vec2, Vec3Swizzles};
+use glam::{DMat2, DVec2, DVec3, Vec2, Vec3, Vec3Swizzles};
 use num::{clamp};
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_group::RenderGroup;
@@ -23,7 +24,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc, LazyLock};
 use std::thread::{sleep, spawn};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use chrono::{Datelike, Utc};
 use fast_mvt::serde_json;
 use geo::{BoundingRect, Centroid, Winding};
 use log::error;
@@ -269,8 +271,15 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         let scale_2d_3d = self.transition_2d_3d_helper.update(cam_zoom, AnimConfig::DEFAULT_ANIMATION_SPEED as f32);
 
         let (view, view_proj) = self.camera.build_view_projection_matrix();
-        let (globe_view, globe_view_proj, globe_r, globe_h, target_on_globe) = self.camera.build_globe_view_projection_matrix();
+        let (globe_view, globe_view_proj, globe_r, camera_pos_in_globe) = self.camera.build_globe_view_projection_matrix();
         let view_light = self.camera.build_view_light_matrix();
+
+        let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let day_ord = Utc::now().ordinal0();
+        // Cosine variant of Cooper's formula
+        let sun_lat = -(23.44 * (0.9856532691 * (day_ord + 10) as f32).to_radians().cos()).to_radians();
+        let sun_lon = (0.5 - (time % 86400) as f32 / 86400.0) * 2.0 * PI;
+        let sun = Vec3::new(sun_lon.sin() * sun_lat.cos(), sun_lon.cos() * sun_lat.cos(), sun_lat.sin()).normalize();
 
         let update_data = RendererUpdateData {
             view_matrix: view,
@@ -280,13 +289,13 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             globe_view,
             globe_view_proj_matrix: globe_view_proj,
             cs_offset: self.camera.offset,
+            sun_dir_in_globe: sun,
             scale: self.camera.scale(),
             eye_direction: self.camera.eye_direction(),
-            target_on_globe,
+            camera_pos_in_globe,
             up: self.camera.up,
             scale_2d_3d,
             globe_r,
-            globe_h
         };
         self.renderer.update(update_data);
 
