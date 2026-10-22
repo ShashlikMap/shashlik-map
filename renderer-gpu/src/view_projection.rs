@@ -4,7 +4,7 @@ use crate::{GpuRenderer, RendererUpdateData};
 use geo_types::{Coord, coord};
 use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec3Swizzles, Vec4Swizzles};
 use num::abs;
-use renderer_common::{GLOBE_R, GLOBE_SCALE, LIGHT_POS, MAP_SIZE, max_f64, min_f64};
+use renderer_common::{max_f64, min_f64, world_to_globe_position, GLOBE_R, GLOBE_SCALE, LIGHT_POS, MAP_SIZE};
 use std::cmp::min;
 use std::f64::consts::PI;
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
@@ -43,7 +43,7 @@ pub(crate) struct ViewProjection {
     pub scale_2d_3d: f32,
     cs_offset: DVec3,
     pub screen_size: (f64, f64),
-    globe_view: DMat4,
+    target_on_globe: DVec3,
     inv_view_proj_matrix: DMat4,
     inv_globe_view_proj_matrix: DMat4,
     pub uniform_buffer: Buffer,
@@ -58,9 +58,6 @@ impl ViewProjection {
     const MAX_MESH_HEIGHT: f64 = 40.0;
 
     const ORTHO_STEP: f64 = 5.0;
-
-    // don't use 0.0 or close to that to reduce amount of points on the globe edge
-    const GLOBE_HIDDEN_SIZE_THRESHOLD: f64 = 150000.0;
 
     pub fn new(device: &Device, render_config: &RenderConfig) -> Self {
         // ViewProjection align is 16byte since vec4 is used
@@ -99,8 +96,8 @@ impl ViewProjection {
             },
             scale_2d_3d: 0.0,
             screen_size: (0.0, 0.0),
-            cs_offset: DVec3::new(0.0, 0.0, 0.0),
-            globe_view: DMat4::IDENTITY,
+            cs_offset: DVec3::splat(0.0),
+            target_on_globe: DVec3::splat(0.0),
             inv_view_proj_matrix: DMat4::IDENTITY,
             inv_globe_view_proj_matrix: DMat4::IDENTITY,
             uniform_buffer,
@@ -140,30 +137,28 @@ impl ViewProjection {
             .as_mat4()
             .to_cols_array_2d();
 
-        self.globe_view = data.globe_view;
-
-        self.uniform.inv_globe_view = data.globe_view.transpose().as_mat4().to_cols_array_2d();
-        self.uniform.globe_view_proj = globe_view_proj
-            .as_mat4()
-            .to_cols_array_2d();
-        self.inv_globe_view_proj_matrix = data.globe_view_proj_matrix.inverse();
-
         let view_proj_inv = view_proj.inverse();
         self.uniform.view_proj_inv = (view_proj_inv * FLIP_Y)
             .as_mat4()
             .to_cols_array_2d();
 
-        let view_tr_inv:DMat4 = data.view_matrix.inverse().transpose();
+        let view_tr_inv = data.view_matrix.inverse().transpose();
         self.uniform.view_tr_inv = view_tr_inv
             .as_mat4()
             .to_cols_array_2d();
         self.uniform.scale = data.scale;
 
+        self.target_on_globe = data.target_on_globe;
         self.uniform.globe_h = data.globe_h as f32;
-        self.uniform.inv_ndc_globe_r = [
-            1f32 / (data.globe_r * abs(data.proj_matrix.x_axis.x as f32)),
-            1f32 / (data.globe_r * abs(data.proj_matrix.y_axis.y as f32))
-        ];
+        if self.is_globe_view() {
+            self.uniform.inv_globe_view = data.globe_view.transpose().as_mat4().to_cols_array_2d();
+            self.uniform.globe_view_proj = globe_view_proj.as_mat4().to_cols_array_2d();
+            self.inv_globe_view_proj_matrix = data.globe_view_proj_matrix.inverse();
+            self.uniform.inv_ndc_globe_r = [
+                1f32 / (data.globe_r * abs(data.proj_matrix.x_axis.x as f32)),
+                1f32 / (data.globe_r * abs(data.proj_matrix.y_axis.y as f32))
+            ];
+        }
 
         self.uniform.p2_scale = self.p2_scale(data.scale);
         self.uniform.scale_2d_3d = data.scale_2d_3d;
@@ -236,13 +231,6 @@ impl ViewProjection {
         p2_scale as f32
     }
 
-    fn transform_to_globe_position(position: DVec2) -> DVec3 {
-        let merc = position / MAP_SIZE;
-        let lat = 2.0 * (PI * (1.0 - 2.0 * merc.y)).exp().atan() - PI * 0.5;
-        let lon = 2.0 * PI * (merc.x - 0.5);
-        DVec3::new(lat.cos() * lon.sin(), lat.cos() * lon.cos(), lat.sin())
-    }
-
     /// Coordinate on the screen + visibility on the globe.
     /// For flat screen it's always true
     pub fn screen_position(&self, world_position: &DVec3) -> (Coord<f64>, bool) {
@@ -254,9 +242,8 @@ impl ViewProjection {
         let world_position = world_position - self.get_cs_offset();
         let mut visible_on_globe = true;
         let world_position = if self.is_globe_view() {
-            let ret = Self::transform_to_globe_position(world_position.xy()) * GLOBE_R;
-            let relative_to_target = self.globe_view.transform_vector3(ret);
-            if relative_to_target.z <= Self::GLOBE_HIDDEN_SIZE_THRESHOLD {
+            let ret = world_to_globe_position(world_position.xy()) * GLOBE_R;
+            if (self.target_on_globe - ret).length() >= GLOBE_R {
                 visible_on_globe = false
             }
             ret.extend(1.0)
