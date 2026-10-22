@@ -4,7 +4,7 @@ use crate::{GpuRenderer, RendererUpdateData};
 use geo_types::{Coord, coord};
 use glam::{DMat4, DVec2, DVec3, DVec4, Mat4, Vec2, Vec3Swizzles, Vec4Swizzles};
 use num::abs;
-use renderer_common::{max_f64, min_f64, world_to_globe_position, GLOBE_R, GLOBE_SCALE, LIGHT_POS, MAP_SIZE};
+use renderer_common::{GLOBE_R, GLOBE_SCALE, LIGHT_POS, MAP_SIZE, max_f64, min_f64, world_to_globe_position};
 use std::cmp::min;
 use std::f64::consts::PI;
 use wgpu::{Buffer, Device, Queue, SurfaceConfiguration};
@@ -30,6 +30,7 @@ pub(crate) struct ViewProjUniform {
     light_view_proj: [[f32; 4]; 4],
     view_tr_inv: [[f32; 4]; 4],
     camera_pos_in_globe: [f32; 4],
+    sun_dir_in_globe: [f32; 4],
     inv_screen_size: [f32; 2],
     inv_ndc_globe_r: [f32; 2],
     pub(crate) scale: f32,
@@ -88,6 +89,7 @@ impl ViewProjection {
                 light_view_proj: Mat4::IDENTITY.to_cols_array_2d(),
                 view_tr_inv: Mat4::IDENTITY.to_cols_array_2d(),
                 camera_pos_in_globe: [0.0, 0.0, 0.0, 0.0],
+                sun_dir_in_globe: [0.0, 0.0, 0.0, 0.0],
                 inv_screen_size: [0.0, 0.0],
                 scale: 0.0,
                 p2_scale: 1.0,
@@ -150,6 +152,7 @@ impl ViewProjection {
 
         self.camera_in_globe = data.camera_pos_in_globe / GLOBE_R;
         if self.is_globe_view() {
+            self.uniform.sun_dir_in_globe = data.sun_dir_in_globe.extend(1.0).to_array();
             self.uniform.camera_pos_in_globe = self.camera_in_globe.as_vec3().extend(0.0).to_array();
             self.uniform.inv_globe_view = data.globe_view.transpose().as_mat4().to_cols_array_2d();
             self.uniform.globe_view_proj = globe_view_proj.as_mat4().to_cols_array_2d();

@@ -24,6 +24,7 @@ fast-mvt = "0.6.2"
 derivative = "2.2.0"
 rand = { workspace = true }
 rustc-hash = { workspace = true }
+chrono = "0.4.45"
 
 glam = { workspace = true }
 num = { workspace = true}

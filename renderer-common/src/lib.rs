@@ -4,7 +4,7 @@ use crate::render_modifier::SpatialData;
 use crate::render_style::RenderStyle;
 use crate::style_id::StyleId;
 use geo_types::Coord;
-use glam::{DMat4, DVec2, DVec3, dvec3};
+use glam::{dvec3, DMat4, DVec2, DVec3, Vec3};
 use std::collections::HashSet;
 use std::f64::consts::PI;
 use std::sync::Arc;
@@ -76,6 +76,7 @@ pub struct RendererUpdateData {
     pub scale: f32,
     pub eye_direction: DVec3,
     pub camera_pos_in_globe: DVec3,
+    pub sun_dir_in_globe: Vec3,
     pub up: DVec3,
     pub scale_2d_3d: f32,
     pub globe_r: f32,

@@ -9,6 +9,7 @@ struct CameraUniform {
     light_view_proj: mat4x4<f32>,
     view_tr_inv: mat4x4<f32>,
     camera_pos_in_globe: vec4f,
+    sun_dir_in_globe: vec4f,
     inv_screen_size: vec2<f32>,
     inv_ndc_globe_r: vec2<f32>,
     scale: f32,
