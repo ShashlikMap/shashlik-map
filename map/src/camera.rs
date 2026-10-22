@@ -1,11 +1,10 @@
-use crate::tiles::tiles_provider::GLOBE_RADIUS;
 use glam::DMat2;
 use glam::DMat3;
 use glam::DMat4;
 use glam::DVec2;
 use glam::DVec3;
 use glam::Vec3Swizzles;
-use renderer_common::{world_to_globe_position, GLOBE_SCALE, LIGHT_POS, MAP_SIZE};
+use renderer_common::{world_to_globe_position, GLOBE_SCALE, LIGHT_POS, MAP_SIZE, GLOBE_R};
 use std::f64::consts::PI;
 
 pub struct Camera {
@@ -68,14 +67,14 @@ impl Camera {
         (view, self.perspective_matrix * view)
     }
 
-    pub fn build_globe_view_projection_matrix(&mut self) -> (DMat4, DMat4, f32, f64, DVec3) {
+    pub fn build_globe_view_projection_matrix(&mut self) -> (DMat4, DMat4, f32, DVec3) {
         let n = world_to_globe_position(self.target.xy());
         let east = n.cross(DVec3::Z).normalize();
         let north = east.cross(n);
         let y_axis = -north;
         let to_globe = DMat3::from_cols(east, y_axis, n);
 
-        let target_on_globe = n * GLOBE_RADIUS;
+        let target_on_globe = n * GLOBE_R;
 
         // n.z - is lat.sin(). It converts to lat.cos().
         // we need it otherwise the globe scale won't be calculated correctly the closer we're to the poles
@@ -84,11 +83,10 @@ impl Camera {
         
         let view = DMat4::look_at_rh(target_on_globe + globe_h, target_on_globe, to_globe * self.up);
 
-        let d =  GLOBE_RADIUS + eye_dir_with_lat_fix.length();
-        let gr = GLOBE_RADIUS;
+        let d =  GLOBE_R + eye_dir_with_lat_fix.length();
+        let gr = GLOBE_R;
         let gr = (gr / (d * d - gr * gr).sqrt()) as f32;
-        let globe_h_in_radius_units = (target_on_globe + globe_h).length() / GLOBE_RADIUS;
-        (view, self.perspective_matrix * view, gr, globe_h_in_radius_units, target_on_globe + globe_h)
+        (view, self.perspective_matrix * view, gr, target_on_globe + globe_h)
     }
 
     /// view_light

@@ -178,7 +178,7 @@ impl ColliderTask for TextRendererCollisionHandler {
 
         let mut glyph_data: FxHashMap<GlyphId, Vec<GlyphData>> = FxHashMap::default();
 
-        let globe_h = view_projection.uniform.globe_h;
+        let globe_h = view_projection.camera_in_globe.length() as f32;
         let globe_h_alpha = 1.0 - Self::smoothstep(3.0, 3.3, globe_h);
 
         render_data_holder.run_mut_action(|data| {

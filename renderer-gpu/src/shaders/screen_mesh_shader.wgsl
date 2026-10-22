@@ -1,6 +1,7 @@
 import super::common::CameraUniform;
 import super::common::camera;
 import super::globe_common::GLOBE_SCALE;
+import super::globe_common::GLOBE_R;
 import super::globe_common::transform_to_globe_position;
 
 struct VertexInput {
@@ -26,6 +27,7 @@ struct VertexOutput {
     @location(2) uv_cube: vec3<f32>,
     @location(3) @interpolate(flat) aspect_f_len: vec2f,
     @location(4) @interpolate(flat) day_night_alpha: f32,
+    @location(5) @interpolate(flat) globe_h: f32,
 }
 
 @vertex
@@ -65,7 +67,8 @@ fn vs_main(
         out.uv_cube = (camera.inv_globe_view * unprojected).xyz;
         let f_len = abs(camera.proj[1][1]);
         out.aspect_f_len = vec2f(camera.inv_screen_size.y / camera.inv_screen_size.x, f_len);
-        out.day_night_alpha = smoothstep(7.0, 10.0, camera.globe_h * f_len);
+        out.globe_h = length(camera.camera_pos_in_globe);
+        out.day_night_alpha = smoothstep(7.0, 10.0, out.globe_h * f_len);
     }
 
     return out;    
@@ -133,7 +136,7 @@ fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
     }
     var koef = 1.0;
     if (d <= 1.0) {
-        let ro = vec3(0.0, 0.0, -camera.globe_h);
+        let ro = vec3(0.0, 0.0, -in.globe_h);
         let rd = normalize(vec3((ndc * vec2f(in.aspect_f_len.x, 1.0)), in.aspect_f_len.y));
         let sph = vec4(0.0, 0.0, 0.0, 1.0);
         let t = sphIntersect(ro, rd, sph);

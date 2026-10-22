@@ -79,7 +79,6 @@ pub struct RendererUpdateData {
     pub up: DVec3,
     pub scale_2d_3d: f32,
     pub globe_r: f32,
-    pub globe_h: f64
 }
 
 pub trait Renderer {
