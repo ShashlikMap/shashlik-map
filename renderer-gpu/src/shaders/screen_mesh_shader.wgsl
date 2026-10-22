@@ -106,22 +106,18 @@ fn fs_main_globe(in: VertexOutput) -> @location(0) vec4<f32> {
     discard;
 }
 
-/// Based on https://iquilezles.org/articles/spherefunctions/
-fn sphIntersect(ro: vec3<f32>, rd: vec3<f32>, sph: vec4<f32>) -> f32 {
-    let oc = ro - sph.xyz;
-    let b = dot(oc, rd);
-    let c = dot(oc, oc) - sph.w * sph.w;
-    let h = b * b - c;
+/// Based on https://iquilezles.org/articles/spherefunctions/ with simplification that sphere is always
+/// in center with 1.0 radius
+fn sphIntersect(ro: vec3<f32>, rd: vec3<f32>) -> f32 {
+    let b = dot(ro, rd);
+    let c = dot(ro, ro) - 1.0;
+    let h = fma(b, b, -c);
 
     if (h < 0.0) {
         return -1.0;
     }
 
     return -b - sqrt(h);
-}
-
-fn sphNormal(pos: vec3<f32>, sph: vec4<f32>) -> vec3<f32> {
-    return (pos - sph.xyz) / sph.w;
 }
 
 const SUN_DIR = normalize(vec3(-0.873809, -0.446157, -0.193394));
@@ -139,12 +135,11 @@ fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
     let ray_dir = camera.inv_globe_view * vec4f(ndc * vec2f(in.aspect_f_len.x, 1.0), -in.aspect_f_len.y, 1.0);
     let ray_dir_norm = normalize(ray_dir.xyz);
     if (d <= 1.0) {
-        let sph = vec4(0.0, 0.0, 0.0, 1.0);
-        let t = sphIntersect(ray_origin, ray_dir_norm, sph);
+        let t = sphIntersect(ray_origin, ray_dir_norm);
         if(t > 0.0) {
             let hitPos = ray_origin + t * ray_dir_norm;
-            let normal = sphNormal(hitPos, sph);
-            let diffuse = max(dot(normal, SUN_DIR), 0.0);
+            // since sphere is always in center with 1.0 radius then normal is a hitPos itself
+            let diffuse = max(dot(hitPos, SUN_DIR), 0.0);
             koef = (diffuse + 0.1);
         }
     }
