@@ -27,7 +27,7 @@ struct VertexOutput {
     @location(2) uv_cube: vec3<f32>,
     @location(3) @interpolate(flat) aspect_f_len: vec2f,
     @location(4) @interpolate(flat) day_night_alpha: f32,
-    @location(5) @interpolate(flat) globe_h: vec3f,
+    @location(5) @interpolate(flat) cam_in_globe: vec3f,
 }
 
 @vertex
@@ -67,8 +67,8 @@ fn vs_main(
         out.uv_cube = (camera.inv_globe_view * unprojected).xyz;
         let f_len = abs(camera.proj[1][1]);
         out.aspect_f_len = vec2f(camera.inv_screen_size.y / camera.inv_screen_size.x, f_len);
-        out.globe_h = camera.camera_pos_in_globe.xyz;
-        out.day_night_alpha = smoothstep(7.0, 10.0, length(out.globe_h) * f_len);
+        out.cam_in_globe = camera.camera_pos_in_globe.xyz;
+        out.day_night_alpha = smoothstep(7.0, 10.0, length(out.cam_in_globe) * f_len);
     }
 
     return out;    
@@ -129,7 +129,7 @@ fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
         discard;
     }
     var koef = 1.0;
-    let ray_origin = in.globe_h;
+    let ray_origin = in.cam_in_globe;
     let ray_dir = camera.inv_globe_view * vec4f(ndc * vec2f(in.aspect_f_len.x, 1.0), -in.aspect_f_len.y, 0.0);
     let ray_dir_norm = normalize(ray_dir.xyz);
     if (d <= 1.0) {
