@@ -75,7 +75,7 @@ pub struct RendererUpdateData {
     pub cs_offset: DVec3,
     pub scale: f32,
     pub eye_direction: DVec3,
-    pub target_on_globe: DVec3,
+    pub camera_pos_in_globe: DVec3,
     pub up: DVec3,
     pub scale_2d_3d: f32,
     pub globe_r: f32,

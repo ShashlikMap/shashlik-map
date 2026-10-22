@@ -81,14 +81,14 @@ impl Camera {
         // we need it otherwise the globe scale won't be calculated correctly the closer we're to the poles
         let eye_dir_with_lat_fix = self.eye_direction() * (1.0 - n.z * n.z).sqrt().max(0.05);
         let globe_h = to_globe * eye_dir_with_lat_fix;
-
+        
         let view = DMat4::look_at_rh(target_on_globe + globe_h, target_on_globe, to_globe * self.up);
 
         let d =  GLOBE_RADIUS + eye_dir_with_lat_fix.length();
         let gr = GLOBE_RADIUS;
         let gr = (gr / (d * d - gr * gr).sqrt()) as f32;
         let globe_h_in_radius_units = (target_on_globe + globe_h).length() / GLOBE_RADIUS;
-        (view, self.perspective_matrix * view, gr, globe_h_in_radius_units, target_on_globe)
+        (view, self.perspective_matrix * view, gr, globe_h_in_radius_units, target_on_globe + globe_h)
     }
 
     /// view_light

@@ -43,7 +43,7 @@ pub(crate) struct ViewProjection {
     pub scale_2d_3d: f32,
     cs_offset: DVec3,
     pub screen_size: (f64, f64),
-    target_on_globe: DVec3,
+    camera_pos_in_globe: DVec3,
     inv_view_proj_matrix: DMat4,
     inv_globe_view_proj_matrix: DMat4,
     pub uniform_buffer: Buffer,
@@ -97,7 +97,7 @@ impl ViewProjection {
             scale_2d_3d: 0.0,
             screen_size: (0.0, 0.0),
             cs_offset: DVec3::splat(0.0),
-            target_on_globe: DVec3::splat(0.0),
+            camera_pos_in_globe: DVec3::splat(0.0),
             inv_view_proj_matrix: DMat4::IDENTITY,
             inv_globe_view_proj_matrix: DMat4::IDENTITY,
             uniform_buffer,
@@ -148,7 +148,7 @@ impl ViewProjection {
             .to_cols_array_2d();
         self.uniform.scale = data.scale;
 
-        self.target_on_globe = data.target_on_globe;
+        self.camera_pos_in_globe = data.camera_pos_in_globe;
         self.uniform.globe_h = data.globe_h as f32;
         if self.is_globe_view() {
             self.uniform.inv_globe_view = data.globe_view.transpose().as_mat4().to_cols_array_2d();
@@ -243,7 +243,8 @@ impl ViewProjection {
         let mut visible_on_globe = true;
         let world_position = if self.is_globe_view() {
             let ret = world_to_globe_position(world_position.xy()) * GLOBE_R;
-            if (self.target_on_globe - ret).length() >= GLOBE_R {
+            let target_on_globe = self.camera_pos_in_globe.normalize() * GLOBE_R;
+            if (target_on_globe - ret).length() >= GLOBE_R {
                 visible_on_globe = false
             }
             ret.extend(1.0)
