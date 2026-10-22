@@ -242,10 +242,12 @@ impl ViewProjection {
         let world_position = world_position - self.get_cs_offset();
         let mut visible_on_globe = true;
         let world_position = if self.is_globe_view() {
-            let ret = world_to_globe_position(world_position.xy()) * GLOBE_R;
-            if (self.camera_in_globe.normalize() * GLOBE_R - ret).length() >= 1.0 {
+            let mut ret = world_to_globe_position(world_position.xy());
+            // 1.05: let's give it more time on the edge
+            if (self.camera_in_globe.normalize() - ret).length() >= 1.05 {
                 visible_on_globe = false
             }
+            ret *= GLOBE_R;
             ret.extend(1.0)
         } else {
             DVec4::new(world_position.x, world_position.y, 0.0, 1.0)
