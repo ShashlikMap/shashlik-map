@@ -8,6 +8,7 @@ use renderer_common::WorldShapeFeatureLayerTag;
 use wesl_core::include_wesl;
 use wgpu::Face::Back;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, Device, Face, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
+use wgpu::util::DeviceExt;
 
 pub(crate) struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
@@ -21,7 +22,8 @@ pub(crate) struct ShapePipeline {
     reset_culling_compute_pipeline: ComputePipeline,
     indirect: bool,
     single_instance_step: bool,
-    cull_mode: Option<Face>
+    cull_mode: Option<Face>,
+    klm_buf: Buffer
 }
 
 impl ShapePipeline {
@@ -109,6 +111,13 @@ impl ShapePipeline {
             cache: None,
         });
 
+        let data: [f32; 2] = [110.0, 700.0];
+        let buffer = global_context.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Shorthand Buffer"),
+            contents: bytemuck::cast_slice(&data),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+
         let mut result = Self {
             mesh_pipeline,
             pipeline: None,
@@ -121,7 +130,8 @@ impl ShapePipeline {
             reset_culling_compute_pipeline,
             indirect,
             single_instance_step,
-            cull_mode
+            cull_mode,
+            klm_buf: buffer
         };
         let descriptor = result.prepare(global_context);
         result.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
@@ -136,8 +146,9 @@ impl ShapePipeline {
             Some(&global_context.styles_bind_group_layout),
         ];
         if self.indirect {
-            layouts.push(Some(&self.indirect_render_instances_layout))
+            layouts.push(Some(&self.indirect_render_instances_layout));
         }
+
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Shape Render Pipeline Layout"),
             bind_group_layouts: &layouts,
@@ -193,48 +204,69 @@ impl ShapePipeline {
         } else {
             "shape_indirect_buffer_layout"
         };
-        global_context.device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility,
+        let mut groups = vec![wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Storage { read_only: !is_compute_pipeline },
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }, wgpu::BindGroupLayoutEntry {
+            binding: 1,
+            visibility,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Storage { read_only: !is_compute_pipeline },
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }];
+        if !is_compute_pipeline {
+            groups.push(wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: ShaderStages::FRAGMENT,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Storage { read_only: !is_compute_pipeline },
                     has_dynamic_offset: false,
                     min_binding_size: None,
                 },
                 count: None,
-            },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: !is_compute_pipeline },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
+            });
+        }
+
+        global_context.device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: groups.as_slice(),
             label: Some(label),
         })
     }
 
     fn create_instance_bind_group(device: &Device,
+                                  klm_buf: Option<&Buffer>,
                                   bind_group_layout: &BindGroupLayout,
                                   instance_buffer: &Buffer,
                                   culled_buffer: &Buffer,
                                   label: &'static str) -> BindGroup {
+        let mut entries = vec![wgpu::BindGroupEntry {
+            binding: 0,
+            resource: instance_buffer
+                .as_entire_binding(),
+        }, wgpu::BindGroupEntry {
+            binding: 1,
+            resource: culled_buffer.as_entire_binding(),
+        }];
+        if let Some(klm_buf) = klm_buf {
+            entries.push(wgpu::BindGroupEntry {
+                binding: 2,
+                resource: klm_buf.as_entire_binding(),
+            });
+        }
+
         device
             .create_bind_group(&wgpu::BindGroupDescriptor {
                 layout: bind_group_layout,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: instance_buffer
-                        .as_entire_binding(),
-                },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: culled_buffer.as_entire_binding(),
-                    }],
+                entries: entries.as_slice(),
                 label: Some(label),
             })
     }
@@ -260,9 +292,10 @@ impl RenderPipeline<ShapeInstanceInput> for ShapePipeline {
                     let instance_bind_group = self.bind_group_cache.get_bind_group_or_create(
                         BindGroupKey::new(Self::COMPUTE_LAYOUT_ID, &[instance_buffer.id(), culled_buffer.id()]), |device| {
                             Self::create_instance_bind_group(device,
-                                                            &self.indirect_compute_instances_layout,
-                                                            instance_buffer.buffer(),
-                                                            culled_buffer.buffer(), "Indirect compute BindGroup")
+                                                             None,
+                                                             &self.indirect_compute_instances_layout,
+                                                             instance_buffer.buffer(),
+                                                             culled_buffer.buffer(), "Indirect compute BindGroup")
                         });
                     compute_pass.set_bind_group(1, instance_bind_group, &[]);
                 }
@@ -311,9 +344,10 @@ impl RenderPipeline<ShapeInstanceInput> for ShapePipeline {
             let instance_bind_group = self.bind_group_cache.get_bind_group_or_create(
                 BindGroupKey::new(Self::RENDER_LAYOUT_ID, &[instance_buffer.id(), culled_buffer.id()]), |device| {
                     Self::create_instance_bind_group(device,
-                                                    &self.indirect_render_instances_layout,
-                                                    instance_buffer.buffer(),
-                                                    culled_buffer.buffer(), "Indirect render BindGroup")
+                                                     Some(&self.klm_buf),
+                                                     &self.indirect_render_instances_layout,
+                                                     instance_buffer.buffer(),
+                                                     culled_buffer.buffer(), "Indirect render BindGroup")
                 });
             render_pass.set_bind_group(2, instance_bind_group, &[]);
         } else {

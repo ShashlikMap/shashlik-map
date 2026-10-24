@@ -14,6 +14,9 @@ var<storage, read> indirect_instances: array<InstanceInput>;
 @group(2) @binding(1)
 var<storage, read> culled: array<u32>;
 
+@group(2) @binding(2)
+var<storage, read> KLP: array<f32>;
+
 struct VertexInput {
     @builtin(instance_index) instance_index : u32,
     @location(0) position: vec2<f32>,
@@ -188,6 +191,11 @@ fn vs_main_indirect(
 
     handle_flat_globe(&out, pointPos);
 
+    out.style_type_subtype = vec2(shape_styles::STYLE_ARROW, shape_styles::SUB_STYLE_SOLID);
+//    if((model.dist > 100u && model.dist < u32(120.0 * camera.scale))) {
+//        out.style_type_subtype = vec2(shape_styles::STYLE_ARROW, shape_styles::SUB_STYLE_SOLID);
+//    }
+
     return out;
 }
 
@@ -223,6 +231,7 @@ fn vs_main_screen(
     return out;
 }
 
+
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
@@ -244,6 +253,27 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         case shape_styles::STYLE_DASH: {
             res_color = dashed_style(in.uv_dist, in.style_color_1, in.style_color_2, in.style_type_subtype.y);
         }
+        case shape_styles::STYLE_ARROW: {
+            let q = 10 * max(1.0, camera.scale);
+            let aa = arrayLength(&KLP);
+            for (var i: u32 = 0u; i < aa; i++) {
+                let zz = KLP[i];
+
+                if(in.uv_dist.z >= zz - q && in.uv_dist.z <= zz + q) {
+                    let v = (in.uv_dist.x - 0.5) * 2.0;
+                    let u = (in.uv_dist.z - zz) / q;
+                    let qq = sdArrow(vec2f(u, v), vec2f(-1.0, 0.0), vec2f(1.0, 0.0), 0.5, 0.8, max(1.0, camera.scale));
+                    if(qq < 0.0) {
+                        res_color = vec4f(1.0);
+                    } else {
+                        res_color = in.style_color_1;
+                    }
+                    break;
+                } else {
+                    res_color = in.style_color_1;
+                }
+            }
+        }
         default : {
             res_color = vec4(0.0, 0.0, 0.0, 1.0);
         }
@@ -253,6 +283,63 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     return res_color;
 }
+
+fn sdArrow(p_in: vec2<f32>, a: vec2<f32>, b: vec2<f32>, w1: f32, w2: f32, s: f32) -> f32 {
+    // constant setup
+    let k: f32 = 3.0 / s;   // arrow head ratio
+    let ba = b - a;
+    let l2 = dot(ba, ba);
+    let l = sqrt(l2);
+
+    // pixel setup
+    var p = p_in - a;
+
+    // WGSL mat2x2 construction is column-major: mat2x2<f32>(col0, col1)
+    p = mat2x2<f32>(vec2<f32>(ba.x, ba.y), vec2<f32>(-ba.y, ba.x)) * p / l;
+    p.y = abs(p.y);
+    let pz = p - vec2<f32>(l - w2 * k, w2);
+
+    // === distance (four segments) ===
+
+    var q = p;
+    q.x -= clamp(q.x, 0.0, l - w2 * k);
+    q.y -= w1;
+    var di = dot(q, q);
+
+    //----
+    q = pz;
+    q.y -= clamp(q.y, w1 - w2, 0.0);
+    di = min(di, dot(q, q));
+
+    //----
+    if (p.x < w1) {
+        q = p;
+        q.y -= clamp(q.y, 0.0, w1);
+        di = min(di, dot(q, q));
+    }
+
+    //----
+    if (pz.x > 0.0) {
+        q = pz;
+        q -= vec2<f32>(k, -1.0) * clamp((q.x * k - q.y) / (k * k + 1.0), 0.0, w2);
+        di = min(di, dot(q, q));
+    }
+
+    // === sign ===
+
+    var si = 1.0;
+    let z = l - p.x;
+    if (min(p.x, z) > 0.0) {
+        // Replacement for ternary operator using select()
+        // select(false_value, true_value, condition)
+        let h = select(z / k, w1, pz.x < 0.0);
+        if (p.y < h) {
+            si = -1.0;
+        }
+    }
+    return si * sqrt(di);
+}
+
 
 fn borderer_circle(st: vec2f, radius_inner: f32, color_inner: vec3f, radius_outer: f32, color_outer: vec3f) -> vec4f {
     let dist = length(st - vec2f(0.5));
