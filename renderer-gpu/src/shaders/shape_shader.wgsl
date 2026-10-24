@@ -192,9 +192,6 @@ fn vs_main_indirect(
     handle_flat_globe(&out, pointPos);
 
     out.style_type_subtype = vec2(shape_styles::STYLE_ARROW, shape_styles::SUB_STYLE_SOLID);
-//    if((model.dist > 100u && model.dist < u32(120.0 * camera.scale))) {
-//        out.style_type_subtype = vec2(shape_styles::STYLE_ARROW, shape_styles::SUB_STYLE_SOLID);
-//    }
 
     return out;
 }
@@ -254,24 +251,30 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             res_color = dashed_style(in.uv_dist, in.style_color_1, in.style_color_2, in.style_type_subtype.y);
         }
         case shape_styles::STYLE_ARROW: {
-            let q = 10 * max(1.0, camera.scale);
-            let aa = arrayLength(&KLP);
-            for (var i: u32 = 0u; i < aa; i++) {
-                let zz = KLP[i];
+            @if(INDIRECT) {
+                let q = 10 * max(1.0, camera.scale);
+                let aa = arrayLength(&KLP);
+                for (var i: u32 = 0u; i < aa; i++) {
+                    let zz = KLP[i];
 
-                if(in.uv_dist.z >= zz - q && in.uv_dist.z <= zz + q) {
-                    let v = (in.uv_dist.x - 0.5) * 2.0;
-                    let u = (in.uv_dist.z - zz) / q;
-                    let qq = sdArrow(vec2f(u, v), vec2f(-1.0, 0.0), vec2f(1.0, 0.0), 0.5, 0.8, max(1.0, camera.scale));
-                    if(qq < 0.0) {
-                        res_color = vec4f(1.0);
+                    if(in.uv_dist.z >= zz - q && in.uv_dist.z <= zz + q) {
+                        let v = (in.uv_dist.x - 0.5) * 2.0;
+                        let u = (in.uv_dist.z - zz) / q;
+                        let s = max(5.0 / (2.0 * q), 0.1);
+                        let qq = sdArrow(vec2f(u, v), vec2f(-0.9, 0.0), vec2f(0.9, 0.0), 0.4, 0.9, s);
+                        if(qq < 0.0) {
+                            res_color = vec4f(1.0);
+                        } else {
+                            res_color = in.style_color_1;
+                        }
+                        break;
                     } else {
                         res_color = in.style_color_1;
                     }
-                    break;
-                } else {
-                    res_color = in.style_color_1;
                 }
+            }
+            @else {
+                res_color = in.style_color_1;
             }
         }
         default : {
@@ -286,7 +289,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
 fn sdArrow(p_in: vec2<f32>, a: vec2<f32>, b: vec2<f32>, w1: f32, w2: f32, s: f32) -> f32 {
     // constant setup
-    let k: f32 = 3.0 / s;   // arrow head ratio
+    let k: f32 = s;   // arrow head ratio
     let ba = b - a;
     let l2 = dot(ba, ba);
     let l = sqrt(l2);

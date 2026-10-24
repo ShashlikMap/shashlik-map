@@ -1,3 +1,5 @@
+use wesl::Compiler;
+use wesl::resolver::PackageResolver;
 use crate::bind_group_cache::{BindGroupCache, BindGroupKey};
 use crate::global_context::GlobalContext;
 use crate::mesh_buffers::MeshBuffers;
@@ -163,13 +165,19 @@ impl ShapePipeline {
         stencil.depth_write_enabled = Some(false);
         mesh_descriptor.depth_stencil = Some(stencil);
 
-
         mesh_descriptor.layout = Some(pipeline_layout);
 
+        let mut wesl_resolver = PackageResolver::new();
+        wesl_resolver.add_package(&crate::shaders::PACKAGE);
+        let mut wesl_compiler = Compiler::default().with_resolver(wesl_resolver);
+        wesl_compiler.options.features.set("INDIRECT", self.indirect);
+        let wesl_shader = wesl_compiler
+            .compile_module(&"shaders::shape_shader".parse().unwrap())
+            .unwrap_or_else(|e| panic!("failed to compile shape_shader: {e}")).to_string();
 
         let shader_module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("shape_shader"),
-            source: ShaderSource::Wgsl(include_wesl!("shape_shader").into()),
+            source: ShaderSource::Wgsl(wesl_shader.into()),
         });
         let vertex = &mut mesh_descriptor.vertex;
         vertex.entry_point = self.vs_func_name.or(vertex.entry_point);
