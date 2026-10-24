@@ -10,9 +10,9 @@ I'm writing about the tech I've learned [here](https://hackmd.io/@agent10)
 ### Desktop & Mobile
 Running on macOS and mobile (Android, iOS):
 
-<img width="450" alt="613070008-6cb9f503-2145-41b3-85af-e274d27bfee9" src="https://github.com/user-attachments/assets/ea463fe8-6cc5-49c3-bb4e-b4b8a697b66c" />
+<img width="450" alt="Screenshot 2026-10-24 at 09 41 24" src="https://github.com/user-attachments/assets/ac48a04e-9d7c-40d1-a260-bd21edf1893e" />
 <img width="130" alt="613070241-59d29a03-5443-43f6-9dd1-7a451ee8ef89" src="https://github.com/user-attachments/assets/996a4970-0103-4336-84fa-2e82fda39561" />
-<img width="130" alt="Screenshot_20260915_203821" src="https://github.com/user-attachments/assets/1c4c3cba-8d56-4836-94ce-ef96c1797d00" />
+<img width="130" alt="Screenshot_20261024_093648" src="https://github.com/user-attachments/assets/a2550287-35f1-4b29-b4e8-eec1072ced67" />
 
 
 ### Linux (via KMS), Raspberry Pi 4
