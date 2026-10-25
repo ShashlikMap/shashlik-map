@@ -191,8 +191,6 @@ fn vs_main_indirect(
 
     handle_flat_globe(&out, pointPos);
 
-    out.style_type_subtype = vec2(shape_styles::STYLE_ARROW, shape_styles::SUB_STYLE_SOLID);
-
     return out;
 }
 
@@ -265,11 +263,11 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                         if(qq < 0.0) {
                             res_color = vec4f(1.0);
                         } else {
-                            res_color = in.style_color_1;
+                            res_color = vec4f(0.0);
                         }
                         break;
                     } else {
-                        res_color = in.style_color_1;
+                        res_color = vec4f(0.0);
                     }
                 }
             }

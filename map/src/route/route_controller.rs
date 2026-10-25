@@ -42,6 +42,10 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
 
     pub fn new(url: Option<Url>, api: Arc<RAPI>, dpi_scale: f32) -> RouteController<RAPI> {
         let valhalla = url.map_or_else(Valhalla::default, Valhalla::new);
+
+        let arrows_style = renderer_common::render_style::RenderStyle::arrows();
+        api.update_style(StyleId("route_arrows".into()), move |style| *style = arrows_style);
+
         let mut route_controller = RouteController {
             api,
             current_lon_lat: None,
@@ -101,7 +105,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                     let manifest = Manifest::builder()
                         .locations([source_loc.clone(), destination_loc.clone()])
                         .alternates(2)
-                        .directions_type(DirectionsType::None)
+                        .directions_type(DirectionsType::Instructions)
                         .costing(costing.clone());
 
                     match valhalla.route_with_alternatives(manifest) {
@@ -111,6 +115,13 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                             full_routes.clear();
                             Self::handle_trips(trips, |index, trip: &Trip| {
                                 if let Some(leg) = trip.legs.first() {
+                                    for man in &leg.maneuvers {
+                                        println!("man q = {:?}",man.instruction);
+                                        println!("man q2 = {:?}",man.verbal_pre_transition_instruction);
+                                        println!("man t = {:?}",man.type_);
+                                        println!("man b = {:?}",man.begin_shape_index);
+                                        println!("man e = {:?}",man.end_shape_index);
+                                    }
                                     let route_id = format!("route{index}").to_string();
                                     let route: Vec<Point> = leg
                                         .shape
@@ -120,12 +131,14 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                         })
                                         .collect();
 
+
                                     let shape_type: ShapeType = if matches!(route_costing, RouteCosting::Pedestrian) {
                                         ShapeType::DottedLine
                                     } else {
                                         ShapeType::Line(None)
                                     };
-                                    let orig_style_id = Self::get_style_for_route(index < alternates, &route_costing);
+                                    let is_active_route = index == alternates;
+                                    let orig_style_id = Self::get_style_for_route(!is_active_route, &route_costing);
                                     let style_id = StyleId(route_id.clone().into());
                                     api.copy_style(orig_style_id, style_id.clone());
 
@@ -137,7 +150,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                     });
 
                                     let route_group = OverlayShapeGroup::new(
-                                        route,
+                                        route.clone(),
                                         "route_layer".to_string(),
                                         style_id,
                                         shape_type,
@@ -149,6 +162,21 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                         route_group.spatial_data(),
                                         route_group,
                                     );
+
+                                    if is_active_route {
+                                        let route_arrow_group = OverlayShapeGroup::new(
+                                            route,
+                                            "route_layer".to_string(),
+                                            StyleId("route_arrows".into()),
+                                            ShapeType::Line(Some(3.0)),
+                                            None, None, None
+                                        );
+                                        api.add_render_group(
+                                            "route_arrows_id".into(),
+                                            route_arrow_group.spatial_data(),
+                                            route_arrow_group,
+                                        );
+                                    }
 
                                     let user_destination = converter(&point!(x: to_lon_lat.0, y: to_lon_lat.1));
                                     Self::destination_pin(api.clone(),
@@ -236,12 +264,13 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
     }
 
     pub fn clear_routes(&mut self, api: Arc<RAPI>) {
-        // TODO Need to cancel requests too later
+        // TODO Need to cancel requests too, later
         let active_routes = self.get_active_route_ids();
         self.full_routes.write().unwrap().clear();
         self.route_ids.clear();
         Self::destination_pin(api.clone(), self.dpi_scale, None);
         api.clear_render_groups(HashSet::from_iter(active_routes));
+        api.clear_render_groups(HashSet::from_iter(vec!["route_arrows_id".into()]));
     }
 
     // TODO Should be async to prevent short blocking of main thread
@@ -259,6 +288,20 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                     let current = target_id == route.id;
                     if current {
                         api.bring_to_front(route.id.clone(), Some("route_layer".to_string()));
+
+                        api.clear_render_groups(HashSet::from_iter(vec!["route_arrows_id".into()]));
+                        let route_arrow_group = OverlayShapeGroup::new(
+                            route.route.clone().into_points(),
+                            "route_layer".to_string(),
+                            StyleId("route_arrows".into()),
+                            ShapeType::Line(Some(3.0)),
+                            None, None, None
+                        );
+                        api.add_render_group(
+                            "route_arrows_id".into(),
+                            route_arrow_group.spatial_data(),
+                            route_arrow_group,
+                        );
                     }
                     api.copy_style(Self::get_style_for_route(!current, &route.costing), route.style_id.clone());
                 });
@@ -272,6 +315,9 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
             api.update_spatial_data(id, move |spatial_data| {
                 spatial_data.normal_scale = normal_scale;
             });
+        });
+        api.update_spatial_data("route_arrows_id".into(), move |spatial_data| {
+            spatial_data.normal_scale = normal_scale;
         });
     }
 

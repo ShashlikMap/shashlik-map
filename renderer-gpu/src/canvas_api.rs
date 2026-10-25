@@ -276,11 +276,16 @@ impl GpuCanvasApi {
                 if options.width <= 0.0 {
                     return;
                 }
+                let mut qq = 0.0;
                 self.tessellate_stroke_path(&data.path, geometry, options, |vertex| {
                     let position = vertex.position();
                     let normal = vertex.normal().normalize();
                     // u coord in 0.0 - 1.0 range
                     let u = (vertex.side().to_f32() + 1.0) * 0.5;
+                    if data.style_id.0.contains("route") {
+                        // println!("aadd: {:?}",vertex.advancement());
+
+                    }
                     ShapeVertex::new(
                         [position.x, position.y],
                         [normal.x, normal.y],
