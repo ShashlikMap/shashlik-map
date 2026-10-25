@@ -1,5 +1,3 @@
-use wesl::Compiler;
-use wesl::resolver::PackageResolver;
 use crate::bind_group_cache::{BindGroupCache, BindGroupKey};
 use crate::global_context::GlobalContext;
 use crate::mesh_buffers::{BufferWithId, MeshBuffers};
@@ -7,10 +5,11 @@ use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex, VertexAttrib};
 use renderer_common::WorldShapeFeatureLayerTag;
+use wesl::Compiler;
+use wesl::resolver::PackageResolver;
 use wesl_core::include_wesl;
 use wgpu::Face::Back;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CompareFunction, ComputePass, ComputePipeline, ComputePipelineDescriptor, Device, Face, RenderPass, ShaderModuleDescriptor, ShaderSource, ShaderStages};
-use wgpu::util::DeviceExt;
 
 pub(crate) struct ShapePipeline {
     mesh_pipeline: MeshPipeline,
@@ -257,7 +256,7 @@ impl ShapePipeline {
             binding: 1,
             resource: culled_buffer.as_entire_binding(),
         }];
-        if let Some(indirect_linear_refs_buffer) = indirect_linear_refs_buffer && indirect_linear_refs_buffer.size() > 0 {
+        if let Some(indirect_linear_refs_buffer) = indirect_linear_refs_buffer {
             entries.push(wgpu::BindGroupEntry {
                 binding: 2,
                 resource: indirect_linear_refs_buffer.as_entire_binding(),

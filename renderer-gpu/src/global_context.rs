@@ -197,7 +197,10 @@ impl GlobalContext {
         self.indirect_linear_refs_buffer = Self::create_linear_refs_buffer(self.device(), data);
     }
 
-    fn create_linear_refs_buffer(device: &Device, data: Vec<f32>) -> BufferWithId {
+    fn create_linear_refs_buffer(device: &Device, mut data: Vec<f32>) -> BufferWithId {
+        if data.is_empty() {
+            data.push(f32::MIN);
+        }
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("IndirectLinearRefsBuffer"),
             contents: bytemuck::cast_slice(data.as_slice()),

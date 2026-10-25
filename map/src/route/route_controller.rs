@@ -8,8 +8,7 @@ use std::string::ToString;
 use std::sync::{Arc, RwLock};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
-use geo::{Distance, Euclidean, EuclideanLength, Length};
-use geo::line_measures::LengthMeasurable;
+use geo::{Distance, Euclidean, Length};
 use glam::DVec3;
 use reqwest::Url;
 use valhalla_client::blocking::Valhalla;
@@ -45,12 +44,13 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
     const PIN_SVG: &'static [u8] = include_bytes!("../../svg/location_pin.svg");
 
     const ROUTE_ARROWS_ID: &'static str = "route_arrows_id";
+    const ROUTE_ARROWS_STYLE: &'static str = "route_arrows";
 
     pub fn new(url: Option<Url>, api: Arc<RAPI>, dpi_scale: f32) -> RouteController<RAPI> {
         let valhalla = url.map_or_else(Valhalla::default, Valhalla::new);
 
         let arrows_style = renderer_common::render_style::RenderStyle::arrows();
-        api.update_style(StyleId("route_arrows".into()), move |style| *style = arrows_style);
+        api.update_style(StyleId(Self::ROUTE_ARROWS_STYLE.into()), move |style| *style = arrows_style);
 
         let mut route_controller = RouteController {
             api,
@@ -107,11 +107,16 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                 };
 
                 let max_attempts = 2;
+                let direction_type = if matches!(route_costing, RouteCosting::Pedestrian) {
+                    DirectionsType::None
+                } else {
+                    DirectionsType::Maneuvers
+                };
                 for attempt in 1..=max_attempts {
                     let manifest = Manifest::builder()
                         .locations([source_loc.clone(), destination_loc.clone()])
                         .alternates(2)
-                        .directions_type(DirectionsType::Maneuvers)
+                        .directions_type(direction_type)
                         .costing(costing.clone());
 
                     match valhalla.route_with_alternatives(manifest) {
@@ -324,19 +329,21 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
 
     fn update_route_arrows(api: &Arc<RAPI>, route: &RouteData) {
         api.clear_render_groups(HashSet::from_iter(vec![Self::ROUTE_ARROWS_ID.into()]));
-        api.set_linear_refs_date(route.linear_refs.clone());
-        let route_arrow_group = OverlayShapeGroup::new(
-            route.route.clone().into_points(),
-            "route_layer".to_string(),
-            StyleId("route_arrows".into()),
-            ShapeType::Line(Some(1.5)),
-            None, None, None
-        );
-        api.add_render_group(
-            Self::ROUTE_ARROWS_ID.into(),
-            route_arrow_group.spatial_data(),
-            route_arrow_group,
-        );
+        if !route.linear_refs.is_empty() {
+            api.set_linear_refs_date(route.linear_refs.clone());
+            let route_arrow_group = OverlayShapeGroup::new(
+                route.route.clone().into_points(),
+                "route_layer".to_string(),
+                StyleId(Self::ROUTE_ARROWS_STYLE.into()),
+                ShapeType::Line(Some(1.5)),
+                None, None, None
+            );
+            api.add_render_group(
+                Self::ROUTE_ARROWS_ID.into(),
+                route_arrow_group.spatial_data(),
+                route_arrow_group,
+            );
+        }
     }
 
     pub fn update(&mut self, normal_scale: f64) {

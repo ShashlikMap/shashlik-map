@@ -250,7 +250,12 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         }
         case shape_styles::STYLE_ARROW: {
             @if(INDIRECT) {
-                let range = 5.0 * max(1.0, min(3.0, camera.scale));
+                // TODO Better to have a param for this
+                if(camera.scale >= 15.0) {
+                    discard;
+                }
+                let range = 5.0 * clamp(camera.scale, 1.0, 3.0);
+
                 let linear_refs_len = arrayLength(&linear_refs);
                 for (var i: u32 = 0u; i < linear_refs_len; i++) {
                     let lr = linear_refs[i];
