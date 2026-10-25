@@ -15,7 +15,7 @@ var<storage, read> indirect_instances: array<InstanceInput>;
 var<storage, read> culled: array<u32>;
 
 @group(2) @binding(2)
-var<storage, read> KLP: array<f32>;
+var<storage, read> linear_refs: array<f32>;
 
 struct VertexInput {
     @builtin(instance_index) instance_index : u32,
@@ -250,21 +250,17 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         }
         case shape_styles::STYLE_ARROW: {
             @if(INDIRECT) {
-                let q = 5.0 * max(1.0, min(3.0, camera.scale));
-                let aa = arrayLength(&KLP);
-                for (var i: u32 = 0u; i < aa; i++) {
-                    let zz = KLP[i];
+                let range = 5.0 * max(1.0, min(3.0, camera.scale));
+                let linear_refs_len = arrayLength(&linear_refs);
+                for (var i: u32 = 0u; i < linear_refs_len; i++) {
+                    let lr = linear_refs[i];
 
-                    if(in.uv_dist.z >= zz - q && in.uv_dist.z <= zz + q) {
+                    if(in.uv_dist.z >= lr - range && in.uv_dist.z <= lr + range) {
                         let v = (in.uv_dist.x - 0.5) * 2.0;
-                        let u = (in.uv_dist.z - zz) / q;
-                        let s = max(5.0 / (2.0 * q), 0.5);
-                        let qq = sdArrow(vec2f(u, v), vec2f(-0.9, 0.0), vec2f(0.9, 0.0), 0.4, 0.9, s);
-                        if(qq < 0.0) {
-                            res_color = vec4f(1.0);
-                        } else {
-                            res_color = vec4f(0.0);
-                        }
+                        let u = (in.uv_dist.z - lr) / range;
+                        let arrow_head_ratio = max(5.0 / (2.0 * range), 0.5);
+                        let dist = sdArrow(vec2f(u, v), vec2f(-0.9, 0.0), vec2f(0.9, 0.0), 0.4, 0.9, arrow_head_ratio);
+                        res_color = vec4f(select(0.0, 1.0, dist < 0.0));
                         break;
                     } else {
                         res_color = vec4f(0.0);
@@ -285,6 +281,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     return res_color;
 }
 
+/// Converted to wgsl from https://www.shadertoy.com/view/slj3Dd
 fn sdArrow(p_in: vec2<f32>, a: vec2<f32>, b: vec2<f32>, w1: f32, w2: f32, s: f32) -> f32 {
     // constant setup
     let k: f32 = s;   // arrow head ratio

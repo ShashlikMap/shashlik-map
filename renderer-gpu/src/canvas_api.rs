@@ -276,7 +276,6 @@ impl GpuCanvasApi {
                 if options.width <= 0.0 {
                     return;
                 }
-                let mut qq = 0.0;
                 self.tessellate_stroke_path(&data.path, geometry, options, |vertex| {
                     let position = vertex.position();
                     let normal = vertex.normal().normalize();
