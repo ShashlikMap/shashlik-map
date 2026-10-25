@@ -37,12 +37,7 @@ impl GlobalContext {
 
         let texture_view_resources = TextureViewResources::new(render_config, device);
 
-        let data: [f32; 1] = [110.0];
-        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Shorthand Buffer"),
-            contents: bytemuck::cast_slice(&data),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
+        let indirect_linear_refs_buffer = Self::create_linear_refs_buffer(device, vec![]);
 
         GlobalContext {
             canvas,
@@ -55,7 +50,7 @@ impl GlobalContext {
             texture_view_resources,
             preview_type: render_config.preview_type,
             style_uniform_rx: style_store.subscribe(),
-            indirect_linear_refs_buffer: BufferWithId::new(buffer),
+            indirect_linear_refs_buffer,
             png_buffer: None,
         }
     }
@@ -199,11 +194,15 @@ impl GlobalContext {
     }
 
     pub(crate) fn set_linear_refs_date(&mut self, data: Vec<f32>) {
-        let buffer = self.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Shorthand Buffer"),
+        self.indirect_linear_refs_buffer = Self::create_linear_refs_buffer(self.device(), data);
+    }
+
+    fn create_linear_refs_buffer(device: &Device, data: Vec<f32>) -> BufferWithId {
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("IndirectLinearRefsBuffer"),
             contents: bytemuck::cast_slice(data.as_slice()),
             usage: wgpu::BufferUsages::STORAGE,
         });
-        self.indirect_linear_refs_buffer = BufferWithId::new(buffer);
+        BufferWithId::new(buffer)
     }
 }

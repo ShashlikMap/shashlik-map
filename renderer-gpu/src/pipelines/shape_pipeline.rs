@@ -113,13 +113,6 @@ impl ShapePipeline {
             cache: None,
         });
 
-        let data: [f32; 2] = [110.0, 700.0];
-        let buffer = global_context.device().create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Shorthand Buffer"),
-            contents: bytemuck::cast_slice(&data),
-            usage: wgpu::BufferUsages::STORAGE,
-        });
-
         let mut result = Self {
             mesh_pipeline,
             pipeline: None,
