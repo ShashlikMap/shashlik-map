@@ -1,11 +1,12 @@
 use geo_types::Point;
+use renderer_common::geometry_data::PolylineOptions;
 
 pub(crate) mod overlay_shape_group;
 pub mod overlay;
 
 #[derive(Clone, Copy)]
 pub enum ShapeType {
-    Line(Option<f32>),
+    Line(Option<PolylineOptions>),
     Polygon,
     DottedLine,
 }

@@ -264,11 +264,16 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                         let v = (in.uv_dist.x - 0.5) * 2.0;
                         let u = (in.uv_dist.z - lr) / range;
                         let arrow_head_ratio = max(5.0 / (2.0 * range), 0.5);
-                        let dist = sdArrow(vec2f(u, v), vec2f(-1.0, 0.0), vec2f(1.0, 0.0), 0.4, 0.9, arrow_head_ratio);
-                        let pixelWidth = fwidth(dist);
-                        let alpha = smoothstep(pixelWidth * 0.5, -pixelWidth * 0.5, dist);
-                        // FIXME Why do we need dist > 1.0 check to get rid of artifact of line range edges(fwidth is not 0?)?
-                        res_color = vec4f(vec3f(1.0), select(alpha, 0.0, dist > 1.0));
+                        let dist = sdArrow(vec2f(u, v), vec2f(-0.95, 0.0), vec2f(0.95, 0.0), 0.4, 0.9, arrow_head_ratio);
+
+                        // to reduce deriative artifacts due to non linear operations in sdArrow, fwidth is used only in narrow area around arrow edges
+                        if(dist >= -0.015 && dist <= 0.015) {
+                            let half_pixel_width = fwidth(-dist) * 0.5;
+                            let alpha = smoothstep(-half_pixel_width, half_pixel_width, -dist);
+                            res_color = vec4f(vec3f(1.0), alpha);
+                        } else {
+                            res_color = select(vec4f(0.0), vec4f(1.0), dist < 0.0);
+                        }
                         break;
                     } else {
                         res_color = vec4f(0.0);

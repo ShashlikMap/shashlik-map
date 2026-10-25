@@ -9,6 +9,7 @@ use renderer_common::{PreviewType, TilesType};
 use renderer_gpu::GpuRenderer;
 use std::sync::RwLock;
 use glam::DVec3;
+use renderer_common::geometry_data::PolylineOptions;
 
 #[derive(uniffi::Object)]
 pub struct ShashlikMapApi {
@@ -147,9 +148,11 @@ impl ShashlikMapApi {
         let points = points.into_iter().map(|point| {
             geo_types::Point::new(point.x, point.y)
         }).collect();
-
+       
         let shape_type = match shape_type {
-            ShapeType::Line(width) => map::overlay::ShapeType::Line(width),
+            ShapeType::Line(width) => {
+                map::overlay::ShapeType::Line(width.map(|w| PolylineOptions::round(w)))
+            },
             ShapeType::Polygon => map::overlay::ShapeType::Polygon
         };
         let mut shashlik_map = self.shashlik_map.write().unwrap();

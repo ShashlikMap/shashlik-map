@@ -83,7 +83,7 @@ impl<RAPI: RendererApi> Overlay<RAPI> {
             DVec2::new(points[0].x(), points[0].y()).length()
         }).or_else(|| {
             match shape_type {
-                ShapeType::Line(width) => width.map(|w| (w * 0.5) as f64),
+                ShapeType::Line(options) => options.map(|opt| (opt.width * 0.5) as f64),
                 _ => None
             }
         });

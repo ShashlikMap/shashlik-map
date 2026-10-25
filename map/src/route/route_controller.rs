@@ -8,13 +8,14 @@ use std::string::ToString;
 use std::sync::{Arc, RwLock};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
-use geo::{Distance, Euclidean, Length};
+use geo::{Distance, Euclidean, Length, Simplify};
 use glam::DVec3;
+use lyon::lyon_tessellation::{LineCap, LineJoin};
 use reqwest::Url;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
 use valhalla_client::route::{DirectionsType, Location, ManeuverType, Manifest, Trip};
-use renderer_common::geometry_data::{GeometryData, IconData, IconShapeData, IconType};
+use renderer_common::geometry_data::{GeometryData, IconData, IconShapeData, IconType, PolylineOptions};
 use renderer_common::geometry_render_group::GeometryRenderGroup;
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::style_id::StyleId;
@@ -335,7 +336,12 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                 route.route.clone().into_points(),
                 "route_layer".to_string(),
                 StyleId(Self::ROUTE_ARROWS_STYLE.into()),
-                ShapeType::Line(Some(1.5)),
+                ShapeType::Line(Some(PolylineOptions {
+                    width: 1.5,
+                    line_join: LineJoin::Bevel,
+                    line_cap: LineCap::Square,
+                    tolerance: 1.0,
+                })),
                 None, None, None
             );
             api.add_render_group(
