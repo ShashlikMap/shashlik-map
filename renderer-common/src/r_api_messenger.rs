@@ -13,6 +13,7 @@ pub enum RendererApiMsg<T: CanvasApi> {
     UpdateSpatialData(String, Box<dyn FnOnce(&mut SpatialData) + Send>),
     ClearGroups(HashSet<String>),
     BringToFront(String, Option<String>),
+    LinearRefs(Vec<f32>),
 }
 
 pub struct CommonRendererApi<T: CanvasApi> {
@@ -74,6 +75,12 @@ impl<T: CanvasApi> RendererApi for CommonRendererApi<T> {
     fn bring_to_front(&self, key: String, tag: Option<String>) {
         self.sender
             .send(RendererApiMsg::BringToFront(key, tag))
+            .unwrap();
+    }
+
+    fn set_linear_refs_date(&self, data: Vec<f32>) {
+        self.sender
+            .send(RendererApiMsg::LinearRefs(data))
             .unwrap();
     }
 }

@@ -2,7 +2,7 @@ use wesl::Compiler;
 use wesl::resolver::PackageResolver;
 use crate::bind_group_cache::{BindGroupCache, BindGroupKey};
 use crate::global_context::GlobalContext;
-use crate::mesh_buffers::MeshBuffers;
+use crate::mesh_buffers::{BufferWithId, MeshBuffers};
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
 use crate::vertex_attrs::{ShapeInstanceInput, ShapeVertex, VertexAttrib};
@@ -25,7 +25,7 @@ pub(crate) struct ShapePipeline {
     indirect: bool,
     single_instance_step: bool,
     cull_mode: Option<Face>,
-    klm_buf: Buffer
+    indirect_linear_refs_buffer: BufferWithId
 }
 
 impl ShapePipeline {
@@ -133,7 +133,7 @@ impl ShapePipeline {
             indirect,
             single_instance_step,
             cull_mode,
-            klm_buf: buffer
+            indirect_linear_refs_buffer: global_context.indirect_linear_refs_buffer.clone()
         };
         let descriptor = result.prepare(global_context);
         result.pipeline = Some(descriptor.to_render_pipeline(global_context.device()));
@@ -251,7 +251,7 @@ impl ShapePipeline {
     }
 
     fn create_instance_bind_group(device: &Device,
-                                  klm_buf: Option<&Buffer>,
+                                  indirect_linear_refs_buffer: Option<&Buffer>,
                                   bind_group_layout: &BindGroupLayout,
                                   instance_buffer: &Buffer,
                                   culled_buffer: &Buffer,
@@ -264,10 +264,10 @@ impl ShapePipeline {
             binding: 1,
             resource: culled_buffer.as_entire_binding(),
         }];
-        if let Some(klm_buf) = klm_buf {
+        if let Some(indirect_linear_refs_buffer) = indirect_linear_refs_buffer && indirect_linear_refs_buffer.size() > 0 {
             entries.push(wgpu::BindGroupEntry {
                 binding: 2,
-                resource: klm_buf.as_entire_binding(),
+                resource: indirect_linear_refs_buffer.as_entire_binding(),
             });
         }
 
@@ -336,6 +336,10 @@ impl RenderPipeline<ShapeInstanceInput> for ShapePipeline {
     }
 
     fn setup_render(&mut self, render_pass: &mut RenderPass, global_context: &GlobalContext) {
+        if global_context.indirect_linear_refs_buffer.id() != self.indirect_linear_refs_buffer.id() {
+            self.indirect_linear_refs_buffer = global_context.indirect_linear_refs_buffer.clone();
+        }
+
         if let Some(pipeline) = self.pipeline.as_ref() {
             render_pass.set_pipeline(pipeline);
         }
@@ -349,10 +353,11 @@ impl RenderPipeline<ShapeInstanceInput> for ShapePipeline {
     fn setup_mesh_buffers(&mut self, render_pass: &mut RenderPass, mesh_buffers: &MeshBuffers<ShapeInstanceInput>) {
         if self.indirect && let Some(instance_buffer) = mesh_buffers.instance_buffer_with_id()
             && let Some(culled_buffer) = mesh_buffers.culled_buffer_with_id() {
+            let indirect_linear_refs_buffer = &self.indirect_linear_refs_buffer;
             let instance_bind_group = self.bind_group_cache.get_bind_group_or_create(
-                BindGroupKey::new(Self::RENDER_LAYOUT_ID, &[instance_buffer.id(), culled_buffer.id()]), |device| {
+                BindGroupKey::new(Self::RENDER_LAYOUT_ID, &[instance_buffer.id(), culled_buffer.id(), indirect_linear_refs_buffer.id()]), |device| {
                     Self::create_instance_bind_group(device,
-                                                     Some(&self.klm_buf),
+                                                     Some(indirect_linear_refs_buffer.buffer()),
                                                      &self.indirect_render_instances_layout,
                                                      instance_buffer.buffer(),
                                                      culled_buffer.buffer(), "Indirect render BindGroup")

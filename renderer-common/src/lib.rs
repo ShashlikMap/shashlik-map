@@ -200,6 +200,8 @@ pub trait RendererApi: Send + Sync {
         key: String,
         tag: Option<String>,
     );
+
+    fn set_linear_refs_date(&self, data: Vec<f32>);
 }
 
 #[derive(Eq, PartialEq, Copy, Clone, Hash, Display, EnumIter, EnumString)]

@@ -115,13 +115,13 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                             full_routes.clear();
                             Self::handle_trips(trips, |index, trip: &Trip| {
                                 if let Some(leg) = trip.legs.first() {
-                                    for man in &leg.maneuvers {
-                                        println!("man q = {:?}",man.instruction);
-                                        println!("man q2 = {:?}",man.verbal_pre_transition_instruction);
-                                        println!("man t = {:?}",man.type_);
-                                        println!("man b = {:?}",man.begin_shape_index);
-                                        println!("man e = {:?}",man.end_shape_index);
-                                    }
+                                    // for man in &leg.maneuvers {
+                                    //     println!("man q = {:?}",man.instruction);
+                                    //     println!("man q2 = {:?}",man.verbal_pre_transition_instruction);
+                                    //     println!("man t = {:?}",man.type_);
+                                    //     println!("man b = {:?}",man.begin_shape_index);
+                                    //     println!("man e = {:?}",man.end_shape_index);
+                                    // }
                                     let route_id = format!("route{index}").to_string();
                                     let route: Vec<Point> = leg
                                         .shape
@@ -164,6 +164,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                     );
 
                                     if is_active_route {
+                                        api.set_linear_refs_date(vec![110.0, 700.0, 1200.0]);
                                         let route_arrow_group = OverlayShapeGroup::new(
                                             route,
                                             "route_layer".to_string(),
@@ -290,6 +291,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                         api.bring_to_front(route.id.clone(), Some("route_layer".to_string()));
 
                         api.clear_render_groups(HashSet::from_iter(vec!["route_arrows_id".into()]));
+                        api.set_linear_refs_date(vec![110.0, 700.0, 1200.0]);
                         let route_arrow_group = OverlayShapeGroup::new(
                             route.route.clone().into_points(),
                             "route_layer".to_string(),
