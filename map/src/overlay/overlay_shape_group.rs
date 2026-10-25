@@ -138,13 +138,13 @@ impl<T: CanvasApi> RenderGroup<T> for OverlayShapeGroup {
             path_builder.end(is_polygon);
 
             let geometry_type = match self.shape_type {
-                ShapeType::Line(width) => {
-                    let options = PolylineOptions {
-                        width: width.unwrap_or(1.0),
+                ShapeType::Line(options) => {
+                    let options = options.unwrap_or(PolylineOptions {
+                        width: 1.0,
                         line_join: LineJoin::Round,
                         line_cap: LineCap::Round,
                         tolerance: 0.01f32, // this gives more or less a good round shape for join and caps
-                    };
+                    });
                     GeometryType::Polyline(options)
                 }
                 ShapeType::Polygon => GeometryType::Polygon,

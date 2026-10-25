@@ -51,6 +51,12 @@ impl RenderStyle {
         style
     }
 
+    pub fn arrows() -> RenderStyle {
+        let mut style = RenderStyle::fill([1.0, 1.0, 1.0, 1.0]);
+        style.header[0] = 3.0;
+        style
+    }
+
     pub fn params(&self) -> Vec<[f32; 4]> {
         if self.header[0] == 2.0 {
             vec![self.header, self.color_1, self.color_2]

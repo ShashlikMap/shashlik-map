@@ -52,6 +52,17 @@ pub struct PolylineOptions {
     pub tolerance: f32,
 }
 
+impl PolylineOptions {
+    pub fn round(width: f32) -> Self {
+        PolylineOptions {
+            width,
+            line_join: LineJoin::Round,
+            line_cap: LineCap::Round,
+            tolerance: 0.01f32, // this gives more or less a good round shape for join and caps
+        }
+    }
+}
+
 impl Default for PolylineOptions {
     fn default() -> Self {
         PolylineOptions {

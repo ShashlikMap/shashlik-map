@@ -11,6 +11,7 @@ use crate::wgpu_canvas::WgpuCanvas;
 use renderer_common::PreviewType;
 use wgpu::util::DeviceExt;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, Device};
+use crate::mesh_buffers::BufferWithId;
 
 pub(crate) struct GlobalContext {
     pub canvas: Box<dyn WgpuCanvas>,
@@ -23,7 +24,8 @@ pub(crate) struct GlobalContext {
     pub(crate) texture_view_resources: TextureViewResources,
     preview_type: PreviewType,
     style_uniform_rx: tokio::sync::broadcast::Receiver<Vec<[f32; 4]>>,
-    png_buffer: Option<Buffer>
+    pub indirect_linear_refs_buffer: BufferWithId,
+    png_buffer: Option<Buffer>,
 }
 
 impl GlobalContext {
@@ -34,6 +36,9 @@ impl GlobalContext {
         let styles_bind_group_layout = Self::create_style_bind_group_layout(device);
 
         let texture_view_resources = TextureViewResources::new(render_config, device);
+
+        let indirect_linear_refs_buffer = Self::create_linear_refs_buffer(device, vec![]);
+
         GlobalContext {
             canvas,
             view_projection,
@@ -45,7 +50,8 @@ impl GlobalContext {
             texture_view_resources,
             preview_type: render_config.preview_type,
             style_uniform_rx: style_store.subscribe(),
-            png_buffer: None
+            indirect_linear_refs_buffer,
+            png_buffer: None,
         }
     }
 
@@ -185,5 +191,21 @@ impl GlobalContext {
                 }
             }
         }
+    }
+
+    pub(crate) fn set_linear_refs_date(&mut self, data: Vec<f32>) {
+        self.indirect_linear_refs_buffer = Self::create_linear_refs_buffer(self.device(), data);
+    }
+
+    fn create_linear_refs_buffer(device: &Device, mut data: Vec<f32>) -> BufferWithId {
+        if data.is_empty() {
+            data.push(f32::MIN);
+        }
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("IndirectLinearRefsBuffer"),
+            contents: bytemuck::cast_slice(data.as_slice()),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        BufferWithId::new(buffer)
     }
 }

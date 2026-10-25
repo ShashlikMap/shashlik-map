@@ -14,6 +14,9 @@ var<storage, read> indirect_instances: array<InstanceInput>;
 @group(2) @binding(1)
 var<storage, read> culled: array<u32>;
 
+@group(2) @binding(2)
+var<storage, read> linear_refs: array<f32>;
+
 struct VertexInput {
     @builtin(instance_index) instance_index : u32,
     @location(0) position: vec2<f32>,
@@ -223,6 +226,7 @@ fn vs_main_screen(
     return out;
 }
 
+
 // Fragment shader
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
@@ -244,6 +248,43 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         case shape_styles::STYLE_DASH: {
             res_color = dashed_style(in.uv_dist, in.style_color_1, in.style_color_2, in.style_type_subtype.y);
         }
+        case shape_styles::STYLE_ARROW: {
+            @if(INDIRECT) {
+                // TODO Better to have a param for this
+                if(camera.scale >= 15.0) {
+                    discard;
+                }
+                let range = 5.0 * clamp(camera.scale, 1.0, 3.0);
+
+                let linear_refs_len = arrayLength(&linear_refs);
+                for (var i: u32 = 0u; i < linear_refs_len; i++) {
+                    let lr = linear_refs[i];
+
+                    if(in.uv_dist.z >= lr - range && in.uv_dist.z <= lr + range) {
+                        let v = (in.uv_dist.x - 0.5) * 2.0;
+                        let u = (in.uv_dist.z - lr) / range;
+                        let arrow_head_ratio = max(5.0 / (2.0 * range), 0.5);
+                        let dist = sdArrow(vec2f(u, v), vec2f(-0.95, 0.0), vec2f(0.95, 0.0), 0.4, 0.9, arrow_head_ratio);
+
+                        // to reduce deriative artifacts due to non linear operations in sdArrow, fwidth is used only in narrow area around arrow edges
+                        let pixed_width = fwidth(-dist);
+                        if(dist >= -0.015 && dist <= 0.015) {
+                            let half_pixel_width = pixed_width * 0.5;
+                            let alpha = smoothstep(-half_pixel_width, half_pixel_width, -dist);
+                            res_color = vec4f(vec3f(1.0), alpha);
+                        } else {
+                            res_color = select(vec4f(0.0), vec4f(1.0), dist < 0.0);
+                        }
+                        break;
+                    } else {
+                        res_color = vec4f(0.0);
+                    }
+                }
+            }
+            @else {
+                res_color = in.style_color_1;
+            }
+        }
         default : {
             res_color = vec4(0.0, 0.0, 0.0, 1.0);
         }
@@ -253,6 +294,64 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     return res_color;
 }
+
+/// Converted to wgsl from https://www.shadertoy.com/view/slj3Dd
+fn sdArrow(p_in: vec2<f32>, a: vec2<f32>, b: vec2<f32>, w1: f32, w2: f32, s: f32) -> f32 {
+    // constant setup
+    let k: f32 = s;   // arrow head ratio
+    let ba = b - a;
+    let l2 = dot(ba, ba);
+    let l = sqrt(l2);
+
+    // pixel setup
+    var p = p_in - a;
+
+    // WGSL mat2x2 construction is column-major: mat2x2<f32>(col0, col1)
+    p = mat2x2<f32>(vec2<f32>(ba.x, ba.y), vec2<f32>(-ba.y, ba.x)) * p / l;
+    p.y = abs(p.y);
+    let pz = p - vec2<f32>(l - w2 * k, w2);
+
+    // === distance (four segments) ===
+
+    var q = p;
+    q.x -= clamp(q.x, 0.0, l - w2 * k);
+    q.y -= w1;
+    var di = dot(q, q);
+
+    //----
+    q = pz;
+    q.y -= clamp(q.y, w1 - w2, 0.0);
+    di = min(di, dot(q, q));
+
+    //----
+    if (p.x < w1) {
+        q = p;
+        q.y -= clamp(q.y, 0.0, w1);
+        di = min(di, dot(q, q));
+    }
+
+    //----
+    if (pz.x > 0.0) {
+        q = pz;
+        q -= vec2<f32>(k, -1.0) * clamp((q.x * k - q.y) / (k * k + 1.0), 0.0, w2);
+        di = min(di, dot(q, q));
+    }
+
+    // === sign ===
+
+    var si = 1.0;
+    let z = l - p.x;
+    if (min(p.x, z) > 0.0) {
+        // Replacement for ternary operator using select()
+        // select(false_value, true_value, condition)
+        let h = select(z / k, w1, pz.x < 0.0);
+        if (p.y < h) {
+            si = -1.0;
+        }
+    }
+    return si * sqrt(di);
+}
+
 
 fn borderer_circle(st: vec2f, radius_inner: f32, color_inner: vec3f, radius_outer: f32, color_outer: vec3f) -> vec4f {
     let dist = length(st - vec2f(0.5));

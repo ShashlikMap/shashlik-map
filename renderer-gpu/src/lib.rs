@@ -172,6 +172,9 @@ impl GpuRenderer {
                         RendererApiMsg::BringToFront(key, tag) => {
                             renderer_tx.send(RendererMessage::BringToFront(key, tag)).unwrap();
                         }
+                        RendererApiMsg::LinearRefs(data) => {
+                            renderer_tx.send(RendererMessage::LinearRefs(data)).unwrap();
+                        }
                     }
                 }
             }
@@ -305,6 +308,9 @@ impl GpuRenderer {
                 }
                 RendererMessage::BringToFront(key, tag) => {
                     self.layers.bring_to_front(key.as_str(), tag);
+                }
+                RendererMessage::LinearRefs(data) => {
+                    self.global_context.set_linear_refs_date(data);
                 }
             }
         }
