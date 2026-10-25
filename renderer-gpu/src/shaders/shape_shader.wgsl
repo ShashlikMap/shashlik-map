@@ -267,8 +267,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                         let dist = sdArrow(vec2f(u, v), vec2f(-0.95, 0.0), vec2f(0.95, 0.0), 0.4, 0.9, arrow_head_ratio);
 
                         // to reduce deriative artifacts due to non linear operations in sdArrow, fwidth is used only in narrow area around arrow edges
+                        let pixed_width = fwidth(-dist);
                         if(dist >= -0.015 && dist <= 0.015) {
-                            let half_pixel_width = fwidth(-dist) * 0.5;
+                            let half_pixel_width = pixed_width * 0.5;
                             let alpha = smoothstep(-half_pixel_width, half_pixel_width, -dist);
                             res_color = vec4f(vec3f(1.0), alpha);
                         } else {
