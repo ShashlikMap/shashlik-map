@@ -3,15 +3,18 @@ use geo_types::{point, Point, LineString};
 use log::error;
 use renderer_common::RendererApi;
 use std::collections::HashSet;
+use std::convert::Into;
+use std::string::ToString;
 use std::sync::{Arc, RwLock};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
-use geo::{Distance, Euclidean};
+use geo::{Distance, Euclidean, EuclideanLength, Length};
+use geo::line_measures::LengthMeasurable;
 use glam::DVec3;
 use reqwest::Url;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
-use valhalla_client::route::{DirectionsType, Location, Manifest, Trip};
+use valhalla_client::route::{DirectionsType, Location, ManeuverType, Manifest, Trip};
 use renderer_common::geometry_data::{GeometryData, IconData, IconShapeData, IconType};
 use renderer_common::geometry_render_group::GeometryRenderGroup;
 use renderer_common::render_modifier::SpatialData;
@@ -25,6 +28,7 @@ struct RouteData {
     route: LineString,
     costing: RouteCosting,
     style_id: StyleId,
+    linear_refs: Vec<f32>
 }
 
 // TODO Refactor in general to use async
@@ -39,6 +43,8 @@ pub struct RouteController<RAPI: RendererApi + 'static> {
 
 impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
     const PIN_SVG: &'static [u8] = include_bytes!("../../svg/location_pin.svg");
+
+    const ROUTE_ARROWS_ID: &'static str = "route_arrows_id";
 
     pub fn new(url: Option<Url>, api: Arc<RAPI>, dpi_scale: f32) -> RouteController<RAPI> {
         let valhalla = url.map_or_else(Valhalla::default, Valhalla::new);
@@ -105,7 +111,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                     let manifest = Manifest::builder()
                         .locations([source_loc.clone(), destination_loc.clone()])
                         .alternates(2)
-                        .directions_type(DirectionsType::Instructions)
+                        .directions_type(DirectionsType::Maneuvers)
                         .costing(costing.clone());
 
                     match valhalla.route_with_alternatives(manifest) {
@@ -115,13 +121,6 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                             full_routes.clear();
                             Self::handle_trips(trips, |index, trip: &Trip| {
                                 if let Some(leg) = trip.legs.first() {
-                                    // for man in &leg.maneuvers {
-                                    //     println!("man q = {:?}",man.instruction);
-                                    //     println!("man q2 = {:?}",man.verbal_pre_transition_instruction);
-                                    //     println!("man t = {:?}",man.type_);
-                                    //     println!("man b = {:?}",man.begin_shape_index);
-                                    //     println!("man e = {:?}",man.end_shape_index);
-                                    // }
                                     let route_id = format!("route{index}").to_string();
                                     let route: Vec<Point> = leg
                                         .shape
@@ -142,12 +141,48 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                     let style_id = StyleId(route_id.clone().into());
                                     api.copy_style(orig_style_id, style_id.clone());
 
-                                    full_routes.push(RouteData {
+                                    let route_as_linestring: LineString = route.clone().into();
+                                    let line_sum: Vec<_> = std::iter::once(0.0)
+                                        .chain(route_as_linestring.lines().scan(0.0, |total, line| {
+                                            *total += Euclidean.length(&line);
+                                            Some(*total)
+                                        }))
+                                        .collect();
+                                    let linear_refs: Vec<_> = leg.maneuvers.iter().flat_map(|man| {
+                                        match man.type_ {
+                                            ManeuverType::SlightRight |
+                                            ManeuverType::Right |
+                                            ManeuverType::SharpRight |
+                                            ManeuverType::SharpLeft |
+                                            ManeuverType::Left |
+                                            ManeuverType::SlightLeft |
+                                            ManeuverType::RampStraight |
+                                            ManeuverType::RampRight |
+                                            ManeuverType::RampLeft |
+                                            ManeuverType::ExitRight |
+                                            ManeuverType::ExitLeft |
+                                            ManeuverType::StayStraight |
+                                            ManeuverType::StayRight |
+                                            ManeuverType::StayLeft |
+                                            ManeuverType::Merge |
+                                            ManeuverType::RoundaboutEnter |
+                                            ManeuverType::RoundaboutExit => {
+                                                line_sum.get(man.begin_shape_index).cloned().map(|x| x as f32)
+                                            }
+                                            _ => None
+                                        }
+                                    }).collect();
+                                    if is_active_route {
+                                        api.set_linear_refs_date(linear_refs.clone());
+                                    }
+
+                                    let route_data = RouteData {
                                         id: route_id.clone(),
-                                        route: route.clone().into(),
+                                        route: route_as_linestring.clone(),
                                         costing: route_costing.clone(),
                                         style_id: style_id.clone(),
-                                    });
+                                        linear_refs
+                                    };
 
                                     let route_group = OverlayShapeGroup::new(
                                         route.clone(),
@@ -164,20 +199,10 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                     );
 
                                     if is_active_route {
-                                        api.set_linear_refs_date(vec![110.0, 700.0, 1200.0]);
-                                        let route_arrow_group = OverlayShapeGroup::new(
-                                            route,
-                                            "route_layer".to_string(),
-                                            StyleId("route_arrows".into()),
-                                            ShapeType::Line(Some(3.0)),
-                                            None, None, None
-                                        );
-                                        api.add_render_group(
-                                            "route_arrows_id".into(),
-                                            route_arrow_group.spatial_data(),
-                                            route_arrow_group,
-                                        );
+                                        Self::update_route_arrows(&api, &route_data);
                                     }
+
+                                    full_routes.push(route_data);
 
                                     let user_destination = converter(&point!(x: to_lon_lat.0, y: to_lon_lat.1));
                                     Self::destination_pin(api.clone(),
@@ -271,7 +296,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         self.route_ids.clear();
         Self::destination_pin(api.clone(), self.dpi_scale, None);
         api.clear_render_groups(HashSet::from_iter(active_routes));
-        api.clear_render_groups(HashSet::from_iter(vec!["route_arrows_id".into()]));
+        api.clear_render_groups(HashSet::from_iter(vec![Self::ROUTE_ARROWS_ID.into()]));
     }
 
     // TODO Should be async to prevent short blocking of main thread
@@ -289,26 +314,29 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                     let current = target_id == route.id;
                     if current {
                         api.bring_to_front(route.id.clone(), Some("route_layer".to_string()));
-
-                        api.clear_render_groups(HashSet::from_iter(vec!["route_arrows_id".into()]));
-                        api.set_linear_refs_date(vec![110.0, 700.0, 1200.0]);
-                        let route_arrow_group = OverlayShapeGroup::new(
-                            route.route.clone().into_points(),
-                            "route_layer".to_string(),
-                            StyleId("route_arrows".into()),
-                            ShapeType::Line(Some(3.0)),
-                            None, None, None
-                        );
-                        api.add_render_group(
-                            "route_arrows_id".into(),
-                            route_arrow_group.spatial_data(),
-                            route_arrow_group,
-                        );
+                        Self::update_route_arrows(&api, route);
                     }
                     api.copy_style(Self::get_style_for_route(!current, &route.costing), route.style_id.clone());
                 });
             }
         }
+    }
+
+    fn update_route_arrows(api: &Arc<RAPI>, route: &RouteData) {
+        api.clear_render_groups(HashSet::from_iter(vec![Self::ROUTE_ARROWS_ID.into()]));
+        api.set_linear_refs_date(route.linear_refs.clone());
+        let route_arrow_group = OverlayShapeGroup::new(
+            route.route.clone().into_points(),
+            "route_layer".to_string(),
+            StyleId("route_arrows".into()),
+            ShapeType::Line(Some(1.5)),
+            None, None, None
+        );
+        api.add_render_group(
+            Self::ROUTE_ARROWS_ID.into(),
+            route_arrow_group.spatial_data(),
+            route_arrow_group,
+        );
     }
 
     pub fn update(&mut self, normal_scale: f64) {
@@ -318,7 +346,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                 spatial_data.normal_scale = normal_scale;
             });
         });
-        api.update_spatial_data("route_arrows_id".into(), move |spatial_data| {
+        api.update_spatial_data(Self::ROUTE_ARROWS_ID.into(), move |spatial_data| {
             spatial_data.normal_scale = normal_scale;
         });
     }

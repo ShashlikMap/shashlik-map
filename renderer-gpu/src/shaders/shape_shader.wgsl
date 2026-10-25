@@ -250,7 +250,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         }
         case shape_styles::STYLE_ARROW: {
             @if(INDIRECT) {
-                let q = 10 * max(1.0, camera.scale);
+                let q = 5.0 * max(1.0, min(3.0, camera.scale));
                 let aa = arrayLength(&KLP);
                 for (var i: u32 = 0u; i < aa; i++) {
                     let zz = KLP[i];
@@ -258,7 +258,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                     if(in.uv_dist.z >= zz - q && in.uv_dist.z <= zz + q) {
                         let v = (in.uv_dist.x - 0.5) * 2.0;
                         let u = (in.uv_dist.z - zz) / q;
-                        let s = max(5.0 / (2.0 * q), 0.1);
+                        let s = max(5.0 / (2.0 * q), 0.5);
                         let qq = sdArrow(vec2f(u, v), vec2f(-0.9, 0.0), vec2f(0.9, 0.0), 0.4, 0.9, s);
                         if(qq < 0.0) {
                             res_color = vec4f(1.0);
