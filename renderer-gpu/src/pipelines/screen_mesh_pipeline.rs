@@ -69,8 +69,12 @@ impl TextureInfo {
     fn sample_binding_type(&self) -> SamplerBindingType {
         if self.filterable { SamplerBindingType::Filtering } else { SamplerBindingType::NonFiltering }
     }
-    fn filter_mode(&self) -> FilterMode {
-        if self.filterable { wgpu::FilterMode::Linear } else { wgpu::FilterMode::Nearest }
+    fn filter_modes(&self) -> (FilterMode, MipmapFilterMode) {
+        if self.filterable {
+            (wgpu::FilterMode::Linear, MipmapFilterMode::Linear)
+        } else {
+            (wgpu::FilterMode::Nearest, MipmapFilterMode::Nearest)
+        }
     }
 
     fn create_texture_bind_group_layout(&self, device: &Device, texture_view: Option<&TextureView>) -> Option<BindGroupLayout> {
@@ -118,12 +122,6 @@ impl TextureInfo {
             ty: BindingType::Sampler(self.sample_binding_type()),
             count: None,
         });
-        groups.push(wgpu::BindGroupLayoutEntry {
-            binding: 2,
-            visibility: wgpu::ShaderStages::FRAGMENT,
-            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
-            count: None,
-        });
 
         Some(device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: groups.as_slice(),
@@ -161,8 +159,6 @@ impl ScreenMeshPipeline {
         result.set_texture_view(texture_view, device, texture_bind_group_layout);
         result
     }
-
-
 
     fn prepare(&self, global_context: &GlobalContext, texture_type: Option<TextureType>, texture_bind_group_layout: Option<&BindGroupLayout>) -> OwnedRenderPipelineDescriptor<'_> {
         let mut mesh_descriptor = self.mesh_pipeline.prepare(global_context);
@@ -254,16 +250,11 @@ impl ScreenMeshPipeline {
         device: &wgpu::Device,
         texture_bind_group_layout: BindGroupLayout
     ) -> BindGroup {
+        let filter_modes = self.texture_info.filter_modes();
         let diffuse_sampler = device.create_sampler(&SamplerDescriptor {
-            mag_filter: self.texture_info.filter_mode(),
-            min_filter: self.texture_info.filter_mode(),
-            mipmap_filter: MipmapFilterMode::Linear,
-            ..Default::default()
-        });
-        let sampler_compare = device.create_sampler(&SamplerDescriptor {
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            compare: Some(CompareFunction::GreaterEqual),
+            mag_filter: filter_modes.0,
+            min_filter: filter_modes.0,
+            mipmap_filter: filter_modes.1,
             ..Default::default()
         });
         let entries = vec![
@@ -274,10 +265,6 @@ impl ScreenMeshPipeline {
             wgpu::BindGroupEntry {
                 binding: 1,
                 resource: wgpu::BindingResource::Sampler(&diffuse_sampler),
-            },
-            wgpu::BindGroupEntry {
-                binding: 2,
-                resource: wgpu::BindingResource::Sampler(&sampler_compare),
             }];
 
         device.create_bind_group(&wgpu::BindGroupDescriptor {
