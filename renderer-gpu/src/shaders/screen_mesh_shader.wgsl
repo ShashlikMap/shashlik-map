@@ -85,8 +85,6 @@ var t_tex: texture_depth_2d;
 var t_tex: texture_cube<f32>;
 @group(1) @binding(1)
 var s_diffuse: sampler;
-@group(1) @binding(2)
-var s_compare: sampler_comparison;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
