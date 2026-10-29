@@ -29,7 +29,7 @@ chrono = "0.4.45"
 glam = { workspace = true }
 num = { workspace = true}
 
-valhalla-client = { git = "https://github.com/jelmer/valhalla-client-rs", rev = "19b7f70" }
+valhalla-client = { git = "https://github.com/jelmer/valhalla-client-rs", rev = "a302758" }
 
 capitalize = "0.3"
 # Don't use the latest version. MapTiles won't work on Android. rustls-platform-verifier still has issues.
