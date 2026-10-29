@@ -113,12 +113,15 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                 } else {
                     DirectionsType::Maneuvers
                 };
+                let with_turn_lanes = !matches!(route_costing, RouteCosting::Pedestrian);
+                
                 for attempt in 1..=max_attempts {
                     let manifest = Manifest::builder()
                         .locations([source_loc.clone(), destination_loc.clone()])
                         .alternates(2)
                         .directions_type(direction_type)
-                        .costing(costing.clone());
+                        .costing(costing.clone())
+                        .turn_lanes(with_turn_lanes);
 
                     match valhalla.route_with_alternatives(manifest) {
                         Ok(trips) => {
@@ -155,6 +158,13 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                         }))
                                         .collect();
                                     let linear_refs: Vec<_> = leg.maneuvers.iter().flat_map(|man| {
+                                        if let Some(lanes) = &man.lanes && lanes.len() > 0 {
+                                            println!("Maneuver type: {:?}", man.type_);
+                                            lanes.iter().enumerate().for_each(|(index,lane)| {
+                                                println!("maneuver lane({index}) info: dirs: {:?}, active: {:?}, valid: {:?}", lane.directions(), lane.active(), lane.valid());
+                                            })
+                                        }
+
                                         match man.type_ {
                                             ManeuverType::SlightRight |
                                             ManeuverType::Right |
