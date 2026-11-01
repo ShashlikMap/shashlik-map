@@ -158,25 +158,25 @@ fn vs_main_indirect(
 
     let idx = instance_index;
     var instance_index_mut = idx;
-    if(!with_normal) {
-        instance_index_mut = culled[idx];
-    }
-
-    if(!with_normal && camera_scale >= 0.0) {
-        out.color_alpha = indirect_instances[instance_index_mut].color_alpha;
-    }
+//    if(!with_normal) {
+//        instance_index_mut = culled[idx];
+//    }
+//
+//    if(!with_normal && camera_scale >= 0.0) {
+//        out.color_alpha = indirect_instances[instance_index_mut].color_alpha;
+//    }
 
     var model_position = vec4(model.position.xy, 0.0, 1.0);
 
-    if(!with_normal) {
-        let scale_m = mat4x4(camera_scale, 0.0, 0.0, 0.0, 0.0, camera_scale, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
-        model_position = scale_m * model_position;
-    }
+//    if(!with_normal) {
+//        let scale_m = mat4x4(camera_scale, 0.0, 0.0, 0.0, 0.0, camera_scale, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+//        model_position = scale_m * model_position;
+//    }
 
-    var modelpos = model_position.xyz + indirect_instances[instance_index_mut].position;
+    var modelpos = model_position.xyz + indirect_instances[idx].position;
 
-    let outline_flag = select(1, idx % 2, with_normal);
-    fill_styles(&out, model.style_index, 1.0, outline_flag);
+//    let outline_flag = select(1, idx % 2, with_normal);
+    fill_styles(&out, model.style_index, 1.0, idx % 2);
     if(idx == 0) {
         out.style_color_1 = vec4f(1.0, 0.0, 0.0, 1.0);
     } else {
@@ -185,11 +185,11 @@ fn vs_main_indirect(
 
     var pointPos = modelpos.xyz;
     if(with_normal) {
-        var inflate_scale = 1.0;
+        var inflate_scale = 2.0;
         if(instance_index_mut % 2 == 0) {
             inflate_scale *= indirect_inflate_factor;
         }
-        let normal_scale = indirect_instances[instance_index_mut].normal_scale;
+        let normal_scale = indirect_instances[idx].normal_scale;
         pointPos += normalize(vec3(model.normal, 0.0)) * normal_scale * 0.5 * inflate_scale;
     }
 
