@@ -8,7 +8,7 @@ use std::string::ToString;
 use std::sync::{Arc, RwLock};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
-use geo::{Distance, Euclidean, Length, Simplify};
+use geo::{Distance, Euclidean, Length};
 use glam::DVec3;
 use lyon::lyon_tessellation::{LineCap, LineJoin};
 use reqwest::Url;
@@ -189,7 +189,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                         }
                                     }).collect();
                                     if is_active_route {
-                                        api.set_linear_refs_date(linear_refs.clone());
+                                        api.set_linear_refs_data(linear_refs.clone());
                                     }
 
                                     let route_data = RouteData {
@@ -341,7 +341,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
     fn update_route_arrows(api: &Arc<RAPI>, route: &RouteData) {
         api.clear_render_groups(HashSet::from_iter(vec![Self::ROUTE_ARROWS_ID.into()]));
         if !route.linear_refs.is_empty() {
-            api.set_linear_refs_date(route.linear_refs.clone());
+            api.set_linear_refs_data(route.linear_refs.clone());
             let route_arrow_group = OverlayShapeGroup::new(
                 route.route.clone().into_points(),
                 "route_layer".to_string(),

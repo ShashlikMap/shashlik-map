@@ -15,6 +15,7 @@ use wgpu::{
     Device, DeviceDescriptor, Features, Label, Limits, MemoryHints, PowerPreference, Queue,
 };
 use map::overlay::ShapeType;
+use map::route::RouteCosting;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -88,12 +89,18 @@ fn main() {
             map.overlay().add_overlay_shape(converter, vec![Point::new(139.757080078125, 35.69100828125),
                                                             Point::new(139.757780078125, 35.69190828125)], None, ShapeType::Line(None),
                                             [1.0, 0.0, 0.0]);
+
+            map.create_route_to((139.756400010125, 35.69100828125), RouteCosting::Auto);
         }
     }
 
     println!("Headless mode. Run frames");
     let frames_to_run = if is_globe { 170 } else { 90 };
-    sleep(Duration::from_secs(1));
+    if with_overlay {
+        sleep(Duration::from_secs(3));
+    } else {
+        sleep(Duration::from_secs(1));
+    }
     map.update_and_render(());
     for _ in 0..frames_to_run {
         sleep(Duration::from_millis(16));

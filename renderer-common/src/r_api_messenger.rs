@@ -78,7 +78,7 @@ impl<T: CanvasApi> RendererApi for CommonRendererApi<T> {
             .unwrap();
     }
 
-    fn set_linear_refs_date(&self, data: Vec<f32>) {
+    fn set_linear_refs_data(&self, data: Vec<f32>) {
         self.sender
             .send(RendererApiMsg::LinearRefs(data))
             .unwrap();
