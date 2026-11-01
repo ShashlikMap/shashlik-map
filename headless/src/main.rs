@@ -97,7 +97,7 @@ fn main() {
     println!("Headless mode. Run frames");
     let frames_to_run = if is_globe { 170 } else { 90 };
     if with_overlay {
-        sleep(Duration::from_secs(4));
+        sleep(Duration::from_secs(3));
     } else {
         sleep(Duration::from_secs(1));
     }
