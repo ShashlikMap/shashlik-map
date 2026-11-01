@@ -178,7 +178,7 @@ fn vs_main_indirect(
 //    let outline_flag = select(1, idx % 2, with_normal);
     fill_styles(&out, model.style_index, 1.0, idx % 2);
     if(idx == 0) {
-        out.style_color_1 = vec4f(1.0, 0.0, 0.0, 1.0);
+        out.style_color_1 = vec4f(1.0, 0.0, 0.0, 0.0);
     } else {
         out.style_color_1 = vec4f(0.0, 1.0, 0.0, 1.0);
     }
