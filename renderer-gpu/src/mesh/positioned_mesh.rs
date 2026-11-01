@@ -117,6 +117,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                     }));
 
                     // instances_args_buffer has to be reset before computing
+                    println!("adsasd = {:?}",instance_count);
                     let indirect_args_struct = DrawIndexedIndirectArgs {
                         index_count: index_count as u32,
                         instance_count: instance_count as u32,
@@ -149,7 +150,6 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             if instance_buffer_length % 64 != 0 {
                 x += 1; // those are workgroups, not invocations.
             }
-            println!("KIOL dispatch_workgroups = {x}");
             compute_pass.dispatch_workgroups(x, 1, 1);
         }
     }
