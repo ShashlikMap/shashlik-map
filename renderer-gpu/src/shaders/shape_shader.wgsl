@@ -18,7 +18,6 @@ var<storage, read> culled: array<u32>;
 var<storage, read> linear_refs: array<f32>;
 
 struct VertexInput {
-    @builtin(instance_index) instance_index : u32,
     @location(0) position: vec2<f32>,
     @location(1) normal: vec2<f32>,
     @location(2) uv: vec2<f32>,
@@ -105,6 +104,7 @@ fn handle_flat_globe(out: ptr<function, VertexOutput>, position: vec3f) {
 
 @vertex
 fn vs_main(
+    @builtin(instance_index) instance_index : u32,
     model: VertexInput,
     pos: InstanceInput
 ) -> VertexOutput {
@@ -122,7 +122,7 @@ fn vs_main(
     let model_position = model_matrix * vec4(model.position.xy, 0.0, 1.0);
     var modelpos = model_position.xyz + pos.position;
 
-    let outline_flag = model.instance_index % 2;
+    let outline_flag = instance_index % 2;
     fill_styles(&out, model.style_index, camera.scale, outline_flag);
     out.color_alpha = pos.color_alpha;
 
@@ -146,6 +146,7 @@ fn vs_main(
 const indirect_inflate_factor: f32 = 1.3;
 @vertex
 fn vs_main_indirect(
+    @builtin(instance_index) instance_index : u32,
     model: VertexInput,
 ) -> VertexOutput {
     var out: VertexOutput;
@@ -155,34 +156,31 @@ fn vs_main_indirect(
 
     out.color_alpha = 1.0;
 
-    var instance_index = model.instance_index;
-    if(!with_normal) {
-        instance_index = culled[model.instance_index];
-    }
-
-    if(!with_normal && camera_scale >= 0.0) {
-        out.color_alpha = indirect_instances[instance_index].color_alpha;
-    }
+    var instance_index_mut = instance_index;
+    let outline_flag = select(1, instance_index_mut % 2, with_normal);
+    fill_styles(&out, model.style_index, 1.0, outline_flag);
 
     var model_position = vec4(model.position.xy, 0.0, 1.0);
-
+    let indirect_instances_len = arrayLength(&indirect_instances);
     if(!with_normal) {
+        instance_index_mut = min(culled[instance_index_mut], indirect_instances_len - 1);
+        if(camera_scale >= 0.0) {
+            out.color_alpha = indirect_instances[instance_index_mut].color_alpha;
+        }
         let scale_m = mat4x4(camera_scale, 0.0, 0.0, 0.0, 0.0, camera_scale, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
         model_position = scale_m * model_position;
     }
 
-    var modelpos = model_position.xyz + indirect_instances[instance_index].position;
-
-    let outline_flag = select(1, model.instance_index % 2, with_normal);
-    fill_styles(&out, model.style_index, 1.0, outline_flag);
+    instance_index_mut = min(instance_index_mut, indirect_instances_len - 1);
+    let modelpos = model_position.xyz + indirect_instances[instance_index_mut].position;
 
     var pointPos = modelpos.xyz;
     if(with_normal) {
         var inflate_scale = 1.0;
-        if(model.instance_index % 2 == 0) {
+        if(outline_flag == 0) {
             inflate_scale *= indirect_inflate_factor;
         }
-        let normal_scale = indirect_instances[instance_index].normal_scale;
+        let normal_scale = indirect_instances[instance_index_mut].normal_scale;
         pointPos += normalize(vec3(model.normal, 0.0)) * normal_scale * 0.5 * inflate_scale;
     }
 
@@ -249,6 +247,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             res_color = dashed_style(in.uv_dist, in.style_color_1, in.style_color_2, in.style_type_subtype.y);
         }
         case shape_styles::STYLE_ARROW: {
+            res_color = in.style_color_1;
             @if(INDIRECT) {
                 // TODO Better to have a param for this
                 if(camera.scale >= 15.0) {
@@ -280,9 +279,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                         res_color = vec4f(0.0);
                     }
                 }
-            }
-            @else {
-                res_color = in.style_color_1;
             }
         }
         default : {
