@@ -175,8 +175,13 @@ fn vs_main_indirect(
 
     var modelpos = model_position.xyz + indirect_instances[instance_index_mut].position;
 
-    let outline_flag = select(1, instance_index_mut % 2, with_normal);
+    let outline_flag = select(1, idx % 2, with_normal);
     fill_styles(&out, model.style_index, 1.0, outline_flag);
+    if(idx == 0) {
+        out.style_color_1 = vec4f(1.0, 0.0, 0.0, 1.0);
+    } else {
+        out.style_color_1 = vec4f(0.0, 1.0, 0.0, 1.0);
+    }
 
     var pointPos = modelpos.xyz;
     if(with_normal) {
