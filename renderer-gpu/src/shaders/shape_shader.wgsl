@@ -244,6 +244,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     switch style_type {
         case shape_styles::STYLE_SOLID, shape_styles::STYLE_BORDER: {
             res_color = in.style_color_1;
+            @if(INDIRECT) {
+                res_color = vec4(1.0, 1.0, 0.0, 1.0);
+            }
         }
         case shape_styles::STYLE_DASH: {
             res_color = dashed_style(in.uv_dist, in.style_color_1, in.style_color_2, in.style_type_subtype.y);
