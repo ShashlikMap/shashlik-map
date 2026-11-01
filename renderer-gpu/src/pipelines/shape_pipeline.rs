@@ -319,7 +319,7 @@ impl RenderPipeline<ShapeInstanceInput> for ShapePipeline {
                 }
 
                 compute_pass.set_pipeline(&self.reset_culling_compute_pipeline);
-                // compute_pass.dispatch_workgroups(1, 1, 1);
+                compute_pass.dispatch_workgroups(1, 1, 1);
 
                 compute_pass.set_pipeline(&self.culling_compute_pipeline);
                 compute_pass.set_bind_group(0, &self.mesh_pipeline.bind_group, &[]);

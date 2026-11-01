@@ -127,13 +127,7 @@ impl Mesh {
                 }
 
                 if let Some(indirect_args) = indirect_args {
-                    if instances.len() > 2 {
-                        // render_pass.draw_indexed_indirect(indirect_args, 0);
-                    } else {
-                        let start = range.0.start;
-                        let end = range.0.end;
-                        render_pass.draw_indexed(start as u32..end as u32, 0, 0..2);
-                    }
+                    render_pass.draw_indexed_indirect(indirect_args, 0);
                 } else {
                     let start = range.0.start;
                     let end = range.0.end;

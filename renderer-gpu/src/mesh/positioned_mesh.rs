@@ -97,7 +97,6 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             self.mesh_buffers = self.mesh_buffers.clone()
                 .with_instance_buffer(&self.instance_buffer);
             if indirect {
-                println!("self.attrs.len() = {:?}", self.attrs.len());
                 let instance_buffer_length = self.get_instance_buffer_length();
                 let instance_count = if self.attrs.len() <= 2 {
                     self.attrs.len() * instance_buffer_length

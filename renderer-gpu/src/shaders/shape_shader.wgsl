@@ -156,40 +156,31 @@ fn vs_main_indirect(
 
     out.color_alpha = 1.0;
 
-    let idx = instance_index;
-    var instance_index_mut = idx;
-//    if(!with_normal) {
-//        instance_index_mut = culled[idx];
-//    }
-//
-//    if(!with_normal && camera_scale >= 0.0) {
-//        out.color_alpha = indirect_instances[instance_index_mut].color_alpha;
-//    }
+    var instance_index_mut = instance_index;
+    let outline_flag = select(1, instance_index_mut % 2, with_normal);
+    fill_styles(&out, model.style_index, 1.0, outline_flag);
 
     var model_position = vec4(model.position.xy, 0.0, 1.0);
-
-//    if(!with_normal) {
-//        let scale_m = mat4x4(camera_scale, 0.0, 0.0, 0.0, 0.0, camera_scale, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
-//        model_position = scale_m * model_position;
-//    }
-
-    var modelpos = model_position.xyz + indirect_instances[1].position;
-
-//    let outline_flag = select(1, idx % 2, with_normal);
-    fill_styles(&out, model.style_index, 1.0, idx % 2);
-    if(idx == 0) {
-        out.style_color_1 = vec4f(1.0, 0.0, 0.0, 1.0);
-    } else {
-        out.style_color_1 = vec4f(0.0, 1.0, 0.0, 1.0);
+    let indirect_instances_len = arrayLength(&indirect_instances);
+    if(!with_normal) {
+        instance_index_mut = min(culled[instance_index_mut], indirect_instances_len - 1);
+        if(camera_scale >= 0.0) {
+            out.color_alpha = indirect_instances[instance_index_mut].color_alpha;
+        }
+        let scale_m = mat4x4(camera_scale, 0.0, 0.0, 0.0, 0.0, camera_scale, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+        model_position = scale_m * model_position;
     }
+
+    instance_index_mut = min(instance_index_mut, indirect_instances_len - 1);
+    let modelpos = model_position.xyz + indirect_instances[instance_index_mut].position;
 
     var pointPos = modelpos.xyz;
     if(with_normal) {
-        var inflate_scale = 2.0;
-        if(instance_index_mut % 2 == 0) {
+        var inflate_scale = 1.0;
+        if(outline_flag == 0) {
             inflate_scale *= indirect_inflate_factor;
         }
-        let normal_scale = indirect_instances[1].normal_scale;
+        let normal_scale = indirect_instances[instance_index_mut].normal_scale;
         pointPos += normalize(vec3(model.normal, 0.0)) * normal_scale * 0.5 * inflate_scale;
     }
 
