@@ -156,9 +156,10 @@ fn vs_main_indirect(
 
     out.color_alpha = 1.0;
 
-    var instance_index_mut = instance_index;
+    let idx = instance_index;
+    var instance_index_mut = idx;
     if(!with_normal) {
-        instance_index_mut = culled[instance_index];
+        instance_index_mut = culled[idx];
     }
 
     if(!with_normal && camera_scale >= 0.0) {
@@ -175,7 +176,7 @@ fn vs_main_indirect(
     var modelpos = model_position.xyz + indirect_instances[instance_index_mut].position;
 
     let outline_flag = select(1, instance_index_mut % 2, with_normal);
-    fill_styles(&out, model.style_index, 1.0, 1-outline_flag);
+    fill_styles(&out, model.style_index, 1.0, outline_flag);
 
     var pointPos = modelpos.xyz;
     if(with_normal) {
