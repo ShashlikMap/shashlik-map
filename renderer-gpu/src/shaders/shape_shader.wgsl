@@ -249,7 +249,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             res_color = dashed_style(in.uv_dist, in.style_color_1, in.style_color_2, in.style_type_subtype.y);
         }
         case shape_styles::STYLE_ARROW: {
-            res_color = in.style_color_1;
             @if(INDIRECT) {
                 // TODO Better to have a param for this
                 if(camera.scale >= 15.0) {
@@ -281,6 +280,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                         res_color = vec4f(0.0);
                     }
                 }
+            }
+            @else {
+                res_color = in.style_color_1;
             }
         }
         default : {
