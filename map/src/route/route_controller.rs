@@ -51,7 +51,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         let valhalla = url.map_or_else(Valhalla::default, Valhalla::new);
 
         let arrows_style = renderer_common::render_style::RenderStyle::arrows();
-        // api.update_style(StyleId(Self::ROUTE_ARROWS_STYLE.into()), move |style| *style = arrows_style);
+        api.update_style(StyleId(Self::ROUTE_ARROWS_STYLE.into()), move |style| *style = arrows_style);
 
         let mut route_controller = RouteController {
             api,
@@ -339,27 +339,27 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
     }
 
     fn update_route_arrows(api: &Arc<RAPI>, route: &RouteData) {
-        // api.clear_render_groups(HashSet::from_iter(vec![Self::ROUTE_ARROWS_ID.into()]));
-        // if !route.linear_refs.is_empty() {
-        //     api.set_linear_refs_data(route.linear_refs.clone());
-        //     let route_arrow_group = OverlayShapeGroup::new(
-        //         route.route.clone().into_points(),
-        //         "route_layer".to_string(),
-        //         StyleId(Self::ROUTE_ARROWS_STYLE.into()),
-        //         ShapeType::Line(Some(PolylineOptions {
-        //             width: 1.5,
-        //             line_join: LineJoin::Bevel,
-        //             line_cap: LineCap::Square,
-        //             tolerance: 1.0,
-        //         })),
-        //         None, None, None
-        //     );
-        //     api.add_render_group(
-        //         Self::ROUTE_ARROWS_ID.into(),
-        //         route_arrow_group.spatial_data(),
-        //         route_arrow_group,
-        //     );
-        // }
+        api.clear_render_groups(HashSet::from_iter(vec![Self::ROUTE_ARROWS_ID.into()]));
+        if !route.linear_refs.is_empty() {
+            api.set_linear_refs_data(route.linear_refs.clone());
+            let route_arrow_group = OverlayShapeGroup::new(
+                route.route.clone().into_points(),
+                "route_layer".to_string(),
+                StyleId(Self::ROUTE_ARROWS_STYLE.into()),
+                ShapeType::Line(Some(PolylineOptions {
+                    width: 1.5,
+                    line_join: LineJoin::Bevel,
+                    line_cap: LineCap::Square,
+                    tolerance: 1.0,
+                })),
+                None, None, None
+            );
+            api.add_render_group(
+                Self::ROUTE_ARROWS_ID.into(),
+                route_arrow_group.spatial_data(),
+                route_arrow_group,
+            );
+        }
     }
 
     pub fn update(&mut self, normal_scale: f64) {
