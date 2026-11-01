@@ -117,7 +117,6 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
                     }));
 
                     // instances_args_buffer has to be reset before computing
-                    println!("adsasd = {:?}",instance_count);
                     let indirect_args_struct = DrawIndexedIndirectArgs {
                         index_count: index_count as u32,
                         instance_count: instance_count as u32,
