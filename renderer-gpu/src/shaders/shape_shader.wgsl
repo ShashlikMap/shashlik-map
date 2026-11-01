@@ -173,7 +173,7 @@ fn vs_main_indirect(
 //        model_position = scale_m * model_position;
 //    }
 
-    var modelpos = model_position.xyz + indirect_instances[0].position;
+    var modelpos = model_position.xyz + indirect_instances[1].position;
 
 //    let outline_flag = select(1, idx % 2, with_normal);
     fill_styles(&out, model.style_index, 1.0, idx % 2);
@@ -189,7 +189,7 @@ fn vs_main_indirect(
         if(instance_index_mut % 2 == 0) {
             inflate_scale *= indirect_inflate_factor;
         }
-        let normal_scale = indirect_instances[0].normal_scale;
+        let normal_scale = indirect_instances[1].normal_scale;
         pointPos += normalize(vec3(model.normal, 0.0)) * normal_scale * 0.5 * inflate_scale;
     }
 
