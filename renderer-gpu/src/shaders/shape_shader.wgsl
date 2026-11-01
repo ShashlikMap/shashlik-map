@@ -58,9 +58,6 @@ fn fill_styles(out: ptr<function,VertexOutput>, style_index: u32, scale: f32, ou
 
     (*out).style_type_subtype = vec2(style_type, shape_styles::SUB_STYLE_SOLID);
     (*out).style_color_1 = fill_color;
-    @if(INDIRECT) {
-        (*out).style_color_1 = vec4f(0.0, 1.0, 0.0, 1.0);
-    }
 
     @if(OUTLINE_DEBUG)
     if(outline_flag == 0) {
@@ -178,6 +175,9 @@ fn vs_main_indirect(
 
     let outline_flag = select(1, model.instance_index % 2, with_normal);
     fill_styles(&out, model.style_index, 1.0, outline_flag);
+    @if(INDIRECT) {
+        out.style_color_1 = vec4f(0.2, 0.8, 0.5, 1.0);
+    }
 
     var pointPos = modelpos.xyz;
     if(with_normal) {
