@@ -18,7 +18,6 @@ var<storage, read> culled: array<u32>;
 var<storage, read> linear_refs: array<f32>;
 
 struct VertexInput {
-    @builtin(instance_index) instance_index : u32,
     @location(0) position: vec2<f32>,
     @location(1) normal: vec2<f32>,
     @location(2) uv: vec2<f32>,
@@ -105,6 +104,7 @@ fn handle_flat_globe(out: ptr<function, VertexOutput>, position: vec3f) {
 
 @vertex
 fn vs_main(
+    @builtin(instance_index) instance_index : u32,
     model: VertexInput,
     pos: InstanceInput
 ) -> VertexOutput {
@@ -122,7 +122,7 @@ fn vs_main(
     let model_position = model_matrix * vec4(model.position.xy, 0.0, 1.0);
     var modelpos = model_position.xyz + pos.position;
 
-    let outline_flag = model.instance_index % 2;
+    let outline_flag = instance_index % 2;
     fill_styles(&out, model.style_index, camera.scale, outline_flag);
     out.color_alpha = pos.color_alpha;
 
@@ -146,6 +146,7 @@ fn vs_main(
 const indirect_inflate_factor: f32 = 1.3;
 @vertex
 fn vs_main_indirect(
+    @builtin(instance_index) instance_index : u32,
     model: VertexInput,
 ) -> VertexOutput {
     var out: VertexOutput;
@@ -155,13 +156,13 @@ fn vs_main_indirect(
 
     out.color_alpha = 1.0;
 
-    var instance_index = model.instance_index;
+    var instance_index_mut = instance_index;
     if(!with_normal) {
-        instance_index = culled[model.instance_index];
+        instance_index_mut = culled[instance_index];
     }
 
     if(!with_normal && camera_scale >= 0.0) {
-        out.color_alpha = indirect_instances[instance_index].color_alpha;
+        out.color_alpha = indirect_instances[instance_index_mut].color_alpha;
     }
 
     var model_position = vec4(model.position.xy, 0.0, 1.0);
@@ -171,23 +172,18 @@ fn vs_main_indirect(
         model_position = scale_m * model_position;
     }
 
-    var modelpos = model_position.xyz + indirect_instances[instance_index].position;
+    var modelpos = model_position.xyz + indirect_instances[instance_index_mut].position;
 
-    let outline_flag = select(1, model.instance_index % 2, with_normal);
+    let outline_flag = select(1, instance_index % 2, with_normal);
     fill_styles(&out, model.style_index, 1.0, outline_flag);
-    @if(INDIRECT) {
-        if(outline_flag == 1) {
-            out.style_color_1 = vec4f(0.2, 0.8, 0.5, 1.0);
-        }
-    }
 
     var pointPos = modelpos.xyz;
     if(with_normal) {
         var inflate_scale = 1.0;
-        if(model.instance_index % 2 == 0) {
+        if(instance_index % 2 == 0) {
             inflate_scale *= indirect_inflate_factor;
         }
-        let normal_scale = indirect_instances[instance_index].normal_scale;
+        let normal_scale = indirect_instances[instance_index_mut].normal_scale;
         pointPos += normalize(vec3(model.normal, 0.0)) * normal_scale * 0.5 * inflate_scale;
     }
 
