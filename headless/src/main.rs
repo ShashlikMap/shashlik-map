@@ -90,7 +90,7 @@ fn main() {
                                                             Point::new(139.757780078125, 35.69190828125)], None, ShapeType::Line(None),
                                             [1.0, 0.0, 0.0]);
 
-            map.create_route_to((139.756400010125, 35.69100828125), RouteCosting::Auto);
+            map.create_route_to((139.756400010125, 35.69100828125), RouteCosting::Pedestrian);
         }
     }
 
