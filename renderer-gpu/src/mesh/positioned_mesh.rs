@@ -149,6 +149,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             if instance_buffer_length % 64 != 0 {
                 x += 1; // those are workgroups, not invocations.
             }
+            println!("KIOL dispatch_workgroups = {x}");
             compute_pass.dispatch_workgroups(x, 1, 1);
         }
     }
