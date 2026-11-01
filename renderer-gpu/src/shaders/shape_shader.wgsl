@@ -67,11 +67,11 @@ fn fill_styles(out: ptr<function,VertexOutput>, style_index: u32, scale: f32, ou
 
     switch style_type {
         case shape_styles::STYLE_BORDER: {
-            if(outline_flag == 0) {
-                let border_koef = header[1];
-                let border_color = vec4(fill_color.xyz * border_koef, 1.0 / max(1.0, scale));
-                (*out).style_color_1 = border_color;
-            }
+//            if(outline_flag == 0) {
+//                let border_koef = header[1];
+//                let border_color = vec4(fill_color.xyz * border_koef, 1.0 / max(1.0, scale));
+//                (*out).style_color_1 = border_color;
+//            }
         }
         case shape_styles::STYLE_DASH: {
             (*out).style_type_subtype.y = u32(header[1]); // 0: solid, 1: circle, 2: tdash
