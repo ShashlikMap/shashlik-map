@@ -67,11 +67,11 @@ fn fill_styles(out: ptr<function,VertexOutput>, style_index: u32, scale: f32, ou
 
     switch style_type {
         case shape_styles::STYLE_BORDER: {
-//            if(outline_flag == 0) {
-//                let border_koef = header[1];
-//                let border_color = vec4(fill_color.xyz * border_koef, 1.0 / max(1.0, scale));
-//                (*out).style_color_1 = border_color;
-//            }
+            if(outline_flag == 0) {
+                let border_koef = header[1];
+                let border_color = vec4(fill_color.xyz * border_koef, 1.0 / max(1.0, scale));
+                (*out).style_color_1 = border_color;
+            }
         }
         case shape_styles::STYLE_DASH: {
             (*out).style_type_subtype.y = u32(header[1]); // 0: solid, 1: circle, 2: tdash
@@ -174,13 +174,13 @@ fn vs_main_indirect(
 
     var modelpos = model_position.xyz + indirect_instances[instance_index_mut].position;
 
-    let outline_flag = select(1, instance_index % 2, with_normal);
+    let outline_flag = select(1, instance_index_mut % 2, with_normal);
     fill_styles(&out, model.style_index, 1.0, outline_flag);
 
     var pointPos = modelpos.xyz;
     if(with_normal) {
         var inflate_scale = 1.0;
-        if(instance_index % 2 == 0) {
+        if(instance_index_mut % 2 == 0) {
             inflate_scale *= indirect_inflate_factor;
         }
         let normal_scale = indirect_instances[instance_index_mut].normal_scale;
