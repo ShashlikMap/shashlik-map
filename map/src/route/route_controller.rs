@@ -15,7 +15,7 @@ use reqwest::Url;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
 use valhalla_client::route::{DirectionsType, Location, ManeuverType, Manifest, Trip};
-use renderer_common::geometry_data::{GeometryData, IconData, IconShapeData, IconType, PolylineOptions};
+use renderer_common::geometry_data::{GeometryData, IconData, IconShapeData, IconType, PolylineOptions, Svg};
 use renderer_common::geometry_render_group::GeometryRenderGroup;
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::style_id::StyleId;
@@ -42,7 +42,7 @@ pub struct RouteController<RAPI: RendererApi + 'static> {
 }
 
 impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
-    const PIN_SVG: &'static [u8] = include_bytes!("../../svg/location_pin.svg");
+    const PIN_SVG: Svg = Svg("location_pin_svg", include_bytes!("../../svg/location_pin.svg"));
 
     const ROUTE_ARROWS_ID: &'static str = "route_arrows_id";
     const ROUTE_ARROWS_STYLE: &'static str = "route_arrows";
