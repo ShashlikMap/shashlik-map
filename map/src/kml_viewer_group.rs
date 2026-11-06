@@ -1,7 +1,7 @@
 use geo_types::{Geometry, GeometryCollection, Point};
 use kml::KmlReader;
 use log::error;
-use renderer_common::geometry_data::{GeometryData, IconType, IconShapeData, IconData};
+use renderer_common::geometry_data::{GeometryData, IconType, IconShapeData, IconData, Svg};
 use renderer_common::render_group::RenderGroup;
 use renderer_common::style_id::StyleId;
 use std::path::PathBuf;
@@ -13,7 +13,8 @@ pub struct KmlGroup {
 }
 
 impl KmlGroup {
-    pub const CIRCLE_SVG: &'static [u8] = include_bytes!("../svg/just_circle.svg");
+
+    pub const CIRCLE_SVG: Svg = Svg("just_circle_svg", include_bytes!("../svg/just_circle.svg"));
 
     pub fn new(path_buf: PathBuf, converter: Box<dyn Fn(&Point) -> Point>) -> KmlGroup {
         let mut kml_reader = KmlReader::<_, f64>::from_path(path_buf).unwrap();

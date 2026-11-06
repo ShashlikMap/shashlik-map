@@ -6,7 +6,7 @@ use lyon::path::{Path, Winding};
 use osm::map::{
     HighwayKind, LayerKind, LineKind,
 };
-use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, LineData, PolylineOptions, ShapeData, StyledRangeInfo, IconBackground, IconShapeData, TextData, IconData};
+use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, LineData, PolylineOptions, ShapeData, StyledRangeInfo, IconBackground, IconShapeData, TextData, IconData, Svg};
 use renderer_common::style_id::StyleId;
 use capitalize::Capitalize;
 use geo::Scale;
@@ -43,14 +43,16 @@ impl Default for ShashlikFeatureProcessor {
 }
 
 impl ShashlikFeatureProcessor {
-    const TRAFFIC_LIGHT_SVG: &'static [u8] = include_bytes!("../svg/traffic_light.svg");
-    const PARKING_SVG: &'static [u8] = include_bytes!("../svg/parking.svg");
-    const TOILETS_SVG: &'static [u8] = include_bytes!("../svg/toilet.svg");
-    const TRAIN_STATION_SVG: &'static [u8] = include_bytes!("../svg/train_station.svg");
-    const EV_STATION_SVG: &'static [u8] = include_bytes!("../svg/ev_station.svg");
+
+    const TRAFFIC_LIGHT_SVG: Svg = Svg("traffic_light_cvg", include_bytes!("../svg/traffic_light.svg"));
+    const PARKING_SVG: Svg = Svg("parking_svg", include_bytes!("../svg/parking.svg"));
+    const TOILETS_SVG: Svg = Svg("toilet_svg", include_bytes!("../svg/toilet.svg"));
+    const TRAIN_STATION_SVG: Svg = Svg("train_station_svg", include_bytes!("../svg/train_station.svg"));
+    const EV_STATION_SVG: Svg = Svg("ev_station_svg", include_bytes!("../svg/ev_station.svg"));
     // const CROSSING_SVG: &'static [u8] = include_bytes!("../svg/pedestrian-crossing.svg");
     pub fn new(include_extruded: bool,
                data_filter: fn(zoom_level: i32, kind: &ShashlikMapGeomObjectKind) -> bool) -> Self {
+
         ShashlikFeatureProcessor {
             include_extruded,
             data_filter,
@@ -117,7 +119,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             let mut rng = rand::rng();
             id = rng.random();
         }
-        let icon: Option<(&str, &[u8])> = match poi.kind {
+        let icon: Option<(&str, Svg)> = match poi.kind {
             ShashlikMapPointObjectKind::TrainStation(is_train) => {
                 if is_train {
                     Some(("train_station", Self::TRAIN_STATION_SVG))
@@ -134,6 +136,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             // in future we should have it at all as a POI representation
             ShashlikMapPointObjectKind::Crossing => None,
         };
+        let text_y_offset = if icon.is_some() { 30.0 } else { 0.0 };
         if let Some(icon) = icon {
             let style_id = match poi.kind {
                 ShashlikMapPointObjectKind::TrainStation(is_train) => {
@@ -190,12 +193,11 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         }
 
         if !poi.text.is_empty() {
-            let y_offset = if icon.is_some() { 30.0 } else { 0.0 };
             let id = id as u64;
             geometry_data.push(GeometryData::Text(TextData::new(
                 id,
                 poi.text.to_uppercase(),
-                Vec2::new(0.0, y_offset * dpi_scale),
+                Vec2::new(0.0, text_y_offset * dpi_scale),
                 27.0 * dpi_scale,
                 LineData::new(vec![
                     DVec3::from((local_position.x, local_position.y, 0.0)),

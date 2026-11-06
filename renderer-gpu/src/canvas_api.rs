@@ -13,7 +13,7 @@ use lyon::lyon_tessellation::{
 };
 use lyon::path::Path;
 use renderer_common::CanvasApi;
-use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, IconType, MeshVertex, PolylineOptions, ShapeData, StyledRangeInfo, IconShapeData, TextData};
+use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, IconShapeData, IconType, MeshVertex, PolylineOptions, ShapeData, StyledRangeInfo, TextData};
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
@@ -29,6 +29,9 @@ pub struct MeshInfo {
     pub double_style: bool,
 }
 
+#[derive(Eq, Hash, PartialEq)]
+struct InternalSvgKey(u32, Option<StyleId>, &'static str);
+
 pub struct GpuCanvasApi {
     style_store: StyleStore,
     flushed: bool,
@@ -40,6 +43,8 @@ pub struct GpuCanvasApi {
     // consider to add more fields to the cache key
     mesh_info_cache:
         HashMap<(&'static str, Option<StyleId>), (VertexBuffers<ShapeVertex, u32>, MeshInfo)>,
+    svg_cache:
+        HashMap<InternalSvgKey, VertexBuffers<ShapeVertex, u32>>,
     feature_layer_tag: Option<String>,
 }
 
@@ -64,6 +69,7 @@ impl GpuCanvasApi {
             geometry3d: VertexBuffers::new(),
             text_vec: Vec::new(),
             mesh_info_cache: HashMap::new(),
+            svg_cache: HashMap::new(),
             feature_layer_tag: None,
         }
     }
@@ -157,17 +163,16 @@ impl GpuCanvasApi {
         let batches = self
             .mesh_info_cache
             .iter()
-            .map(|(_, (mesh, positions))| (mesh.clone(), positions.clone()))
-            .flat_map(|(mesh, mesh_info)| {
+            .flat_map(|(_, (mesh, mesh_info))| {
                 // mesh_info_cache is always present but there is no positions then we skip command
                 if mesh_info.instance_positions.is_none() {
                     return None;
                 }
                 let styled_range = StyledRange(0..mesh.indices.len(), StyledRangeInfo::default());
                 Some(Mesh2dCommandBatch {
-                    mesh,
+                    mesh: mesh.clone(),
                     layers_indices: vec![styled_range],
-                    mesh_info,
+                    mesh_info: mesh_info.clone(),
                 })
             })
             .collect();
@@ -358,16 +363,21 @@ impl GpuCanvasApi {
                 }
 
                 match data.icon_data.icon_type {
-                    IconType::SvgBinary(style_id, binary) => {
-                        let style_index = style_id
-                            .map(|id| self.style_store.get_index(&id) as u32);
-                        svg_parse(
-                            binary,
-                            &mut mesh,
-                            data.size,
-                            &mut self.style_store,
-                            style_index,
-                        );
+                    IconType::SvgBinary(style_id, svg) => {
+                        let src = self.svg_cache.entry(InternalSvgKey(data.size as u32, style_id.clone(), svg.id())).or_insert_with(|| {
+                            let mut svg_mesh: VertexBuffers<ShapeVertex, u32> = VertexBuffers::new();
+                            let style_index = style_id
+                                .map(|id| self.style_store.get_index(&id) as u32);
+                            svg_parse(
+                                svg.binary(),
+                                &mut svg_mesh,
+                                data.size,
+                                &mut self.style_store,
+                                style_index,
+                            );
+                            svg_mesh
+                        });
+                        Self::merge_buffers(&mut mesh, src);
                     }
                     IconType::None => {}
                 }
@@ -383,6 +393,19 @@ impl GpuCanvasApi {
                     },
                 )
             });
+    }
+
+    fn merge_buffers<V, I>(dst: &mut VertexBuffers<V, I>, src: &VertexBuffers<V, I>)
+    where
+        V: Clone,
+        I: TryFrom<usize> + std::ops::Add<Output = I> + Copy,
+        <I as TryFrom<usize>>::Error: std::fmt::Debug,
+    {
+        let vertex_offset = I::try_from(dst.vertices.len())
+            .expect("Vertex count exceeds index type capacity");
+
+        dst.vertices.extend_from_slice(&src.vertices);
+        dst.indices.extend(src.indices.iter().map(|idx| *idx + vertex_offset));
     }
 
     pub fn text(&mut self, data: TextData) {

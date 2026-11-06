@@ -108,11 +108,11 @@ impl<T: CanvasApi> RenderGroup<T> for OverlayShapeGroup {
                             style_id: self.style_id.clone(),
                             shape: Box::new(move |_| {
                                 let mut path_builder = Path::builder();
-                                let bb = Box2D::from_origin_and_size(
+                                let bbox = Box2D::from_origin_and_size(
                                     point2(-size * 0.5, -size * 0.5),
                                     Size2D::splat(size),
                                 );
-                                path_builder.add_rectangle(&bb, Winding::Negative);
+                                path_builder.add_rectangle(&bbox, Winding::Negative);
                                 path_builder.build()
                             }),
                         }),

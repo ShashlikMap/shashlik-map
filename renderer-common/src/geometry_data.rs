@@ -104,8 +104,20 @@ pub struct IconBackground {
     pub shape: Box<dyn Fn(&IconShapeData) -> Path + Send + Sync + 'static>,
 }
 
+
+pub struct Svg(pub &'static str, pub &'static [u8]);
+impl Svg {
+    pub fn id(&self) -> &'static str {
+        self.0
+    }
+
+    pub fn binary(&self) -> &'static [u8] {
+        self.1
+    }
+}
+
 pub enum IconType {
-    SvgBinary(Option<StyleId>, &'static [u8]),
+    SvgBinary(Option<StyleId>, Svg),
     None
 }
 pub struct IconData {
