@@ -180,7 +180,6 @@ impl GpuCanvasApi {
                     return None;
                 }
                 let styled_range = StyledRange(0..mesh.indices.len(), StyledRangeInfo::default());
-                println!("qqq = {:?}",mesh_info.instance_key);
                 Some(Mesh2dCommandBatch {
                     mesh: mesh.clone(),
                     layers_indices: vec![styled_range],
