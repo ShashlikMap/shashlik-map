@@ -15,16 +15,19 @@ use num::clamp;
 use renderer_common::collision_handler::CollisionHandler;
 use renderer_common::render_modifier::SpatialData;
 use rstar::primitives::Rectangle;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use std::mem;
 use std::ops::Range;
+use indexmap::IndexMap;
 use wgpu::RenderPass;
+
+type FxIndexMap<K, V> = IndexMap<K, V, FxBuildHasher>;
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
 pub(crate) struct ScreenShapeLayer<I: MeshInstanceInput> {
     attr_map: LayerAttrMapper<I>,
     instance_buffer: InstanceBuffer<I>,
-    meshes: FxHashMap<String, (Mesh, Range<u32>)>,
+    meshes: FxIndexMap<String, (Mesh, Range<u32>)>,
     collision_task_controller: CollisionTaskController<
         (ShapeInfo, f32, String),
         FxHashMap<String, Vec<(DVec3, DVec2, f32)>>,
@@ -47,7 +50,7 @@ impl<I: MeshInstanceInput> ScreenShapeLayer<I> {
         ScreenShapeLayer {
             attr_map,
             instance_buffer: InstanceBuffer::default(),
-            meshes: FxHashMap::default(),
+            meshes: FxIndexMap::default(),
             collision_task_controller,
         }
     }
