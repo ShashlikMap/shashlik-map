@@ -13,7 +13,7 @@ use lyon::lyon_tessellation::{
 };
 use lyon::path::Path;
 use renderer_common::CanvasApi;
-use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, IconShapeData, IconType, MeshVertex, PolylineOptions, ShapeData, StyledRangeInfo, TextData};
+use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, IconBackground, IconShapeData, IconType, MeshVertex, PolylineOptions, ShapeData, StyledRangeInfo, TextData};
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
@@ -325,14 +325,23 @@ impl GpuCanvasApi {
             ));
         }
     }
-
+    
     fn icon(&mut self, data: IconShapeData) {
-        let key_style_id = match &data.icon_data.icon_type {
+        if data.icon_data.len() > 1 {
+            self.icon_ribbon(data);
+        } else {
+            self.single_icon(data);
+        }
+    }
+
+    fn single_icon(&mut self, mut data: IconShapeData) {
+        let icon_data = data.icon_data.remove(0);
+        let key_style_id = match &icon_data.icon_type {
             IconType::SvgBinary(style_id, _) => style_id.clone(),
             IconType::None => data.background.as_ref().map(|bg| bg.style_id.clone()),
         };
         self.mesh_info_cache
-            .entry((data.icon_data.id, key_style_id))
+            .entry((icon_data.id, key_style_id))
             .and_modify(|(_, mesh_info)| {
                 mesh_info
                     .instance_positions
@@ -362,7 +371,7 @@ impl GpuCanvasApi {
                     });
                 }
 
-                match data.icon_data.icon_type {
+                match icon_data.icon_type {
                     IconType::SvgBinary(style_id, svg) => {
                         let src = self.svg_cache.entry(InternalSvgKey(data.size as u32, style_id.clone(), svg.id())).or_insert_with(|| {
                             let mut svg_mesh: VertexBuffers<ShapeVertex, u32> = VertexBuffers::new();
@@ -388,11 +397,15 @@ impl GpuCanvasApi {
                         instance_positions: Some(vec![(data.id, data.position)]),
                         size: Some(mesh_size),
                         with_collision: data.with_collision,
-                        instance_key: data.icon_data.id.to_string(),
+                        instance_key: icon_data.id.to_string(),
                         double_style: false,
                     },
                 )
             });
+    }
+
+    fn icon_ribbon(&mut self, data: IconShapeData) {
+
     }
 
     fn merge_buffers<V, I>(dst: &mut VertexBuffers<V, I>, src: &VertexBuffers<V, I>)
