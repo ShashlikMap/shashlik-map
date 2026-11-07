@@ -10,30 +10,34 @@ use crate::mesh_layers::{BaseMeshLayer, LayerAttrMapper, RenderableLayer};
 use crate::pipelines::RenderPipeline;
 use crate::view_projection::ViewProjection;
 use geo_types::point;
-use glam::DVec3;
+use glam::{DVec2, DVec3};
 use num::clamp;
 use renderer_common::collision_handler::CollisionHandler;
 use renderer_common::render_modifier::SpatialData;
 use rstar::primitives::Rectangle;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use std::mem;
 use std::ops::Range;
+use indexmap::IndexMap;
 use wgpu::RenderPass;
+
+type FxIndexMap<K, V> = IndexMap<K, V, FxBuildHasher>;
 
 // TODO ScreenMeshLayer and GeneralMeshLayer could be combined somehow.
 pub(crate) struct ScreenShapeLayer<I: MeshInstanceInput> {
     attr_map: LayerAttrMapper<I>,
     instance_buffer: InstanceBuffer<I>,
-    meshes: FxHashMap<String, (Mesh, Range<u32>)>,
+    meshes: FxIndexMap<String, (Mesh, Range<u32>)>,
     collision_task_controller: CollisionTaskController<
         (ShapeInfo, f32, String),
-        FxHashMap<String, Vec<(DVec3, f32)>>,
+        FxHashMap<String, Vec<(DVec3, DVec2, f32)>>,
     >,
 }
 
 struct ShapeInfo {
     pub id: u64,
     pub position: DVec3,
+    pub screen_offset: DVec2,
     pub size: f32,
     pub with_collisions: bool
 }
@@ -46,7 +50,7 @@ impl<I: MeshInstanceInput> ScreenShapeLayer<I> {
         ScreenShapeLayer {
             attr_map,
             instance_buffer: InstanceBuffer::default(),
-            meshes: FxHashMap::default(),
+            meshes: FxIndexMap::default(),
             collision_task_controller,
         }
     }
@@ -85,6 +89,7 @@ impl<I: MeshInstanceInput> ScreenShapeLayer<I> {
                 let shape_info = ShapeInfo {
                     id: item.0,
                     position: item.1 + spatial_data.transform,
+                    screen_offset: batch.mesh_info.screen_offset,
                     size,
                     with_collisions: batch.mesh_info.with_collision
                 };
@@ -112,14 +117,14 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
             .iter_mut()
             .for_each(|(key, (_, instance_range))| {
                 *instance_range = 0..0; // reset range before updating so it won't be counted during rendering
-                if let Some(pos_alpha) = hm.get(key) {
+                if let Some(pos_offset_alpha) = hm.get(key) {
                     let start_index = all_attrs.len() as u32;
-                    let mut attrs = Vec::with_capacity(pos_alpha.len());
+                    let mut attrs = Vec::with_capacity(pos_offset_alpha.len());
                     I::fill_attrs(
                         &mut attrs,
                         self.attr_map,
                         &cs_offset,
-                        pos_alpha,
+                        pos_offset_alpha,
                         &SpatialData::new(),
                     );
                     all_attrs.extend(attrs);
@@ -155,7 +160,7 @@ impl<I: MeshInstanceInput> RenderableLayer<I> for ScreenShapeLayer<I> {
 struct ScreenMeshCollisionHandler {
     collision_task_wrapper: CollisionTaskWrapper<
         (ShapeInfo, f32, String),
-        FxHashMap<String, Vec<(DVec3, f32)>>,
+        FxHashMap<String, Vec<(DVec3, DVec2, f32)>>,
     >,
     id_to_alpha: FxHashMap<u64, f32>
 }
@@ -165,7 +170,7 @@ impl ScreenMeshCollisionHandler {
     pub fn new(
         collision_task_wrapper: CollisionTaskWrapper<
             (ShapeInfo, f32, String),
-            FxHashMap<String, Vec<(DVec3, f32)>>,
+            FxHashMap<String, Vec<(DVec3, DVec2, f32)>>,
         >,
     ) -> Self {
         ScreenMeshCollisionHandler {
@@ -179,7 +184,7 @@ impl ColliderTask for ScreenMeshCollisionHandler {
     fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler) {
         let render_data_holder = self.collision_task_wrapper.update_holder();
 
-        let mut hm: FxHashMap<String, Vec<(DVec3, f32)>> = FxHashMap::default();
+        let mut hm: FxHashMap<String, Vec<(DVec3, DVec2, f32)>> = FxHashMap::default();
         let mut id_collisions: FxHashSet<u64> = FxHashSet::default();
         render_data_holder
             .run_mut_action(|(shape_info, _, key)| {
@@ -207,7 +212,7 @@ impl ColliderTask for ScreenMeshCollisionHandler {
                     // don't process if it was transparent and nothing changed
                     let still_transparent = prev_alpha == 0.0 && prev_alpha == alpha;
                     if !still_transparent {
-                        hm.entry(key.clone()).or_default().push((shape_info.position, alpha));
+                        hm.entry(key.clone()).or_default().push((shape_info.position, shape_info.screen_offset, alpha));
                     }
                 }
             });
