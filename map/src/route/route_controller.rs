@@ -270,14 +270,15 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         if let Some(mut location) = location {
             let group = GeometryRenderGroup(GeometryData::Svg(IconShapeData {
                 id: u64::MAX,
-                icon_data: IconData {
+                icon_data: vec![IconData {
                     id: "dest_pin",
                     icon_type: IconType::SvgBinary(None, Self::PIN_SVG),
-                },
+                }],
                 position: Default::default(),
                 size: 60.0 * dpi_scale,
                 with_collision: false,
                 background: None,
+                permanent: false
             }));
             // move it a bit so tip of the pin would be close to destination location
             location.y -= 1.0;

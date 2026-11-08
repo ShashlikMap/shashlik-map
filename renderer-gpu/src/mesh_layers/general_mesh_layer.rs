@@ -10,6 +10,7 @@ use crate::mesh_layers::LayerAttrMapper;
 use crate::pipelines::RenderPipeline;
 use renderer_common::render_modifier::SpatialData;
 use std::mem;
+use glam::DVec2;
 use wgpu::{CommandEncoder, ComputePassDescriptor, RenderPass};
 use crate::mesh::mesh_instance_input::{MeshInstanceInput};
 use crate::mesh::virtual_ground_circle_mesh::VirtualGroundCircleMesh;
@@ -66,7 +67,7 @@ impl<I: MeshInstanceInput> GeneralMeshLayer<I> {
 
         let instance_positions =
             mem::take(&mut batch.mesh_info.instance_positions).map(|pos_items| pos_items.into_iter().map(|item| {
-                (item.1, 1f32)
+                (item.1, DVec2::ZERO, 1f32)
             }).collect());
 
         let mesh = mesh.to_positioned(self.attr_map,

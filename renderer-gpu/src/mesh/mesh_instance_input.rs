@@ -1,7 +1,7 @@
 use crate::mesh_layers::{LayerAttrMapper, LayerAttribute};
 use crate::vertex_attrs::{GeneralInstanceInput, ScreenShapeInstanceInput, ShapeInstanceInput};
 use bytemuck::Pod;
-use glam::DVec3;
+use glam::{DMat4, DVec2, DVec3};
 use renderer_common::render_modifier::SpatialData;
 
 pub(crate) trait MeshInstanceInput: Sized + Pod + From<LayerAttribute> {
@@ -9,26 +9,31 @@ pub(crate) trait MeshInstanceInput: Sized + Pod + From<LayerAttribute> {
         attrs: &mut Vec<Self>,
         attr_mapper: LayerAttrMapper<Self>,
         cs_offset: &DVec3,
-        original_positions_alpha: &Vec<(DVec3, f32)>,
+        original_positions_offset_alpha: &Vec<(DVec3, DVec2, f32)>,
         spatial_data: &SpatialData,
     ) {
         attrs.clear();
         let matrix = spatial_data.scale_rot_matrix();
-        for i in 0..original_positions_alpha.len() {
-            let item = original_positions_alpha[i];
-            if item.1 <= 0.0 {
+        for i in 0..original_positions_offset_alpha.len() {
+            let (pos, screen_offset, alpha) = original_positions_offset_alpha[i];
+            if alpha <= 0.0 {
                 continue;
             }
+            let matrix = if screen_offset != DVec2::ZERO {
+                DMat4::from_translation(screen_offset.extend(0.0)) * matrix
+            } else {
+                matrix
+            };
 
-            let transform_with_cs_offset = item.0 + spatial_data.transform - cs_offset;
+            let transform_with_cs_offset = pos + spatial_data.transform - cs_offset;
 
-            let bbox_origin_with_cs_offset = item.0
+            let bbox_origin_with_cs_offset = pos
                 + DVec3::new(spatial_data.bbox.min().x, spatial_data.bbox.min().y, 0.0)
                 - cs_offset;
 
             let instance_input = attr_mapper(LayerAttribute {
                 position: transform_with_cs_offset.as_vec3().to_array(),
-                color_alpha: item.1,
+                color_alpha: alpha,
                 matrix: matrix.as_mat4().to_cols_array_2d(),
                 bbox: [
                     bbox_origin_with_cs_offset.x as f32,

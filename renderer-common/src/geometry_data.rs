@@ -127,11 +127,12 @@ pub struct IconData {
 
 pub struct IconShapeData {
     pub id: u64,
-    pub icon_data: IconData,
+    pub icon_data: Vec<IconData>,
     pub position: DVec3,
     pub size: f32,
     pub with_collision: bool,
     pub background: Option<IconBackground>,
+    pub permanent: bool
 }
 
 pub struct LineData {

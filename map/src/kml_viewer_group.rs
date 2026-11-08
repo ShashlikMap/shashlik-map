@@ -50,14 +50,15 @@ impl KmlGroup {
             Geometry::Point(point) => {
                 geometry_data.push(GeometryData::Svg(IconShapeData {
                     id: 0,
-                    icon_data: IconData {
+                    icon_data: vec![IconData {
                         id: "kml",
                         icon_type: IconType::SvgBinary(Some(StyleId::new("kml_dots")), Self::CIRCLE_SVG),
-                    },
+                    }],
                     position: DVec3::new(point.x(), point.y(), 0.0),
                     size: 2.0,
                     with_collision: false,
-                    background: None
+                    background: None,
+                    permanent: true
                 }));
             }
             Geometry::GeometryCollection(collection) => {

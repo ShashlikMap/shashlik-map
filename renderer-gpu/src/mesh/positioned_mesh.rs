@@ -5,7 +5,7 @@ use crate::mesh::mesh_instance_input::MeshInstanceInput;
 use crate::mesh_buffers::MeshBuffers;
 use crate::mesh_layers::LayerAttrMapper;
 use crate::utils::ReceiverExt;
-use glam::DVec3;
+use glam::{DVec2, DVec3};
 use renderer_common::render_modifier::SpatialData;
 use tokio::sync::broadcast::Receiver;
 use wgpu::util::{DeviceExt, DrawIndexedIndirectArgs};
@@ -22,7 +22,7 @@ pub(crate) struct PositionedMesh<T: MeshInstanceInput> {
     double_style: bool,
     spatial_rx: Receiver<SpatialData>,
     original_spatial_data: SpatialData,
-    original_instance_positions_alpha: Vec<(DVec3, f32)>,
+    original_instance_positions_alpha: Vec<(DVec3, DVec2, f32)>,
     mesh_buffers: MeshBuffers<T>,
     indirect_prev_params: InternalIndirectBufParams,
 }
@@ -33,7 +33,7 @@ impl Mesh {
         attr_map: LayerAttrMapper<T>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,
-        instance_positions_alpha: Option<Vec<(DVec3, f32)>>,
+        instance_positions_alpha: Option<Vec<(DVec3, DVec2, f32)>>,
     ) -> PositionedMesh<T> {
         PositionedMesh::new(self, attr_map, spatial_rx, double_style, instance_positions_alpha)
     }
@@ -45,7 +45,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
         attr_map: LayerAttrMapper<T>,
         spatial_rx: tokio::sync::broadcast::Receiver<SpatialData>,
         double_style: bool,
-        instance_positions_alpha: Option<Vec<(DVec3, f32)>>,
+        instance_positions_alpha: Option<Vec<(DVec3, DVec2, f32)>>,
     ) -> Self {
         Self {
             mesh,
@@ -58,7 +58,7 @@ impl<T: MeshInstanceInput> PositionedMesh<T> {
             spatial_rx,
             original_spatial_data: SpatialData::new(),
             original_instance_positions_alpha: instance_positions_alpha
-                .unwrap_or(vec![(DVec3::new(0.0, 0.0, 0.0), 1f32)]),
+                .unwrap_or(vec![(DVec3::new(0.0, 0.0, 0.0), DVec2::ZERO, 1f32)]),
             mesh_buffers: MeshBuffers::default(),
             indirect_prev_params: InternalIndirectBufParams::default(),
         }

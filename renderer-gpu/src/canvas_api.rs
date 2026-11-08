@@ -6,14 +6,14 @@ use crate::mesh::mesh::StyledRange;
 use crate::styles::style_store::StyleStore;
 use crate::svg::svg_parser::svg_parse;
 use crate::vertex_attrs::ShapeVertex;
-use glam::{DVec3, Vec3};
+use glam::{DVec2, DVec3, Vec3};
 use lyon::lyon_tessellation::{
     BuffersBuilder, FillOptions, FillTessellator, FillVertex, StrokeOptions, StrokeTessellator,
     StrokeVertex, VertexBuffers,
 };
 use lyon::path::Path;
 use renderer_common::CanvasApi;
-use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, IconShapeData, IconType, MeshVertex, PolylineOptions, ShapeData, StyledRangeInfo, TextData};
+use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, IconShapeData, IconType, MeshVertex, PolylineOptions, ShapeData, StyledRangeInfo, Svg, TextData};
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
@@ -24,13 +24,18 @@ use std::mem;
 pub struct MeshInfo {
     pub instance_positions: Option<Vec<(u64, DVec3)>>,
     pub size: Option<f32>,
+    pub screen_offset: DVec2,
     pub with_collision: bool,
     pub instance_key: String,
     pub double_style: bool,
+    pub permanent: bool
 }
 
 #[derive(Eq, Hash, PartialEq)]
 struct InternalSvgKey(u32, Option<StyleId>, &'static str);
+
+type ScreenMeshData = (VertexBuffers<ShapeVertex, u32>, MeshInfo);
+type SvgCache = HashMap<InternalSvgKey, VertexBuffers<ShapeVertex, u32>>;
 
 pub struct GpuCanvasApi {
     style_store: StyleStore,
@@ -42,9 +47,10 @@ pub struct GpuCanvasApi {
     text_vec: Vec<TextData>,
     // consider to add more fields to the cache key
     mesh_info_cache:
-        HashMap<(&'static str, Option<StyleId>), (VertexBuffers<ShapeVertex, u32>, MeshInfo)>,
-    svg_cache:
-        HashMap<InternalSvgKey, VertexBuffers<ShapeVertex, u32>>,
+        HashMap<(&'static str, Option<StyleId>), ScreenMeshData>,
+    mesh_info_list:
+        Vec<ScreenMeshData>,
+    svg_cache: SvgCache,
     feature_layer_tag: Option<String>,
 }
 
@@ -69,6 +75,7 @@ impl GpuCanvasApi {
             geometry3d: VertexBuffers::new(),
             text_vec: Vec::new(),
             mesh_info_cache: HashMap::new(),
+            mesh_info_list: vec![],
             svg_cache: HashMap::new(),
             feature_layer_tag: None,
         }
@@ -81,6 +88,7 @@ impl GpuCanvasApi {
         self.geometry3d.clear();
         self.text_vec.clear();
 
+        self.mesh_info_list.clear();
         // TODO Should be improved to per screen rather than per group
         self.mesh_info_cache
             .iter_mut()
@@ -143,9 +151,11 @@ impl GpuCanvasApi {
             let mesh_info = MeshInfo {
                 instance_positions: None,
                 size: None,
+                screen_offset: DVec2::ZERO,
                 with_collision: false,
                 instance_key: "".to_string(),
                 double_style: true,
+                permanent: false
             };
             let batch = Mesh2dCommandBatch {
                 mesh,
@@ -157,22 +167,26 @@ impl GpuCanvasApi {
     }
 
     fn prepare_mesh2d_screen_space_command(&mut self) {
-        if self.mesh_info_cache.is_empty() {
+        if self.mesh_info_cache.is_empty() && self.mesh_info_list.is_empty() {
             return;
         }
         let batches = self
             .mesh_info_cache
             .iter()
-            .flat_map(|(_, (mesh, mesh_info))| {
+            .filter(|(_, (_, mesh_info))| mesh_info.instance_positions.is_some())
+            .map(|(_, (mesh, mesh_info))| {
+                (mesh.clone(), mesh_info.clone())
+            }).chain(mem::take(&mut self.mesh_info_list).into_iter())
+            .flat_map(|(mesh, mesh_info)| {
                 // mesh_info_cache is always present but there is no positions then we skip command
                 if mesh_info.instance_positions.is_none() {
                     return None;
                 }
                 let styled_range = StyledRange(0..mesh.indices.len(), StyledRangeInfo::default());
                 Some(Mesh2dCommandBatch {
-                    mesh: mesh.clone(),
+                    mesh,
                     layers_indices: vec![styled_range],
-                    mesh_info: mesh_info.clone(),
+                    mesh_info,
                 })
             })
             .collect();
@@ -325,74 +339,128 @@ impl GpuCanvasApi {
             ));
         }
     }
-
+    
     fn icon(&mut self, data: IconShapeData) {
-        let key_style_id = match &data.icon_data.icon_type {
+        if data.icon_data.len() > 1 {
+            self.icon_ribbon(data);
+        } else {
+            self.single_icon(data);
+        }
+    }
+
+    fn single_icon(&mut self, mut data: IconShapeData) {
+        if data.icon_data.is_empty() {
+            return;
+        }
+        let icon_data = data.icon_data.remove(0);
+        let key_style_id = match &icon_data.icon_type {
             IconType::SvgBinary(style_id, _) => style_id.clone(),
             IconType::None => data.background.as_ref().map(|bg| bg.style_id.clone()),
         };
         self.mesh_info_cache
-            .entry((data.icon_data.id, key_style_id))
+            .entry((icon_data.id, key_style_id))
             .and_modify(|(_, mesh_info)| {
                 mesh_info
                     .instance_positions
                     .get_or_insert_default()
                     .push((data.id, data.position));
                 mesh_info.with_collision = data.with_collision
-            })
-            .or_insert_with(|| {
-                let mut mesh: VertexBuffers<ShapeVertex, u32> = VertexBuffers::new();
-                let mesh_size = data.size;
-                if let Some(icon_background) = data.background.as_ref() {
-                    let background_style_index =
-                        self.style_store.get_index(&icon_background.style_id);
-                    let path = (icon_background.shape)(&data);
-                    Self::tessellate_fill_path(&path, &mut mesh, |vertex| {
-                        let position = vertex.position();
-                        let pos_x = position.x;
-                        let pos_y = position.y;
-                        ShapeVertex::new(
-                            [pos_x, pos_y],
-                            [0.0, 0.0],
-                            [pos_x / (data.size * 0.5),
-                                pos_y / (data.size * 0.5)],
-                            0.0,
-                            background_style_index as u8,
-                        )
-                    });
+            }).or_insert_with(|| {
+            let mut mesh = Self::create_icon_background(&mut self.style_store, &mut data).unwrap_or(VertexBuffers::new());
+            match icon_data.icon_type {
+                IconType::SvgBinary(style_id, svg) => {
+                    Self::svg_mesh_and_merge(&mut self.svg_cache, &mut self.style_store, &data, &style_id, &svg, &mut mesh);
                 }
+                IconType::None => {}
+            }
+            (
+                mesh,
+                MeshInfo {
+                    instance_positions: Some(vec![(data.id, data.position)]),
+                    size: Some(data.size),
+                    screen_offset: DVec2::ZERO,
+                    with_collision: data.with_collision,
+                    instance_key: icon_data.id.to_string(),
+                    double_style: false,
+                    permanent: data.permanent
+                },
+            )
+        });
+    }
 
-                match data.icon_data.icon_type {
-                    IconType::SvgBinary(style_id, svg) => {
-                        let src = self.svg_cache.entry(InternalSvgKey(data.size as u32, style_id.clone(), svg.id())).or_insert_with(|| {
-                            let mut svg_mesh: VertexBuffers<ShapeVertex, u32> = VertexBuffers::new();
-                            let style_index = style_id
-                                .map(|id| self.style_store.get_index(&id) as u32);
-                            svg_parse(
-                                svg.binary(),
-                                &mut svg_mesh,
-                                data.size,
-                                &mut self.style_store,
-                                style_index,
-                            );
-                            svg_mesh
-                        });
-                        Self::merge_buffers(&mut mesh, src);
-                    }
-                    IconType::None => {}
-                }
-
-                (
-                    mesh,
-                    MeshInfo {
-                        instance_positions: Some(vec![(data.id, data.position)]),
-                        size: Some(mesh_size),
-                        with_collision: data.with_collision,
-                        instance_key: data.icon_data.id.to_string(),
-                        double_style: false,
-                    },
+    fn create_icon_background(style_store: &mut StyleStore, data: &mut IconShapeData) -> Option<VertexBuffers<ShapeVertex, u32>> {
+        if let Some(icon_background) = data.background.as_ref() {
+            let mut mesh: VertexBuffers<ShapeVertex, u32> = VertexBuffers::new();
+            let background_style_index = style_store.get_index(&icon_background.style_id);
+            let path = (icon_background.shape)(&data);
+            Self::tessellate_fill_path(&path, &mut mesh, |vertex| {
+                let position = vertex.position();
+                let pos_x = position.x;
+                let pos_y = position.y;
+                ShapeVertex::new(
+                    [pos_x, pos_y],
+                    [0.0, 0.0],
+                    [pos_x / (data.size * 0.5),
+                        pos_y / (data.size * 0.5)],
+                    0.0,
+                    background_style_index as u8,
                 )
             });
+            return Some(mesh);
+        }
+        None
+    }
+
+    fn icon_ribbon(&mut self, mut data: IconShapeData) {
+        if let Some(mesh) = Self::create_icon_background(&mut self.style_store, &mut data) {
+            self.mesh_info_list.push((mesh, MeshInfo {
+                instance_positions: Some(vec![(data.id, data.position)]),
+                size: Some(data.size),
+                screen_offset: DVec2::ZERO,
+                with_collision: data.with_collision,
+                instance_key: data.id.to_string() + "icon_ribbon_background",
+                double_style: false,
+                permanent: data.permanent
+            }))
+        }
+
+        let icons_offset = (data.size as f64 * data.icon_data.len() as f64) * 0.5;
+        data.icon_data.iter().enumerate().for_each(|(index, icon)| {
+            match &icon.icon_type {
+                IconType::SvgBinary(style_id, svg) => {
+                    let mut mesh: VertexBuffers<ShapeVertex, u32> = VertexBuffers::new();
+                    Self::svg_mesh_and_merge(&mut self.svg_cache, &mut self.style_store, &data, style_id, &svg, &mut mesh);
+                    self.mesh_info_list.push((mesh, MeshInfo {
+                        instance_positions: Some(vec![(data.id + index as u64 + data.position.length() as u64, data.position)]),
+                        size: Some(data.size),
+                        screen_offset: DVec2::new(data.size as f64 * 0.5 + (index as f64  * data.size as f64) - icons_offset, 0.0),
+                        with_collision: data.with_collision,
+                        instance_key: format!("{:?},{:?}", data.id.to_string(), icon.id.to_string()),
+                        double_style: false,
+                        permanent: data.permanent
+                    }))
+                }
+                IconType::None => {}
+            }
+        });
+    }
+
+    fn svg_mesh_and_merge(svg_cache: &mut SvgCache, style_store: &mut StyleStore, data: &IconShapeData, style_id: &Option<StyleId>, svg: &Svg, mut mesh: &mut VertexBuffers<ShapeVertex, u32>) {
+        let src = svg_cache.entry(InternalSvgKey(data.size as u32, style_id.clone(), svg.id())).or_insert_with(|| {
+            let mut svg_mesh: VertexBuffers<ShapeVertex, u32> = VertexBuffers::new();
+            let style_index = style_id.as_ref()
+                .map(|id| style_store.get_index(&id) as u32);
+            svg_parse(
+                svg.binary(),
+                &mut svg_mesh,
+                data.size,
+                style_store,
+                style_index,
+            );
+            svg_mesh
+        });
+
+        Self::merge_buffers(&mut mesh, src);
     }
 
     fn merge_buffers<V, I>(dst: &mut VertexBuffers<V, I>, src: &VertexBuffers<V, I>)
