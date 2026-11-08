@@ -116,6 +116,7 @@ impl<T: CanvasApi> RenderGroup<T> for OverlayShapeGroup {
                                 path_builder.build()
                             }),
                         }),
+                        permanent: true
                     }));
                 }
 

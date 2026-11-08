@@ -132,6 +132,7 @@ pub struct IconShapeData {
     pub size: f32,
     pub with_collision: bool,
     pub background: Option<IconBackground>,
+    pub permanent: bool
 }
 
 pub struct LineData {

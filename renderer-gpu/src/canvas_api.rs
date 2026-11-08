@@ -28,6 +28,7 @@ pub struct MeshInfo {
     pub with_collision: bool,
     pub instance_key: String,
     pub double_style: bool,
+    pub permanent: bool
 }
 
 #[derive(Eq, Hash, PartialEq)]
@@ -154,6 +155,7 @@ impl GpuCanvasApi {
                 with_collision: false,
                 instance_key: "".to_string(),
                 double_style: true,
+                permanent: false
             };
             let batch = Mesh2dCommandBatch {
                 mesh,
@@ -380,6 +382,7 @@ impl GpuCanvasApi {
                     with_collision: data.with_collision,
                     instance_key: icon_data.id.to_string(),
                     double_style: false,
+                    permanent: data.permanent
                 },
             )
         });
@@ -417,6 +420,7 @@ impl GpuCanvasApi {
                 with_collision: data.with_collision,
                 instance_key: data.id.to_string() + "icon_ribbon_background",
                 double_style: false,
+                permanent: data.permanent
             }))
         }
 
@@ -433,6 +437,7 @@ impl GpuCanvasApi {
                         with_collision: data.with_collision,
                         instance_key: format!("{:?},{:?}", data.id.to_string(), icon.id.to_string()),
                         double_style: false,
+                        permanent: data.permanent
                     }))
                 }
                 IconType::None => {}

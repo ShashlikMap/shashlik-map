@@ -188,7 +188,8 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                 position: DVec3::from((local_position.x, local_position.y, 0.0)),
                 size: icon_size,
                 with_collision: true,
-                background
+                background,
+                permanent: true
             }));
         }
 

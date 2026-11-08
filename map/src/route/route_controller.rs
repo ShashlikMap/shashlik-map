@@ -278,6 +278,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                 size: 60.0 * dpi_scale,
                 with_collision: false,
                 background: None,
+                permanent: false
             }));
             // move it a bit so tip of the pin would be close to destination location
             location.y -= 1.0;

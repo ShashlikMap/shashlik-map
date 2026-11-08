@@ -57,7 +57,8 @@ impl KmlGroup {
                     position: DVec3::new(point.x(), point.y(), 0.0),
                     size: 2.0,
                     with_collision: false,
-                    background: None
+                    background: None,
+                    permanent: true
                 }));
             }
             Geometry::GeometryCollection(collection) => {

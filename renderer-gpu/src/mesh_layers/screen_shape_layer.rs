@@ -28,6 +28,7 @@ pub(crate) struct ScreenShapeLayer<I: MeshInstanceInput> {
     attr_map: LayerAttrMapper<I>,
     instance_buffer: InstanceBuffer<I>,
     meshes: FxIndexMap<String, (Mesh, Range<u32>)>,
+    not_permanent_cache: FxHashMap<String, Vec<String>>,
     collision_task_controller: CollisionTaskController<
         (ShapeInfo, f32, String),
         FxHashMap<String, Vec<(DVec3, DVec2, f32)>>,
@@ -51,6 +52,7 @@ impl<I: MeshInstanceInput> ScreenShapeLayer<I> {
             attr_map,
             instance_buffer: InstanceBuffer::default(),
             meshes: FxIndexMap::default(),
+            not_permanent_cache: FxHashMap::default(),
             collision_task_controller,
         }
     }
@@ -79,6 +81,10 @@ impl<I: MeshInstanceInput> ScreenShapeLayer<I> {
                     0..0
                 )
             });
+
+            if !batch.mesh_info.permanent {
+                self.not_permanent_cache.entry(key.to_string()).or_insert(vec![]).push(instance_key.clone());
+            }
 
             let instance_positions =
                 mem::take(&mut batch.mesh_info.instance_positions).unwrap_or_default();
@@ -138,9 +144,14 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
             &all_attrs,
         );
     }
-    
+
     fn clear_by_key(&mut self, key: &str) {
         self.collision_task_controller.clear_by_key(key);
+        if let Some(instance_keys) = self.not_permanent_cache.remove(&key.to_string()) {
+            instance_keys.iter().for_each(|instance_key| {
+                self.meshes.shift_remove(instance_key);
+            });
+        }
     }
 }
 
