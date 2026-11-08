@@ -12,12 +12,14 @@ use lyon::lyon_tessellation::{
     StrokeVertex, VertexBuffers,
 };
 use lyon::path::Path;
+use rand::RngExt;
 use renderer_common::CanvasApi;
 use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, IconShapeData, IconType, MeshVertex, PolylineOptions, ShapeData, StyledRangeInfo, Svg, TextData};
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
 use std::collections::{BTreeMap, HashMap};
+use std::hash::Hash;
 use std::mem;
 
 #[derive(Clone)]
@@ -352,7 +354,7 @@ impl GpuCanvasApi {
         if data.icon_data.is_empty() {
             return;
         }
-        let icon_data = data.icon_data.remove(0);
+        let icon_data = data.icon_data.remove(0).remove(0);
         let key_style_id = match &icon_data.icon_type {
             IconType::SvgBinary(style_id, _) => style_id.clone(),
             IconType::None => data.background.as_ref().map(|bg| bg.style_id.clone()),
@@ -412,9 +414,10 @@ impl GpuCanvasApi {
     }
 
     fn icon_ribbon(&mut self, mut data: IconShapeData) {
+        let mut rng = rand::rng();
         if let Some(mesh) = Self::create_icon_background(&mut self.style_store, &mut data) {
             self.mesh_info_list.push((mesh, MeshInfo {
-                instance_positions: Some(vec![(data.id, data.position)]),
+                instance_positions: Some(vec![(rng.random(), data.position)]),
                 size: Some(data.size),
                 screen_offset: DVec2::ZERO,
                 with_collision: data.with_collision,
@@ -425,23 +428,25 @@ impl GpuCanvasApi {
         }
 
         let icons_offset = (data.size as f64 * data.icon_data.len() as f64) * 0.5;
-        data.icon_data.iter().enumerate().for_each(|(index, icon)| {
-            match &icon.icon_type {
-                IconType::SvgBinary(style_id, svg) => {
-                    let mut mesh: VertexBuffers<ShapeVertex, u32> = VertexBuffers::new();
-                    Self::svg_mesh_and_merge(&mut self.svg_cache, &mut self.style_store, &data, style_id, &svg, &mut mesh);
-                    self.mesh_info_list.push((mesh, MeshInfo {
-                        instance_positions: Some(vec![(data.id + index as u64 + data.position.length() as u64, data.position)]),
-                        size: Some(data.size),
-                        screen_offset: DVec2::new(data.size as f64 * 0.5 + (index as f64  * data.size as f64) - icons_offset, 0.0),
-                        with_collision: data.with_collision,
-                        instance_key: format!("{:?},{:?}", data.id.to_string(), icon.id.to_string()),
-                        double_style: false,
-                        permanent: data.permanent
-                    }))
+        data.icon_data.iter().enumerate().for_each(|(index, bucket)| {
+            bucket.iter().enumerate().for_each(|(index2, icon)| {
+                match &icon.icon_type {
+                    IconType::SvgBinary(style_id, svg) => {
+                        let mut mesh: VertexBuffers<ShapeVertex, u32> = VertexBuffers::new();
+                        Self::svg_mesh_and_merge(&mut self.svg_cache, &mut self.style_store, &data, style_id, &svg, &mut mesh);
+                        self.mesh_info_list.push((mesh, MeshInfo {
+                            instance_positions: Some(vec![(rng.random(), data.position)]),
+                            size: Some(data.size),
+                            screen_offset: DVec2::new(data.size as f64 * 0.5 + (index as f64 * data.size as f64) - icons_offset, 0.0),
+                            with_collision: data.with_collision,
+                            instance_key: format!("{:?},{:?},{:?},{:?}", data.id.to_string(), icon.id.to_string(), index, index2),
+                            double_style: false,
+                            permanent: data.permanent
+                        }))
+                    }
+                    IconType::None => {}
                 }
-                IconType::None => {}
-            }
+            });
         });
     }
 

@@ -184,7 +184,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
             };
             geometry_data.push(GeometryData::Svg(IconShapeData {
                 id: id as u64,
-                icon_data: vec![icon_data],
+                icon_data: vec![vec![icon_data]],
                 position: DVec3::from((local_position.x, local_position.y, 0.0)),
                 size: icon_size,
                 with_collision: true,

@@ -92,10 +92,10 @@ impl<T: CanvasApi> RenderGroup<T> for OverlayShapeGroup {
                     let size = 2.5;
                     canvas.geometry_data(GeometryData::Svg(IconShapeData {
                         id: 0,
-                        icon_data: vec![IconData {
+                        icon_data: vec![vec![IconData {
                             id: "shape_dot",
                             icon_type: IconType::None,
-                        }],
+                        }]],
                         position: Vec3::new(
                             prev_point.x() as f32 + pos.x,
                             prev_point.y() as f32 + pos.y,
