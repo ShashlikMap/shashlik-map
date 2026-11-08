@@ -180,6 +180,7 @@ impl ScreenMeshCollisionHandler {
     }
 }
 
+// TODO Support ShapeInfo.screen_offset
 impl ColliderTask for ScreenMeshCollisionHandler {
     fn run(&mut self, view_projection: &ViewProjection, collision_handler: &mut CollisionHandler) {
         let render_data_holder = self.collision_task_wrapper.update_holder();

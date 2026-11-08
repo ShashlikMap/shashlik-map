@@ -13,15 +13,17 @@ pub(crate) trait MeshInstanceInput: Sized + Pod + From<LayerAttribute> {
         spatial_data: &SpatialData,
     ) {
         attrs.clear();
-        let mut matrix = spatial_data.scale_rot_matrix();
+        let matrix = spatial_data.scale_rot_matrix();
         for i in 0..original_positions_offset_alpha.len() {
             let (pos, screen_offset, alpha) = original_positions_offset_alpha[i];
             if alpha <= 0.0 {
                 continue;
             }
-            if screen_offset != DVec2::ZERO {
-                matrix = DMat4::from_translation(screen_offset.extend(0.0)) * matrix;
-            }
+            let matrix = if screen_offset != DVec2::ZERO {
+                DMat4::from_translation(screen_offset.extend(0.0)) * matrix
+            } else {
+                matrix
+            };
 
             let transform_with_cs_offset = pos + spatial_data.transform - cs_offset;
 

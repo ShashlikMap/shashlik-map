@@ -171,6 +171,7 @@ impl GpuCanvasApi {
         let batches = self
             .mesh_info_cache
             .iter()
+            .filter(|(_, (_, mesh_info))| mesh_info.instance_positions.is_some())
             .map(|(_, (mesh, mesh_info))| {
                 (mesh.clone(), mesh_info.clone())
             }).chain(mem::take(&mut self.mesh_info_list).into_iter())
@@ -181,9 +182,9 @@ impl GpuCanvasApi {
                 }
                 let styled_range = StyledRange(0..mesh.indices.len(), StyledRangeInfo::default());
                 Some(Mesh2dCommandBatch {
-                    mesh: mesh.clone(),
+                    mesh,
                     layers_indices: vec![styled_range],
-                    mesh_info: mesh_info.clone(),
+                    mesh_info,
                 })
             })
             .collect();
@@ -346,6 +347,9 @@ impl GpuCanvasApi {
     }
 
     fn single_icon(&mut self, mut data: IconShapeData) {
+        if data.icon_data.is_empty() {
+            return;
+        }
         let icon_data = data.icon_data.remove(0);
         let key_style_id = match &icon_data.icon_type {
             IconType::SvgBinary(style_id, _) => style_id.clone(),
