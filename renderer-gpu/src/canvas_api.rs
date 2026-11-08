@@ -18,7 +18,10 @@ use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
 use std::collections::{BTreeMap, HashMap};
+use std::hash::{DefaultHasher, Hash};
 use std::mem;
+use rand::RngExt;
+use wgpu::naga::SwitchValue::Default;
 
 #[derive(Clone)]
 pub struct MeshInfo {
@@ -412,9 +415,10 @@ impl GpuCanvasApi {
     }
 
     fn icon_ribbon(&mut self, mut data: IconShapeData) {
+        let mut rng = rand::rng();
         if let Some(mesh) = Self::create_icon_background(&mut self.style_store, &mut data) {
             self.mesh_info_list.push((mesh, MeshInfo {
-                instance_positions: Some(vec![(data.id, data.position)]),
+                instance_positions: Some(vec![(rng.random(), data.position)]),
                 size: Some(data.size),
                 screen_offset: DVec2::ZERO,
                 with_collision: data.with_collision,
@@ -432,7 +436,7 @@ impl GpuCanvasApi {
                         let mut mesh: VertexBuffers<ShapeVertex, u32> = VertexBuffers::new();
                         Self::svg_mesh_and_merge(&mut self.svg_cache, &mut self.style_store, &data, style_id, &svg, &mut mesh);
                         self.mesh_info_list.push((mesh, MeshInfo {
-                            instance_positions: Some(vec![(data.id + index as u64 + index2 as u64 + data.position.length() as u64, data.position)]),
+                            instance_positions: Some(vec![(rng.random(), data.position)]),
                             size: Some(data.size),
                             screen_offset: DVec2::new(data.size as f64 * 0.5 + (index as f64 * data.size as f64) - icons_offset, 0.0),
                             with_collision: data.with_collision,

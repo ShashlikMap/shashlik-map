@@ -167,14 +167,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                             Some(*total)
                                         }))
                                         .collect();
-                                    println!("ROUTE");
                                     let maneuvers_data: Vec<_> = leg.maneuvers.into_iter().flat_map(|man| {
-                                        // if let Some(lanes) = &man.lanes && lanes.len() > 0 {
-                                        //     println!("Maneuver type: {:?}", man.type_);
-                                        //     lanes.iter().enumerate().for_each(|(index,lane)| {
-                                        //         println!("maneuver lane({index}) info: dirs: {:?}, active: {:?}, valid: {:?}", lane.directions(), lane.active(), lane.valid());
-                                        //     })
-                                        // }
                                         let lanes_dirs = man.lanes.map(|lanes| {
                                             lanes.into_iter().map(|lane| lane.directions()).collect()
                                         }).unwrap_or(vec![]);
@@ -233,7 +226,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
 
                                     if is_active_route {
                                         Self::update_route_arrows(&api, &route_data);
-                                        Self::update_lanes_boxes(&api, &route_data);
+                                        Self::update_lanes_boxes(&api, dpi_scale, &route_data);
                                     }
 
                                     full_routes.push(route_data);
@@ -350,7 +343,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                     if current {
                         api.bring_to_front(route.id.clone(), Some("route_layer".to_string()));
                         Self::update_route_arrows(&api, route);
-                        Self::update_lanes_boxes(&api, route);
+                        Self::update_lanes_boxes(&api, self.dpi_scale, route);
                     }
                     api.copy_style(Self::get_style_for_route(!current, &route.costing), route.style_id.clone());
                 });
@@ -382,7 +375,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         }
     }
 
-    fn update_lanes_boxes(api: &Arc<RAPI>, route: &RouteData) {
+    fn update_lanes_boxes(api: &Arc<RAPI>, dpi_scale: f32, route: &RouteData) {
         api.clear_render_groups(HashSet::from_iter(vec![Self::LANES_BOXES_ID.to_string()]));
         let first_point = route.route.0.first().unwrap();
         let first_point = DVec3::new(first_point.x, first_point.y, 0.0);
@@ -404,7 +397,8 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         }).collect();
 
         let lanes_group = LanesGroup {
-            pos: lanes_info
+            dpi_scale,
+            lanes_info
         };
         api.add_render_group(
             Self::LANES_BOXES_ID.to_string(),
