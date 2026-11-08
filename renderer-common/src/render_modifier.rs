@@ -1,5 +1,5 @@
 use geo_types::Rect;
-use glam::{DMat4, DVec2, DVec3};
+use glam::{DMat4, DVec3};
 
 #[derive(Clone, Debug)]
 pub struct SpatialData {
