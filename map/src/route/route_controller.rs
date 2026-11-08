@@ -8,13 +8,16 @@ use std::string::ToString;
 use std::sync::{Arc, RwLock};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
-use geo::{Distance, Euclidean, Length};
+use geo::Euclidean;
+use geo::Distance;
+use geo::InterpolateLine;
+use geo::Length;
 use glam::DVec3;
 use lyon::lyon_tessellation::{LineCap, LineJoin};
 use reqwest::Url;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
-use valhalla_client::route::{DirectionsType, Location, ManeuverType, Manifest, Trip};
+use valhalla_client::route::{DirectionsType, Location, ManeuverType, Manifest, Trip, TurnLaneDirection};
 use renderer_common::geometry_data::{GeometryData, IconData, IconShapeData, IconType, PolylineOptions, Svg};
 use renderer_common::geometry_render_group::GeometryRenderGroup;
 use renderer_common::render_modifier::SpatialData;
@@ -22,13 +25,19 @@ use renderer_common::style_id::StyleId;
 use crate::CoordConverter;
 use crate::overlay::overlay_shape_group::{OverlayShapeGroup};
 use crate::overlay::ShapeType;
+use crate::route::lanes_group::{LanesInfo, LanesGroup};
+
+pub(crate) struct ManeuverData {
+    pub linear_ref: Option<f32>,
+    pub lanes_dirs: Vec<Vec<TurnLaneDirection>>
+}
 
 struct RouteData {
     id: String,
     route: LineString,
     costing: RouteCosting,
     style_id: StyleId,
-    linear_refs: Vec<f32>
+    maneuvers_data: Vec<ManeuverData>
 }
 
 // TODO Refactor in general to use async
@@ -45,6 +54,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
     const PIN_SVG: Svg = Svg("location_pin_svg", include_bytes!("../../svg/location_pin.svg"));
 
     const ROUTE_ARROWS_ID: &'static str = "route_arrows_id";
+    const LANES_BOXES_ID: &'static str = "lanes_boxes_id";
     const ROUTE_ARROWS_STYLE: &'static str = "route_arrows";
 
     pub fn new(url: Option<Url>, api: Arc<RAPI>, dpi_scale: f32) -> RouteController<RAPI> {
@@ -128,8 +138,8 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                             let alternates = trips.1.len() as u8;
                             let mut full_routes = full_routes.write().unwrap();
                             full_routes.clear();
-                            Self::handle_trips(trips, |index, trip: &Trip| {
-                                if let Some(leg) = trip.legs.first() {
+                            Self::handle_trips(trips, |index, trip: Trip| {
+                                if let Some(leg) = trip.legs.into_iter().next() {
                                     let route_id = format!("route{index}").to_string();
                                     let route: Vec<Point> = leg
                                         .shape
@@ -157,15 +167,19 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                             Some(*total)
                                         }))
                                         .collect();
-                                    let linear_refs: Vec<_> = leg.maneuvers.iter().flat_map(|man| {
-                                        if let Some(lanes) = &man.lanes && lanes.len() > 0 {
-                                            println!("Maneuver type: {:?}", man.type_);
-                                            lanes.iter().enumerate().for_each(|(index,lane)| {
-                                                println!("maneuver lane({index}) info: dirs: {:?}, active: {:?}, valid: {:?}", lane.directions(), lane.active(), lane.valid());
-                                            })
-                                        }
+                                    println!("ROUTE");
+                                    let maneuvers_data: Vec<_> = leg.maneuvers.into_iter().flat_map(|man| {
+                                        // if let Some(lanes) = &man.lanes && lanes.len() > 0 {
+                                        //     println!("Maneuver type: {:?}", man.type_);
+                                        //     lanes.iter().enumerate().for_each(|(index,lane)| {
+                                        //         println!("maneuver lane({index}) info: dirs: {:?}, active: {:?}, valid: {:?}", lane.directions(), lane.active(), lane.valid());
+                                        //     })
+                                        // }
+                                        let lanes_dirs = man.lanes.map(|lanes| {
+                                            lanes.into_iter().map(|lane| lane.directions()).collect()
+                                        }).unwrap_or(vec![]);
 
-                                        match man.type_ {
+                                        let linear_ref = match man.type_ {
                                             ManeuverType::SlightRight |
                                             ManeuverType::Right |
                                             ManeuverType::SharpRight |
@@ -186,10 +200,13 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                                 line_sum.get(man.begin_shape_index).cloned().map(|x| x as f32)
                                             }
                                             _ => None
-                                        }
+                                        };
+                                        (linear_ref.is_some() || !lanes_dirs.is_empty())
+                                            .then(|| ManeuverData { linear_ref, lanes_dirs })
                                     }).collect();
+
                                     if is_active_route {
-                                        api.set_linear_refs_data(linear_refs.clone());
+                                        api.set_linear_refs_data(maneuvers_data.iter().flat_map(|item| item.linear_ref).collect());
                                     }
 
                                     let route_data = RouteData {
@@ -197,7 +214,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                         route: route_as_linestring.clone(),
                                         costing: route_costing.clone(),
                                         style_id: style_id.clone(),
-                                        linear_refs
+                                        maneuvers_data
                                     };
 
                                     let route_group = OverlayShapeGroup::new(
@@ -216,6 +233,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
 
                                     if is_active_route {
                                         Self::update_route_arrows(&api, &route_data);
+                                        Self::update_lanes_boxes(&api, &route_data);
                                     }
 
                                     full_routes.push(route_data);
@@ -270,10 +288,10 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         if let Some(mut location) = location {
             let group = GeometryRenderGroup(GeometryData::Svg(IconShapeData {
                 id: u64::MAX,
-                icon_data: vec![IconData {
+                icon_data: vec![vec![IconData {
                     id: "dest_pin",
                     icon_type: IconType::SvgBinary(None, Self::PIN_SVG),
-                }],
+                }]],
                 position: Default::default(),
                 size: 60.0 * dpi_scale,
                 with_collision: false,
@@ -292,13 +310,13 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         }
     }
 
-    pub fn handle_trips(trips: (Trip, Vec<Trip>), mut action: impl FnMut(u8, &Trip) -> ()) {
-        let main_trip = &trips.0;
+    pub fn handle_trips(trips: (Trip, Vec<Trip>), mut action: impl FnMut(u8, Trip) -> ()) {
+        let main_trip = trips.0;
         let alternates: Vec<Trip> = trips.1.clone();
         println!("Route calculated!, alternates = {:?}", alternates.len());
         vec![main_trip]
             .into_iter()
-            .chain(alternates.iter())
+            .chain(alternates.into_iter())
             .rev()
             .enumerate()
             .for_each(|(index, trip)| {
@@ -313,7 +331,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         self.route_ids.clear();
         Self::destination_pin(api.clone(), self.dpi_scale, None);
         api.clear_render_groups(HashSet::from_iter(active_routes));
-        api.clear_render_groups(HashSet::from_iter(vec![Self::ROUTE_ARROWS_ID.into()]));
+        api.clear_render_groups(HashSet::from_iter(vec![Self::LANES_BOXES_ID.to_string(), Self::ROUTE_ARROWS_ID.into()]));
     }
 
     // TODO Should be async to prevent short blocking of main thread
@@ -332,6 +350,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                     if current {
                         api.bring_to_front(route.id.clone(), Some("route_layer".to_string()));
                         Self::update_route_arrows(&api, route);
+                        Self::update_lanes_boxes(&api, route);
                     }
                     api.copy_style(Self::get_style_for_route(!current, &route.costing), route.style_id.clone());
                 });
@@ -341,8 +360,8 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
 
     fn update_route_arrows(api: &Arc<RAPI>, route: &RouteData) {
         api.clear_render_groups(HashSet::from_iter(vec![Self::ROUTE_ARROWS_ID.into()]));
-        if !route.linear_refs.is_empty() {
-            api.set_linear_refs_data(route.linear_refs.clone());
+        if !route.maneuvers_data.is_empty() {
+            api.set_linear_refs_data(route.maneuvers_data.iter().flat_map(|item| item.linear_ref).collect());
             let route_arrow_group = OverlayShapeGroup::new(
                 route.route.clone().into_points(),
                 "route_layer".to_string(),
@@ -361,6 +380,37 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                 route_arrow_group,
             );
         }
+    }
+
+    fn update_lanes_boxes(api: &Arc<RAPI>, route: &RouteData) {
+        api.clear_render_groups(HashSet::from_iter(vec![Self::LANES_BOXES_ID.to_string()]));
+        let first_point = route.route.0.first().unwrap();
+        let first_point = DVec3::new(first_point.x, first_point.y, 0.0);
+
+        let lanes_info = route.maneuvers_data.iter().flat_map(|data| {
+            if let Some(linear_ref) = data.linear_ref && data.lanes_dirs.len() > 1{
+                let p = Euclidean
+                    .point_at_distance_from_start(&route.route, linear_ref as f64)
+                    .unwrap();
+                let p = DVec3::new(p.x(), p.y(), 0.0);
+
+                Some(LanesInfo {
+                    pos: p - first_point,
+                    dirs: data.lanes_dirs.clone(),
+                })
+            } else {
+                None
+            }
+        }).collect();
+
+        let lanes_group = LanesGroup {
+            pos: lanes_info
+        };
+        api.add_render_group(
+            Self::LANES_BOXES_ID.to_string(),
+            SpatialData::transform(first_point),
+            lanes_group,
+        );
     }
 
     pub fn update(&mut self, normal_scale: f64) {
