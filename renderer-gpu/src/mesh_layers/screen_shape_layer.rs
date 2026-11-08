@@ -147,6 +147,8 @@ impl<I: MeshInstanceInput> BaseMeshLayer for ScreenShapeLayer<I> {
 
     fn clear_by_key(&mut self, key: &str) {
         self.collision_task_controller.clear_by_key(key);
+
+        // FIXME It removes a shared mesh for both permanent and not permanent cases
         if let Some(instance_keys) = self.not_permanent_cache.remove(&key.to_string()) {
             instance_keys.iter().for_each(|instance_key| {
                 self.meshes.shift_remove(instance_key);
