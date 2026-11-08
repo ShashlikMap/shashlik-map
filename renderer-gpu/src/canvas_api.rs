@@ -12,16 +12,15 @@ use lyon::lyon_tessellation::{
     StrokeVertex, VertexBuffers,
 };
 use lyon::path::Path;
+use rand::RngExt;
 use renderer_common::CanvasApi;
 use renderer_common::geometry_data::{ExtrudedPolygonData, GeometryData, GeometryType, IconShapeData, IconType, MeshVertex, PolylineOptions, ShapeData, StyledRangeInfo, Svg, TextData};
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::render_style::RenderStyle;
 use renderer_common::style_id::StyleId;
 use std::collections::{BTreeMap, HashMap};
-use std::hash::{DefaultHasher, Hash};
+use std::hash::Hash;
 use std::mem;
-use rand::RngExt;
-use wgpu::naga::SwitchValue::Default;
 
 #[derive(Clone)]
 pub struct MeshInfo {
