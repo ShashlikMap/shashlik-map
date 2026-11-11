@@ -105,7 +105,7 @@ pub struct IconBackground {
 }
 
 #[macro_export] macro_rules! include_svg {
-    ($file:expr) => { Svg($file, include_bytes!($file)) };
+($file:expr) => { $crate::geometry_data::Svg($file, include_bytes!($file)) };
 }
 pub struct Svg(pub &'static str, pub &'static [u8]);
 impl Svg {

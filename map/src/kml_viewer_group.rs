@@ -1,7 +1,7 @@
 use geo_types::{Geometry, GeometryCollection, Point};
 use kml::KmlReader;
 use log::error;
-use renderer_common::geometry_data::{GeometryData, IconType, IconShapeData, IconData, Svg};
+use renderer_common::geometry_data::{GeometryData, IconType, IconShapeData, IconData};
 use renderer_common::render_group::RenderGroup;
 use renderer_common::style_id::StyleId;
 use std::path::PathBuf;

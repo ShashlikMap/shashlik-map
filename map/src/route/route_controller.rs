@@ -18,7 +18,7 @@ use reqwest::Url;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
 use valhalla_client::route::{DirectionsType, Location, ManeuverType, Manifest, Trip, TurnLaneDirection};
-use renderer_common::geometry_data::{GeometryData, IconData, IconShapeData, IconType, PolylineOptions, Svg};
+use renderer_common::geometry_data::{GeometryData, IconData, IconShapeData, IconType, PolylineOptions};
 use renderer_common::geometry_render_group::GeometryRenderGroup;
 use renderer_common::render_modifier::SpatialData;
 use renderer_common::style_id::StyleId;
