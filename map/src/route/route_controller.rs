@@ -1,7 +1,7 @@
 use crate::route::RouteCosting;
 use geo_types::{point, Point, LineString};
 use log::error;
-use renderer_common::RendererApi;
+use renderer_common::{include_svg, RendererApi};
 use std::collections::HashSet;
 use std::convert::Into;
 use std::string::ToString;
@@ -51,7 +51,6 @@ pub struct RouteController<RAPI: RendererApi + 'static> {
 }
 
 impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
-    const PIN_SVG: Svg = Svg("location_pin_svg", include_bytes!("../../svg/location_pin.svg"));
 
     const ROUTE_ARROWS_ID: &'static str = "route_arrows_id";
     const LANES_BOXES_ID: &'static str = "lanes_boxes_id";
@@ -283,7 +282,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                 id: u64::MAX,
                 icon_data: vec![vec![IconData {
                     id: "dest_pin",
-                    icon_type: IconType::SvgBinary(None, Self::PIN_SVG),
+                    icon_type: IconType::SvgBinary(None, include_svg!("../../svg/location_pin.svg")),
                 }]],
                 position: Default::default(),
                 size: 60.0 * dpi_scale,
