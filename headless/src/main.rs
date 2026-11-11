@@ -112,6 +112,9 @@ fn main() {
     });
     sleep(Duration::from_millis(16));
     map.update_and_render(());
+    // need to execute frames twice since some actions happen on the next frame only(e.g. updating FPS text layers)
+    sleep(Duration::from_millis(16));
+    map.update_and_render(());
     println!("Headless mode completed");
 }
 

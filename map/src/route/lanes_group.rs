@@ -3,7 +3,7 @@ use lyon::geom::euclid::{Box2D, point2};
 use lyon::path::builder::BorderRadii;
 use lyon::path::{Path, Winding};
 use rand::RngExt;
-use renderer_common::CanvasApi;
+use renderer_common::{include_svg, CanvasApi};
 use renderer_common::geometry_data::{
     GeometryData, IconBackground, IconData, IconShapeData, IconType, Svg,
 };
@@ -20,56 +20,23 @@ pub(crate) struct LanesGroup {
     pub dpi_scale: f32,
     pub lanes_info: Vec<LanesInfo>,
 }
-const TURN_LEFT_SVG: Svg = Svg("turn_left_svg", include_bytes!("../../svg/turn_left.svg"));
-const TURN_MERGE_TO_LEFT_SVG: Svg = Svg(
-    "turn_merge_to_left_svg",
-    include_bytes!("../../svg/turn_merge_to_left.svg"),
-);
-const TURN_MERGE_TO_RIGHT_SVG: Svg = Svg(
-    "turn_merge_to_right_svg",
-    include_bytes!("../../svg/turn_merge_to_right.svg"),
-);
-const TURN_REVERSE_SVG: Svg = Svg(
-    "turn_reverse_svg",
-    include_bytes!("../../svg/turn_reverse.svg"),
-);
-const TURN_RIGHT_SVG: Svg = Svg("turn_right_svg", include_bytes!("../../svg/turn_right.svg"));
-const TURN_SHARP_LEFT_SVG: Svg = Svg(
-    "turn_sharp_left_svg",
-    include_bytes!("../../svg/turn_sharp_left.svg"),
-);
-const TURN_SHARP_RIGHT_SVG: Svg = Svg(
-    "turn_sharp_right_svg",
-    include_bytes!("../../svg/turn_sharp_right.svg"),
-);
-const TURN_SLIGHT_LEFT_SVG: Svg = Svg(
-    "turn_slight_left_svg",
-    include_bytes!("../../svg/turn_slight_left.svg"),
-);
-const TURN_SLIGHT_RIGHT_SVG: Svg = Svg(
-    "turn_slight_right_svg",
-    include_bytes!("../../svg/turn_slight_right.svg"),
-);
-const TURN_THROUGH_SVG: Svg = Svg(
-    "turn_through_svg",
-    include_bytes!("../../svg/turn_through.svg"),
-);
 
 impl LanesGroup {
     fn convert_svg(dir: &TurnLaneDirection) -> Option<Svg> {
+
         match dir {
             TurnLaneDirection::Empty => None,
             TurnLaneDirection::None => None,
-            TurnLaneDirection::Through => Some(TURN_THROUGH_SVG),
-            TurnLaneDirection::SharpLeft => Some(TURN_SHARP_LEFT_SVG),
-            TurnLaneDirection::Left => Some(TURN_LEFT_SVG),
-            TurnLaneDirection::SlightLeft => Some(TURN_SLIGHT_LEFT_SVG),
-            TurnLaneDirection::SlightRight => Some(TURN_SLIGHT_RIGHT_SVG),
-            TurnLaneDirection::Right => Some(TURN_RIGHT_SVG),
-            TurnLaneDirection::SharpRight => Some(TURN_SHARP_RIGHT_SVG),
-            TurnLaneDirection::Reverse => Some(TURN_REVERSE_SVG),
-            TurnLaneDirection::MergeToLeft => Some(TURN_MERGE_TO_LEFT_SVG),
-            TurnLaneDirection::MergeToRight => Some(TURN_MERGE_TO_RIGHT_SVG),
+            TurnLaneDirection::Through => Some(include_svg!("../../svg/turn_through.svg")),
+            TurnLaneDirection::SharpLeft => Some(include_svg!("../../svg/turn_sharp_left.svg")),
+            TurnLaneDirection::Left => Some(include_svg!("../../svg/turn_left.svg")),
+            TurnLaneDirection::SlightLeft => Some(include_svg!("../../svg/turn_slight_left.svg")),
+            TurnLaneDirection::SlightRight => Some(include_svg!("../../svg/turn_slight_right.svg")),
+            TurnLaneDirection::Right => Some(include_svg!("../../svg/turn_right.svg")),
+            TurnLaneDirection::SharpRight => Some(include_svg!("../../svg/turn_sharp_right.svg")),
+            TurnLaneDirection::Reverse => Some(include_svg!("../../svg/turn_reverse.svg")),
+            TurnLaneDirection::MergeToLeft => Some(include_svg!("../../svg/turn_merge_to_left.svg")),
+            TurnLaneDirection::MergeToRight => Some(include_svg!("../../svg/turn_merge_to_right.svg")),
         }
     }
 }
@@ -88,7 +55,7 @@ impl<T: CanvasApi> RenderGroup<T> for LanesGroup {
                         .flat_map(|dir| Self::convert_svg(dir))
                         .map(|svg| IconData {
                             id: svg.0,
-                            icon_type: IconType::SvgBinary(Some(StyleId::new("poi_toilet")), svg),
+                            icon_type: IconType::SvgBinary(Some(StyleId::new("poi_lanes")), svg),
                         })
                         .collect()
                 })

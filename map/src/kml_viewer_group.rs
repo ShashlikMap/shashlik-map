@@ -1,20 +1,18 @@
 use geo_types::{Geometry, GeometryCollection, Point};
 use kml::KmlReader;
 use log::error;
-use renderer_common::geometry_data::{GeometryData, IconType, IconShapeData, IconData, Svg};
+use renderer_common::geometry_data::{GeometryData, IconType, IconShapeData, IconData};
 use renderer_common::render_group::RenderGroup;
 use renderer_common::style_id::StyleId;
 use std::path::PathBuf;
 use glam::DVec3;
-use renderer_common::CanvasApi;
+use renderer_common::{include_svg, CanvasApi};
 
 pub struct KmlGroup {
     pub collection: GeometryCollection<f64>,
 }
 
 impl KmlGroup {
-
-    pub const CIRCLE_SVG: Svg = Svg("just_circle_svg", include_bytes!("../svg/just_circle.svg"));
 
     pub fn new(path_buf: PathBuf, converter: Box<dyn Fn(&Point) -> Point>) -> KmlGroup {
         let mut kml_reader = KmlReader::<_, f64>::from_path(path_buf).unwrap();
@@ -52,7 +50,7 @@ impl KmlGroup {
                     id: 0,
                     icon_data: vec![vec![IconData {
                         id: "kml",
-                        icon_type: IconType::SvgBinary(Some(StyleId::new("kml_dots")), Self::CIRCLE_SVG),
+                        icon_type: IconType::SvgBinary(Some(StyleId::new("kml_dots")), include_svg!("../svg/just_circle.svg")),
                     }]],
                     position: DVec3::new(point.x(), point.y(), 0.0),
                     size: 2.0,

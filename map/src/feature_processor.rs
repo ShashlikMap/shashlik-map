@@ -16,6 +16,7 @@ use lyon::lyon_tessellation::{LineCap, LineJoin};
 use lyon::path::builder::BorderRadii;
 use rand::RngExt;
 use renderer_common::geometry_data::IconType::SvgBinary;
+use renderer_common::include_svg;
 use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::{ShashlikMapGeomObjectKind, ShashlikMapLinearRef, ShashlikMapPointInfo, ShashlikMapPointObjectKind, ShashlikNatureKind};
 
@@ -44,12 +45,6 @@ impl Default for ShashlikFeatureProcessor {
 
 impl ShashlikFeatureProcessor {
 
-    const TRAFFIC_LIGHT_SVG: Svg = Svg("traffic_light_cvg", include_bytes!("../svg/traffic_light.svg"));
-    const PARKING_SVG: Svg = Svg("parking_svg", include_bytes!("../svg/parking.svg"));
-    const TOILETS_SVG: Svg = Svg("toilet_svg", include_bytes!("../svg/toilet.svg"));
-    const TRAIN_STATION_SVG: Svg = Svg("train_station_svg", include_bytes!("../svg/train_station.svg"));
-    const EV_STATION_SVG: Svg = Svg("ev_station_svg", include_bytes!("../svg/ev_station.svg"));
-    // const CROSSING_SVG: &'static [u8] = include_bytes!("../svg/pedestrian-crossing.svg");
     pub fn new(include_extruded: bool,
                data_filter: fn(zoom_level: i32, kind: &ShashlikMapGeomObjectKind) -> bool) -> Self {
 
@@ -121,16 +116,17 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
         }
         let icon: Option<(&str, Svg)> = match poi.kind {
             ShashlikMapPointObjectKind::TrainStation(is_train) => {
-                if is_train {
-                    Some(("train_station", Self::TRAIN_STATION_SVG))
+                let id = if is_train {
+                    "train_station"
                 } else {
-                    Some(("railway_station", Self::TRAIN_STATION_SVG))
-                }
+                    "railway_station"
+                };
+                Some((id, include_svg!("../svg/train_station.svg")))
             }
-            ShashlikMapPointObjectKind::TrafficLight => Some(("traffic_light", Self::TRAFFIC_LIGHT_SVG)),
-            ShashlikMapPointObjectKind::Toilet => Some(("toilets", Self::TOILETS_SVG)),
-            ShashlikMapPointObjectKind::Parking => Some(("parking", Self::PARKING_SVG)),
-            ShashlikMapPointObjectKind::EVCharging => Some(("ev_station", Self::EV_STATION_SVG)),
+            ShashlikMapPointObjectKind::TrafficLight => Some(("traffic_light", include_svg!("../svg/traffic_light.svg"))),
+            ShashlikMapPointObjectKind::Toilet => Some(("toilets", include_svg!("../svg/toilet.svg"))),
+            ShashlikMapPointObjectKind::Parking => Some(("parking", include_svg!("../svg/parking.svg"))),
+            ShashlikMapPointObjectKind::EVCharging => Some(("ev_station", include_svg!("../svg/ev_station.svg"))),
             ShashlikMapPointObjectKind::PopArea(..) => None,
             // we skip crossing since we need only to calculate linear refs, but it happens before,
             // in future we should have it at all as a POI representation

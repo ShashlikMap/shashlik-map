@@ -104,7 +104,9 @@ pub struct IconBackground {
     pub shape: Box<dyn Fn(&IconShapeData) -> Path + Send + Sync + 'static>,
 }
 
-
+#[macro_export] macro_rules! include_svg {
+($file:expr) => { $crate::geometry_data::Svg($file, include_bytes!($file)) };
+}
 pub struct Svg(pub &'static str, pub &'static [u8]);
 impl Svg {
     pub fn id(&self) -> &'static str {
