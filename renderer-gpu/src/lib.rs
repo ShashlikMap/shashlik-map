@@ -194,20 +194,25 @@ impl GpuRenderer {
     }
 
     fn setup_fps_counter(&mut self) {
-        let fps_x = (self.global_context.canvas.config().width / 2) - Self::FPS_OFFSET;
-        self.layers.text_feature_layers.get_layer(SCREEN_TEXT_LAYER).unwrap().clear_by_key("fps_info");
-        self.layers.text_feature_layers.get_layer(SCREEN_TEXT_LAYER).unwrap().add(
-            "fps_info".to_string(),
-            vec![TextData::screen_space_new(0, "FPS 0".to_string(),
-                                            vec2(0.0, 0.0), 30.0,
-                                            LineData::new(vec![dvec3(fps_x as f64, 20.0, 0.0)]))],
-            SpatialData::new(),
-        );
+        if let Some(screen_text_layer) = self.layers.text_feature_layers.get_layer(SCREEN_TEXT_LAYER) {
+            screen_text_layer.clear_by_key("fps_info");
+            if !self.render_config.headless {
+                let fps_x = (self.global_context.canvas.config().width / 2) - Self::FPS_OFFSET;
+                screen_text_layer.add(
+                    "fps_info".to_string(),
+                    vec![TextData::screen_space_new(0, "FPS 0".to_string(),
+                                                    vec2(0.0, 0.0), 30.0,
+                                                    LineData::new(vec![dvec3(fps_x as f64, 20.0, 0.0)]))],
+                    SpatialData::new(),
+                );
+            }
+        }
     }
 
     pub fn update_config(&mut self, action: impl Fn(&mut RenderConfig)) {
         action(&mut self.render_config);
 
+        self.setup_fps_counter();
         self.config_pass_nodes_and_textures();
     }
 
@@ -293,7 +298,6 @@ impl GpuRenderer {
 
     pub fn update(&mut self, data: RendererUpdateData) {
         self.global_context.update(&self.render_config, data);
-
         // read all messages between renders
         for message in self.renderer_rx.try_iter() {
             match message {
@@ -326,12 +330,14 @@ impl GpuRenderer {
                     label: Some("Render Encoder"),
                 });
 
-        let fps = format!("FPS {}", self.fps_counter.update() as i32);
-        self.layers
-            .text_feature_layers.get_layer(SCREEN_TEXT_LAYER)?
-            .run_mut_action_with_key("fps_info", move |item| {
-                item.update_text(fps.as_str(), 1.0);
-            });
+        if !self.render_config.headless {
+            let fps = format!("FPS {}", self.fps_counter.update() as i32);
+            self.layers
+                .text_feature_layers.get_layer(SCREEN_TEXT_LAYER)?
+                .run_mut_action_with_key("fps_info", move |item| {
+                    item.update_text(fps.as_str(), 1.0);
+                });
+        }
 
         self.pass_nodes.iter_mut().for_each(|node| {
             node.run(

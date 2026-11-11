@@ -88,7 +88,7 @@ impl<T: CanvasApi> RenderGroup<T> for LanesGroup {
                         .flat_map(|dir| Self::convert_svg(dir))
                         .map(|svg| IconData {
                             id: svg.0,
-                            icon_type: IconType::SvgBinary(Some(StyleId::new("poi_toilet")), svg),
+                            icon_type: IconType::SvgBinary(Some(StyleId::new("poi_lanes")), svg),
                         })
                         .collect()
                 })
