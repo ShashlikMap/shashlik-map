@@ -68,11 +68,10 @@ impl<T: CanvasApi> RenderGroup<T> for LanesGroup {
                         .iter()
                         .flat_map(|turn| Self::convert_svg(*turn))
                         .map(|(turn, svg)| {
-                            // TODO
                             let dir_style = if turn.status != TurnLaneDirectionStatus::None {
                                 StyleId::new("poi_lanes")
                             } else {
-                                StyleId::new("poi_traffic_light")
+                                StyleId::new("poi_lanes_inactive")
                             };
                             IconData {
                                 id: svg.0,
