@@ -17,7 +17,7 @@ use lyon::lyon_tessellation::{LineCap, LineJoin};
 use reqwest::Url;
 use valhalla_client::blocking::Valhalla;
 use valhalla_client::costing::Costing;
-use valhalla_client::route::{DirectionsType, Location, ManeuverType, Manifest, Trip, TurnLaneDirection};
+use valhalla_client::route::{DirectionsType, Location, ManeuverType, Manifest, Trip};
 use renderer_common::geometry_data::{GeometryData, IconData, IconShapeData, IconType, PolylineOptions};
 use renderer_common::geometry_render_group::GeometryRenderGroup;
 use renderer_common::render_modifier::SpatialData;
@@ -25,11 +25,11 @@ use renderer_common::style_id::StyleId;
 use crate::CoordConverter;
 use crate::overlay::overlay_shape_group::{OverlayShapeGroup};
 use crate::overlay::ShapeType;
-use crate::route::lanes_group::{LanesInfo, LanesGroup};
+use crate::route::lanes_group::{LanesInfo, LanesGroup, TurnLaneDirectionWithStatus, TurnLaneDirectionStatus};
 
 pub(crate) struct ManeuverData {
     pub linear_ref: Option<f32>,
-    pub lanes_dirs: Vec<Vec<TurnLaneDirection>>
+    pub lanes_dirs: Vec<Vec<TurnLaneDirectionWithStatus>>
 }
 
 struct RouteData {
@@ -168,7 +168,28 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                         .collect();
                                     let maneuvers_data: Vec<_> = leg.maneuvers.into_iter().flat_map(|man| {
                                         let lanes_dirs = man.lanes.map(|lanes| {
-                                            lanes.into_iter().map(|lane| lane.directions()).collect()
+                                            lanes.into_iter().map(|lane| {
+                                                let active = lane.active().unwrap_or_default();
+                                                let valid = lane.valid().unwrap_or_default();
+                                                let mut data: Vec<_> = lane.directions().iter().map(|dir| {
+                                                    let status = if active.contains(dir) {
+                                                        TurnLaneDirectionStatus::Active
+                                                    } else if valid.contains(dir) {
+                                                        TurnLaneDirectionStatus::Valid
+                                                    } else {
+                                                        TurnLaneDirectionStatus::None
+                                                    };
+                                                    TurnLaneDirectionWithStatus {
+                                                        dir: *dir,
+                                                        status,
+                                                    }
+                                                }).collect();
+                                                // active/valid should be last in the list to be rendered correctly
+                                                data.sort_by_key(|turn| {
+                                                    turn.status != TurnLaneDirectionStatus::None
+                                                });
+                                                data
+                                            }).collect()
                                         }).unwrap_or(vec![]);
 
                                         let linear_ref = match man.type_ {
