@@ -28,6 +28,7 @@ struct VertexOutput {
     @location(3) @interpolate(flat) aspect_f_len: vec2f,
     @location(4) @interpolate(flat) day_night_alpha: f32,
     @location(5) @interpolate(flat) cam_in_globe: vec3f,
+    @location(6) @interpolate(flat) sun_projected: vec2f,
 }
 
 @vertex
@@ -69,6 +70,12 @@ fn vs_main(
         out.aspect_f_len = vec2f(camera.inv_screen_size.y / camera.inv_screen_size.x, f_len);
         out.cam_in_globe = camera.camera_pos_in_globe.xyz;
         out.day_night_alpha = smoothstep(7.0, 10.0, length(out.cam_in_globe) * f_len);
+
+        // 23500 - Earth-Sun distance in R of earth
+        let sun_projected = camera.globe_view_proj * vec4f(23500.0 * normalize(camera.sun_dir_in_globe.xyz), 0.0);
+        if(sun_projected.z >= 0.0) {
+            out.sun_projected = vec2f((sun_projected.x * out.aspect_f_len.x) / sun_projected.w, -sun_projected.y / sun_projected.w);
+        }
     }
 
     return out;    
@@ -118,17 +125,21 @@ fn sphIntersect(ro: vec3<f32>, rd: vec3<f32>) -> f32 {
     return -b - sqrt(h);
 }
 
+const SUN_FULL_COLOR = vec3f(1.0);
+const SUN_HOR_COLOR = vec3f(1.00f, 0.72f, 0.38f);
 @fragment
 fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
     let ndc = in.uv * 2.0 - 1.0;
-
+    let ndc_aspect_fixed = ndc * vec2f(in.aspect_f_len.x, 1.0);
     let d = length(ndc * camera.inv_ndc_globe_r);
+
+    let sun_color = sun_circle(ndc_aspect_fixed - in.sun_projected, 0.025, vec3f(1.0));
     if(d > 1.1) {
-        discard;
+        return sun_color;
     }
     var koef = 1.0;
     let ray_origin = in.cam_in_globe;
-    let ray_dir = camera.inv_globe_view * vec4f(ndc * vec2f(in.aspect_f_len.x, 1.0), -in.aspect_f_len.y, 0.0);
+    let ray_dir = camera.inv_globe_view * vec4f(ndc_aspect_fixed, -in.aspect_f_len.y, 0.0);
     let ray_dir_norm = normalize(ray_dir.xyz);
     if (d <= 1.0) {
         let t = sphIntersect(ray_origin, ray_dir_norm);
@@ -160,7 +171,22 @@ fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
     let outer_rgb = glow_color.rgb * outer_light_koef;
     let outer_alpha = 0.85 * glow * clamp(outer_light_koef * 3.5, 0.0, 1.0);
 
-    return vec4f(outer_rgb, outer_alpha);
+    let outer_color = vec4f(outer_rgb, outer_alpha);
+    if(sun_color.a > 0.0) {
+        let hor_adjusted_sun_color = mix(SUN_HOR_COLOR, SUN_FULL_COLOR, smoothstep(1.05, 1.1, d));
+        let mixed_with_sun = vec4f(mix(hor_adjusted_sun_color.rgb, outer_color.rgb, outer_color.a), max(sun_color.a, outer_color.a));
+        return mixed_with_sun;
+    } else {
+        return outer_color;
+    }
+}
+
+fn sun_circle(st: vec2f, radius_outer: f32, color_outer: vec3f) -> vec4f {
+    let dist = length(st - vec2f(0.0));
+    let aa_width = fwidth(dist);
+
+    let cirlce_alpha0 = 1.0 - smoothstep(radius_outer - aa_width, radius_outer + aa_width, dist);
+    return vec4f(color_outer, cirlce_alpha0);
 }
 
 const tex_border_x: f32 = 0.01;
