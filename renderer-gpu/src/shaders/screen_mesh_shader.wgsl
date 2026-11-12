@@ -73,7 +73,9 @@ fn vs_main(
 
         // 23500 - Earth-Sun distance in R of earth
         let sun_projected = camera.globe_view_proj * vec4f(23500.0 * normalize(camera.sun_dir_in_globe.xyz), 0.0);
-        out.sun_projected = vec2f(sun_projected.x / sun_projected.w, -sun_projected.y / sun_projected.w);
+        if(sun_projected.z >= 0.0) {
+            out.sun_projected = vec2f((sun_projected.x * out.aspect_f_len.x) / sun_projected.w, -sun_projected.y / sun_projected.w);
+        }
     }
 
     return out;    
@@ -128,16 +130,16 @@ const SUN_HOR_COLOR = vec3f(1.00f, 0.72f, 0.38f);
 @fragment
 fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
     let ndc = in.uv * 2.0 - 1.0;
-
+    let ndc_aspect_fixed = ndc * vec2f(in.aspect_f_len.x, 1.0);
     let d = length(ndc * camera.inv_ndc_globe_r);
 
-    let sun_color = borderer_circle(ndc * vec2f(in.aspect_f_len.x, 1.0) - in.sun_projected, 0.025, vec3f(1.0));
+    let sun_color = sun_circle(ndc_aspect_fixed - in.sun_projected, 0.025, vec3f(1.0));
     if(d > 1.1) {
         return sun_color;
     }
     var koef = 1.0;
     let ray_origin = in.cam_in_globe;
-    let ray_dir = camera.inv_globe_view * vec4f(ndc * vec2f(in.aspect_f_len.x, 1.0), -in.aspect_f_len.y, 0.0);
+    let ray_dir = camera.inv_globe_view * vec4f(ndc_aspect_fixed, -in.aspect_f_len.y, 0.0);
     let ray_dir_norm = normalize(ray_dir.xyz);
     if (d <= 1.0) {
         let t = sphIntersect(ray_origin, ray_dir_norm);
@@ -179,7 +181,7 @@ fn fs_main_globe_glow(in: VertexOutput) -> @location(0) vec4<f32> {
     }
 }
 
-fn borderer_circle(st: vec2f, radius_outer: f32, color_outer: vec3f) -> vec4f {
+fn sun_circle(st: vec2f, radius_outer: f32, color_outer: vec3f) -> vec4f {
     let dist = length(st - vec2f(0.0));
     let aa_width = fwidth(dist);
 
