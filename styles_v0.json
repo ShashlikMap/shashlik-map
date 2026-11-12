@@ -44,6 +44,17 @@
     }
   },
   {
+    "id": "poi_lanes_inactive",
+    "render_style": {
+      "Fill": {
+        "r": 0.29,
+        "g": 0.29,
+        "b": 0.29,
+        "a": 1.0
+      }
+    }
+  },
+  {
     "id": "poi_traffic_light",
     "render_style": {
       "Fill": {

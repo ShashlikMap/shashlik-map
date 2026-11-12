@@ -1,3 +1,4 @@
+use std::cmp::PartialEq;
 use glam::DVec3;
 use lyon::geom::euclid::{Box2D, point2};
 use lyon::path::builder::BorderRadii;
@@ -11,9 +12,22 @@ use renderer_common::render_group::RenderGroup;
 use renderer_common::style_id::StyleId;
 use valhalla_client::route::{TurnLaneDirection};
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub(crate) enum TurnLaneDirectionStatus {
+    None,
+    Valid,
+    Active
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub(crate) struct TurnLaneDirectionWithStatus {
+    pub dir: TurnLaneDirection,
+    pub status: TurnLaneDirectionStatus
+}
+
 pub(crate) struct LanesInfo {
     pub pos: DVec3,
-    pub dirs: Vec<Vec<TurnLaneDirection>>,
+    pub dirs: Vec<Vec<TurnLaneDirectionWithStatus>>,
 }
 
 pub(crate) struct LanesGroup {
@@ -22,21 +36,21 @@ pub(crate) struct LanesGroup {
 }
 
 impl LanesGroup {
-    fn convert_svg(dir: &TurnLaneDirection) -> Option<Svg> {
+    fn convert_svg(turn: TurnLaneDirectionWithStatus) -> Option<(TurnLaneDirectionWithStatus, Svg)> {
 
-        match dir {
+        match turn.dir {
             TurnLaneDirection::Empty => None,
             TurnLaneDirection::None => None,
-            TurnLaneDirection::Through => Some(include_svg!("../../svg/turn_through.svg")),
-            TurnLaneDirection::SharpLeft => Some(include_svg!("../../svg/turn_sharp_left.svg")),
-            TurnLaneDirection::Left => Some(include_svg!("../../svg/turn_left.svg")),
-            TurnLaneDirection::SlightLeft => Some(include_svg!("../../svg/turn_slight_left.svg")),
-            TurnLaneDirection::SlightRight => Some(include_svg!("../../svg/turn_slight_right.svg")),
-            TurnLaneDirection::Right => Some(include_svg!("../../svg/turn_right.svg")),
-            TurnLaneDirection::SharpRight => Some(include_svg!("../../svg/turn_sharp_right.svg")),
-            TurnLaneDirection::Reverse => Some(include_svg!("../../svg/turn_reverse.svg")),
-            TurnLaneDirection::MergeToLeft => Some(include_svg!("../../svg/turn_merge_to_left.svg")),
-            TurnLaneDirection::MergeToRight => Some(include_svg!("../../svg/turn_merge_to_right.svg")),
+            TurnLaneDirection::Through => Some((turn, include_svg!("../../svg/turn_through.svg"))),
+            TurnLaneDirection::SharpLeft => Some((turn,include_svg!("../../svg/turn_sharp_left.svg"))),
+            TurnLaneDirection::Left => Some((turn,include_svg!("../../svg/turn_left.svg"))),
+            TurnLaneDirection::SlightLeft => Some((turn,include_svg!("../../svg/turn_slight_left.svg"))),
+            TurnLaneDirection::SlightRight => Some((turn,include_svg!("../../svg/turn_slight_right.svg"))),
+            TurnLaneDirection::Right => Some((turn,include_svg!("../../svg/turn_right.svg"))),
+            TurnLaneDirection::SharpRight => Some((turn,include_svg!("../../svg/turn_sharp_right.svg"))),
+            TurnLaneDirection::Reverse => Some((turn,include_svg!("../../svg/turn_reverse.svg"))),
+            TurnLaneDirection::MergeToLeft => Some((turn,include_svg!("../../svg/turn_merge_to_left.svg"))),
+            TurnLaneDirection::MergeToRight => Some((turn,include_svg!("../../svg/turn_merge_to_right.svg"))),
         }
     }
 }
@@ -52,10 +66,17 @@ impl<T: CanvasApi> RenderGroup<T> for LanesGroup {
                 .map(|lane_dirs| {
                     lane_dirs
                         .iter()
-                        .flat_map(|dir| Self::convert_svg(dir))
-                        .map(|svg| IconData {
-                            id: svg.0,
-                            icon_type: IconType::SvgBinary(Some(StyleId::new("poi_lanes")), svg),
+                        .flat_map(|turn| Self::convert_svg(*turn))
+                        .map(|(turn, svg)| {
+                            let dir_style = if turn.status != TurnLaneDirectionStatus::None {
+                                StyleId::new("poi_lanes")
+                            } else {
+                                StyleId::new("poi_lanes_inactive")
+                            };
+                            IconData {
+                                id: svg.0,
+                                icon_type: IconType::SvgBinary(Some(dir_style), svg),
+                            }
                         })
                         .collect()
                 })
