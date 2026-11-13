@@ -103,14 +103,15 @@ impl MvtSchemeParser {
             crate::tiles::parsers::mvt_scheme_parser::MvtPropHandler::new("building", |handler| {
                 // TODO skip for certain zoom levels
                 let height: i64 = handler.get_prop_value("height");
-                // fyi, so far we don't support
                 let height_min: i64 = handler.get_prop_value("height_min");
+
                 let underground: bool = handler.get_prop_value("underground");
-                (!underground && height_min == 0).then_some(ShashlikMapGeomObject {
+                (!underground && height > height_min).then_some(ShashlikMapGeomObject {
                     id: -1,
                     // fyi, 3 - koef to convert map tiler height to osm levels, 2 - feature processor multiplier
                     kind: ShashlikMapGeomObjectKind::Building(
-                        ((height / (3 * 2)) as u16).clamp(0, 100),
+                        ((height_min as f32 / (3f32 * 2f32)).floor() as u16).clamp(0, 100),
+                        ((height as f32 / (3f32 * 2f32)).ceil() as u16).clamp(0, 100),
                     ),
                 })
             });

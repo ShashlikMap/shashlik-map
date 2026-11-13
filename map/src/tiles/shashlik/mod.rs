@@ -106,7 +106,7 @@ impl From<MapGeomObjectKind> for ShashlikMapGeomObjectKind {
     fn from(value: MapGeomObjectKind) -> Self {
         match value {
             MapGeomObjectKind::Nature(data) => ShashlikMapGeomObjectKind::Nature(data.into()),
-            MapGeomObjectKind::Building(data) => ShashlikMapGeomObjectKind::Building(data),
+            MapGeomObjectKind::Building(data) => ShashlikMapGeomObjectKind::Building(0, data),
             MapGeomObjectKind::Way(data) => ShashlikMapGeomObjectKind::Way(data.into()),
             MapGeomObjectKind::AdminLine => ShashlikMapGeomObjectKind::AdminLine,
             MapGeomObjectKind::Poi(data) => ShashlikMapGeomObjectKind::Poi(data.into())

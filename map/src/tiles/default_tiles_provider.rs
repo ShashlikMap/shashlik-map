@@ -155,7 +155,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
                     );
                 }
                 MapGeometry::Poly(poly) => {
-                    let is_building = matches!(obj_type.kind, ShashlikMapGeomObjectKind::Building(_));
+                    let is_building = matches!(obj_type.kind, ShashlikMapGeomObjectKind::Building { .. });
                     let is_water = matches!(obj_type.kind, ShashlikMapGeomObjectKind::Nature(ShashlikNatureKind::Water));
                     let is_visible = !cfg!(target_os = "linux")
                         || zoom_level == MAX_ZOOM_LEVEL

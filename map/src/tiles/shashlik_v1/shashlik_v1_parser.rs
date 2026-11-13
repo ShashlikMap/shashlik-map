@@ -125,7 +125,7 @@ impl TileParser<DecodedTile> for ShashlikV1Parser {
                 AreaKind::Water => ShashlikMapGeomObjectKind::Nature(ShashlikNatureKind::Water),
                 AreaKind::Forest => ShashlikMapGeomObjectKind::Nature(ShashlikNatureKind::Forest),
                 AreaKind::Grass => ShashlikMapGeomObjectKind::Nature(ShashlikNatureKind::Park),
-                AreaKind::Building => ShashlikMapGeomObjectKind::Building(area.floors as u16),
+                AreaKind::Building => ShashlikMapGeomObjectKind::Building(0, area.floors as u16),
                 AreaKind::Land => continue,
             };
 

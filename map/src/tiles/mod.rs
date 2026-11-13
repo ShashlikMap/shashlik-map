@@ -20,7 +20,7 @@ pub struct ShashlikMapGeomObject {
 #[derive(Debug, Clone, PartialEq, Ord, Eq, Hash, PartialOrd)]
 pub enum ShashlikMapGeomObjectKind {
     Nature(ShashlikNatureKind),
-    Building(u16),
+    Building(u16, u16),
     Way(ShashlikWayInfo),
     AdminLine,
     Poi(ShashlikMapPointInfo),
