@@ -36,7 +36,7 @@ impl Default for ShashlikFeatureProcessor {
                         _ => true,
                     }
                 }
-                ShashlikMapGeomObjectKind::Building(_) => zoom_level >= 13,
+                ShashlikMapGeomObjectKind::Building { .. } => zoom_level >= 13,
                 _ => true,
             }
         })
@@ -297,14 +297,14 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     };
                     Some((style_id, -100, GeometryType::Polygon, None))
                 }
-                ShashlikMapGeomObjectKind::Building(_) => {
+                ShashlikMapGeomObjectKind::Building { .. } => {
                     Some((StyleId::new("building"), -98, GeometryType::Polygon, None))
                 }
                 _ => None,
             } {
                 // a small trick to get rid of many coplanar walls issues
                 // fyi, it might be better to skip it for CPU only devices
-                if matches!(kind, ShashlikMapGeomObjectKind::Building(_)) {
+                if matches!(kind, ShashlikMapGeomObjectKind::Building { .. }) {
                     if line.0.len() % 2 == 0 {
                         line.scale_mut(1.01);
                     }
@@ -316,9 +316,10 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     path_builder.line_to(point(p.x, p.y));
                 }
 
+
                 // fyi, we need to close the building path to properly build a closed stroke
                 // also if interiors are not empty!
-                let end_with_closing = matches!(kind, ShashlikMapGeomObjectKind::Building(_)) || !interiors.is_empty();
+                let end_with_closing = matches!(kind, ShashlikMapGeomObjectKind::Building { .. }) || !interiors.is_empty();
                 path_builder.end(end_with_closing);
 
                 for interior in interiors {
@@ -333,7 +334,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     }
                 }
 
-                if let ShashlikMapGeomObjectKind::Building(level) = kind {
+                if let ShashlikMapGeomObjectKind::Building(min_level, level) = kind {
                     let building_path = path_builder.build();
 
                     let mut styled_range_info = StyledRangeInfo::new(1, true);
@@ -345,23 +346,26 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                             level
                         };
 
-                        styled_range_info.scale_filter = Some(|scale| scale <= 0.8f32);
-                        geometry_data.push(GeometryData::Shape(ShapeData {
-                            path: building_path.clone(),
-                            geometry_type: GeometryType::Polyline(PolylineOptions {
-                                width: 0.8,
-                                line_cap: LineCap::Butt,
-                                line_join: LineJoin::Round,
-                                tolerance: 0.02,
-                            }),
-                            style_id: StyleId::new("building_stand"),
-                            index_layer_level: -99,
-                            styled_range_info: styled_range_info.clone(),
-                        }));
-
+                        if min_level == 0 {
+                            // only for building on the ground level
+                            styled_range_info.scale_filter = Some(|scale| scale <= 0.8f32);
+                            geometry_data.push(GeometryData::Shape(ShapeData {
+                                path: building_path.clone(),
+                                geometry_type: GeometryType::Polyline(PolylineOptions {
+                                    width: 0.8,
+                                    line_cap: LineCap::Butt,
+                                    line_join: LineJoin::Round,
+                                    tolerance: 0.02,
+                                }),
+                                style_id: StyleId::new("building_stand"),
+                                index_layer_level: -99,
+                                styled_range_info: styled_range_info.clone(),
+                            }));
+                        }
 
                         geometry_data.push(GeometryData::ExtrudedPolygon(ExtrudedPolygonData {
                             path: building_path.clone(),
+                            min_height: min_level as f32 * 2.0,
                             height: level as f32 * 2.0,
                         }));
                     }
@@ -376,7 +380,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                     }));
                 } else {
                     let double_style = match &kind {
-                        ShashlikMapGeomObjectKind::Building(_) => {
+                        ShashlikMapGeomObjectKind::Building { .. } => {
                             panic!("Buildings should not be processed here");
                         }
                         ShashlikMapGeomObjectKind::Nature(_) => {

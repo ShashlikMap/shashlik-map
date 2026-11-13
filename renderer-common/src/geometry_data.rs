@@ -92,6 +92,7 @@ pub struct ShapeData {
 
 pub struct ExtrudedPolygonData {
     pub path: Path,
+    pub min_height: f32,
     pub height: f32,
 }
 

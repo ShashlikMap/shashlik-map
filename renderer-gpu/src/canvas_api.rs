@@ -216,6 +216,8 @@ impl GpuCanvasApi {
     pub fn extruded_polygon(&mut self, data: ExtrudedPolygonData) {
         let path = &data.path;
         let height = data.height;
+        let min_height = data.min_height;
+       
         let mut geometry_buffer: VertexBuffers<MeshVertex, u32> = VertexBuffers::new();
         Self::tessellate_fill_path(path, &mut geometry_buffer, |vertex: FillVertex| {
             MeshVertex {
@@ -234,11 +236,11 @@ impl GpuCanvasApi {
                     .into();
 
                 geometry_buffer.vertices.push(MeshVertex {
-                    position: [p1.x, p1.y, 0.0],
+                    position: [p1.x, p1.y, min_height],
                     normals: normal,
                 });
                 geometry_buffer.vertices.push(MeshVertex {
-                    position: [p2.x, p2.y, 0.0],
+                    position: [p2.x, p2.y, min_height],
                     normals: normal,
                 });
 
