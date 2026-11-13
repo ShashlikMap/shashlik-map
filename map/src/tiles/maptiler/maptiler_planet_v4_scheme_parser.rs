@@ -110,8 +110,8 @@ impl MvtSchemeParser {
                     id: -1,
                     // fyi, 3 - koef to convert map tiler height to osm levels, 2 - feature processor multiplier
                     kind: ShashlikMapGeomObjectKind::Building(
-                        ((height_min / (3 * 2)) as u16).clamp(0, 100),
-                        ((height / (3 * 2)) as u16).clamp(0, 100),
+                        ((height_min as f32 / (3f32 * 2f32)).floor() as u16).clamp(0, 100),
+                        ((height as f32 / (3f32 * 2f32)).ceil() as u16).clamp(0, 100),
                     ),
                 })
             });
