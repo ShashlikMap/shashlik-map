@@ -4,6 +4,7 @@ use crate::mesh_layers::RenderableLayer;
 use crate::mesh_layers::layers::Layers;
 use crate::pass_nodes::{PassNode, BACKGROUND_ATTACHMENT_COLOR, GLOBE_BACKGROUND_ATTACHMENT_COLOR};
 use crate::pipelines::mesh_pipeline::MeshPipeline;
+use crate::pipelines::raster_pipeline::RasterPipeline;
 use crate::pipelines::screen_mesh_pipeline::{ScreenMeshPipeline, TextureInfo};
 use crate::pipelines::shape_pipeline::ShapePipeline;
 use crate::pipelines::x_real_mesh_pipeline::XRealMeshShaderPipeline;
@@ -27,6 +28,7 @@ pub(crate) struct MainPassNode {
     post_process_screen_mesh_pipeline: Option<ScreenMeshPipeline>,
     globe_pipeline: ScreenMeshPipeline,
     globe_glow_pipeline: ScreenMeshPipeline,
+    raster_pipeline: RasterPipeline,
 }
 
 trait ShapeFeatureLayerRenderer {
@@ -133,6 +135,8 @@ impl MainPassNode {
         );
         layers.globe_layer.set_texture(None, (0.0, 0.0), global_context, buffer_pool);
 
+        let raster_pipeline = RasterPipeline::new(global_context, &layers.raster_layer.texture_bind_group_layout);
+
         Self {
             msaa_texture_view: create_common_texture(size, SAMPLE_COUNT, global_context),
             depth_texture_view: create_depth_texture(
@@ -150,7 +154,8 @@ impl MainPassNode {
             preview_screen_mesh_pipeline,
             post_process_screen_mesh_pipeline,
             globe_pipeline,
-            globe_glow_pipeline
+            globe_glow_pipeline,
+            raster_pipeline,
         }
     }
 }
@@ -214,6 +219,9 @@ impl PassNode for MainPassNode {
             &mut self.default_shape_pipeline,
             global_context,
         );
+
+        // Rain radar etc. lies on the ground: on top of the ground shapes, below buildings and POIs
+        layers.raster_layer.render(&mut render_pass, &self.raster_pipeline, global_context);
 
         if global_context.is_globe_view() && global_context.is_globe_visible() {
             layers.globe_layer.render(&mut render_pass,

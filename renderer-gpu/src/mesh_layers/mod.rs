@@ -10,6 +10,7 @@ pub mod layers;
 pub mod screen_shape_layer;
 pub mod ortho_mesh_layer;
 pub mod feature_layers;
+pub mod raster_layer;
 
 #[derive(Default)]
 pub struct LayerAttribute {

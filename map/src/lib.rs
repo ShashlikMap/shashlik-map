@@ -32,6 +32,7 @@ use log::error;
 use reqwest::Url;
 use renderer_common::{CanvasApi, RendererApi, Renderer, RendererUpdateData, MAP_SIZE, GLOBE_SCALE};
 use crate::overlay::overlay::Overlay;
+use crate::radar::radar_provider::RadarProvider;
 use crate::styles::{DashStyle, FeatureStyleType};
 use crate::styles::style_loader::StyleLoader;
 use crate::transition_2d_3d_helper::Transition2d3dHelper;
@@ -45,6 +46,7 @@ pub mod route;
 pub mod tiles;
 mod transition_2d_3d_helper;
 pub mod overlay;
+mod radar;
 
 mod styles;
 
@@ -110,6 +112,7 @@ pub struct ShashlikMap<R: Renderer, T: TilesProvider> {
     world_width_on_screen: f64,
     world_height_on_screen: f64,
     anim_config: AnimConfig,
+    radar: RadarProvider,
 }
 
 enum MapEvent {
@@ -162,6 +165,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         let transition_2d_3d_helper = Transition2d3dHelper::new(zero_zoom_level_loaded.clone());
         Self::run_tiles(renderer.api(), zero_zoom_level_loaded.clone(), tiles_stream);
         Self::load_styles(renderer.api());
+        let radar = RadarProvider::new(renderer.api());
         let overlay = Overlay::new("custom_overlay_layer".to_string(), renderer.api());
         overlay.puck_config(true);
 
@@ -198,6 +202,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
             world_width_on_screen: 0.0,
             world_height_on_screen: 0.0,
             anim_config: Default::default(),
+            radar,
         };
         map.set_lon_lat_bearing(initial_coord.x, initial_coord.y, Some(0f32));
 
@@ -367,6 +372,7 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         let zoom_level = self.camera.scale();
         let zoom_level = ((zoom_level.log2() - 1.0) as i32).max(0);
         let zoom_level = MAX_ZOOM_LEVEL - zoom_level;
+        self.radar.update_view(&polygon, zoom_level);
         self.tiles_provider.load(polygon, zoom_level);
     }
 

@@ -1,6 +1,7 @@
 use crate::draw_commands::mesh2d_draw_command::{Mesh2dCommandBatch, Mesh2dDrawCommand};
 use crate::draw_commands::mesh3d_draw_command::Mesh3dDrawCommand;
 use crate::draw_commands::text_draw_command::TextDrawCommand;
+use crate::draw_commands::raster_draw_command::RasterDrawCommand;
 use crate::draw_commands::{DrawCommand, DrawCommands};
 use crate::mesh::mesh::StyledRange;
 use crate::styles::style_store::StyleStore;
@@ -126,6 +127,11 @@ impl GpuCanvasApi {
             }
             GeometryData::Text(data) => {
                 self.text(data);
+            }
+            GeometryData::Raster(data) => {
+                if let Some(command) = RasterDrawCommand::decode(&data.encoded, data.world_size) {
+                    self.draw_commands.push(Box::new(command));
+                }
             }
         }
     }

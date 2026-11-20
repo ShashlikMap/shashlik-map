@@ -161,3 +161,31 @@ impl VertexAttrib for ScreenShapeInstanceInput {
     const STEP_MODE: VertexStepMode = wgpu::VertexStepMode::Instance;
 }
 
+
+/// Vertex of the raster tile grid, position inside a tile in [0..1]
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct RasterVertex {
+    pub uv: [f32; 2],
+}
+
+impl VertexAttrib for RasterVertex {
+    const ATTRIBUTES: &[VertexAttribute] = &wgpu::vertex_attr_array![0 => Float32x2];
+
+    const STEP_MODE: VertexStepMode = wgpu::VertexStepMode::Vertex;
+}
+
+/// Per raster tile instance: top-left corner relative to the camera offset and tile size
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct RasterInstance {
+    pub origin: [f32; 2],
+    pub size: f32,
+}
+
+impl VertexAttrib for RasterInstance {
+    const ATTRIBUTES: &[VertexAttribute] =
+        &wgpu::vertex_attr_array![1 => Float32x2, 2 => Float32];
+
+    const STEP_MODE: VertexStepMode = wgpu::VertexStepMode::Instance;
+}

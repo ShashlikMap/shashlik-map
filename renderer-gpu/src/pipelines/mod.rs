@@ -10,6 +10,7 @@ pub mod screen_mesh_pipeline;
 pub mod fill_shadow_map_pipeline;
 pub mod g_buf_pipeline;
 pub mod x_real_mesh_pipeline;
+pub mod raster_pipeline;
 
 // Keep it in sync with one in mesh_shader.wgsl
 // TODO Can we actually generate wgsl file using enum?..

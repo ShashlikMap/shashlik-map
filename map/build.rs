@@ -5,4 +5,9 @@ fn main() {
     } else {
         println!("Error: MAPTILER_API_KEY environment variable or .env file is missing!");
     }
+    if let Ok(key) = std::env::var("RAINBOW_API_KEY") {
+        println!("cargo:rustc-env=RAINBOW_API_KEY={}", key);
+    } else {
+        println!("cargo:warning=RAINBOW_API_KEY is missing, rain radar layer will be disabled");
+    }
 }

@@ -1,6 +1,6 @@
 use wesl::{CompileOptions, Compiler, Feature};
 
-const SHADERS: [&str; 7] = [
+const SHADERS: [&str; 8] = [
     "shape_shader",
     "g_buf_frag_shader",
     "mesh_shader",
@@ -8,6 +8,7 @@ const SHADERS: [&str; 7] = [
     "shape_culling",
     "ssao",
     "x_real_mesh_shader",
+    "raster_shader",
 ];
 
 fn main() {
