@@ -3,7 +3,7 @@ use osm::map::{LayerKind, LineKind};
 use std::cmp::Ordering;
 
 pub mod default_tiles_provider;
-mod grid_divider;
+pub(crate) mod grid_divider;
 pub mod maptiler;
 pub mod shashlik;
 pub mod shashlik_v1;

@@ -1,7 +1,6 @@
 pub mod mesh2d_draw_command;
 pub mod mesh3d_draw_command;
 pub mod text_draw_command;
-pub mod raster_draw_command;
 
 use crate::buffer_pool::BufferPool;
 use crate::global_context::GlobalContext;

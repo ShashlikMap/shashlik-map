@@ -3,7 +3,6 @@ use crate::mesh_layers::BaseMeshLayer;
 use crate::mesh_layers::feature_layers::{FeatureLayerTag, FeatureLayers, NameLayerTag};
 use crate::mesh_layers::general_mesh_layer::GeneralMeshLayer;
 use crate::mesh_layers::ortho_mesh_layer::OrthoMeshLayer;
-use crate::mesh_layers::raster_layer::RasterLayer;
 use crate::mesh_layers::screen_shape_layer::ScreenShapeLayer;
 use crate::mesh_layers::text_mesh_layer::TextMeshLayer;
 use crate::vertex_attrs::{GeneralInstanceInput, ShapeInstanceInput, ScreenShapeInstanceInput};
@@ -31,7 +30,6 @@ pub(crate) struct Layers {
     pub preview_mesh_layer: OrthoMeshLayer<ScreenShapeInstanceInput>,
     pub post_process_layer: OrthoMeshLayer<ScreenShapeInstanceInput>,
     pub globe_layer: OrthoMeshLayer<ScreenShapeInstanceInput>,
-    pub raster_layer: RasterLayer,
 }
 
 impl Layers {
@@ -72,7 +70,6 @@ impl Layers {
             preview_mesh_layer: OrthoMeshLayer::new(false, true, Into::into),
             post_process_layer: OrthoMeshLayer::new(true, false, Into::into),
             globe_layer: OrthoMeshLayer::new(true, false, Into::into),
-            raster_layer: RasterLayer::new(global_context),
         }
     }
 
@@ -104,7 +101,7 @@ impl Layers {
         self.feature_layers.get_layer(tag)
     }
 
-    fn all_layers(&mut self) -> [&mut dyn BaseMeshLayer; 10] {
+    fn all_layers(&mut self) -> [&mut dyn BaseMeshLayer; 9] {
         [
             &mut self.shape_layer,
             &mut self.mesh_layer,
@@ -115,7 +112,6 @@ impl Layers {
             &mut self.feature_layers,
             &mut self.preview_mesh_layer,
             &mut self.globe_layer,
-            &mut self.raster_layer,
         ]
     }
 }

@@ -80,14 +80,6 @@ pub enum GeometryData {
     ExtrudedPolygon(ExtrudedPolygonData),
     Svg(IconShapeData),
     Text(TextData),
-    Raster(RasterData),
-}
-
-/// Encoded (PNG) raster tile placed in world space. The tile's top-left corner comes from the
-/// render group's `SpatialData::transform`, and it covers `world_size` x `world_size` world units.
-pub struct RasterData {
-    pub encoded: Vec<u8>,
-    pub world_size: f32,
 }
 
 pub struct ShapeData {

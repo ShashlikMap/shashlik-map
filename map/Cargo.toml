@@ -46,6 +46,9 @@ tokio = "1.53.1"
 serde = { version = "1.0.229", features = ["derive"] }
 thiserror = "2.0.20"
 error-stack = { workspace = true }
+# rain radar: decode raw dBZ tiles and build contour polygons
+image = { version = "0.24", default-features = false, features = ["png"] }
+contour = { version = "0.13.1", features = ["f32"] }
 
 [build-dependencies]
 anyhow = "1.0"

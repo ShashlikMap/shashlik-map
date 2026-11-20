@@ -29,8 +29,16 @@ const MAP_EXTENT: f64 = 8388608.0;
 pub const MAP_SIZE: f64 = MAP_EXTENT * 2.0; // 16777216.0
 pub const GLOBE_R: f64 = MAP_SIZE / (2.0 * PI); // ~2670213.111
 
+pub const WEATHER_LAYER: &str = "weather_layer";
+
 pub fn feature_layer_tags() -> Vec<WorldShapeFeatureLayerTag> {
     vec![
+        WorldShapeFeatureLayerTag {
+            name: WEATHER_LAYER,
+            single_instance_step: true,
+            on_ground: true,
+            ..Default::default()
+        },
         WorldShapeFeatureLayerTag {
             name: "kml_layer",
             ..Default::default()
@@ -62,7 +70,9 @@ pub struct WorldShapeFeatureLayerTag {
     pub vertex_shader: Option<&'static str>,
     pub indirect: bool,
     pub single_instance_step: bool,
-    pub after_poi: bool
+    pub after_poi: bool,
+    /// rendered right after the ground shapes, below 3D buildings and POIs
+    pub on_ground: bool,
 }
 
 pub struct RendererUpdateData {
