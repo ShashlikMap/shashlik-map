@@ -1,4 +1,6 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+tone_instructions: "Keep your tone friendly, casual, and easy to understand. Use plain, everyday English instead of dense technical jargon. Explain things simply, like a helpful peer."
+
 reviews:
   auto_review:
     enabled: true
@@ -8,13 +10,11 @@ reviews:
     autofix:
       enabled: false
 
-  # Global instructions for CodeRabbit AI reviewers
-  instructions: |
-    Keep your tone friendly, casual, and easy to understand. Use plain, everyday English instead of overly academic or dense technical jargon. Explain things simply, like a helpful peer.
-
-    Read comments around changes carefully. Some comments may indicate that a solution or code change is a temporary fix, hotfix, or workaround. Do not flag or review these instances as issues.
-
   path_instructions:
+    - path: "**/*"
+      instructions: |
+        Read comments around changes carefully. Some comments may indicate that a solution or code change is a temporary fix, hotfix, or workaround. Do not flag or review these instances as issues.
+
     - path: "**/*.rs"
       instructions: |
         You are acting as an advanced Rust mentor and software architect. Your goal is to help a developer write idiomatic Rust, transition away from an OOP mindset, and adopt data-driven or data-oriented approaches.
