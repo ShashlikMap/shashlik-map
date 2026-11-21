@@ -1,8 +1,8 @@
 use crate::MAX_ZOOM_LEVEL;
-use contour::ContourBuilder;
+use crate::tiles::reqwest_client::TilesReqwestClientBuilder;
+use contour::{ContourBuilder, Float};
 use geo::Scale;
 use geo_types::{LineString, Polygon};
-use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache, HttpCacheOptions};
 use image::ImageFormat;
 use lyon::geom::point;
 use lyon::path::Path;
@@ -11,11 +11,7 @@ use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData, Styl
 use renderer_common::style_id::StyleId;
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest_middleware::ClientWithMiddleware;
-use std::env;
-use std::time::Duration;
 use tokio::runtime::Runtime;
-
-const HTTP_CACHE_ENABLED: bool = true;
 
 pub struct RadarTileStore {
     tokio_rt: Runtime,
@@ -23,41 +19,22 @@ pub struct RadarTileStore {
 }
 
 impl RadarTileStore {
+    const RAINING_THRESHOLDS: [f32; 3] = [15.0, 30.0, 40.0];
+    const RAINING_STYLES: [&str; 3] = ["raining_light", "raining_moderate", "raining_heavy"];
+
+    const SNOWING_THRESHOLDS: [f32; 3] = [10.0, 20.0, 30.0];
+    const SNOWING_STYLES: [&str; 3] = ["snowing_light", "snowing_moderate", "snowing_heavy"];
+
     pub fn new() -> Self {
         let tokio_rt = Runtime::new().unwrap();
         let mut headers = HeaderMap::new();
-        // headers.insert(ORIGIN, HeaderValue::from_static("shashlikmap.com"));
+        let api_key = option_env!("RAINBOW_API_KEY").expect("RAINBOW_API_KEY should be set");
         headers.insert(
             "Ocp-Apim-Subscription-Key",
-            HeaderValue::from_static("8d36b1564c574de993ceb90bd5417ffa"),
+            HeaderValue::from_static(api_key),
         );
 
-        let client = reqwest::Client::builder()
-            .default_headers(headers)
-            .tcp_keepalive(std::time::Duration::from_secs(30))
-            .timeout(Duration::from_secs(10))
-            .build()
-            .unwrap();
-
-        let client_builder =
-            if !HTTP_CACHE_ENABLED || cfg!(target_os = "android") || cfg!(target_os = "ios") {
-                // fyi, We don't use http cache on mobile device at this moment
-                // It requires to pass a files/cache native folder
-                reqwest_middleware::ClientBuilder::new(client)
-            } else {
-                // fyi, keep in mind that the folder might be read-only. Let's ignore it for now.
-                let mut cache_dir =
-                    env::current_exe().expect("Failed to get current executable path");
-                cache_dir.pop();
-                cache_dir.push("radar-http-cache");
-                reqwest_middleware::ClientBuilder::new(client).with(Cache(HttpCache {
-                    mode: CacheMode::Default,
-                    manager: CACacheManager::new(cache_dir, false),
-                    options: HttpCacheOptions::default(),
-                }))
-            };
-
-        let client = client_builder.build();
+        let client = TilesReqwestClientBuilder::create(Some("radar-http-cache"), headers);
 
         Self { tokio_rt, client }
     }
@@ -68,10 +45,11 @@ impl RadarTileStore {
         y: i32,
         z: i32,
     ) -> Result<Vec<u8>, reqwest_middleware::Error> {
+        // TODO SNAPSHOT
         let radar_bytes = self
             .client
             .get(format!(
-                "https://api.rainbow.ai/tiles/v1/precip/1795245000/0/{z}/{x}/{y}?color=dbz_u8"
+                "https://api.rainbow.ai/tiles/v1/precip/1795252800/0/{z}/{x}/{y}?color=dbz_u8"
             ))
             .send()
             .await?
@@ -79,10 +57,6 @@ impl RadarTileStore {
             .bytes()
             .await?
             .to_vec();
-        println!("radar size = {:?}", radar_bytes.len());
-        // if radar_bytes.len() > 0 {
-        //     std::fs::write("radar_output.png", &radar_bytes).expect("Failed to write PNG");
-        // }
 
         Ok(radar_bytes)
     }
@@ -92,20 +66,17 @@ impl RadarTileStore {
 
         let mut add_ring = |ring: &LineString<f32>| {
             let coords = &ring.0;
-            // A valid closed ring has at least 4 coordinates (3 unique + 1 closing)
             if coords.len() < 4 {
                 return;
             }
 
             builder.begin(point(coords[0].x, coords[0].y));
-            // Skip the last coordinate since builder.close() closes the loop
             for coord in &coords[1..coords.len() - 1] {
                 builder.line_to(point(coord.x, coord.y));
             }
             builder.close();
         };
 
-        // Add outer boundary and any holes
         add_ring(poly.exterior());
         for hole in poly.interiors() {
             add_ring(hole);
@@ -115,118 +86,105 @@ impl RadarTileStore {
     }
 
     pub(crate) fn load(&self, tile_key: &TileKey) -> Vec<GeometryData> {
-        let mut ret = vec![];
-        let zl = tile_key.zoom_level.min(12);
-        let zf = (tile_key.zoom_level - 12).max(0);
-
-        // let zl = tile_key.zoom_level.min(12);
-        // // if tile_key.zoom_level > 12 {
-        // //     return ret;
-        // // }
-        //
+        let mut geometry_data = vec![];
+        let z_limited = tile_key.zoom_level.min(12);
+        let z_diff = (tile_key.zoom_level - 12).max(0);
 
         let bytes = self
             .tokio_rt
-            .block_on(self.fetch_tile_inner(tile_key.tile_x >> zf, tile_key.tile_y >> zf, zl))
+            .block_on(self.fetch_tile_inner(
+                tile_key.tile_x >> z_diff,
+                tile_key.tile_y >> z_diff,
+                z_limited,
+            ))
             .unwrap_or_default();
         if let Ok(image) = image::load_from_memory_with_format(bytes.as_slice(), ImageFormat::Png) {
-            let sub_size = 256u32 >> zf;
-            let mask = (1i32 << zf) - 1;
+            let sub_size = 256u32 >> z_diff;
+            let mask = (1i32 << z_diff) - 1;
             let x0 = ((tile_key.tile_x & mask) as u32) * sub_size;
             let y0 = ((tile_key.tile_y & mask) as u32) * sub_size;
 
             let sub = image::imageops::crop_imm(&image, x0, y0, sub_size, sub_size);
 
             let image = sub.to_image();
-            let field_raining: Vec<_> = image
+
+            let (field_raining, field_snowing): (Vec<_>, Vec<_>) = image
                 .pixels()
                 .map(|pixel| {
                     let [r, _, _, a] = pixel.0;
-                    let snowing = r & 128 == 128;
-                    if a == 0 || snowing {
-                        0f32
-                    } else {
-                        (r & 127) as f32 - 32.0
+                    if a == 0 {
+                        return (0.0, 0.0);
                     }
-                })
-                .collect();
-            let field_snowing: Vec<_> = image
-                .pixels()
-                .map(|pixel| {
-                    let [r, _, _, a] = pixel.0;
                     let snowing = r & 128 == 128;
-                    if a == 0 || !snowing {
-                        0f32
-                    } else {
-                        (r & 127) as f32 - 32.0
-                    }
+                    let v = (r & 127) as f32 - 32.0;
+                    if snowing { (0f32, v) } else { (v, 0.32) }
                 })
-                .collect();
+                .unzip();
 
-            let factor = 2.0f32.powi((MAX_ZOOM_LEVEL - zl + 1) as i32);
+            let scale_factor = 2.0f32.powi(MAX_ZOOM_LEVEL - z_limited + 1);
 
-            let cc = ContourBuilder::new(sub_size as usize, sub_size as usize, true);
-            let hh: Vec<_> = cc
-                .contours(field_raining.as_slice(), &[15.0, 30.0, 40.0])
-                .unwrap_or_default()
-                .into_iter()
-                .map(|c| {
-                    let (poly, th) = c.into_inner();
-                    (th, poly.scale_around_point(factor, factor, (0f32, 0f32)).0)
-                })
-                .collect();
-            let hh2: Vec<_> = cc
-                .contours(field_snowing.as_slice(), &[10.0, 20.0, 30.0])
-                .unwrap_or_default()
-                .into_iter()
-                .map(|c| {
-                    let (poly, th) = c.into_inner();
-                    (th, poly.scale_around_point(factor, factor, (0f32, 0f32)).0)
-                })
-                .collect();
-
-            hh.into_iter().for_each(|(th, vv)| {
-                vv.iter().for_each(|vv| {
-                    let path = Self::geo_polygon_to_lyon_path(&vv);
-                    let style_id = if th == 15.0 {
-                        StyleId::new("raining_light")
-                    } else if th == 30.0 {
-                        StyleId::new("raining_moderate")
-                    } else {
-                        StyleId::new("raining_heavy")
-                    };
-                    ret.push(GeometryData::Shape(ShapeData {
-                        path,
-                        geometry_type: GeometryType::Polygon,
-                        style_id,
-                        index_layer_level: 0,
-                        styled_range_info: StyledRangeInfo::new(1, true),
-                        feature_layer_tag: Some("radar_tiles".to_string())
-                    }));
-                });
-            });
-
-            hh2.into_iter().for_each(|(th, vv)| {
-                vv.iter().for_each(|vv| {
-                    let path = Self::geo_polygon_to_lyon_path(&vv);
-                    let style_id = if th == 10.0 {
-                        StyleId::new("snowing_light")
-                    } else if th == 20.0 {
-                        StyleId::new("snowing_moderate")
-                    } else {
-                        StyleId::new("snowing_heavy")
-                    };
-                    ret.push(GeometryData::Shape(ShapeData {
-                        path,
-                        geometry_type: GeometryType::Polygon,
-                        style_id,
-                        index_layer_level: 0,
-                        styled_range_info: StyledRangeInfo::new(1, true),
-                        feature_layer_tag: Some("radar_tiles".to_string())
-                    }));
-                });
-            });
+            let contour_builder = ContourBuilder::new(sub_size as usize, sub_size as usize, true);
+            let raining_contours = Self::create_contour(
+                &contour_builder,
+                field_raining,
+                scale_factor,
+                &Self::RAINING_THRESHOLDS,
+                &Self::RAINING_STYLES,
+            );
+            let snowing_contours = Self::create_contour(
+                &contour_builder,
+                field_snowing,
+                scale_factor,
+                &Self::SNOWING_THRESHOLDS,
+                &Self::SNOWING_STYLES,
+            );
+            Self::fill_geometry_data(&mut geometry_data, raining_contours);
+            Self::fill_geometry_data(&mut geometry_data, snowing_contours);
         }
-        ret
+        geometry_data
+    }
+
+    fn fill_geometry_data(
+        data: &mut Vec<GeometryData>,
+        contours: Vec<(String, Vec<Polygon<Float>>)>,
+    ) {
+        contours.into_iter().for_each(|(style, polygons)| {
+            let style_id = StyleId::new(style);
+            polygons.iter().for_each(|vv| {
+                let path = Self::geo_polygon_to_lyon_path(&vv);
+                data.push(GeometryData::Shape(ShapeData {
+                    path,
+                    geometry_type: GeometryType::Polygon,
+                    style_id: style_id.clone(),
+                    index_layer_level: 0,
+                    styled_range_info: StyledRangeInfo::new(1, true),
+                    feature_layer_tag: Some("radar_tiles".to_string()),
+                }));
+            });
+        });
+    }
+
+    fn create_contour(
+        contour_builder: &ContourBuilder,
+        field: Vec<f32>,
+        scale_factor: f32,
+        thresholds: &[Float],
+        styles: &[&'static str],
+    ) -> Vec<(String, Vec<Polygon<Float>>)> {
+        contour_builder
+            .contours(field.as_slice(), thresholds)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|c| {
+                let (poly, th) = c.into_inner();
+                let index = thresholds.iter().position(|p| *p == th).unwrap();
+                let style = styles[index];
+                (
+                    style.to_string(),
+                    poly.scale_around_point(scale_factor, scale_factor, (0f32, 0f32))
+                        .0,
+                )
+            })
+            .collect()
     }
 }

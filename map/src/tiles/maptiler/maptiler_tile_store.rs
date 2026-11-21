@@ -3,18 +3,15 @@ use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesPro
 use crate::tiles::{ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapLinearRef, ShashlikMapPointObjectKind};
 use geo::{Distance, Euclidean, LineLocatePoint};
 use geo_types::Point;
-use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache, HttpCacheOptions};
 use log::error;
 use osm::map::MapGeometry;
 use osm::tiles::TileKey;
 use reqwest::header::{HeaderMap, HeaderValue, ORIGIN};
 use reqwest_middleware::ClientWithMiddleware;
-use std::env;
-use std::time::{Duration, SystemTime};
+use std::time::{SystemTime};
 use tokio::runtime::Runtime;
 use crate::tiles::parsers::mvt_scheme_parser::MvtSchemeParser;
-
-const HTTP_CACHE_ENABLED: bool = true;
+use crate::tiles::reqwest_client::TilesReqwestClientBuilder;
 
 pub struct MaptilerTileStore {
     tokio_rt: Runtime,
@@ -28,33 +25,7 @@ impl MaptilerTileStore {
         let tokio_rt = Runtime::new().unwrap();
         let mut headers = HeaderMap::new();
         headers.insert(ORIGIN, HeaderValue::from_static("shashlikmap.com"));
-
-        let client = reqwest::Client::builder()
-            .default_headers(headers)
-            .tcp_keepalive(std::time::Duration::from_secs(30))
-            .timeout(Duration::from_secs(10))
-            .build()
-            .unwrap();
-
-        let client_builder = if !HTTP_CACHE_ENABLED || cfg!(target_os = "android") || cfg!(target_os = "ios") {
-            // fyi, We don't use http cache on mobile device at this moment
-            // It requires to pass a files/cache native folder
-            reqwest_middleware::ClientBuilder::new(client)
-        } else {
-            // fyi, keep in mind that the folder might be read-only. Let's ignore it for now.
-            let mut cache_dir = env::current_exe().expect("Failed to get current executable path");
-            cache_dir.pop();
-            cache_dir.push("maptiler-http-cache");
-            reqwest_middleware::ClientBuilder::new(client)
-                .with(Cache(HttpCache {
-                    mode: CacheMode::Default,
-                    manager: CACacheManager::new(cache_dir, false),
-                    options: HttpCacheOptions::default(),
-                }))
-        };
-
-        let client = client_builder.build();
-
+        let client = TilesReqwestClientBuilder::create(Some("maptiler-http-cache"), headers);
         Self {
             tokio_rt,
             mvt_parser: MvtParser::new(MvtSchemeParser::new_map_tiler_v4()),
