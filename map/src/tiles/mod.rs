@@ -10,6 +10,8 @@ pub mod shashlik_v1;
 pub mod tile_data;
 pub mod tiles_provider;
 mod parsers;
+pub mod radar;
+mod reqwest_client;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ShashlikMapGeomObject {

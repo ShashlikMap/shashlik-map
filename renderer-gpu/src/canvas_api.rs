@@ -21,6 +21,7 @@ use renderer_common::style_id::StyleId;
 use std::collections::{BTreeMap, HashMap};
 use std::hash::Hash;
 use std::mem;
+use rustc_hash::FxHashMap;
 
 #[derive(Clone)]
 pub struct MeshInfo {
@@ -44,7 +45,7 @@ pub struct GpuCanvasApi {
     flushed: bool,
     draw_commands: Vec<Box<dyn DrawCommand>>,
     shapes: Vec<ShapeData>,
-    indices_by_layers: BTreeMap<i16, Vec<StyledRange>>,
+    indices_by_layers: BTreeMap<(i16, Option<String>), Vec<StyledRange>>,
     geometry3d: VertexBuffers<MeshVertex, u32>,
     text_vec: Vec<TextData>,
     // consider to add more fields to the cache key
@@ -136,37 +137,43 @@ impl GpuCanvasApi {
             return;
         }
 
-        let mut geometry = VertexBuffers::new();
+        let mut geometry_tag_map: FxHashMap<Option<String>, VertexBuffers<ShapeVertex, u32>> = FxHashMap::default();
+
         shapes.sort_by_key(|shape| {
             shape.index_layer_level
         });
         for data in shapes {
+            let mut geometry = geometry_tag_map.entry(data.feature_layer_tag.clone()).or_insert(VertexBuffers::new());
             self.process_shape(data, &mut geometry);
         }
 
-        let mesh = geometry;
-        if !mesh.vertices.is_empty() {
-            let flatten_ranges = mem::take(&mut self.indices_by_layers)
-                .into_values()
-                .flatten()
-                .collect();
-            let mesh_info = MeshInfo {
-                instance_positions: None,
-                size: None,
-                screen_offset: DVec2::ZERO,
-                with_collision: false,
-                instance_key: "".to_string(),
-                double_style: true,
-                permanent: false
-            };
-            let batch = Mesh2dCommandBatch {
-                mesh,
-                layers_indices: flatten_ranges,
-                mesh_info,
-            };
-            self.mesh2d_with_positions(vec![batch], false);
-        }
+        let mut indices_by_layers= mem::take(&mut self.indices_by_layers);
+        geometry_tag_map.into_iter().for_each(|(tag, geometry), | {
+            let mesh = geometry;
+            if !mesh.vertices.is_empty() {
+                let flatten_ranges = indices_by_layers
+                    .extract_if(.., |key, _| key.1 == tag)
+                    .map(|(_, v)| v).flatten()
+                    .collect();
+                let mesh_info = MeshInfo {
+                    instance_positions: None,
+                    size: None,
+                    screen_offset: DVec2::ZERO,
+                    with_collision: false,
+                    instance_key: "".to_string(),
+                    double_style: true,
+                    permanent: false,
+                };
+                let batch = Mesh2dCommandBatch {
+                    mesh,
+                    layers_indices: flatten_ranges,
+                    mesh_info,
+                };
+                self.mesh2d_with_positions(vec![batch], false, tag);
+            }
+        });
     }
+
 
     fn prepare_mesh2d_screen_space_command(&mut self) {
         if self.mesh_info_cache.is_empty() && self.mesh_info_list.is_empty() {
@@ -193,7 +200,7 @@ impl GpuCanvasApi {
             })
             .collect();
 
-        self.mesh2d_with_positions(batches, true);
+        self.mesh2d_with_positions(batches, true, None);
     }
 
     fn prepare_text_command(&mut self) {
@@ -205,11 +212,11 @@ impl GpuCanvasApi {
         }));
     }
 
-    fn mesh2d_with_positions(&mut self, batches: Vec<Mesh2dCommandBatch>, is_screen: bool) {
+    fn mesh2d_with_positions(&mut self, batches: Vec<Mesh2dCommandBatch>, is_screen: bool, feature_layer_tag: Option<String>) {
         self.draw_commands.push(Box::new(Mesh2dDrawCommand {
             batches,
             is_screen,
-            feature_layer_tag: self.feature_layer_tag.clone(),
+            feature_layer_tag: feature_layer_tag.or(self.feature_layer_tag.clone()),
         }));
     }
 
@@ -330,7 +337,7 @@ impl GpuCanvasApi {
         
         let ranges = self
             .indices_by_layers
-            .entry(data.index_layer_level as i16)
+            .entry((data.index_layer_level as i16, data.feature_layer_tag))
             .or_insert(Vec::new());
         if let Some(last) = ranges.last_mut()
             && last.0.end == initial_index

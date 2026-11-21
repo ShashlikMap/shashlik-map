@@ -488,5 +488,71 @@
         "TDash"
       ]
     }
+  },
+  {
+    "id": "raining_light",
+    "render_style": {
+      "Fill": {
+        "r": 0.55,
+        "g": 0.55,
+        "b": 0.55,
+        "a": 0.30
+      }
+    }
+  },
+  {
+    "id": "raining_moderate",
+    "render_style": {
+      "Fill": {
+        "r": 0.35,
+        "g": 0.35,
+        "b": 0.35,
+        "a": 0.35
+      }
+    }
+  },
+  {
+    "id": "raining_heavy",
+    "render_style": {
+      "Fill": {
+        "r": 0.15,
+        "g": 0.15,
+        "b": 0.15,
+        "a": 0.40
+      }
+    }
+  },
+  {
+    "id": "snowing_light",
+    "render_style": {
+      "Fill": {
+        "r": 0.35,
+        "g": 0.62,
+        "b": 0.85,
+        "a": 0.35
+      }
+    }
+  },
+  {
+    "id": "snowing_moderate",
+    "render_style": {
+      "Fill": {
+        "r": 0.16,
+        "g": 0.44,
+        "b": 0.76,
+        "a": 0.45
+      }
+    }
+  },
+  {
+    "id": "snowing_heavy",
+    "render_style": {
+      "Fill": {
+        "r": 0.06,
+        "g": 0.25,
+        "b": 0.58,
+        "a": 0.55
+      }
+    }
   }
 ]

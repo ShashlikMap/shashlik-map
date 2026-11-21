@@ -17,6 +17,7 @@ dist/
 # Cache by reqwest-middleware-cache
 *reqwest*cache*
 *maplibre*cache*
+*radar*cache*
 
 logs/
 
