@@ -24,6 +24,7 @@ use crate::tiles::grid_divider::subdivide_grid;
 use crate::tiles::maptiler::maptiler_tile_store::MaptilerTileStore;
 use crate::tiles::shashlik_v1::ShashlikV1TileStore;
 use crate::tiles::{ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapPointInfo, ShashlikNatureKind};
+use crate::tiles::radar::radar_tile_store::RadarTileStore;
 
 pub trait FeatureProcessor: Send + Sync {
     fn process_poi(
@@ -51,6 +52,7 @@ pub trait FeatureProcessor: Send + Sync {
 pub struct DefaultTilesProvider<FP: FeatureProcessor> {
     sender: Option<UnboundedSender<TilesMessage>>,
     tile_store: Arc<dyn TilesProviderStore>,
+    radar_tile_store: Arc<RadarTileStore>,
     per_frame_cache: HashSet<TileKey>,
     actual_cache: Arc<RwLock<HashSet<TileKey>>>,
     last_loaded_zoom_level: Arc<AtomicI32>,
@@ -62,7 +64,7 @@ pub struct DefaultTilesProvider<FP: FeatureProcessor> {
 
 impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
 
-    const BBOX_OVERLAP_OFFSET_SCALE: f64 = 1.005;
+    const BBOX_OVERLAP_OFFSET_SCALE: f64 = 1.002;
 
     const MAX_SUBDIVISION_LEVEL: i32 = 18;
 
@@ -70,6 +72,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         Self {
             sender: None,
             tile_store: Arc::from(tiles_provider_store),
+            radar_tile_store: Arc::new(RadarTileStore::new()),
             per_frame_cache: HashSet::new(),
             actual_cache: Arc::new(RwLock::new(HashSet::new())),
             last_loaded_zoom_level: Arc::new(AtomicI32::new(1)),
@@ -283,6 +286,7 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
         if !removed.is_empty() || !to_load.is_empty() {
             let ts = SystemTime::now();
             let tile_store = self.tile_store.clone();
+            let radar_tile_store = self.radar_tile_store.clone();
             let current_zoom_level = self.current_zoom_level.clone();
             let actual_cache = self.actual_cache.clone();
             let last_loaded_zoom_level = self.last_loaded_zoom_level.clone();
@@ -301,12 +305,15 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
                     .par_iter()
                     .filter_map(|key| {
                         if current_zoom_level.load(Ordering::Relaxed) == zoom_level {
-                            let tile_data = Self::get_tile_key_data(
+                            let mut tile_data = Self::get_tile_key_data(
                                 tile_store.clone(),
                                 feature_processor.clone(),
                                 key,
                                 dpi_scale,
                             );
+                            let mut radar_data = radar_tile_store.load(key);
+                            radar_data.extend(tile_data.geometry_data);
+                            tile_data.geometry_data=radar_data;
                             Some((key.clone(), tile_data))
                         } else {
                             None

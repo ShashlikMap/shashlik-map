@@ -44,7 +44,9 @@ pub struct GpuCanvasApi {
     flushed: bool,
     draw_commands: Vec<Box<dyn DrawCommand>>,
     shapes: Vec<ShapeData>,
+    shapes2: Vec<ShapeData>,
     indices_by_layers: BTreeMap<i16, Vec<StyledRange>>,
+    indices_by_layers2: BTreeMap<i16, Vec<StyledRange>>,
     geometry3d: VertexBuffers<MeshVertex, u32>,
     text_vec: Vec<TextData>,
     // consider to add more fields to the cache key
@@ -73,7 +75,9 @@ impl GpuCanvasApi {
             flushed: false,
             draw_commands: Vec::new(),
             shapes: Vec::new(),
+            shapes2: Vec::new(),
             indices_by_layers: BTreeMap::new(),
+            indices_by_layers2: BTreeMap::new(),
             geometry3d: VertexBuffers::new(),
             text_vec: Vec::new(),
             mesh_info_cache: HashMap::new(),
@@ -86,7 +90,9 @@ impl GpuCanvasApi {
         self.flushed = false;
         self.feature_layer_tag = None;
         self.indices_by_layers.clear();
+        self.indices_by_layers2.clear();
         self.shapes.clear();
+        self.shapes2.clear();
         self.geometry3d.clear();
         self.text_vec.clear();
 
@@ -117,6 +123,9 @@ impl GpuCanvasApi {
         match geometry_data {
             GeometryData::Shape(data) => {
                 self.path(data);
+            }
+            GeometryData::Shape2(data) => {
+                self.path2(data);
             }
             GeometryData::ExtrudedPolygon(data) => {
                 self.extruded_polygon(data);
@@ -168,6 +177,44 @@ impl GpuCanvasApi {
         }
     }
 
+    fn prepare_mesh2d_command2(&mut self) {
+        let mut shapes = mem::take(&mut self.shapes2);
+        if shapes.is_empty() {
+            return;
+        }
+
+        let mut geometry = VertexBuffers::new();
+        shapes.sort_by_key(|shape| {
+            shape.index_layer_level
+        });
+        for data in shapes {
+            self.process_shape2(data, &mut geometry);
+        }
+
+        let mesh = geometry;
+        if !mesh.vertices.is_empty() {
+            let flatten_ranges = mem::take(&mut self.indices_by_layers2)
+                .into_values()
+                .flatten()
+                .collect();
+            let mesh_info = MeshInfo {
+                instance_positions: None,
+                size: None,
+                screen_offset: DVec2::ZERO,
+                with_collision: false,
+                instance_key: "".to_string(),
+                double_style: true,
+                permanent: false
+            };
+            let batch = Mesh2dCommandBatch {
+                mesh,
+                layers_indices: flatten_ranges,
+                mesh_info,
+            };
+            self.mesh2d_with_positions2(vec![batch], false);
+        }
+    }
+
     fn prepare_mesh2d_screen_space_command(&mut self) {
         if self.mesh_info_cache.is_empty() && self.mesh_info_list.is_empty() {
             return;
@@ -210,6 +257,14 @@ impl GpuCanvasApi {
             batches,
             is_screen,
             feature_layer_tag: self.feature_layer_tag.clone(),
+        }));
+    }
+
+    fn mesh2d_with_positions2(&mut self, batches: Vec<Mesh2dCommandBatch>, is_screen: bool) {
+        self.draw_commands.push(Box::new(Mesh2dDrawCommand {
+            batches,
+            is_screen,
+            feature_layer_tag: Some("radar_tiles".to_string()),
         }));
     }
 
@@ -287,10 +342,71 @@ impl GpuCanvasApi {
     fn path(&mut self, data: ShapeData) {
         self.shapes.push(data);
     }
+    fn path2(&mut self, data: ShapeData) {
+        self.shapes2.push(data);
+    }
+
+    fn process_shape2(&mut self, data: ShapeData, geometry: &mut VertexBuffers<ShapeVertex, u32>) {
+        let geom_type = data.geometry_type;
+        let style_index = self.style_store.get_index(&data.style_id);
+        // println!("style id = {:?}, index = {style_index}", data.style_id);
+        let initial_index = geometry.indices.len();
+
+        match geom_type {
+            GeometryType::Polyline(options) => {
+                // drop polylines with non-positive width
+                if options.width <= 0.0 {
+                    return;
+                }
+                self.tessellate_stroke_path(&data.path, geometry, options, |vertex| {
+                    let position = vertex.position();
+                    let normal = vertex.normal().normalize();
+                    // u coord in 0.0 - 1.0 range
+                    let u = (vertex.side().to_f32() + 1.0) * 0.5;
+                    ShapeVertex::new(
+                        [position.x, position.y],
+                        [normal.x, normal.y],
+                        [u, 0.0],
+                        vertex.advancement(),
+                        style_index as u8,
+                    )
+                });
+            }
+            GeometryType::Polygon => {
+                Self::tessellate_fill_path(&data.path, geometry, |vertex| {
+                    let position = vertex.position();
+                    ShapeVertex::new(
+                        [position.x, position.y],
+                        [0.0, 0.0],
+                        [0.0, 0.0],
+                        0.0,
+                        style_index as u8,
+                    )
+                });
+            }
+        }
+        let last_index = geometry.indices.len();
+
+        let ranges = self
+            .indices_by_layers2
+            .entry(data.index_layer_level as i16)
+            .or_insert(Vec::new());
+        if let Some(last) = ranges.last_mut()
+            && last.0.end == initial_index
+        {
+            last.0.end = last_index;
+        } else {
+            ranges.push(StyledRange(
+                initial_index..last_index,
+                data.styled_range_info,
+            ));
+        }
+    }
 
     fn process_shape(&mut self, data: ShapeData, geometry: &mut VertexBuffers<ShapeVertex, u32>) {
         let geom_type = data.geometry_type;
         let style_index = self.style_store.get_index(&data.style_id);
+        // println!("style id = {:?}, index = {style_index}", data.style_id);
         let initial_index = geometry.indices.len();
 
         match geom_type {
@@ -497,6 +613,7 @@ impl GpuCanvasApi {
         self.flushed = true;
 
         self.prepare_mesh2d_command();
+        self.prepare_mesh2d_command2();
         self.prepare_mesh3d_command();
         self.prepare_mesh2d_screen_space_command();
         self.prepare_text_command();

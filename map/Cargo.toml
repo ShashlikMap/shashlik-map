@@ -25,6 +25,8 @@ derivative = "2.2.0"
 rand = { workspace = true }
 rustc-hash = { workspace = true }
 chrono = "0.4.45"
+image = { workspace = true }
+contour = { version = "0.13.1", features = ["f32"] }
 
 glam = { workspace = true }
 num = { workspace = true}

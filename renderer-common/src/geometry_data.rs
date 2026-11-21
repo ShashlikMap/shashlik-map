@@ -77,6 +77,7 @@ impl Default for PolylineOptions {
 
 pub enum GeometryData {
     Shape(ShapeData),
+    Shape2(ShapeData),
     ExtrudedPolygon(ExtrudedPolygonData),
     Svg(IconShapeData),
     Text(TextData),

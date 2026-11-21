@@ -1222,6 +1222,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "contour"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43f49a660700a72e88a50e56af0f39fcb986aca2f7c031ffada53da46693869b"
+dependencies = [
+ "geo-types",
+ "lazy_static",
+ "rustc-hash 1.1.0",
+ "slab",
+]
+
+[[package]]
 name = "convert_case"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4372,6 +4384,7 @@ dependencies = [
  "anyhow",
  "capitalize",
  "chrono",
+ "contour",
  "derivative",
  "dotenvy",
  "error-stack 0.6.0",
@@ -4382,6 +4395,7 @@ dependencies = [
  "glam",
  "googleprojection",
  "http-cache-reqwest",
+ "image 0.24.9",
  "kml",
  "log",
  "lyon",

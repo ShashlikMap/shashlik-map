@@ -36,6 +36,11 @@ pub fn feature_layer_tags() -> Vec<WorldShapeFeatureLayerTag> {
             ..Default::default()
         },
         WorldShapeFeatureLayerTag {
+            name: "radar_tiles",
+            single_instance_step: true,
+            ..Default::default()
+        },
+        WorldShapeFeatureLayerTag {
             name: "custom_overlay_layer",
             single_instance_step: true,
             ..Default::default()
