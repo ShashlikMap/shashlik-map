@@ -116,19 +116,14 @@ impl RadarTileStore {
 
     pub(crate) fn load(&self, tile_key: &TileKey) -> Vec<GeometryData> {
         let mut ret = vec![];
-        // let zl = tile_key.zoom_level.min(12);
-        // let zf = tile_key.zoom_level.saturating_sub(12);
-
         let zl = tile_key.zoom_level.min(12);
-        // if tile_key.zoom_level > 12 {
-        //     return ret;
-        // }
+        let zf = (tile_key.zoom_level - 12).max(0);
 
-        let zf = if tile_key.zoom_level - 12 >= 1 {
-            tile_key.zoom_level - 12
-        } else {
-            0
-        };
+        // let zl = tile_key.zoom_level.min(12);
+        // // if tile_key.zoom_level > 12 {
+        // //     return ret;
+        // // }
+        //
 
         let bytes = self
             .tokio_rt
