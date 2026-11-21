@@ -1,6 +1,6 @@
 use crate::MAX_ZOOM_LEVEL;
 use contour::ContourBuilder;
-use geo::{Scale, Translate};
+use geo::Scale;
 use geo_types::{LineString, Polygon};
 use http_cache_reqwest::{CACacheManager, Cache, CacheMode, HttpCache, HttpCacheOptions};
 use image::ImageFormat;
@@ -130,7 +130,14 @@ impl RadarTileStore {
             .block_on(self.fetch_tile_inner(tile_key.tile_x >> zf, tile_key.tile_y >> zf, zl))
             .unwrap_or_default();
         if let Ok(image) = image::load_from_memory_with_format(bytes.as_slice(), ImageFormat::Png) {
-            let image = image.to_rgba8();
+            let sub_size = 256u32 >> zf;
+            let mask = (1i32 << zf) - 1;
+            let x0 = ((tile_key.tile_x & mask) as u32) * sub_size;
+            let y0 = ((tile_key.tile_y & mask) as u32) * sub_size;
+
+            let sub = image::imageops::crop_imm(&image, x0, y0, sub_size, sub_size);
+
+            let image = sub.to_image();
             let field_raining: Vec<_> = image
                 .pixels()
                 .map(|pixel| {
@@ -156,27 +163,16 @@ impl RadarTileStore {
                 })
                 .collect();
 
-            // 1. Scale the 256x256 image to the WORLD size of the fetched tile (at zoom `zl`)
             let factor = 2.0f32.powi((MAX_ZOOM_LEVEL - zl + 1) as i32);
 
-            // 2. Child tile's grid position inside the fetched `zl` tile (0 when zoom_level <= 12)
-            let mask = (1i32 << zf) - 1;
-            let grid_x = tile_key.tile_x & mask;
-            let grid_y = tile_key.tile_y & mask;
-
-            // 3. World size of ONE child tile at `tile_key.zoom_level`
-            let child_world_size = 512.0f32 * 2.0f32.powi((MAX_ZOOM_LEVEL - tile_key.zoom_level) as i32);
-            let offset_x = (grid_x as f32) * child_world_size;
-            let offset_y = (grid_y as f32) * child_world_size;
-
-            let cc = ContourBuilder::new(256, 256, false);
+            let cc = ContourBuilder::new(sub_size as usize, sub_size as usize, true);
             let hh: Vec<_> = cc
                 .contours(field_raining.as_slice(), &[15.0, 30.0, 40.0])
                 .unwrap_or_default()
                 .into_iter()
                 .map(|c| {
                     let (poly, th) = c.into_inner();
-                    (th, poly.scale_around_point(factor, factor, (0f32, 0f32)).translate(-offset_x, -offset_y).0)
+                    (th, poly.scale_around_point(factor, factor, (0f32, 0f32)).0)
                 })
                 .collect();
             let hh2: Vec<_> = cc
@@ -185,7 +181,7 @@ impl RadarTileStore {
                 .into_iter()
                 .map(|c| {
                     let (poly, th) = c.into_inner();
-                    (th, poly.scale_around_point(factor, factor, (0f32, 0f32)).translate(-offset_x, -offset_y).0)
+                    (th, poly.scale_around_point(factor, factor, (0f32, 0f32)).0)
                 })
                 .collect();
 
