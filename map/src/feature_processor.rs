@@ -360,6 +360,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                                 style_id: StyleId::new("building_stand"),
                                 index_layer_level: -99,
                                 styled_range_info: styled_range_info.clone(),
+                                feature_layer_tag: None
                             }));
                         }
 
@@ -377,6 +378,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         style_id,
                         index_layer_level: layer_level as i16,
                         styled_range_info,
+                        feature_layer_tag: None
                     }));
                 } else {
                     let double_style = match &kind {
@@ -428,6 +430,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                                                 style_id: StyleId::new("crossing_mark"),
                                                 index_layer_level: layer_level + 1, // one layer up than road layer
                                                 styled_range_info: StyledRangeInfo::new(1, true),
+                                                feature_layer_tag: None
                                             }));
                                         }
                                     }
@@ -443,6 +446,7 @@ impl FeatureProcessor for ShashlikFeatureProcessor {
                         style_id,
                         index_layer_level: layer_level,
                         styled_range_info: StyledRangeInfo::new(if double_style { 0 } else { 1 }, false),
+                        feature_layer_tag: None
                     }));
                 }
 

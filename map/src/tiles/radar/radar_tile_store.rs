@@ -71,7 +71,7 @@ impl RadarTileStore {
         let radar_bytes = self
             .client
             .get(format!(
-                "https://api.rainbow.ai/tiles/v1/precip/1795235400/0/{z}/{x}/{y}?color=dbz_u8"
+                "https://api.rainbow.ai/tiles/v1/precip/1795245000/0/{z}/{x}/{y}?color=dbz_u8"
             ))
             .send()
             .await?
@@ -195,12 +195,13 @@ impl RadarTileStore {
                     } else {
                         StyleId::new("raining_heavy")
                     };
-                    ret.push(GeometryData::Shape2(ShapeData {
+                    ret.push(GeometryData::Shape(ShapeData {
                         path,
                         geometry_type: GeometryType::Polygon,
                         style_id,
                         index_layer_level: 0,
                         styled_range_info: StyledRangeInfo::new(1, true),
+                        feature_layer_tag: Some("radar_tiles".to_string())
                     }));
                 });
             });
@@ -215,12 +216,13 @@ impl RadarTileStore {
                     } else {
                         StyleId::new("snowing_heavy")
                     };
-                    ret.push(GeometryData::Shape2(ShapeData {
+                    ret.push(GeometryData::Shape(ShapeData {
                         path,
                         geometry_type: GeometryType::Polygon,
                         style_id,
                         index_layer_level: 0,
                         styled_range_info: StyledRangeInfo::new(1, true),
+                        feature_layer_tag: Some("radar_tiles".to_string())
                     }));
                 });
             });

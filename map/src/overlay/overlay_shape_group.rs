@@ -166,6 +166,7 @@ impl<T: CanvasApi> RenderGroup<T> for OverlayShapeGroup {
                 style_id: self.style_id.clone(),
                 index_layer_level: 0,
                 styled_range_info: StyledRangeInfo::new(1, true),
+                feature_layer_tag: None
             }));
         }
     }
