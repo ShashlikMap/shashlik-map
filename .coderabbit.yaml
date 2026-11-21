@@ -13,7 +13,7 @@ reviews:
   path_instructions:
     - path: "**/*"
       instructions: |
-        Read comments around changes carefully. Some comments may indicate that a solution or code change is a temporary fix, hotfix, or workaround. Do not flag or review these instances as issues.
+        Read comments around changes carefully. Some comments may indicate that a solution or code change is a temporary fix, hotfix, or workaround. Do not flag or review these instances as issues. Also, read a PR description, it may have hints about the code changes.
 
     - path: "**/*.rs"
       instructions: |

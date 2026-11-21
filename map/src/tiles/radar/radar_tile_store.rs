@@ -81,7 +81,7 @@ impl RadarTileStore {
             let radar_bytes = self
                 .client
                 .get(format!(
-                    "https://api.rainbow.ai/tiles/v1/precip/1795252800/0/{z}/{x}/{y}?color=dbz_u8"
+                    "https://api.rainbow.ai/tiles/v1/precip/{snapshot}/0/{z}/{x}/{y}?color=dbz_u8"
                 ))
                 .send()
                 .await?
