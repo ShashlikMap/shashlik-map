@@ -4408,6 +4408,7 @@ dependencies = [
  "reqwest-middleware",
  "rustc-hash 2.1.3",
  "serde",
+ "serde_json",
  "sgnss",
  "thiserror 2.0.21",
  "tiles",

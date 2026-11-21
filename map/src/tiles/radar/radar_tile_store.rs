@@ -4,6 +4,7 @@ use contour::{ContourBuilder, Float};
 use geo::Scale;
 use geo_types::{LineString, Polygon};
 use image::ImageFormat;
+use log::error;
 use lyon::geom::point;
 use lyon::path::Path;
 use osm::tiles::TileKey;
@@ -11,11 +12,21 @@ use renderer_common::geometry_data::{GeometryData, GeometryType, ShapeData, Styl
 use renderer_common::style_id::StyleId;
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest_middleware::ClientWithMiddleware;
+use serde::Deserialize;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::runtime::Runtime;
 
 pub struct RadarTileStore {
     tokio_rt: Runtime,
     client: ClientWithMiddleware,
+    api_key_set: bool,
+    snapshot: Arc<AtomicU64>,
+}
+
+#[derive(Deserialize)]
+struct SnapshotResponse {
+    snapshot: u64,
 }
 
 impl RadarTileStore {
@@ -28,37 +39,62 @@ impl RadarTileStore {
     pub fn new() -> Self {
         let tokio_rt = Runtime::new().unwrap();
         let mut headers = HeaderMap::new();
-        let api_key = option_env!("RAINBOW_API_KEY").expect("RAINBOW_API_KEY should be set");
-        headers.insert(
-            "Ocp-Apim-Subscription-Key",
-            HeaderValue::from_static(api_key),
-        );
-
+        let api_key = option_env!("RAINBOW_API_KEY");
+        if let Some(api_key) = api_key {
+            headers.insert(
+                "Ocp-Apim-Subscription-Key",
+                HeaderValue::from_static(api_key),
+            );
+        }
         let client = TilesReqwestClientBuilder::create(Some("radar-http-cache"), headers);
 
-        Self { tokio_rt, client }
+        Self {
+            tokio_rt,
+            client,
+            api_key_set: api_key.is_some(),
+            snapshot: Arc::new(0.into()),
+        }
     }
 
-    async fn fetch_tile_inner(
-        &self,
-        x: i32,
-        y: i32,
-        z: i32,
-    ) -> Result<Vec<u8>, reqwest_middleware::Error> {
-        // TODO SNAPSHOT
-        let radar_bytes = self
+    async fn get_latest_snapshot(&self) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
+        let current_snapshot = self.snapshot.load(Ordering::Relaxed);
+        if current_snapshot > 0 {
+            return Ok(current_snapshot);
+        }
+        let res = self
             .client
-            .get(format!(
-                "https://api.rainbow.ai/tiles/v1/precip/1795252800/0/{z}/{x}/{y}?color=dbz_u8"
-            ))
+            .get("https://api.rainbow.ai/tiles/v1/snapshot?layer=precip")
             .send()
             .await?
             .error_for_status()?
-            .bytes()
-            .await?
-            .to_vec();
+            .json::<SnapshotResponse>()
+            .await?;
+        self.snapshot.store(res.snapshot, Ordering::Relaxed);
+        println!("New radar snapshot: {:?}", res.snapshot);
+        Ok(res.snapshot)
+    }
 
-        Ok(radar_bytes)
+    async fn fetch_tile_inner(&self, x: i32, y: i32, z: i32) -> Result<Vec<u8>, anyhow::Error> {
+        if let Ok(snapshot) = self.get_latest_snapshot().await
+            && snapshot > 0
+        {
+            let radar_bytes = self
+                .client
+                .get(format!(
+                    "https://api.rainbow.ai/tiles/v1/precip/1795252800/0/{z}/{x}/{y}?color=dbz_u8"
+                ))
+                .send()
+                .await?
+                .error_for_status()?
+                .bytes()
+                .await?
+                .to_vec();
+
+            Ok(radar_bytes)
+        } else {
+            error!("Can't get radar snapshot");
+            Ok(vec![])
+        }
     }
 
     fn geo_polygon_to_lyon_path(poly: &Polygon<f32>) -> Path {
@@ -86,6 +122,10 @@ impl RadarTileStore {
     }
 
     pub(crate) fn load(&self, tile_key: &TileKey) -> Vec<GeometryData> {
+        if !self.api_key_set {
+            return vec![];
+        }
+
         let mut geometry_data = vec![];
         let z_limited = tile_key.zoom_level.min(12);
         let z_diff = (tile_key.zoom_level - 12).max(0);
