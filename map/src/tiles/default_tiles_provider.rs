@@ -64,7 +64,7 @@ pub struct DefaultTilesProvider<FP: FeatureProcessor> {
 
 impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
 
-    const BBOX_OVERLAP_OFFSET_SCALE: f64 = 1.002;
+    const BBOX_OVERLAP_OFFSET_SCALE: f64 = 1.005;
 
     const MAX_SUBDIVISION_LEVEL: i32 = 18;
 
@@ -311,9 +311,8 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
                                 key,
                                 dpi_scale,
                             );
-                            let mut radar_data = radar_tile_store.load(key);
-                            radar_data.extend(tile_data.geometry_data);
-                            tile_data.geometry_data=radar_data;
+                            let radar_data = radar_tile_store.load(key);
+                            tile_data.geometry_data.extend(radar_data);
                             Some((key.clone(), tile_data))
                         } else {
                             None

@@ -45,7 +45,6 @@ pub struct GpuCanvasApi {
     flushed: bool,
     draw_commands: Vec<Box<dyn DrawCommand>>,
     shapes: Vec<ShapeData>,
-    shapes2: Vec<ShapeData>,
     indices_by_layers: BTreeMap<(i16, Option<String>), Vec<StyledRange>>,
     geometry3d: VertexBuffers<MeshVertex, u32>,
     text_vec: Vec<TextData>,
@@ -75,7 +74,6 @@ impl GpuCanvasApi {
             flushed: false,
             draw_commands: Vec::new(),
             shapes: Vec::new(),
-            shapes2: Vec::new(),
             indices_by_layers: BTreeMap::new(),
             geometry3d: VertexBuffers::new(),
             text_vec: Vec::new(),
@@ -90,7 +88,6 @@ impl GpuCanvasApi {
         self.feature_layer_tag = None;
         self.indices_by_layers.clear();
         self.shapes.clear();
-        self.shapes2.clear();
         self.geometry3d.clear();
         self.text_vec.clear();
 
@@ -301,7 +298,6 @@ impl GpuCanvasApi {
     fn process_shape(&mut self, data: ShapeData, geometry: &mut VertexBuffers<ShapeVertex, u32>) {
         let geom_type = data.geometry_type;
         let style_index = self.style_store.get_index(&data.style_id);
-        // println!("style id = {:?}, index = {style_index}", data.style_id);
         let initial_index = geometry.indices.len();
 
         match geom_type {
