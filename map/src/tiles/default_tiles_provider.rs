@@ -305,13 +305,12 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
                     .par_iter()
                     .filter_map(|key| {
                         if current_zoom_level.load(Ordering::Relaxed) == zoom_level {
-                            let mut tile_data = Self::get_tile_key_data(
+                            let (mut tile_data, radar_data) = rayon::join(|| Self::get_tile_key_data(
                                 tile_store.clone(),
                                 feature_processor.clone(),
                                 key,
                                 dpi_scale,
-                            );
-                            let radar_data = radar_tile_store.load(key);
+                            ), || radar_tile_store.load(tile_store.clone(), key));
                             tile_data.geometry_data.extend(radar_data);
                             Some((key.clone(), tile_data))
                         } else {

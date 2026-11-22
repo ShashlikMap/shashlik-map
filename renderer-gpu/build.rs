@@ -27,7 +27,6 @@ fn main() {
         let res = compiler
             .compile(format!("src/shaders/{shader}.wgsl"))
             .unwrap_or_else(|e| panic!("failed to compile {shader}: {e}"));
-        res.emit_rerun_if_changed();
         res.write_artifact(shader);
     }
 }
