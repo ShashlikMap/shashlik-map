@@ -79,8 +79,7 @@ impl RadarTileStore {
 
     async fn fetch_tile_inner(&self, x: i32, y: i32, z: i32) -> Result<Vec<u8>, anyhow::Error> {
         if !self.api_key_set {
-            let fake_radar_bytes = fs::read("./rainbow_dbz_u8_circles_32x32_small.png")?;
-            println!("KIOL fake_radar_bytes = {:?}", fake_radar_bytes.len());
+            let fake_radar_bytes = fs::read("./headless/rainbow_dbz_u8_circles_32x32_small.png")?;
             return Ok(fake_radar_bytes)
         }
         if let Ok(snapshot) = self.get_latest_snapshot().await
