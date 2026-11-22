@@ -1,3 +1,4 @@
+use std::fs;
 use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::reqwest_client::TilesReqwestClientBuilder;
 use contour::{ContourBuilder, Float};
@@ -75,6 +76,10 @@ impl RadarTileStore {
     }
 
     async fn fetch_tile_inner(&self, x: i32, y: i32, z: i32) -> Result<Vec<u8>, anyhow::Error> {
+        if !self.api_key_set {
+            let fake_radar_bytes = fs::read("./rainbow_dbz_u8_circles_32x32_small.png")?;
+            return Ok(fake_radar_bytes)
+        }
         if let Ok(snapshot) = self.get_latest_snapshot().await
             && snapshot > 0
         {
@@ -122,10 +127,6 @@ impl RadarTileStore {
     }
 
     pub(crate) fn load(&self, tile_key: &TileKey) -> Vec<GeometryData> {
-        if !self.api_key_set {
-            return vec![];
-        }
-
         let mut geometry_data = vec![];
         let z_limited = tile_key.zoom_level.min(12);
         let z_diff = (tile_key.zoom_level - 12).max(0);
