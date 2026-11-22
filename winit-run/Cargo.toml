@@ -15,7 +15,7 @@ native-dialog = "0.9.3"
 skia-safe = { workspace = true, optional = true }
 renderer-cpu = { path = "../renderer-cpu", optional = true }
 renderer-gpu = { path = "../renderer-gpu", optional = true }
-slint = { version = "1.18.0", optional = true }
+slint = { version = "1.19.0", optional = true }
 url = "2.5.8"
 
 [target.'cfg(target_os = "linux")'.dependencies]
