@@ -96,9 +96,9 @@ Prerequisites for the Linux device:
 `sudo apt install libfontconfig1 libgbm1 libinput10 libxkbcommon-x11-0`
 
 Prerequisites for the building machine:
-- Install [cross-rs](https://github.com/cross-rs/cross)
-  `cargo install cross --git https://github.com/cross-rs/cross --branch main --force`
-- Install Docker
+- Install Docker. The build runs in an arm64 Debian container (`kms.Dockerfile`),
+  which is native on Apple Silicon. On an x86_64 host Docker has to emulate arm64,
+  which works but is much slower.
 
 Execute *kms_deploy.sh* script:
 - `chmod +x kms_deploy.sh`
