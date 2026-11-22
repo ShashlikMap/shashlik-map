@@ -310,7 +310,7 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
                                 feature_processor.clone(),
                                 key,
                                 dpi_scale,
-                            ), || radar_tile_store.load(key));
+                            ), || radar_tile_store.load(tile_store.clone(), key));
                             tile_data.geometry_data.extend(radar_data);
                             Some((key.clone(), tile_data))
                         } else {

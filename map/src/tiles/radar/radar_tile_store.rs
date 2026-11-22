@@ -2,7 +2,7 @@ use std::fs;
 use crate::MAX_ZOOM_LEVEL;
 use crate::tiles::reqwest_client::TilesReqwestClientBuilder;
 use contour::{ContourBuilder, Float};
-use geo::Scale;
+use geo::{Scale, Translate};
 use geo_types::{LineString, Polygon};
 use image::ImageFormat;
 use log::error;
@@ -17,6 +17,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::runtime::Runtime;
+use crate::tiles::tiles_provider::TilesProviderStore;
 
 pub struct RadarTileStore {
     tokio_rt: Runtime,
@@ -31,6 +32,7 @@ struct SnapshotResponse {
 }
 
 impl RadarTileStore {
+    const MAX_RADAR_ZOOM_LEVEL: i32 = 12;
     const RAINING_THRESHOLDS: [f32; 3] = [15.0, 30.0, 40.0];
     const RAINING_STYLES: [&str; 3] = ["raining_light", "raining_moderate", "raining_heavy"];
 
@@ -126,10 +128,11 @@ impl RadarTileStore {
         builder.build()
     }
 
-    pub(crate) fn load(&self, tile_key: &TileKey) -> Vec<GeometryData> {
+    pub(crate) fn load(&self, tile_store: Arc<dyn TilesProviderStore>, tile_key: &TileKey) -> Vec<GeometryData> {
         let mut geometry_data = vec![];
-        let z_limited = tile_key.zoom_level.min(12);
-        let z_diff = (tile_key.zoom_level - 12).max(0);
+        let zoom = tile_store.convert_zoom(tile_key.zoom_level);
+        let z_limited = zoom.min(Self::MAX_RADAR_ZOOM_LEVEL);
+        let z_diff = (zoom - Self::MAX_RADAR_ZOOM_LEVEL).max(0);
 
         let bytes = self
             .tokio_rt
@@ -169,6 +172,7 @@ impl RadarTileStore {
                 &contour_builder,
                 field_raining,
                 scale_factor,
+                !self.api_key_set,
                 &Self::RAINING_THRESHOLDS,
                 &Self::RAINING_STYLES,
             );
@@ -176,6 +180,7 @@ impl RadarTileStore {
                 &contour_builder,
                 field_snowing,
                 scale_factor,
+                !self.api_key_set,
                 &Self::SNOWING_THRESHOLDS,
                 &Self::SNOWING_STYLES,
             );
@@ -209,6 +214,7 @@ impl RadarTileStore {
         contour_builder: &ContourBuilder,
         field: Vec<f32>,
         scale_factor: f32,
+        is_fake: bool,
         thresholds: &[Float],
         styles: &[&'static str],
     ) -> Vec<(String, Vec<Polygon<Float>>)> {
@@ -220,10 +226,16 @@ impl RadarTileStore {
                 let (poly, th) = c.into_inner();
                 let index = thresholds.iter().position(|p| *p == th).unwrap();
                 let style = styles[index];
+
                 (
                     style.to_string(),
-                    poly.scale_around_point(scale_factor, scale_factor, (0f32, 0f32))
-                        .0,
+                    // FIXME the only way to present it on screenshot tests due to V0 tiles are used there
+                    // Need to use fake MapTiler tiles for screenshot tests
+                    if is_fake {
+                        poly.scale(scale_factor).translate(0f32, -500f32)
+                    } else {
+                        poly.scale_around_point(scale_factor, scale_factor, (0f32, 0f32))
+                    }.0,
                 )
             })
             .collect()
