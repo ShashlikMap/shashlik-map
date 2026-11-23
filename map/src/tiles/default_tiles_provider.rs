@@ -106,6 +106,10 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         sender.unbounded_send(TilesMessage::ToRemove(to_remove)).unwrap()
     }
 
+    fn radar_key(tile_key: &TileKey) -> String {
+        format!("radar:{:?}", tile_key.as_string_key())
+    }
+
     fn get_tile_key_data(
         tile_store: Arc<dyn TilesProviderStore>,
         feature_processor: Arc<FP>,
@@ -259,8 +263,8 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
 
         if let Ok(mut radar_tile_key_cache) = self.radar_tile_key_cache.try_write() {
             let sender = self.sender.clone().unwrap();
-            let visible: HashSet<String> = current_visible_tiles.iter().map(|key| format!("radar:{:?}", key.as_string_key())).collect();
-            if visible.is_subset(&radar_tile_key_cache) {
+            let visible: HashSet<String> = current_visible_tiles.iter().map(|key| Self::radar_key(key)).collect();
+            if *radar_tile_key_cache != visible && visible.is_subset(&radar_tile_key_cache) {
                 let removed: HashSet<String> = radar_tile_key_cache.difference(&visible).cloned().collect();
                 *radar_tile_key_cache = visible;
                 if !removed.is_empty() {
@@ -351,7 +355,7 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
 
                     let for_radar: Vec<_> = data.iter().map(|(key, data)| {
                         let empty_data = TileData {
-                            key: format!("radar:{:?}", data.key.clone()),
+                            key: Self::radar_key(key),
                             position: data.position,
                             zoom_level: data.zoom_level,
                             bbox: data.bbox,
