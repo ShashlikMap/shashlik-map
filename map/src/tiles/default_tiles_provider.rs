@@ -5,7 +5,7 @@ use futures::channel::mpsc::{UnboundedSender, unbounded};
 use geo::{Area, Convert};
 use geo::Winding;
 use geo_types::{coord, Coord, LineString, Rect, Polygon};
-use log::error;
+use log::{debug};
 use osm::map::{MapGeometry};
 use osm::tiles::{TileKey, TileStore};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator};
@@ -363,7 +363,7 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
                         };
                         (key.clone(), empty_data)
                     }).collect();
-                    error!(
+                    debug!(
                         "Tiles batch is ready: {:?}",
                         SystemTime::now().duration_since(ts)
                     );
@@ -379,13 +379,13 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
                         data.geometry_data = radar_tile_store.load(tile_store.clone(), &key);
                         actual_cache.read().unwrap().contains(&key).then_some(data)
                     }).collect();
-                    error!("Radar Tiles batch is ready: {:?}", SystemTime::now().duration_since(ts));
+                    debug!("Radar Tiles batch is ready: {:?}", SystemTime::now().duration_since(ts));
                     if !radar_tile_data.is_empty() {
                         sender
                             .unbounded_send(TilesMessage::TilesData(false, radar_tile_data))
                             .unwrap();
                     } else {
-                        println!("Radar Tiles batch is empty");
+                        debug!("Radar Tiles batch is empty");
                     }
 
                     let mut radar_tile_key_cache = radar_tile_key_cache.write().unwrap();

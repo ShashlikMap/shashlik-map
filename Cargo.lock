@@ -6760,6 +6760,7 @@ dependencies = [
 name = "sgnss"
 version = "0.1.0"
 dependencies = [
+ "log",
  "nmea-parser",
  "serial2",
 ]
@@ -9267,6 +9268,7 @@ name = "winit-run"
 version = "0.1.0"
 dependencies = [
  "env_logger",
+ "log",
  "map",
  "native-dialog",
  "osm",

@@ -1,5 +1,6 @@
 use std::sync::mpsc::channel;
 use image::{ImageBuffer, Rgba};
+use log::debug;
 use crate::RendererUpdateData;
 use crate::collider::Collider;
 use crate::render_config::RenderConfig;
@@ -187,7 +188,7 @@ impl GlobalContext {
 
                 if let Some(img_buf) = ImageBuffer::<Rgba<u8>, _>::from_raw(texture_width as u32, texture_height as u32, packed_data) {
                     img_buf.save("output.png").expect("PNG failed");
-                    println!("PNG created");
+                    debug!("PNG created");
                 }
             }
         }

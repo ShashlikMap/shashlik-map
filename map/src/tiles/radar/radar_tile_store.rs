@@ -5,7 +5,7 @@ use contour::{ContourBuilder, Float};
 use geo::{Scale, Translate};
 use geo_types::{LineString, Polygon};
 use image::ImageFormat;
-use log::error;
+use log::{debug, error};
 use lyon::geom::point;
 use lyon::path::Path;
 use osm::tiles::TileKey;
@@ -73,7 +73,7 @@ impl RadarTileStore {
             .json::<SnapshotResponse>()
             .await?;
         self.snapshot.store(res.snapshot, Ordering::Relaxed);
-        println!("New radar snapshot: {:?}", res.snapshot);
+        debug!("New radar snapshot: {:?}", res.snapshot);
         Ok(res.snapshot)
     }
 

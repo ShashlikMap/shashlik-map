@@ -2,7 +2,9 @@ use std::env;
 use renderer_common::{PreviewType, TilesType};
 use slint::{PhysicalSize, VecModel};
 use std::rc::Rc;
+use env_logger::Env;
 use strum::IntoEnumIterator;
+use log::LevelFilter;
 
 #[cfg(feature = "linux-cpu")]
 mod main_cpu;
@@ -33,7 +35,12 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let force_offline = args.len() > 1 && args.contains(&"-force_offline".to_string());
 
-    env_logger::init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("debug"))
+        .filter_module("wgpu", LevelFilter::Warn)
+        .filter_module("wgpu_core", LevelFilter::Warn)
+        .filter_module("wgpu_hal", LevelFilter::Warn)
+        .filter_module("naga", LevelFilter::Warn)
+        .init();
 
     unsafe {
         std::env::set_var("SLINT_DEBUG_PERFORMANCE", "refresh_full_speed,overlay");
