@@ -1,3 +1,4 @@
+use log::debug;
 use crate::global_context::GlobalContext;
 use crate::pipelines::mesh_pipeline::MeshPipeline;
 use crate::pipelines::{OwnedRenderPipelineDescriptor, RenderPipeline};
@@ -236,7 +237,7 @@ impl ScreenMeshPipeline {
         if let (Some(texture_view), Some(texture_bind_group_layout)) = (texture_view, texture_bind_group_layout) {
             // fyi, in future we may need to cache bind group here for more dynamic behavior
             // now, it'll be called only in MainPassNode constructor for new render configuration
-            println!(
+            debug!(
                 "Created texture view: {:?} for ScreenMeshPipeline",
                 texture_view
             );

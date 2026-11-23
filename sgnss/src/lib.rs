@@ -2,7 +2,7 @@ use nmea_parser::{NmeaParser, ParsedMessage};
 use serial2::SerialPort;
 use std::io::{BufRead, BufReader};
 use std::thread::spawn;
-
+use log::{debug, error};
 
 pub fn start_sgnss<F>(callback: F)
 where
@@ -22,7 +22,7 @@ where
                     if let Ok(parsed) = parsed {
                         match parsed {
                             ParsedMessage::Gll(gll) => {
-                                println!("NMEA: LatLon: {:?}, {:?}", gll.latitude, gll.longitude);
+                                debug!("NMEA: LatLon: {:?}, {:?}", gll.latitude, gll.longitude);
                                 if let (Some(lat), Some(lon)) = (gll.latitude, gll.longitude) {
                                     callback(lat, lon);
                                 }
@@ -30,12 +30,12 @@ where
                             _ => {}
                         }
                     } else {
-                        eprintln!("Bad NMEA data: {:?}", parsed);
+                        error!("Bad NMEA data: {:?}", parsed);
                     }
                     buffer.clear(); // Clear the buffer for the next line
                 }
                 Ok(_) => break, // EOF reached
-                Err(e) => eprintln!("Error reading: {:?}", e),
+                Err(e) => error!("Error reading: {:?}", e),
             }
         }
     });

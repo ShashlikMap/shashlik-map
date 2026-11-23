@@ -3,7 +3,7 @@ use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesPro
 use crate::tiles::{ShashlikMapGeomObject, ShashlikMapGeomObjectKind, ShashlikMapLinearRef, ShashlikMapPointObjectKind};
 use geo::{Distance, Euclidean, LineLocatePoint};
 use geo_types::Point;
-use log::error;
+use log::{debug};
 use osm::map::MapGeometry;
 use osm::tiles::TileKey;
 use reqwest::header::{HeaderMap, HeaderValue, ORIGIN};
@@ -47,7 +47,7 @@ impl MaptilerTileStore {
     fn fetch_tile(&self, x: i32, y: i32, z: i32) -> Result<Vec<u8>, reqwest_middleware::Error> {
         let t1 = SystemTime::now();
         let bytes = self.tokio_rt.block_on(self.fetch_tile_inner(x, y, z))?;
-        error!(
+        debug!(
             "get_map_tiler_tile, x = {}, y = {}, z = {}, total_time = {:?}, len = {}",
             x,
             y,

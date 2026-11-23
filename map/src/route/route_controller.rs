@@ -1,6 +1,6 @@
 use crate::route::RouteCosting;
 use geo_types::{point, Point, LineString};
-use log::error;
+use log::{debug, error};
 use renderer_common::{include_svg, RendererApi};
 use std::collections::HashSet;
 use std::convert::Into;
@@ -326,7 +326,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
     pub fn handle_trips(trips: (Trip, Vec<Trip>), mut action: impl FnMut(u8, Trip) -> ()) {
         let main_trip = trips.0;
         let alternates: Vec<Trip> = trips.1.clone();
-        println!("Route calculated!, alternates = {:?}", alternates.len());
+        debug!("Route calculated!, alternates = {:?}", alternates.len());
         vec![main_trip]
             .into_iter()
             .chain(alternates.into_iter())
@@ -349,7 +349,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
 
     // TODO Should be async to prevent short blocking of main thread
     pub fn try_change_route_for_world_point(&mut self, point: Point, max_dist: f32) {
-        println!("try_change_route_for_world_point for = {:?} with max_dist: {max_dist}", point);
+        debug!("try_change_route_for_world_point for = {:?} with max_dist: {max_dist}", point);
         if let Ok(full_routes) = self.full_routes.try_read() {
             let closest_route = full_routes.iter().map(|route| {
                 let dist = Euclidean.distance(&route.route, &point);
