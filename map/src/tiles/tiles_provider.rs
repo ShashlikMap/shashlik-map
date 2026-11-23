@@ -12,7 +12,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 pub enum TilesMessage {
-    TilesData(Vec<TileData>),
+    TilesData(bool, Vec<TileData>),
     ToRemove(HashSet<String>),
 }
 

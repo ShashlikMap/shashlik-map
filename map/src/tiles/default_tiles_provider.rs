@@ -2,19 +2,19 @@ use crate::tiles::tile_data::TileData;
 use crate::tiles::tiles_provider::{MercatorConverter, MercatorProvider, TilesMessage, TilesProvider, TilesProviderStore};
 use futures::{Stream};
 use futures::channel::mpsc::{UnboundedSender, unbounded};
-use geo::{Area, Convert };
+use geo::{Area, Convert};
 use geo::Winding;
 use geo_types::{coord, Coord, LineString, Rect, Polygon};
 use log::error;
 use osm::map::{MapGeometry};
 use osm::tiles::{TileKey, TileStore};
-use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator};
 use rayon::iter::ParallelIterator;
 use renderer_common::geometry_data::{GeometryData};
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, RwLock};
-use std::thread::spawn;
+use std::thread::{spawn};
 use std::time::{SystemTime};
 use googleprojection::Mercator;
 use osm::source::reqwest_source::ReqwestSource;
@@ -53,6 +53,7 @@ pub struct DefaultTilesProvider<FP: FeatureProcessor> {
     sender: Option<UnboundedSender<TilesMessage>>,
     tile_store: Arc<dyn TilesProviderStore>,
     radar_tile_store: Arc<RadarTileStore>,
+    radar_tile_key_cache: Arc<RwLock<HashSet<String>>>,
     per_frame_cache: HashSet<TileKey>,
     actual_cache: Arc<RwLock<HashSet<TileKey>>>,
     last_loaded_zoom_level: Arc<AtomicI32>,
@@ -73,6 +74,7 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
             sender: None,
             tile_store: Arc::from(tiles_provider_store),
             radar_tile_store: Arc::new(RadarTileStore::new()),
+            radar_tile_key_cache: Arc::new(RwLock::new(HashSet::new())),
             per_frame_cache: HashSet::new(),
             actual_cache: Arc::new(RwLock::new(HashSet::new())),
             last_loaded_zoom_level: Arc::new(AtomicI32::new(1)),
@@ -102,6 +104,10 @@ impl<FP: FeatureProcessor + 'static> DefaultTilesProvider<FP> {
         self.actual_cache.write().unwrap().clear();
         let sender = self.sender.clone().unwrap();
         sender.unbounded_send(TilesMessage::ToRemove(to_remove)).unwrap()
+    }
+
+    fn radar_key(tile_key: &TileKey) -> String {
+        format!("radar:{:?}", tile_key.as_string_key())
     }
 
     fn get_tile_key_data(
@@ -255,6 +261,22 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
         let zoom_level = self.tile_store.convert_zoom(zoom_level);
         self.current_zoom_level.store(zoom_level, Ordering::Relaxed);
 
+        if let Ok(mut radar_tile_key_cache) = self.radar_tile_key_cache.try_write() {
+            let sender = self.sender.clone().unwrap();
+            let visible: HashSet<String> = current_visible_tiles.iter().map(|key| Self::radar_key(key)).collect();
+            if *radar_tile_key_cache != visible && visible.is_subset(&radar_tile_key_cache) {
+                let removed: HashSet<String> = radar_tile_key_cache.difference(&visible).cloned().collect();
+                *radar_tile_key_cache = visible;
+                if !removed.is_empty() {
+                    sender
+                        .unbounded_send(TilesMessage::ToRemove(
+                            removed
+                        ))
+                        .unwrap();
+                }
+            }
+        }
+
         if let Ok(mut actual_cache) = self.actual_cache.try_write() {
             let sender = self.sender.clone().unwrap();
 
@@ -269,12 +291,14 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
                 .collect();
 
             if !removed.is_empty() {
-                let keys = removed.iter().map(|item| item.as_string_key()).collect();
-                sender
-                    .unbounded_send(TilesMessage::ToRemove(
-                        keys
-                    ))
-                    .unwrap();
+                let keys: HashSet<String> = removed.iter().map(|item| item.as_string_key()).collect();
+                if !keys.is_empty() {
+                    sender
+                        .unbounded_send(TilesMessage::ToRemove(
+                            keys
+                        ))
+                        .unwrap();
+                }
             }
         }
 
@@ -287,6 +311,7 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
             let ts = SystemTime::now();
             let tile_store = self.tile_store.clone();
             let radar_tile_store = self.radar_tile_store.clone();
+            let radar_tile_key_cache = self.radar_tile_key_cache.clone();
             let current_zoom_level = self.current_zoom_level.clone();
             let actual_cache = self.actual_cache.clone();
             let last_loaded_zoom_level = self.last_loaded_zoom_level.clone();
@@ -305,19 +330,19 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
                     .par_iter()
                     .filter_map(|key| {
                         if current_zoom_level.load(Ordering::Relaxed) == zoom_level {
-                            let (mut tile_data, radar_data) = rayon::join(|| Self::get_tile_key_data(
+                            let tile_data = Self::get_tile_key_data(
                                 tile_store.clone(),
                                 feature_processor.clone(),
                                 key,
                                 dpi_scale,
-                            ), || radar_tile_store.load(tile_store.clone(), key));
-                            tile_data.geometry_data.extend(radar_data);
+                            );
                             Some((key.clone(), tile_data))
                         } else {
                             None
                         }
                     })
                     .collect();
+
                 if !data.is_empty() && zoom_level == current_zoom_level.load(Ordering::Relaxed) {
                     if loading_count == 1 {
                         last_loaded_zoom_level.store(zoom_level, Ordering::Relaxed);
@@ -328,15 +353,43 @@ impl<FP: FeatureProcessor + 'static> TilesProvider
                         .unwrap()
                         .extend(data.iter().map(|item| item.0.clone()));
 
+                    let for_radar: Vec<_> = data.iter().map(|(key, data)| {
+                        let empty_data = TileData {
+                            key: Self::radar_key(key),
+                            position: data.position,
+                            zoom_level: data.zoom_level,
+                            bbox: data.bbox,
+                            geometry_data: vec![],
+                        };
+                        (key.clone(), empty_data)
+                    }).collect();
                     error!(
                         "Tiles batch is ready: {:?}",
                         SystemTime::now().duration_since(ts)
                     );
                     sender
-                        .unbounded_send(TilesMessage::TilesData(
-                            data.into_iter().map(|(_, data)| data).collect(),
+                        .unbounded_send(TilesMessage::TilesData(true,
+                                                                data.into_iter().map(|(_, data)| data).collect(),
                         ))
                         .unwrap();
+
+
+                    let radar_keys: HashSet<String> = for_radar.iter().map(|(_, data)| data.key.clone()).collect();
+                    let radar_tile_data: Vec<_> = for_radar.into_par_iter().filter_map(|(key, mut data)| {
+                        data.geometry_data = radar_tile_store.load(tile_store.clone(), &key);
+                        actual_cache.read().unwrap().contains(&key).then_some(data)
+                    }).collect();
+                    error!("Radar Tiles batch is ready: {:?}", SystemTime::now().duration_since(ts));
+                    if !radar_tile_data.is_empty() {
+                        sender
+                            .unbounded_send(TilesMessage::TilesData(false, radar_tile_data))
+                            .unwrap();
+                    } else {
+                        println!("Radar Tiles batch is empty");
+                    }
+
+                    let mut radar_tile_key_cache = radar_tile_key_cache.write().unwrap();
+                    radar_tile_key_cache.extend(radar_keys);
                 }
 
                 loading_map
