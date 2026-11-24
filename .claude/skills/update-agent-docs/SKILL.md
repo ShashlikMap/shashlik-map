@@ -43,6 +43,13 @@ block in the root `README.md`, plus `FACTS.md`, `shared.api` and `llms.txt`. No 
 vars or JDK flags needed — `rust-toolchain.toml` and `jvmToolchain(17)` handle it.
 It is idempotent; running twice changes nothing.
 
+It cross-compiles the Rust library and needs roughly 10 GB of free disk. A
+previous run started with 3.5 GB free and died with Gradle "Failed to release
+lock on …" errors, which is how a full disk shows up here — check `df -h .`
+before reading those as a Gradle bug. The same run first failed with
+`IsInIdeaSyncValueSource … not found` (a stale configuration cache, probably
+from an IDE sync); `--no-configuration-cache` got past it.
+
 ### 2. See what actually changed
 ```bash
 git diff kmp/shared/api/shared.api kmp/shared/agent/FACTS.md
@@ -67,8 +74,13 @@ signature, so sections 3 and 4 stay empty. A previous run nearly missed the
 the only commit that touched `shared.api` was a version bump.
 
 Read the scan's **Diff anchor** line first. Until a `mapshared-*` tag exists it
-falls back to the merge-base with `main`, so sections 3 and 4 then cover this
-branch only. Say so in your report. Do not present that as "since last release".
+falls back to the commit that set the *committed* `version` in
+`kmp/shared/build.gradle.kts`, on the assumption that the bump was the release.
+Say so in your report. Only if that lookup fails does it fall back to the
+merge-base with `main`, which covers this branch only. Do not present that as
+"since last release". A previous run on `main` itself got merge-base == HEAD, so
+every diff section said "no changes" while 79 engine files had changed since
+0.3.29.
 
 ### 3. Reconcile the prose
 Work the generated **inventory** list as a checklist:
