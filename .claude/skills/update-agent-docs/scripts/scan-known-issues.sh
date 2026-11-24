@@ -12,7 +12,11 @@ SCRIPT_DIR=".claude/skills/update-agent-docs/scripts"
 TRACKED="$SCRIPT_DIR/tracked-items.tsv"
 DOCS="kmp/shared/README_API.md README.md llms.txt"
 
-# Diff anchor: explicit arg > latest mapshared-* tag > merge-base with main.
+# Diff anchor: explicit arg > latest mapshared-* tag > commit that set the
+# committed `version` > merge-base with main.
+# The version-bump fallback exists because a run on `main` itself got
+# merge-base == HEAD, so every diff section came back empty while 79 engine
+# files had changed since the previous release.
 # The merge-base fallback only covers this branch, not everything since the
 # last release — the output says so, so nobody mistakes it for a release diff.
 SINCE="${1:-}"
@@ -20,6 +24,14 @@ SINCE_LABEL="$SINCE (explicit)"
 if [ -z "$SINCE" ]; then
   SINCE="$(git tag -l 'mapshared-*' --sort=-v:refname | head -1)"
   SINCE_LABEL="$SINCE (last release tag)"
+fi
+if [ -z "$SINCE" ]; then
+  GRADLE="kmp/shared/build.gradle.kts"
+  COMMITTED_VER="$(git show "HEAD:$GRADLE" 2>/dev/null | sed -n 's/^version = "\(.*\)"$/\1/p' | head -1)"
+  if [ -n "$COMMITTED_VER" ]; then
+    SINCE="$(git log -1 --format=%H -S"version = \"$COMMITTED_VER\"" -- "$GRADLE")"
+    SINCE_LABEL="${SINCE:0:7}, the commit that set version $COMMITTED_VER — NO mapshared-* tag yet; assumes that bump was the release"
+  fi
 fi
 if [ -z "$SINCE" ]; then
   SINCE="$(git merge-base HEAD main 2>/dev/null || true)"
