@@ -124,7 +124,8 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                     DirectionsType::Maneuvers
                 };
                 let with_turn_lanes = !matches!(route_costing, RouteCosting::Pedestrian);
-                
+
+                let mut main_route_points = vec![];
                 for attempt in 1..=max_attempts {
                     let manifest = Manifest::builder()
                         .locations([source_loc.clone(), destination_loc.clone()])
@@ -140,11 +141,10 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                             full_routes.clear();
                             Self::handle_trips(trips, |index, trip: Trip| {
                                 if let Some(leg) = trip.legs.into_iter().next() {
-                                    if index == alternates && let Some(action) = action.as_ref() {
-                                        let leg_points: Vec<_> = leg.shape.iter().map(|p| {
+                                    if index == alternates && action.is_some() {
+                                        main_route_points = leg.shape.iter().map(|p| {
                                             p.into()
                                         }).collect();
-                                        action(leg_points);
                                     }
                                     let route_id = format!("route{index}").to_string();
                                     let route: Vec<Point> = leg
@@ -279,6 +279,9 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                             }
                         }
                     }
+                }
+                if let Some(action) = action.as_ref() {
+                    action(main_route_points);
                 }
             });
         }
