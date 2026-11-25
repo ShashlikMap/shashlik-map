@@ -139,6 +139,15 @@ impl ShashlikMapApi {
         shashlik_map.create_route_to((lon, lat), route_costing.into(), None::<fn(Vec<geo_types::Point>)>);
     }
 
+    fn screen_pos_to_lon_lat(&self, point_x: f32, point_y: f32) -> Point {
+        let shashlik_map = self.shashlik_map.read().unwrap();
+        let p = shashlik_map.screen_to_lon_lat(point_x, point_y);
+        Point {
+            x: p.x,
+            y: p.y,
+        }
+    }
+
     fn calculate_route(&self, point_x: f32, point_y: f32, route_costing: RouteCosting, callback: Option<Arc<dyn RouteCallback>>) {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
 

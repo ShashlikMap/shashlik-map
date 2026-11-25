@@ -594,11 +594,16 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         point_x: f32,
         point_y: f32,
         route_costing: RouteCosting,
-        action: Option<impl Fn(Vec<Point>) + std::marker::Send + 'static>
+        action: Option<impl Fn(Vec<Point>) + std::marker::Send + 'static>,
     ) {
+        let coord = self.screen_to_lon_lat(point_x, point_y);
+        self.create_route_to(coord.into(), route_costing, action);
+    }
+
+    pub fn screen_to_lon_lat(&self, point_x: f32, point_y: f32) -> Coord {
         let clip = self.clip_from_screen_point(point_x, point_y);
-        let center = self.clip_to_lon_lat(&clip).unwrap();
-        self.create_route_to(center.into(), route_costing, action);
+        let lon_lat = self.clip_to_lon_lat(&clip).unwrap();
+        lon_lat
     }
 
     fn clip_from_screen_point(&self, point_x: f32,
