@@ -9,6 +9,7 @@ map = { path = "../map" }
 renderer-common = { workspace = true }
 env_logger = { workspace = true }
 pollster = { workspace = true }
+geo-types = { workspace = true }
 wgpu = { workspace = true, optional = true }
 strum = { workspace = true }
 native-dialog = "0.9.3"

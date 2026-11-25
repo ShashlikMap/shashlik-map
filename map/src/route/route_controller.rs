@@ -99,6 +99,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
         to_lon_lat: (f64, f64),
         route_costing: RouteCosting,
         converter: CoordConverter,
+        action: Option<impl Fn(Vec<Point>) + std::marker::Send + 'static>
     ) {
         self.clear_routes(Arc::clone(&self.api));
         if let Some((lon, lat)) = self.current_lon_lat {
@@ -127,7 +128,7 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                 for attempt in 1..=max_attempts {
                     let manifest = Manifest::builder()
                         .locations([source_loc.clone(), destination_loc.clone()])
-                        .alternates(2)
+                        .alternates(if action.is_some() { 0 } else { 2 })
                         .directions_type(direction_type)
                         .costing(costing.clone())
                         .turn_lanes(with_turn_lanes);
@@ -139,6 +140,12 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                             full_routes.clear();
                             Self::handle_trips(trips, |index, trip: Trip| {
                                 if let Some(leg) = trip.legs.into_iter().next() {
+                                    if index == alternates && let Some(action) = action.as_ref() {
+                                        let leg_points: Vec<_> = leg.shape.iter().map(|p| {
+                                            p.into()
+                                        }).collect();
+                                        action(leg_points);
+                                    }
                                     let route_id = format!("route{index}").to_string();
                                     let route: Vec<Point> = leg
                                         .shape
@@ -147,7 +154,6 @@ impl<RAPI: RendererApi + 'static> RouteController<RAPI> {
                                             converter(&p.into())
                                         })
                                         .collect();
-
 
                                     let shape_type: ShapeType = if matches!(route_costing, RouteCosting::Pedestrian) {
                                         ShapeType::DottedLine
