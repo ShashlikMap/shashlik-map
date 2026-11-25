@@ -17,6 +17,7 @@ use std::process::Command;
 use std::str::FromStr;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
+use geo_types::Point;
 use wgpu::{Device, Instance};
 use url::Url;
 use map::tiles::shashlik_v1::ShashlikV1TileStore;
@@ -254,7 +255,7 @@ pub fn launch_internal(ui: &ShashlikUI, force_offline: bool) {
                                         };
                                         shashlik_map.create_route_to_screen_point(curr_pan_state.x,
                                                                                   curr_pan_state.y,
-                                                                                  route_costing);
+                                                                                  route_costing, None::<fn(Vec<Point>)>);
                                     },
 
                                     Action::KML => {

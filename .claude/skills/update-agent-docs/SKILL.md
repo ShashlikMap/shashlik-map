@@ -179,6 +179,20 @@ anchor's current line, or MISSING if the pattern is gone.
   `if (!isValid)` early return in `Overlay.kt` (anchor `lineshape-silent-fail`).
   Keep under *Not supported yet*.
 
+- **No iOS build.** The `iosArm64()` / `iosSimulatorArm64()` block in
+  `kmp/shared/build.gradle.kts` is commented out. `FACTS.md`, the `llms.txt`
+  platform line and the root README's iOS sentence are all derived from
+  `kotlin.targets`, so they flip back on their own. The *Not supported yet*
+  bullet in `README_API.md` is hand-written: remove it when iOS returns. The
+  `llms.txt` line was hardcoded once and kept claiming iOS after the targets
+  were disabled. Never hardcode platform wording in the generator again.
+- **Weather radar cannot be turned off.** `DefaultTilesProvider` always runs
+  `RadarTileStore`, which calls `api.rainbow.ai` when `RAINBOW_API_KEY` was set
+  at compile time (`option_env!`). `publish_kmp_sdk.yml` passes it. Keep under
+  *Not supported yet* while both hold. If the workflow stops passing the key,
+  the store reads a `./headless/` fixture that does not exist on a device and
+  draws nothing, so drop the bullet then.
+
 Every row in `tracked-items.tsv` should have a bullet here. A previous run found
 two anchors tracked in the TSV with no bullet, so nothing told a later run to
 keep their doc entries.

@@ -52,11 +52,13 @@ jobs:
           || { echo "::error::Agent docs are stale. Run ./gradlew :shared:agentDocs and commit."; exit 1; }
         env:
           MAPTILER_API_KEY: ${{ secrets.MAPTILER_API_KEY }}
+          RAINBOW_API_KEY: ${{ secrets.RAINBOW_API_KEY }}
 
       - name: Publish to MavenCentral
         run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
         env:
           MAPTILER_API_KEY: ${{ secrets.MAPTILER_API_KEY }}
+          RAINBOW_API_KEY: ${{ secrets.RAINBOW_API_KEY }}
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.GPG_SIGNING_KEY_ID }}

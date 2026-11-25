@@ -69,7 +69,7 @@ fun App() {
                     )
                 }, onLongPress = { offset ->
                     ShashlikMapApiHolder.shashlikMapApi?.calculateRoute(
-                        offset.x, offset.y, routeCosting.value
+                        offset.x, offset.y, routeCosting.value, null
                     )
                 })
             }

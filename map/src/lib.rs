@@ -571,9 +571,9 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         prev_bearing + rot_diff % 360.0
     }
 
-    pub fn create_route_to_from_screen_center(&mut self, route_costing: RouteCosting) {
+    pub fn create_route_to_from_screen_center(&mut self, route_costing: RouteCosting, action: Option<impl Fn(Vec<Point>) + std::marker::Send + 'static>) {
         let center = self.clip_to_lon_lat(&coord! {x: 0.0, y: 0.0}).unwrap();
-        self.create_route_to(center.into(), route_costing);
+        self.create_route_to(center.into(), route_costing, action);
     }
 
     pub fn try_change_route_for_screen_point(
@@ -594,10 +594,11 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         point_x: f32,
         point_y: f32,
         route_costing: RouteCosting,
+        action: Option<impl Fn(Vec<Point>) + std::marker::Send + 'static>
     ) {
         let clip = self.clip_from_screen_point(point_x, point_y);
         let center = self.clip_to_lon_lat(&clip).unwrap();
-        self.create_route_to(center.into(), route_costing);
+        self.create_route_to(center.into(), route_costing, action);
     }
 
     fn clip_from_screen_point(&self, point_x: f32,
@@ -607,11 +608,11 @@ impl<R: Renderer, T: TilesProvider + Sync> ShashlikMap<R, T> {
         coord! { x: 2.0*(clip.x - 0.5), y: 2.0*(clip.y - 0.5) }
     }
 
-    pub fn create_route_to(&mut self, to_lon_lat: (f64, f64), route_costing: RouteCosting) {
+    pub fn create_route_to(&mut self, to_lon_lat: (f64, f64), route_costing: RouteCosting, action: Option<impl Fn(Vec<Point>) + std::marker::Send + 'static>) {
         self.route_controller.calc_route(
             to_lon_lat,
             route_costing,
-            self.create_location_coord_converter(),
+            self.create_location_coord_converter(), action
         );
     }
 

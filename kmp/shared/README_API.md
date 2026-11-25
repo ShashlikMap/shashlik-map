@@ -3,7 +3,7 @@
 This document serves as a comprehensive reference guide for the public API exposed by the `:shared` module of the Shashlik Map Kotlin Multiplatform (KMP) component. It is intended to help developers and AI agents understand, consume, and maintain the API effectively.
 
 <!-- BEGIN GENERATED: version -->
-This document describes **mapshared 0.3.30**.
+This document describes **mapshared 0.3.31**.
 <!-- END GENERATED: version -->
 
 If the version you resolved differs from the one above, treat this document as
@@ -17,10 +17,10 @@ tell the user rather than working around it.
 <!-- BEGIN GENERATED: facts -->
 | | |
 |---|---|
-| Coordinates | `io.github.shashlikmap:mapshared:0.3.30` |
+| Coordinates | `io.github.shashlikmap:mapshared:0.3.31` |
 | Repository | `mavenCentral()` |
-| Platforms | Android, iOS |
-| Kotlin targets | `android`, `iosArm64`, `iosSimulatorArm64` |
+| Platforms | **Android only** — iOS targets are not built or published |
+| Kotlin targets | `android` |
 | Android minSdk | 26 |
 | Android compileSdk | 36 |
 | JVM target | 11 |
@@ -54,7 +54,7 @@ Without it the build fails to resolve `org.rustls:rustls-platform-verifier`.
 
 Never choose this version yourself. The support library must stay SemVer-compatible
 with the Rust crate inside `libffi_run.so`; a mismatch crashes at runtime instead
-of failing resolution. 0.3.30 pins `0.2.0`, read from the
+of failing resolution. 0.3.31 pins `0.2.0`, read from the
 `rustls-platform-verifier-android` entry in `Cargo.lock`.
 
 Versions before 0.3.21 needed none of this — the verifier was a JNI method inside
@@ -68,7 +68,7 @@ itself.
 
 ## Known limitations
 
-Verified against 0.3.30. If you need something listed here, it does not exist yet —
+Verified against 0.3.31. If you need something listed here, it does not exist yet —
 tell the user rather than reaching for an undocumented API or `InternalShashlikMapApi`.
 
 ### Temporary, non-blocking
@@ -100,6 +100,13 @@ Nothing outside the inventory above exists. Specifically:
 - **`LineShape` fails silently** when given fewer than two distinct points — it
   draws nothing and reports nothing (`Overlay.kt:66`).
 - **Tiles cover Japan and the SF Bay Area only.** Test with coordinates there.
+- **No iOS build.** From 0.3.31 only the Android target is built and published;
+  the iOS targets are disabled in `kmp/shared/build.gradle.kts`. Do not add an
+  iOS source set or framework dependency on `mapshared`.
+- **Weather radar cannot be turned off.** The engine requests precipitation
+  radar tiles from `api.rainbow.ai` for visible tiles and draws rain/snow areas
+  over the map. There is no API to disable this layer or its network traffic.
+  See `RadarTileStore` in `map/src/tiles/radar/radar_tile_store.rs`.
 - The Android emulator may need GPU mode `Software`, and debug builds are much
   slower than release.
 

@@ -2,14 +2,14 @@ uniffi::setup_scaffolding!();
 
 mod platform;
 
+use glam::DVec3;
 use map::ShashlikMap;
 use map::feature_processor::ShashlikFeatureProcessor;
 use map::tiles::default_tiles_provider::DefaultTilesProvider;
+use renderer_common::geometry_data::PolylineOptions;
 use renderer_common::{PreviewType, TilesType};
 use renderer_gpu::GpuRenderer;
-use std::sync::RwLock;
-use glam::DVec3;
-use renderer_common::geometry_data::PolylineOptions;
+use std::sync::{Arc, RwLock};
 
 #[derive(uniffi::Object)]
 pub struct ShashlikMapApi {
@@ -52,6 +52,11 @@ impl From<RouteCosting> for map::route::RouteCosting {
             RouteCosting::Motorbike => map::route::RouteCosting::Motorbike
         }
     }
+}
+
+#[uniffi::export(with_foreign)] // Use `with_foreign` if on UniFFI < 0.28
+pub trait RouteCallback: Send + Sync {
+    fn on_complete(&self, points: Vec<Point>);
 }
 
 #[uniffi::export]
@@ -131,12 +136,23 @@ impl ShashlikMapApi {
     fn calculate_route_to_lat_lon(&self, lat: f64, lon: f64, route_costing: RouteCosting) {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
         // swap lat/lon to lon/lat
-        shashlik_map.create_route_to((lon, lat), route_costing.into());
+        shashlik_map.create_route_to((lon, lat), route_costing.into(), None::<fn(Vec<geo_types::Point>)>);
     }
 
-    fn calculate_route(&self, point_x: f32, point_y: f32, route_costing: RouteCosting) {
+    fn calculate_route(&self, point_x: f32, point_y: f32, route_costing: RouteCosting, callback: Option<Arc<dyn RouteCallback>>) {
         let mut shashlik_map = self.shashlik_map.write().unwrap();
-        shashlik_map.create_route_to_screen_point(point_x, point_y, route_costing.into());
+
+        shashlik_map.create_route_to_screen_point(point_x, point_y, route_costing.into(), callback.map(|callback| {
+            move |q: Vec<geo_types::Point>| {
+                let converted = q.into_iter().map(|p| {
+                    Point {
+                        x: p.x(),
+                        y: p.y(),
+                    }
+                }).collect();
+                callback.on_complete(converted);
+            }
+        }));
     }
 
     fn try_change_route_for_screen_point(&self, point_x: f32, point_y: f32) {
