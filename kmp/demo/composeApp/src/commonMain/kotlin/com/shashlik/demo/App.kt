@@ -64,9 +64,13 @@ fun App() {
             .fillMaxSize()
             .pointerInput(Unit) {
                 detectTapGestures(onTap = { offset ->
-                    ShashlikMapApiHolder.shashlikMapApi?.tryChangeRouteForScreenPoint(
-                        offset.x, offset.y
-                    )
+                    ShashlikMapApiHolder.shashlikMapApi?.let { api ->
+                        val tapLotLan = api.screenPosToLonLat(offset.x, offset.y)
+                        println("tapLotLan = $tapLotLan")
+                        api.tryChangeRouteForScreenPoint(
+                            offset.x, offset.y
+                        )
+                    }
                 }, onLongPress = { offset ->
                     ShashlikMapApiHolder.shashlikMapApi?.calculateRoute(
                         offset.x, offset.y, routeCosting.value, null

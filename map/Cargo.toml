@@ -31,7 +31,8 @@ contour = { version = "0.13.1", features = ["f32"] }
 glam = { workspace = true }
 num = { workspace = true}
 
-valhalla-client = { git = "https://github.com/jelmer/valhalla-client-rs", rev = "a302758" }
+#valhalla-client = { git = "https://github.com/jelmer/valhalla-client-rs", rev = "a302758" }
+valhalla-client = { git = "https://github.com/ShashlikMap/valhalla-client-rs", branch = "fix_maneuver_types_count" }
 
 capitalize = "0.3"
 # Don't use the latest version. MapTiles won't work on Android. rustls-platform-verifier still has issues.

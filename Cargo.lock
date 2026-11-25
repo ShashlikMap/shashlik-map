@@ -8267,12 +8267,13 @@ dependencies = [
 [[package]]
 name = "valhalla-client"
 version = "0.5.2"
-source = "git+https://github.com/jelmer/valhalla-client-rs?rev=a302758#a302758fabbecf1390cc46122fb6a046d0f80c0a"
+source = "git+https://github.com/ShashlikMap/valhalla-client-rs?branch=fix_maneuver_types_count#3e21d99325d6a21d83518b8923e03979ac597808"
 dependencies = [
  "chrono",
  "geo-types",
  "gpx",
  "log",
+ "num_enum",
  "reqwest 0.13.5",
  "semver",
  "serde",
