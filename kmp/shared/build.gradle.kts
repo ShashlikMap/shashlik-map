@@ -113,7 +113,7 @@ android {
 }
 
 group = "io.github.shashlikmap"
-version = "0.3.30"
+version = "0.3.31"
 
 mavenPublishing {
     publishToMavenCentral()
@@ -253,12 +253,17 @@ val agentDocs by tasks.registering {
     val groupValue = "${project.group}"
     val minSdkForDocs = libs.versions.android.minSdk.get()
     val abisForDocs = android.defaultConfig.ndk.abiFilters.sorted().joinToString(", ")
+    // Platform wording in llms.txt and the root README is derived from the real
+    // targets, like FACTS.md. It used to be hardcoded and kept claiming iOS
+    // after the iOS targets were disabled.
+    val iosTargetsForDocs = kotlin.targets.map { it.name }.filter { it.startsWith("ios") }.sorted()
 
     inputs.files(factsFile, apiFile)
     inputs.property("version", versionValue)
     inputs.property("group", groupValue)
     inputs.property("minSdk", minSdkForDocs)
     inputs.property("abis", abisForDocs)
+    inputs.property("iosTargets", iosTargetsForDocs)
     // All three are rewritten by this task. Declaring only README_API.md let a
     // deleted or edited llms.txt / root README survive an UP-TO-DATE run, which
     // would then pass the publish gate while stale.
@@ -367,6 +372,12 @@ val agentDocs by tasks.registering {
         // Entry point for foreign agents. Links raw URLs: GitHub HTML pages are
         // mostly navigation noise once a model is reading them.
         val raw = "https://raw.githubusercontent.com/ShashlikMap/shashlik-map/main"
+        val iosList = iosTargetsForDocs.joinToString(", ") { "`$it`" }
+        val platformLine = if (iosTargetsForDocs.isNotEmpty()) {
+            "Android (`$abisForDocs`, minSdk $minSdkForDocs) and iOS ($iosList)."
+        } else {
+            "**Android only** (`$abisForDocs`, minSdk $minSdkForDocs). iOS is not built or published in this version."
+        }
         llmsTxt.writeText(
             """
             # Shashlik Map SDK
@@ -384,7 +395,7 @@ val agentDocs by tasks.registering {
             Important:
             - `Point(x, y)` means x = longitude, y = latitude. `LocationState` uses
               named `latitude` / `longitude`. Double-check every coordinate.
-            - Android (`arm64-v8a`, minSdk 26) and iOS (`iosArm64`, `iosSimulatorArm64`).
+            - $platformLine
             - Map tiles cover Japan and the SF Bay Area only. Test with coordinates there.
             - **From 0.3.21 you must add the rustls Maven repository** to
               `settings.gradle.kts`, or the build cannot resolve
@@ -440,8 +451,13 @@ val agentDocs by tasks.registering {
             Regex("""an [a-z0-9-]+ device or\n?\s*emulator"""),
             "an $abisForDocs device or\nemulator"
         )
+        rewrite(
+            Regex("""iOS is also supported \([^)]*\)\.|iOS is not built or published in this version\."""),
+            if (iosTargetsForDocs.isNotEmpty()) "iOS is also supported ($iosList)."
+            else "iOS is not built or published in this version."
+        )
 
         rootReadme.writeText(readmeText)
-        logger.lifecycle("agentDocs: refreshed 4 value(s) in ${rootReadme.name}")
+        logger.lifecycle("agentDocs: refreshed 5 value(s) in ${rootReadme.name}")
     }
 }
